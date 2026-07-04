@@ -1,0 +1,76 @@
+id: lumberjacks-native-runtime-smoke
+title: Lumberjacks Native Runtime Smoke and Load Gate
+goal: >
+  Boot the Lumberjacks native runtime locally, prove the reliable fallback path and enhanced
+  datagram path are observable, then capture the result as a reproducible field packet.
+hypothesis: >
+  If the runtime can start from a clean checkout with explicit database and service settings, then
+  we can repeatedly show creators and technical peers how packet classification supports better
+  gameplay while preserving a no-mod fallback.
+audience:
+  - comfy_insiders
+  - technical_peers
+  - potential_collaborators
+runtime:
+  repo_path: C:/work/Lumberjacks
+  dotnet: C:/work/dotnet9/dotnet.exe
+  postgres:
+    default_mode: docker_or_external
+    host: 127.0.0.1
+    port: 5433
+    database: game
+    user: game
+  services:
+    - id: eventlog
+      project: src/Game.EventLog
+      health: http://localhost:4002/health
+    - id: progression
+      project: src/Game.Progression
+      health: http://localhost:4003/health
+    - id: operatorapi
+      project: src/Game.OperatorApi
+      health: http://localhost:4004/health
+    - id: gateway
+      project: src/Game.Gateway
+      health: http://localhost:4000/health
+      reliable_lane: ws://localhost:4000
+      datagram_lane: udp://localhost:4005
+probes:
+  - id: vertical_slice
+    command: node scripts/test-vertical-slice.js ws://localhost:4000
+    proves: reliable core loop, persistence, progression, operator visibility
+  - id: multiplayer
+    command: node scripts/test-multiplayer.js 5 ws://localhost:4000
+    proves: concurrent sessions, broadcast fanout, guild progression
+  - id: dual_channel_load
+    command: node scripts/load-test-dual-channel.js ws://localhost:4000 20 10
+    proves: websocket fallback, udp datagram enhancement, channel split telemetry
+metrics:
+  - service_health
+  - e2e_exit_codes
+  - websocket_messages
+  - udp_inputs_sent
+  - udp_entity_updates
+  - websocket_entity_updates
+  - errors
+  - disconnects
+pass_fail_gates:
+  - id: prerequisites
+    requirement: .NET 9, Node/npm, and a reachable Postgres backend are available.
+  - id: service_health
+    requirement: Gateway, EventLog, Progression, and OperatorApi health endpoints respond.
+  - id: vertical_slice
+    requirement: Existing vertical-slice smoke test exits 0.
+  - id: multiplayer
+    requirement: Existing 5-player smoke test exits 0.
+  - id: dual_channel_load
+    requirement: Existing 20-bot load probe exits 0 and reports either UDP enhancement or fallback.
+publish_outputs:
+  - field_notes
+  - technical_overview
+  - quick_start
+stop_and_reassess:
+  - Missing database backend after Docker and external Postgres checks.
+  - Service fails health readiness after 120 seconds.
+  - E2E scripts fail without a concrete raw log cause.
+  - Load probe cannot explain channel split to a non-networking creator.

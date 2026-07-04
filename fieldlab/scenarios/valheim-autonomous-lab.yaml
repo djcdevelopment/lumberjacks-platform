@@ -1,0 +1,51 @@
+id: valheim-autonomous-lab
+title: Valheim Autonomous WSL/Docker Lab
+goal: >
+  Stage or run a private autonomous Valheim lab where Docker starts the dedicated
+  server, rendered Steam clients, MCP gateway, ComfyNetworkSense configuration,
+  and telemetry packet collection without manual in-game console input.
+hypothesis: >
+  If the client mod can auto-run the staged teleport rehearsal after player
+  spawn, then WSL/Docker can collect repeatable baseline telemetry before
+  volunteer sessions without an operator sitting inside the game.
+inputs:
+  resource_profile:
+    default: host_full
+    override_env: FIELDLAB_RESOURCE_PROFILE
+  client_count:
+    default: 1
+    supported_range: 0-4
+  server:
+    image: ghcr.io/community-valheim-tools/valheim-server
+    world_name: ComfyEra16
+    source_dir: '%USERPROFILE%/AppData/LocalLow/IronGate/Valheim/worlds_local'
+  clients:
+    image: josh5/steam-headless
+    require_first_run_state:
+      - Steam account logged in per persistent client home volume.
+      - Valheim installed under /mnt/games/steamapps/common/Valheim.
+      - Test client may legally access the private server.
+execution:
+  host_command: .\fieldlab\scripts\run-autonomous-valheim-lab.ps1 -Clients 1 -Profile host_full -Start
+  dry_run_command: .\fieldlab\scripts\run-autonomous-valheim-lab.ps1 -Clients 1 -Profile host_full
+  in_game_command: none
+  mod_trigger: autoRehearsalEnabled
+outputs:
+  - telemetry/autonomous-lab-summary.json
+  - raw/operator-runbook.md
+  - raw/valheim-lab.env
+  - raw/teleport-route.tsv
+pass_fail_gates:
+  - id: wsl_resource_profile
+    requirement: Requested WSL profile was checked or explicitly applied.
+  - id: docker_compose
+    requirement: Compose stack is staged and Docker is reachable when -Start is used.
+  - id: client_autostart
+    requirement: Steam client container installs ComfyNetworkSense and launches Valheim.
+  - id: auto_rehearsal
+    requirement: Client telemetry contains auto_rehearsal end or route_rehearsal end marker.
+stop_and_reassess:
+  - Steam account is not logged in inside the persistent client container.
+  - Valheim is not installed in the client games volume.
+  - Dedicated server cannot load the staged ComfyEra16 world.
+  - Client route markers do not appear before timeout.

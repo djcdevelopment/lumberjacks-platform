@@ -1,0 +1,136 @@
+name: comfy-valheim-lab
+
+x-steam-client: &steam-client
+  image: ${STEAM_HEADLESS_IMAGE:-josh5/steam-headless:debian}
+  shm_size: "2gb"
+  privileged: true
+  ipc: host
+  ulimits:
+    nofile:
+      soft: 1024
+      hard: 524288
+  restart: unless-stopped
+  environment:
+    TZ: ${TZ:-America/Los_Angeles}
+    USER_LOCALES: ${USER_LOCALES:-en_US.UTF-8 UTF-8}
+    DISPLAY: ${DISPLAY:-:55}
+    MODE: ${STEAM_HEADLESS_MODE:-primary}
+    WEB_UI_MODE: ${WEB_UI_MODE:-vnc}
+    ENABLE_VNC_AUDIO: ${ENABLE_VNC_AUDIO:-false}
+    PORT_NOVNC_WEB: ${PORT_NOVNC_WEB:-8080}
+    ENABLE_STEAM: ${ENABLE_STEAM:-true}
+    STEAM_ARGS: ${STEAM_ARGS:--silent}
+    ENABLE_SUNSHINE: ${ENABLE_SUNSHINE:-false}
+    ENABLE_EVDEV_INPUTS: ${ENABLE_EVDEV_INPUTS:-false}
+    FORCE_X11_DUMMY_CONFIG: ${FORCE_X11_DUMMY_CONFIG:-true}
+    COMFY_STEAM_AUTOSTART: ${COMFY_STEAM_AUTOSTART:-true}
+    COMFY_VALHEIM_SERVER: ${COMFY_VALHEIM_SERVER:-valheim-server:2456}
+    COMFY_VALHEIM_PASSWORD: ${SERVER_PASS:-comfytest}
+    COMFY_VALHEIM_LAUNCH_ARGS: ${COMFY_VALHEIM_LAUNCH_ARGS:--console}
+    COMFY_VALHEIM_INSTALL_DIR: ${COMFY_VALHEIM_INSTALL_DIR:-/mnt/games/GameLibrary/Steam/steamapps/common/Valheim}
+    COMFY_AUTOJOIN: ${COMFY_AUTOJOIN:-true}
+    COMFY_MATRIX_CHECKIN: ${COMFY_MATRIX_CHECKIN:-false}
+    COMFY_GATEWAY_URL: ${COMFY_GATEWAY_URL:-http://comfy-gateway:8720}
+  volumes:
+    - ${AUTONOMOUS_ROOT}/state/client-shared:/mnt/comfy:ro
+
+services:
+  valheim-server:
+    image: ${VALHEIM_SERVER_IMAGE:-ghcr.io/community-valheim-tools/valheim-server:latest}
+    restart: unless-stopped
+    cap_add:
+      - sys_nice
+    stop_grace_period: 2m
+    ports:
+      - "${SERVER_PORT:-2456}-${SERVER_PORT_END:-2457}:${SERVER_PORT:-2456}-${SERVER_PORT_END:-2457}/udp"
+    environment:
+      TZ: ${TZ:-America/Los_Angeles}
+      SERVER_NAME: ${SERVER_NAME:-Comfy Era16 Lab}
+      WORLD_NAME: ${WORLD_NAME:-ComfyEra16}
+      SERVER_PASS: ${SERVER_PASS:-comfytest}
+      SERVER_PUBLIC: ${SERVER_PUBLIC:-false}
+      SERVER_PORT: ${SERVER_PORT:-2456}
+      CROSSPLAY: ${CROSSPLAY:-false}
+      BEPINEX: "true"
+      BACKUPS: ${BACKUPS:-true}
+      UPDATE_IF_IDLE: "true"
+      RESTART_IF_IDLE: "true"
+    volumes:
+      - ${AUTONOMOUS_ROOT}/state/server/config:/config
+      - ${AUTONOMOUS_ROOT}/state/server/data:/opt/valheim
+
+  comfy-gateway:
+    build:
+      context: ${COMFY_ROOT}/network/mcp
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${COMFY_GATEWAY_PORT:-8720}:8720"
+    environment:
+      PYTHONPATH: /workspace/network/mcp
+      COMFY_NETWORK_SENSE_DIR: /lab/state/client01/games/GameLibrary/Steam/steamapps/common/Valheim/BepInEx/config/comfy-network-sense
+      COMFY_NETWORK_SENSE_CFG: /lab/state/client01/games/GameLibrary/Steam/steamapps/common/Valheim/BepInEx/config/djcdevelopment.valheim.comfynetworksense.cfg
+      COMFY_BEPINEX_LOG: /lab/state/client01/games/GameLibrary/Steam/steamapps/common/Valheim/BepInEx/LogOutput.log
+      COMFY_MCP_ROOT: /workspace/network/mcp
+      COMFY_MATRIX_VAR_DIR: /workspace/network/mcp/var/matrix
+      COMFY_VALHEIM_NOTES: /workspace/network/mcp/var/valheim-dev-notes.jsonl
+    volumes:
+      - ${AUTONOMOUS_ROOT}/state:/lab/state
+      - ${COMFY_ROOT}/network/mcp/var:/workspace/network/mcp/var
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8720"
+      - --callers
+      - /workspace/network/mcp/comfy_gateway/etc/callers.json
+      - --providers
+      - comfy_gateway.toolsurface.valheim,comfy_gateway.toolsurface.matrix,comfy_gateway.toolsurface.inference
+
+  valheim-client-01:
+    <<: *steam-client
+    hostname: valheim-client-01
+    profiles: ["clients"]
+    ports:
+      - "${CLIENT01_NOVNC_PORT:-8081}:8080"
+      - "${CLIENT01_SUNSHINE_PORT:-47991}:47989"
+    volumes:
+      - ${AUTONOMOUS_ROOT}/state/client-shared:/mnt/comfy:ro
+      - ${AUTONOMOUS_ROOT}/state/client01/home:/home/default
+      - ${AUTONOMOUS_ROOT}/state/client01/games:/mnt/games
+
+  valheim-client-02:
+    <<: *steam-client
+    hostname: valheim-client-02
+    profiles: ["clients"]
+    ports:
+      - "${CLIENT02_NOVNC_PORT:-8082}:8080"
+      - "${CLIENT02_SUNSHINE_PORT:-47992}:47989"
+    volumes:
+      - ${AUTONOMOUS_ROOT}/state/client-shared:/mnt/comfy:ro
+      - ${AUTONOMOUS_ROOT}/state/client02/home:/home/default
+      - ${AUTONOMOUS_ROOT}/state/client02/games:/mnt/games
+
+  valheim-client-03:
+    <<: *steam-client
+    hostname: valheim-client-03
+    profiles: ["clients"]
+    ports:
+      - "${CLIENT03_NOVNC_PORT:-8083}:8080"
+      - "${CLIENT03_SUNSHINE_PORT:-47993}:47989"
+    volumes:
+      - ${AUTONOMOUS_ROOT}/state/client-shared:/mnt/comfy:ro
+      - ${AUTONOMOUS_ROOT}/state/client03/home:/home/default
+      - ${AUTONOMOUS_ROOT}/state/client03/games:/mnt/games
+
+  valheim-client-04:
+    <<: *steam-client
+    hostname: valheim-client-04
+    profiles: ["clients"]
+    ports:
+      - "${CLIENT04_NOVNC_PORT:-8084}:8080"
+      - "${CLIENT04_SUNSHINE_PORT:-47994}:47989"
+    volumes:
+      - ${AUTONOMOUS_ROOT}/state/client-shared:/mnt/comfy:ro
+      - ${AUTONOMOUS_ROOT}/state/client04/home:/home/default
+      - ${AUTONOMOUS_ROOT}/state/client04/games:/mnt/games
