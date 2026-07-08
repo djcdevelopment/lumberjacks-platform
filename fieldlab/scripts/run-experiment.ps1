@@ -1501,6 +1501,102 @@ function New-PriorityLiveMirrorPublishLines {
   )
 }
 
+function New-PriorityGatewayPlanReportLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$GatewaySummary
+  )
+
+  $gateLines = @($GatewaySummary.gates | ForEach-Object {
+      "- $($_.id): $($_.status) - $($_.observed)"
+    })
+  if ($gateLines.Count -eq 0) {
+    $gateLines = @("- No Gateway plan gates were recorded.")
+  }
+
+  return @(
+    "# Field Notes: $ScenarioName",
+    "",
+    "## Goal",
+    "",
+    "Verify that Lumberjacks Gateway can consume the latest live Valheim priority manifest and shape it into reliable, datagram, and deferred delivery buckets.",
+    "",
+    "## Method",
+    "",
+    "- Gateway: $(Format-PacketValue $GatewaySummary.gateway_url)",
+    "- Manifest id: $(Format-PacketValue $GatewaySummary.manifest_id)",
+    "- Session id: $(Format-PacketValue $GatewaySummary.session_id)",
+    "- Budgets reliable/datagram/event-limit: $(Format-PacketValue $GatewaySummary.budgets.reliable)/$(Format-PacketValue $GatewaySummary.budgets.datagram)/$(Format-PacketValue $GatewaySummary.budgets.event_limit)",
+    "- Summary: ``telemetry/priority-gateway-plan-summary.json``",
+    "",
+    "## Results",
+    "",
+    "- Packet status: $Status",
+    "- Scenario telemetry status: $(Format-PacketValue $GatewaySummary.status)",
+    "- Phase: $(Format-PacketValue $GatewaySummary.phase)",
+    "- Mirror object batches/records: $(Format-PacketValue $GatewaySummary.mirror.object_batch_events)/$(Format-PacketValue $GatewaySummary.mirror.object_records)",
+    "- Gateway plan available: $(Format-PacketValue $GatewaySummary.gateway_plan.available)",
+    "- Gateway matched events/input/unique: $(Format-PacketValue $GatewaySummary.gateway_plan.matched_event_count)/$(Format-PacketValue $GatewaySummary.gateway_plan.total_input_objects)/$(Format-PacketValue $GatewaySummary.gateway_plan.unique_objects)",
+    "- Reliable/datagram/deferred: $(Format-PacketValue $GatewaySummary.gateway_plan.reliable_count)/$(Format-PacketValue $GatewaySummary.gateway_plan.datagram_count)/$(Format-PacketValue $GatewaySummary.gateway_plan.deferred_count)",
+    "- Activation available: $(Format-PacketValue $GatewaySummary.activation.available)",
+    "",
+    "## Gates",
+    ""
+  ) + $gateLines + @(
+    "",
+    "## Next Step",
+    "",
+    "A pass means Gateway can shape the live EventLog manifest into delivery buckets. The next build should connect this activated plan to socket-level delivery and client observation:",
+    "",
+    '```text',
+    "$(Format-PacketValue $GatewaySummary.next_marker_command)",
+    '```'
+  )
+}
+
+function New-PriorityGatewayPlanPublishLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RunId,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$GatewaySummary
+  )
+
+  return @(
+    "# Valheim Lumberjacks Priority Gateway Plan Packet",
+    "",
+    "Run: $RunId",
+    "Scenario: $ScenarioName",
+    "Status: $Status",
+    "",
+    "## Summary",
+    "",
+    "Gateway plan status was $(Format-PacketValue $GatewaySummary.status) for manifest $(Format-PacketValue $GatewaySummary.manifest_id). The latest mirror had $(Format-PacketValue $GatewaySummary.mirror.object_records) object records; Gateway shaped $(Format-PacketValue $GatewaySummary.gateway_plan.unique_objects) unique objects into $(Format-PacketValue $GatewaySummary.gateway_plan.reliable_count) reliable, $(Format-PacketValue $GatewaySummary.gateway_plan.datagram_count) datagram, and $(Format-PacketValue $GatewaySummary.gateway_plan.deferred_count) deferred objects.",
+    "",
+    "## Output",
+    "",
+    "- ``telemetry/priority-gateway-plan-summary.json``",
+    "- ``raw/operator-runbook.md``",
+    "",
+    "## Scope",
+    "",
+    "This packet proves Gateway manifest shaping and activation. It does not prove client receipt or datagram fallback behavior."
+  )
+}
+
 if (-not (Test-Path $ScenarioPath)) {
   throw "Scenario not found: $ScenarioPath"
 }
@@ -1626,6 +1722,7 @@ $shadowRouteSummary = $null
 $priorityLoadSummary = $null
 $priorityMirrorSummary = $null
 $priorityLiveMirrorSummary = $null
+$priorityGatewayPlanSummary = $null
 $scenarioTelemetryStatus = $null
 $runtimeSummaryPath = Join-Path $runDir "telemetry\runtime-summary.json"
 if (Test-Path $runtimeSummaryPath) {
@@ -1745,6 +1842,18 @@ if (Test-Path $priorityLiveMirrorSummaryPath) {
   }
 }
 
+$priorityGatewayPlanSummaryPath = Join-Path $runDir "telemetry\priority-gateway-plan-summary.json"
+if (Test-Path $priorityGatewayPlanSummaryPath) {
+  try {
+    $priorityGatewayPlanSummary = Get-Content -Raw $priorityGatewayPlanSummaryPath | ConvertFrom-Json
+    if (-not $scenarioTelemetryStatus) {
+      $scenarioTelemetryStatus = $priorityGatewayPlanSummary.status
+    }
+  } catch {
+    $notes += "Could not parse telemetry/priority-gateway-plan-summary.json."
+  }
+}
+
 if ($scenarioTelemetryStatus) {
   $notes += "Scenario telemetry status: $scenarioTelemetryStatus."
   if ($scenarioTelemetryStatus -ne "pass") {
@@ -1825,6 +1934,12 @@ if ($runtimeSummary) {
     Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
 
   New-PriorityLiveMirrorPublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -LiveMirrorSummary $priorityLiveMirrorSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
+} elseif ($priorityGatewayPlanSummary) {
+  New-PriorityGatewayPlanReportLines -ScenarioName $scenarioName -Status $status -GatewaySummary $priorityGatewayPlanSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
+
+  New-PriorityGatewayPlanPublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -GatewaySummary $priorityGatewayPlanSummary |
     Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
 } elseif ($shadowAuthoritySummary) {
   New-ShadowAuthorityReportLines -ScenarioName $scenarioName -Status $status -ShadowSummary $shadowAuthoritySummary |
