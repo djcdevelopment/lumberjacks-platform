@@ -1396,6 +1396,111 @@ function New-PriorityMirrorPublishLines {
   )
 }
 
+function New-PriorityLiveMirrorReportLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$LiveMirrorSummary
+  )
+
+  $gateLines = @($LiveMirrorSummary.gates | ForEach-Object {
+      "- $($_.id): $($_.status) - $($_.observed)"
+    })
+  if ($gateLines.Count -eq 0) {
+    $gateLines = @("- No live mirror gates were recorded.")
+  }
+
+  return @(
+    "# Field Notes: $ScenarioName",
+    "",
+    "## Goal",
+    "",
+    "Verify that the live in-game ComfyNetworkSense priority mirror round-trips route samples, object batches, and completion metadata through Lumberjacks EventLog.",
+    "",
+    "## Approach",
+    "",
+    "The operator ran the in-game route mirror command. The command plan read the latest local mirror stop row, matched it to local priority-load telemetry, queried Lumberjacks EventLog by manifest id, and compared local and remote counts.",
+    "",
+    "## Method",
+    "",
+    "- NetworkSense log dir: $(Format-PacketValue $LiveMirrorSummary.network_sense_log_dir)",
+    "- EventLog: $(Format-PacketValue $LiveMirrorSummary.eventlog_url)",
+    "- Manifest id: $(Format-PacketValue $LiveMirrorSummary.manifest_id)",
+    "- Session id: $(Format-PacketValue $LiveMirrorSummary.session_id)",
+    "- Summary: ``telemetry/priority-live-mirror-summary.json``",
+    "- Operator runbook: ``raw/operator-runbook.md``",
+    "",
+    "## Results",
+    "",
+    "- Packet status: $Status",
+    "- Scenario telemetry status: $(Format-PacketValue $LiveMirrorSummary.status)",
+    "- Phase: $(Format-PacketValue $LiveMirrorSummary.phase)",
+    "- Local sample/object rows: $(Format-PacketValue $LiveMirrorSummary.local.sample_rows)/$(Format-PacketValue $LiveMirrorSummary.local.object_rows)",
+    "- Mirror sample/object-batch/object records: $(Format-PacketValue $LiveMirrorSummary.mirror.sample_events)/$(Format-PacketValue $LiveMirrorSummary.mirror.object_batch_events)/$(Format-PacketValue $LiveMirrorSummary.mirror.object_records)",
+    "- Mirror posted ok/failed: $(Format-PacketValue $LiveMirrorSummary.mirror.posted_ok)/$(Format-PacketValue $LiveMirrorSummary.mirror.posted_failed)",
+    "- EventLog sample/object-batch/object records/completions: $(Format-PacketValue $LiveMirrorSummary.eventlog.sample_events)/$(Format-PacketValue $LiveMirrorSummary.eventlog.object_batch_events)/$(Format-PacketValue $LiveMirrorSummary.eventlog.object_records)/$(Format-PacketValue $LiveMirrorSummary.eventlog.complete_events)",
+    "- Route completed: $(Format-PacketValue $LiveMirrorSummary.route_completed)",
+    "",
+    "## Gates",
+    ""
+  ) + $gateLines + @(
+    "",
+    "## Interpretation",
+    "",
+    "A passing live mirror packet proves BepInEx can stream the priority manifest side channel directly into Lumberjacks EventLog during a Valheim route. It does not yet replace vanilla replication or exercise Gateway delivery ordering.",
+    "",
+    "## Next Step",
+    "",
+    "Promote the priority manifest stream into Gateway delivery/load-shaping semantics, using the marker below as the phase handoff:",
+    "",
+    '```text',
+    "$(Format-PacketValue $LiveMirrorSummary.next_marker_command)",
+    '```'
+  )
+}
+
+function New-PriorityLiveMirrorPublishLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RunId,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$LiveMirrorSummary
+  )
+
+  return @(
+    "# Valheim Lumberjacks Priority Live Mirror Packet",
+    "",
+    "Run: $RunId",
+    "Scenario: $ScenarioName",
+    "Status: $Status",
+    "",
+    "## Summary",
+    "",
+    "The live in-game mirror streamed $(Format-PacketValue $LiveMirrorSummary.local.sample_rows) priority samples and $(Format-PacketValue $LiveMirrorSummary.local.object_rows) object rows into Lumberjacks EventLog for manifest $(Format-PacketValue $LiveMirrorSummary.manifest_id). EventLog returned $(Format-PacketValue $LiveMirrorSummary.eventlog.sample_events) sample events, $(Format-PacketValue $LiveMirrorSummary.eventlog.object_batch_events) object batches, $(Format-PacketValue $LiveMirrorSummary.eventlog.object_records) object records, and $(Format-PacketValue $LiveMirrorSummary.eventlog.complete_events) completion events.",
+    "",
+    "## Output",
+    "",
+    "- ``telemetry/priority-live-mirror-summary.json``",
+    "- ``raw/operator-runbook.md``",
+    "",
+    "## Scope",
+    "",
+    "This packet proves live BepInEx to EventLog side-channel carriage. It does not yet implement Gateway priority delivery, progressive filtering, or vanilla replication replacement."
+  )
+}
+
 if (-not (Test-Path $ScenarioPath)) {
   throw "Scenario not found: $ScenarioPath"
 }
@@ -1520,6 +1625,7 @@ $shadowAuthoritySummary = $null
 $shadowRouteSummary = $null
 $priorityLoadSummary = $null
 $priorityMirrorSummary = $null
+$priorityLiveMirrorSummary = $null
 $scenarioTelemetryStatus = $null
 $runtimeSummaryPath = Join-Path $runDir "telemetry\runtime-summary.json"
 if (Test-Path $runtimeSummaryPath) {
@@ -1627,6 +1733,18 @@ if (Test-Path $priorityMirrorSummaryPath) {
   }
 }
 
+$priorityLiveMirrorSummaryPath = Join-Path $runDir "telemetry\priority-live-mirror-summary.json"
+if (Test-Path $priorityLiveMirrorSummaryPath) {
+  try {
+    $priorityLiveMirrorSummary = Get-Content -Raw $priorityLiveMirrorSummaryPath | ConvertFrom-Json
+    if (-not $scenarioTelemetryStatus) {
+      $scenarioTelemetryStatus = $priorityLiveMirrorSummary.status
+    }
+  } catch {
+    $notes += "Could not parse telemetry/priority-live-mirror-summary.json."
+  }
+}
+
 if ($scenarioTelemetryStatus) {
   $notes += "Scenario telemetry status: $scenarioTelemetryStatus."
   if ($scenarioTelemetryStatus -ne "pass") {
@@ -1701,6 +1819,12 @@ if ($runtimeSummary) {
     Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
 
   New-PriorityMirrorPublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -MirrorSummary $priorityMirrorSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
+} elseif ($priorityLiveMirrorSummary) {
+  New-PriorityLiveMirrorReportLines -ScenarioName $scenarioName -Status $status -LiveMirrorSummary $priorityLiveMirrorSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
+
+  New-PriorityLiveMirrorPublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -LiveMirrorSummary $priorityLiveMirrorSummary |
     Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
 } elseif ($shadowAuthoritySummary) {
   New-ShadowAuthorityReportLines -ScenarioName $scenarioName -Status $status -ShadowSummary $shadowAuthoritySummary |
