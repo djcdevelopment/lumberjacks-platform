@@ -24,8 +24,15 @@ inputs:
   lumberjacks_region:
     default: region-spawn
     override_env: FIELDLAB_LUMBERJACKS_REGION
+  movement_profile:
+    default: movement_only
+    options: [movement_only, stationary, axis_north, axis_east, axis_south, axis_west]
+    override_env: FIELDLAB_SHADOW_ROUTE_PROFILE
+  shadow_input_hz:
+    default: 20
+    override_env: FIELDLAB_SHADOW_INPUT_HZ
 execution:
-  mod_command: network_sense_lumberjacks_shadow_route teleport-route.tsv movement_only <gateway_ws> <region_id>
+  mod_command: network_sense_lumberjacks_shadow_route teleport-route.tsv movement_only <gateway_ws> <region_id> 20
   completion_signal:
     - lumberjacks_shadow_route movement_only start
     - route_stop rows in lumberjacks-shadow.jsonl with run_label=shadow_route
@@ -39,7 +46,7 @@ pass_fail_gates:
   - id: route_file
     requirement: teleport-route.tsv exists and was copied to the NetworkSense config folder.
   - id: mod_deployed
-    requirement: Installed ComfyNetworkSense assembly version is 0.4.7 or newer.
+    requirement: Installed ComfyNetworkSense assembly version is 0.4.9 or newer.
   - id: lumberjacks_runtime
     requirement: Gateway health endpoint responds on 127.0.0.1:4000.
   - id: shadow_route_rows

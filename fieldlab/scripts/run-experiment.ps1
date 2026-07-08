@@ -999,7 +999,7 @@ function New-ShadowRouteReportLines {
     @("Compare open-control drift against dense/extreme drift and decide whether bounded local-only correction experiments are worth staging.")
   } else {
     @(
-      "Restart Valheim after installing ComfyNetworkSense 0.4.7, load Era16, keep the game foregrounded, then run:",
+      "Restart Valheim after installing ComfyNetworkSense 0.4.9, load Era16, keep the game foregrounded, then run:",
       "",
       '```text',
       "$(Format-PacketValue $ShadowRouteSummary.shadow_route_command)",
@@ -1025,6 +1025,7 @@ function New-ShadowRouteReportLines {
     "- Gateway: $(Format-PacketValue $ShadowRouteSummary.gateway_ws)",
     "- Region: $(Format-PacketValue $ShadowRouteSummary.region_id)",
     "- Movement profile: $(Format-PacketValue $ShadowRouteSummary.movement_profile)",
+    "- Shadow input Hz: $(Format-PacketValue $ShadowRouteSummary.shadow_input_hz)",
     "- NetworkSense log dir: $(Format-PacketValue $ShadowRouteSummary.network_sense_log_dir)",
     "- Route source: $(Format-PacketValue $ShadowRouteSummary.route_source)",
     "- Route file: ``telemetry/teleport-route.tsv``",
@@ -1104,6 +1105,294 @@ function New-ShadowRoutePublishLines {
     "## Scope",
     "",
     "This packet is explicitly scoped to route-backed shadow movement measurement. It does not apply Valheim transform corrections, write ZDOs, replace sockets, or prove dedicated-server replacement."
+  )
+}
+
+function New-PriorityLoadReportLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$PrioritySummary
+  )
+
+  $gateLines = @($PrioritySummary.gates | ForEach-Object {
+      "- $($_.id): $($_.status) - $($_.observed)"
+    })
+  if ($gateLines.Count -eq 0) {
+    $gateLines = @("- No priority load gates were recorded.")
+  }
+
+  $perStopLines = @($PrioritySummary.observed.per_stop | ForEach-Object {
+      "- $($_.id): samples=$($_.sample_count), candidates=$($_.candidate_count), emitted=$($_.emitted_object_count), portal=$($_.portal_count), structural=$($_.structural_anchor_count), interactive=$($_.near_interactive_count), storage=$($_.storage_crafting_count), max_scan_ms=$($_.max_scan_duration_ms)"
+    })
+  if ($perStopLines.Count -eq 0) {
+    $perStopLines = @("- No per-stop priority rows were recorded.")
+  }
+
+  $nextLines = if ($PrioritySummary.status -eq "pass_priority_route_observed" -or $PrioritySummary.status -eq "pass_priority_route_observed_with_sparse_gap") {
+    @(
+      "Build the Lumberjacks mirror phase: send this priority manifest as ordered side-channel metadata and compare delivery/order under load.",
+      "",
+      "$(if ($PrioritySummary.status -eq 'pass_priority_route_observed_with_sparse_gap') { 'Carry forward the sparse fixture note: one route stop had no non-player priority objects even at 256m.' } else { '' })",
+      "",
+      "MCP marker:",
+      "",
+      '```text',
+      "$(Format-PacketValue $PrioritySummary.mcp_phase.next_marker_command)",
+      '```'
+    )
+  } elseif ($PrioritySummary.status -eq "priority_route_observed_visibility_gaps") {
+    @(
+      "The 96m route captured all stops, but some fixture centers only saw the local player. Run the wider-radius follow-up to decide whether those are true empty local views or route-center/radius artifacts:",
+      "",
+      '```text',
+      "$(Format-PacketValue $PrioritySummary.wide_priority_route_command)",
+      "$(Format-PacketValue $PrioritySummary.mcp_phase.next_marker_command)",
+      '```',
+      "",
+      "After that route completes, rerun this scenario to compare the wider manifest."
+    )
+  } else {
+    @(
+      "Restart Valheim after installing ComfyNetworkSense 0.5.0, load Era16, keep the game foregrounded, then run:",
+      "",
+      '```text',
+      "$(Format-PacketValue $PrioritySummary.priority_route_command)",
+      '```',
+      "",
+      "After the route completes, rerun this scenario to collect the priority manifest."
+    )
+  }
+
+  return @(
+    "# Field Notes: $ScenarioName",
+    "",
+    "## Goal",
+    "",
+    "Collect a per-density priority/load-order manifest from loaded Valheim objects, using Lumberjacks as the future ordered side-channel rather than replacing vanilla replication.",
+    "",
+    "## Approach",
+    "",
+    "The command plan generated or reused ``teleport-route.tsv``, copied it into the NetworkSense config folder, checked the installed mod version, then scanned ``priority-load.jsonl`` for route-tagged rows written by ``network_sense_lumberjacks_priority_route``.",
+    "",
+    "## Method",
+    "",
+    "- Priority radius: $(Format-PacketValue $PrioritySummary.priority_radius_meters)m",
+    "- Scan interval: $(Format-PacketValue $PrioritySummary.priority_scan_interval_seconds)s",
+    "- Max object rows per sample: $(Format-PacketValue $PrioritySummary.priority_max_objects_per_sample)",
+    "- Observed route radius: $(Format-PacketValue $PrioritySummary.observed_route_run.radius_meters)m",
+    "- Observed route completed: $(Format-PacketValue $PrioritySummary.observed_route_run.completed)",
+    "- NetworkSense log dir: $(Format-PacketValue $PrioritySummary.network_sense_log_dir)",
+    "- Route source: $(Format-PacketValue $PrioritySummary.route_source)",
+    "- Route file: ``telemetry/teleport-route.tsv``",
+    "- Priority log: $(Format-PacketValue $PrioritySummary.priority_log_path)",
+    "- Installed plugin version: $(Format-PacketValue $PrioritySummary.plugin.version)",
+    "- Priority route command: ``$(Format-PacketValue $PrioritySummary.priority_route_command)``",
+    "",
+    "## Results",
+    "",
+    "- Packet status: $Status",
+    "- Scenario telemetry status: $(Format-PacketValue $PrioritySummary.status)",
+    "- Phase: $(Format-PacketValue $PrioritySummary.phase)",
+    "- Route steps: $(Format-PacketValue $PrioritySummary.route_step_count)",
+    "- Route file copied: $(Format-PacketValue $PrioritySummary.route_file.copied)",
+    "- Priority sample rows: $(Format-PacketValue $PrioritySummary.observed.sample_rows)",
+    "- Priority object rows: $(Format-PacketValue $PrioritySummary.observed.object_rows)",
+    "- Observed stops: $(Format-PacketValue $PrioritySummary.observed.observed_stop_count)/$(Format-PacketValue $PrioritySummary.route_step_count)",
+    "- Route end markers: $(Format-PacketValue $PrioritySummary.observed.route_end_markers)",
+    "- Max scan duration: $(Format-PacketValue $PrioritySummary.observed.max_scan_duration_ms)ms",
+    "- Collider buffer saturated: $(Format-PacketValue $PrioritySummary.observed.collider_buffer_full_any)",
+    "",
+    "## Gates",
+    ""
+  ) + $gateLines + @(
+    "",
+    "## Per-Stop Priority",
+    ""
+  ) + $perStopLines + @(
+    "",
+    "## Interpretation",
+    "",
+    "A ``pass_priority_route_observed`` result means every route stop produced a local priority manifest with tier counts and a completion marker. It does not prove true vanilla network arrival order or Lumberjacks side-channel delivery yet.",
+    "",
+    "## Next Step",
+    ""
+  ) + $nextLines
+}
+
+function New-PriorityLoadPublishLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RunId,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$PrioritySummary
+  )
+
+  return @(
+    "# Valheim Lumberjacks Priority Load Order Packet",
+    "",
+    "Run: $RunId",
+    "Scenario: $ScenarioName",
+    "Status: $Status",
+    "",
+    "## Summary",
+    "",
+    "The packet stages or verifies the Lumberjacks priority/load-order manifest proof. Installed ComfyNetworkSense is $(Format-PacketValue $PrioritySummary.plugin.version), route steps are $(Format-PacketValue $PrioritySummary.route_step_count), priority sample rows are $(Format-PacketValue $PrioritySummary.observed.sample_rows), and observed stops are $(Format-PacketValue $PrioritySummary.observed.observed_stop_count)/$(Format-PacketValue $PrioritySummary.route_step_count).",
+    "",
+    "## Run In Game",
+    "",
+    '```text',
+    "$(Format-PacketValue $PrioritySummary.priority_route_command)",
+    '```',
+    "",
+    "## Output",
+    "",
+    "- ``telemetry/priority-load-summary.json``",
+    "- ``telemetry/priority-load-density-comparison.csv``",
+    "- ``telemetry/teleport-route.tsv``",
+    "- ``raw/operator-runbook.md``",
+    "- ``raw/valheim-console-commands.txt``",
+    "",
+    "## Scope",
+    "",
+    "This packet is scoped to local manifest observation. It does not write ZDOs, alter ZNetView ownership, correct transforms, replace vanilla replication, or prove Lumberjacks delivery ordering yet."
+  )
+}
+
+function New-PriorityMirrorReportLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$MirrorSummary
+  )
+
+  $gateLines = @($MirrorSummary.gates | ForEach-Object {
+      "- $($_.id): $($_.status) - $($_.observed)"
+    })
+  if ($gateLines.Count -eq 0) {
+    $gateLines = @("- No priority mirror gates were recorded.")
+  }
+
+  $stopLines = @($MirrorSummary.route_stops | ForEach-Object {
+      $tierText = @($_.priority_tiers | ForEach-Object { "$($_.tier)=$($_.count)" }) -join ", "
+      "- $($_.route_stop_id): objects=$($_.object_rows), tiers=$tierText"
+    })
+  if ($stopLines.Count -eq 0) {
+    $stopLines = @("- No mirrored route-stop rows were recorded.")
+  }
+
+  return @(
+    "# Field Notes: $ScenarioName",
+    "",
+    "## Goal",
+    "",
+    "Mirror the collected Valheim priority/load-order manifest into Lumberjacks EventLog as ordered side-channel metadata.",
+    "",
+    "## Approach",
+    "",
+    "The command plan read the latest priority-load packet, bounded object rows to the latest sample per route stop, posted typed events to Lumberjacks EventLog, and queried them back by event type.",
+    "",
+    "## Method",
+    "",
+    "- EventLog: $(Format-PacketValue $MirrorSummary.eventlog_url)",
+    "- Postgres: $(Format-PacketValue $MirrorSummary.postgres.host):$(Format-PacketValue $MirrorSummary.postgres.port), ok=$(Format-PacketValue $MirrorSummary.postgres.ok)",
+    "- Manifest id: $(Format-PacketValue $MirrorSummary.manifest_id)",
+    "- Priority source: $(Format-PacketValue $MirrorSummary.priority_summary_path)",
+    "- Priority status: $(Format-PacketValue $MirrorSummary.priority_status)",
+    "- Priority route completed: $(Format-PacketValue $MirrorSummary.priority_route_completed)",
+    "- Manifest: ``telemetry/priority-mirror-manifest.json``",
+    "- Events CSV: ``telemetry/priority-mirror-events.csv``",
+    "",
+    "## Results",
+    "",
+    "- Packet status: $Status",
+    "- Scenario telemetry status: $(Format-PacketValue $MirrorSummary.status)",
+    "- Phase: $(Format-PacketValue $MirrorSummary.phase)",
+    "- Expected events: $(Format-PacketValue $MirrorSummary.manifest_counts.expected_event_count)",
+    "- Mirrored sample rows: $(Format-PacketValue $MirrorSummary.manifest_counts.mirrored_sample_rows)",
+    "- Mirrored object rows: $(Format-PacketValue $MirrorSummary.manifest_counts.mirrored_object_rows)",
+    "- Posted ok/failed: $(Format-PacketValue $MirrorSummary.posts.posted_ok)/$(Format-PacketValue $MirrorSummary.posts.posted_failed)",
+    "- Queried samples: $(Format-PacketValue $MirrorSummary.query.sample_events)",
+    "- Queried object batches: $(Format-PacketValue $MirrorSummary.query.object_batch_events)",
+    "- Queried object records: $(Format-PacketValue $MirrorSummary.query.object_events)",
+    "- Queried completions: $(Format-PacketValue $MirrorSummary.query.complete_events)",
+    "- Object sequence preserved: $(Format-PacketValue $MirrorSummary.query.object_sequence_set_preserved)",
+    "",
+    "## Gates",
+    ""
+  ) + $gateLines + @(
+    "",
+    "## Mirrored Stops",
+    ""
+  ) + $stopLines + @(
+    "",
+    "## Interpretation",
+    "",
+    "A passing mirror packet proves Lumberjacks EventLog can carry the ordered priority manifest in per-stop batches and return it with sequence integrity. It does not yet prove live in-game streaming or Gateway dual-channel broadcast of Valheim object metadata.",
+    "",
+    "## Next Step",
+    "",
+    "Build the live mirror or Gateway dual-channel load phase, using the marker below as the phase handoff:",
+    "",
+    '```text',
+    "$(Format-PacketValue $MirrorSummary.mcp_phase.next_marker_command)",
+    '```'
+  )
+}
+
+function New-PriorityMirrorPublishLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RunId,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$MirrorSummary
+  )
+
+  return @(
+    "# Valheim Lumberjacks Priority Mirror Packet",
+    "",
+    "Run: $RunId",
+    "Scenario: $ScenarioName",
+    "Status: $Status",
+    "",
+    "## Summary",
+    "",
+    "The packet mirrored $(Format-PacketValue $MirrorSummary.manifest_counts.mirrored_sample_rows) priority samples and $(Format-PacketValue $MirrorSummary.manifest_counts.mirrored_object_rows) priority objects into Lumberjacks EventLog. Posted events were $(Format-PacketValue $MirrorSummary.posts.posted_ok)/$(Format-PacketValue $MirrorSummary.manifest_counts.expected_event_count), queried object batches were $(Format-PacketValue $MirrorSummary.query.object_batch_events), queried object records were $(Format-PacketValue $MirrorSummary.query.object_events), and object sequence preservation was $(Format-PacketValue $MirrorSummary.query.object_sequence_set_preserved).",
+    "",
+    "## Output",
+    "",
+    "- ``telemetry/priority-mirror-summary.json``",
+    "- ``telemetry/priority-mirror-manifest.json``",
+    "- ``telemetry/priority-mirror-events.csv``",
+    "- ``raw/operator-runbook.md``",
+    "",
+    "## Scope",
+    "",
+    "This packet proves EventLog side-channel carriage of the ordered manifest in per-stop batches. It does not stream live from BepInEx, change vanilla replication, or exercise the Gateway datagram channel yet."
   )
 }
 
@@ -1229,6 +1518,8 @@ $teleportRehearsalSummary = $null
 $bridgeFeasibilitySummary = $null
 $shadowAuthoritySummary = $null
 $shadowRouteSummary = $null
+$priorityLoadSummary = $null
+$priorityMirrorSummary = $null
 $scenarioTelemetryStatus = $null
 $runtimeSummaryPath = Join-Path $runDir "telemetry\runtime-summary.json"
 if (Test-Path $runtimeSummaryPath) {
@@ -1312,6 +1603,30 @@ if (Test-Path $shadowRouteSummaryPath) {
   }
 }
 
+$priorityLoadSummaryPath = Join-Path $runDir "telemetry\priority-load-summary.json"
+if (Test-Path $priorityLoadSummaryPath) {
+  try {
+    $priorityLoadSummary = Get-Content -Raw $priorityLoadSummaryPath | ConvertFrom-Json
+    if (-not $scenarioTelemetryStatus) {
+      $scenarioTelemetryStatus = $priorityLoadSummary.status
+    }
+  } catch {
+    $notes += "Could not parse telemetry/priority-load-summary.json."
+  }
+}
+
+$priorityMirrorSummaryPath = Join-Path $runDir "telemetry\priority-mirror-summary.json"
+if (Test-Path $priorityMirrorSummaryPath) {
+  try {
+    $priorityMirrorSummary = Get-Content -Raw $priorityMirrorSummaryPath | ConvertFrom-Json
+    if (-not $scenarioTelemetryStatus) {
+      $scenarioTelemetryStatus = $priorityMirrorSummary.status
+    }
+  } catch {
+    $notes += "Could not parse telemetry/priority-mirror-summary.json."
+  }
+}
+
 if ($scenarioTelemetryStatus) {
   $notes += "Scenario telemetry status: $scenarioTelemetryStatus."
   if ($scenarioTelemetryStatus -ne "pass") {
@@ -1374,6 +1689,18 @@ if ($runtimeSummary) {
     Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
 
   New-ShadowRoutePublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -ShadowRouteSummary $shadowRouteSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
+} elseif ($priorityLoadSummary) {
+  New-PriorityLoadReportLines -ScenarioName $scenarioName -Status $status -PrioritySummary $priorityLoadSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
+
+  New-PriorityLoadPublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -PrioritySummary $priorityLoadSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
+} elseif ($priorityMirrorSummary) {
+  New-PriorityMirrorReportLines -ScenarioName $scenarioName -Status $status -MirrorSummary $priorityMirrorSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
+
+  New-PriorityMirrorPublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -MirrorSummary $priorityMirrorSummary |
     Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
 } elseif ($shadowAuthoritySummary) {
   New-ShadowAuthorityReportLines -ScenarioName $scenarioName -Status $status -ShadowSummary $shadowAuthoritySummary |

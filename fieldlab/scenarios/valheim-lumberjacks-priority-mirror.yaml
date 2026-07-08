@@ -1,0 +1,60 @@
+id: valheim-lumberjacks-priority-mirror
+title: Valheim Lumberjacks Priority Mirror
+goal: >
+  Mirror the latest Valheim priority/load-order manifest into the Lumberjacks
+  EventLog as ordered side-channel metadata, then query it back to prove the
+  runtime can carry the manifest before any live ZDO transport replacement.
+hypothesis: >
+  If the priority manifest collected from Era16 can be posted to Lumberjacks as
+  ordered, typed events and read back with sequence integrity, then Lumberjacks
+  is viable as the first progressive-enhancement side channel for high-density
+  Valheim loading.
+inputs:
+  priority_summary:
+    source: latest valheim-lumberjacks-priority-load-order telemetry/priority-load-summary.json
+    override_env: FIELDLAB_PRIORITY_SUMMARY_PATH
+  eventlog_url:
+    default: http://localhost:4002
+    override_env: FIELDLAB_LUMBERJACKS_EVENTLOG_URL
+  manifest_policy:
+    object_rows: latest sample per route stop, batched by stop
+    sample_rows: all route samples from the selected route run
+    completion_event: one run summary event
+execution:
+  fieldlab_command: .\fieldlab\scripts\run-experiment.ps1 .\fieldlab\scenarios\valheim-lumberjacks-priority-mirror.yaml
+  posts_to:
+    - POST /events
+  reads_back:
+    - GET /events?type=valheim.priority_manifest.objects
+    - GET /events?type=valheim.priority_manifest.sample
+    - GET /events?type=valheim.priority_manifest.complete
+outputs:
+  - telemetry/priority-mirror-summary.json
+  - telemetry/priority-mirror-manifest.json
+  - telemetry/priority-mirror-events.csv
+  - raw/operator-runbook.md
+pass_fail_gates:
+  - id: priority_manifest_available
+    requirement: The previous priority-load packet exists and has completed route evidence.
+  - id: eventlog_health
+    requirement: Lumberjacks EventLog /health returns HTTP 200.
+  - id: eventlog_database
+    requirement: Lumberjacks EventLog backing Postgres port is reachable before posts are attempted.
+  - id: manifest_bounded
+    requirement: The mirrored object manifest is bounded to the latest sample per route stop.
+  - id: post_complete
+    requirement: All sample, object-batch, and completion events are accepted by EventLog.
+  - id: query_roundtrip
+    requirement: Posted events can be queried back from EventLog by type.
+  - id: order_preserved
+    requirement: Queried object-batch events preserve the monotonic object sequence set.
+phases:
+  - read_priority_manifest
+  - post_ordered_manifest_events
+  - query_eventlog_roundtrip
+  - mark_ready_for_live_mirror_or_dual_channel_load
+stop_and_reassess:
+  - EventLog is not reachable.
+  - The selected priority manifest did not complete.
+  - EventLog accepts only a partial event set.
+  - Sequence integrity fails on readback.
