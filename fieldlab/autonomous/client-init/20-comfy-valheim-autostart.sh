@@ -22,7 +22,9 @@ install_dir="${COMFY_VALHEIM_INSTALL_DIR:-/mnt/games/GameLibrary/Steam/steamapps
 server="${COMFY_VALHEIM_SERVER:-valheim-server:2456}"
 password="${COMFY_VALHEIM_PASSWORD:-comfytest}"
 launch_args="${COMFY_VALHEIM_LAUNCH_ARGS:--console}"
+display="${DISPLAY:-:55}"
 deadline=$((SECONDS + 1800))
+display_deadline=$((SECONDS + 300))
 
 candidate_install_dirs="${install_dir} /mnt/games/GameLibrary/Steam/steamapps/common/Valheim /mnt/games/steamapps/common/Valheim"
 
@@ -34,6 +36,20 @@ find_install_dir() {
     fi
   done
   return 1
+}
+
+wait_for_display() {
+  export DISPLAY="${display}"
+  log "waiting for X display ${DISPLAY}"
+  while ! xset q >/dev/null 2>&1; do
+    if [ "${SECONDS}" -ge "${display_deadline}" ]; then
+      log "X display ${DISPLAY} not ready before timeout; leaving Steam desktop running."
+      return 1
+    fi
+    sleep 2
+  done
+  log "X display ${DISPLAY} is ready"
+  return 0
 }
 
 log "waiting for Valheim install at one of: ${candidate_install_dirs}"
@@ -71,10 +87,12 @@ if [ -f /mnt/comfy/comfy-network-sense/teleport-route.tsv ]; then
   log "installed teleport route"
 fi
 
-if pgrep -f '[V]alheim' >/dev/null 2>&1; then
+if pgrep -f '[/ ](valheim\.x86_64|valheim\.exe)( |$)' >/dev/null 2>&1; then
   log "Valheim is already running."
   exit 0
 fi
+
+wait_for_display || exit 0
 
 steam_bin="$(command -v steam || command -v steam-runtime || true)"
 if [ -z "${steam_bin}" ]; then
@@ -83,8 +101,14 @@ if [ -z "${steam_bin}" ]; then
 fi
 
 log "launching Valheim toward ${server}"
-nohup "${steam_bin}" -applaunch 892970 ${launch_args} +connect "${server}" +password "${password}" \
-  >/tmp/comfy-valheim-autostart.log 2>&1 &
+if [ "$(id -u)" = "0" ] && [ -x /home/default/.steam/steam.sh ] && command -v runuser >/dev/null 2>&1; then
+  nohup runuser -u default -- env DISPLAY="${DISPLAY}" /home/default/.steam/steam.sh \
+    -applaunch 892970 ${launch_args} +connect "${server}" +password "${password}" \
+    >/tmp/comfy-valheim-autostart.log 2>&1 &
+else
+  nohup "${steam_bin}" -applaunch 892970 ${launch_args} +connect "${server}" +password "${password}" \
+    >/tmp/comfy-valheim-autostart.log 2>&1 &
+fi
 }
 
 run_autostart >/tmp/comfy-valheim-autostart-watcher.log 2>&1 &

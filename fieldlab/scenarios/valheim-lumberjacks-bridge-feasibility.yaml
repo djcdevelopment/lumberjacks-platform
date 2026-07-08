@@ -1,0 +1,67 @@
+id: valheim-lumberjacks-bridge-feasibility
+title: Valheim to Lumberjacks Bridge Feasibility
+goal: >
+  Determine how far a live Valheim BepInEx client can be attached to the Lumberjacks
+  networking runtime before hitting Valheim authority, ZDO replication, or transport boundaries.
+hypothesis: >
+  If the live Valheim plugin process can complete the Lumberjacks Gateway handshake, join a
+  region, send player_input, and receive authoritative entity_update rows, then side-channel
+  integration is feasible and the next risk is visual/entity projection. If that narrow probe
+  fails, deeper ZDO or transport replacement should stop until the protocol/client boundary is
+  understood.
+runtime:
+  valheim_mod: ComfyNetworkSense
+  required_mod_version: 0.4.5
+  lumberjacks_gateway: ws://127.0.0.1:4000
+  lumberjacks_region: region-spawn
+  valheim_command: network_sense_lumberjacks_probe ws://127.0.0.1:4000 region-spawn 12
+  projection_command: network_sense_lumberjacks_projection start ws://127.0.0.1:4000 region-spawn
+metrics:
+  - lumberjacks_gateway_health
+  - installed_networksense_version
+  - valheim_process_running
+  - bridge_probe_status
+  - bridge_probe_session_started
+  - bridge_probe_world_snapshot
+  - bridge_probe_inputs_sent
+  - bridge_probe_entity_updates
+  - projection_status
+  - projection_proxy_count
+  - projection_entity_updates_received
+  - valheim_network_surface_hooks
+pass_fail_gates:
+  - id: lumberjacks_runtime
+    requirement: Gateway health endpoint responds on 127.0.0.1:4000.
+  - id: mod_deployed
+    requirement: Installed ComfyNetworkSense assembly version is 0.4.5 or newer.
+  - id: bridge_protocol
+    requirement: lumberjacks-bridge-probes.jsonl contains pass_sidecar_protocol from a live Valheim process.
+  - id: authority_scope
+    requirement: Packet clearly states which claims are not proven: ZDO transport replacement, Valheim physics authority replacement, and Steam/PlayFab socket replacement.
+  - id: local_visual_projection
+    requirement: lumberjacks-projection.jsonl records a projection start/status row with projected local proxy markers after the in-game projection command is run.
+decision_matrix:
+  - layer: side_channel_protocol
+    expected_status: feasible_now
+    proof: network_sense_lumberjacks_probe pass_sidecar_protocol
+  - layer: local_visual_projection
+    expected_status: implemented_needs_visual_confirmation
+    proof: network_sense_lumberjacks_projection renders plain Unity primitive markers without ZNetView or ZDO ownership.
+  - layer: shadow_movement_authority
+    expected_status: high_risk
+    proof: Compare Lumberjacks authoritative player position against Valheim local player motion without applying corrections.
+  - layer: valheim_zdo_transport_replacement
+    expected_status: likely_not_viable_without_invasive_patch
+    proof: Demonstrate controlled ownership/send-queue substitution for a narrow proxy object.
+  - layer: valheim_dedicated_server_on_lumberjacks
+    expected_status: not_viable_as_worded
+    proof: Would require reimplementing Valheim runtime semantics, not just attaching a network service.
+outputs:
+  - telemetry/bridge-feasibility-summary.json
+  - telemetry/valheim-network-surface.json
+  - raw/operator-runbook.md
+  - raw/valheim-console-commands.txt
+stop_and_reassess:
+  - Lumberjacks Gateway is unavailable or the current smoke stack cannot stay healthy.
+  - The Valheim plugin cannot use ClientWebSocket in the BepInEx runtime.
+  - The side-channel probe passes but any plan starts claiming Valheim ZDO ownership or physics replacement without a separate proof.

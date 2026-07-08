@@ -1,0 +1,57 @@
+id: valheim-lumberjacks-shadow-authority
+title: Valheim to Lumberjacks Shadow Movement Authority
+goal: >
+  Measure whether Lumberjacks can run authoritative movement in parallel with a live Valheim
+  client by deriving player_input from Valheim local motion and comparing authoritative
+  Lumberjacks self updates against the Valheim local-player trajectory.
+hypothesis: >
+  If ComfyNetworkSense can sample Valheim local movement, send derived Lumberjacks player_input,
+  receive authoritative self entity_update rows, and record drift samples without applying any
+  Valheim transform correction, then shadow movement authority is measurable. This still does not
+  prove that corrections can be safely applied to Valheim or replicated through ZDOs.
+runtime:
+  valheim_mod: ComfyNetworkSense
+  required_mod_version: 0.4.6
+  lumberjacks_gateway: ws://127.0.0.1:4000
+  lumberjacks_region: region-spawn
+  shadow_command: network_sense_lumberjacks_shadow start ws://127.0.0.1:4000 region-spawn
+metrics:
+  - lumberjacks_gateway_health
+  - installed_networksense_version
+  - valheim_process_running
+  - prior_bridge_probe_status
+  - prior_projection_status
+  - shadow_status
+  - shadow_inputs_sent
+  - shadow_self_authority_updates
+  - shadow_drift_samples
+  - shadow_last_drift_meters
+  - shadow_max_drift_meters
+  - shadow_average_drift_meters
+pass_fail_gates:
+  - id: lumberjacks_runtime
+    requirement: Gateway health endpoint responds on 127.0.0.1:4000.
+  - id: mod_deployed
+    requirement: Installed ComfyNetworkSense assembly version is 0.4.6 or newer.
+  - id: shadow_authority_compare
+    requirement: lumberjacks-shadow.jsonl contains self authority updates, sent inputs, and at least one drift sample from a live Valheim process.
+  - id: no_corrections_scope
+    requirement: Packet clearly states no Valheim transform corrections, ZNetView changes, or ZDO writes were applied.
+decision_matrix:
+  - layer: shadow_movement_authority
+    expected_status: measurable_without_corrections
+    proof: network_sense_lumberjacks_shadow records drift samples from authoritative Lumberjacks self updates.
+  - layer: correction_application
+    expected_status: not_started
+    proof: A future sandbox must apply bounded corrections only after drift and local prediction behavior are understood.
+  - layer: valheim_zdo_transport_replacement
+    expected_status: still_not_proven
+    proof: Shadow authority is side-channel measurement and does not replace Valheim replication.
+outputs:
+  - telemetry/shadow-authority-summary.json
+  - raw/operator-runbook.md
+  - raw/valheim-console-commands.txt
+stop_and_reassess:
+  - Shadow rows show no self authority updates after movement input.
+  - Drift grows without bound during simple motion.
+  - Any implementation starts applying Valheim transform corrections or claiming ZDO ownership.

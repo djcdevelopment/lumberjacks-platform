@@ -1,0 +1,55 @@
+id: valheim-lumberjacks-shadow-route
+title: Valheim Lumberjacks Shadow Route Drift
+goal: >
+  Reuse the existing Era16 teleport route to collect repeatable per-stop drift
+  measurements while Lumberjacks runs shadow movement authority alongside a live
+  Valheim client.
+hypothesis: >
+  If the route-backed shadow command can teleport through known density fixtures,
+  generate deterministic local movement during each benchmark window, send derived
+  player_input to Lumberjacks, and record per-stop authoritative drift rows without
+  applying Valheim corrections, then we can compare Lumberjacks movement limits
+  against real Era16 density conditions before attempting any correction sandbox.
+inputs:
+  route_contract:
+    source: latest valheim-era16-volunteer-readiness-baseline telemetry/teleport-route-contract.json
+    fallback: existing comfy-network-sense/teleport-route.tsv
+    override_env: FIELDLAB_ROUTE_CONTRACT
+  network_sense_log_dir:
+    default: C:/Program Files (x86)/Steam/steamapps/common/Valheim/BepInEx/config/comfy-network-sense
+    override_env: FIELDLAB_NETWORKSENSE_LOG_DIR
+  lumberjacks_gateway:
+    default: ws://127.0.0.1:4000
+    override_env: FIELDLAB_LUMBERJACKS_GATEWAY_WS
+  lumberjacks_region:
+    default: region-spawn
+    override_env: FIELDLAB_LUMBERJACKS_REGION
+execution:
+  mod_command: network_sense_lumberjacks_shadow_route teleport-route.tsv movement_only <gateway_ws> <region_id>
+  completion_signal:
+    - lumberjacks_shadow_route movement_only start
+    - route_stop rows in lumberjacks-shadow.jsonl with run_label=shadow_route
+    - lumberjacks_shadow_route end
+outputs:
+  - telemetry/shadow-route-summary.json
+  - telemetry/teleport-route.tsv
+  - raw/operator-runbook.md
+  - raw/valheim-console-commands.txt
+pass_fail_gates:
+  - id: route_file
+    requirement: teleport-route.tsv exists and was copied to the NetworkSense config folder.
+  - id: mod_deployed
+    requirement: Installed ComfyNetworkSense assembly version is 0.4.7 or newer.
+  - id: lumberjacks_runtime
+    requirement: Gateway health endpoint responds on 127.0.0.1:4000.
+  - id: shadow_route_rows
+    requirement: lumberjacks-shadow.jsonl contains route-tagged rows for at least one route stop.
+  - id: route_drift_distribution
+    requirement: Every route stop has sent inputs, self authority updates, drift samples, and zero errors.
+  - id: no_corrections_scope
+    requirement: Packet clearly states no Valheim transform corrections, ZNetView changes, or ZDO writes were applied.
+stop_and_reassess:
+  - The route command is missing from the installed mod.
+  - Teleport route rows never appear in lumberjacks-shadow.jsonl.
+  - Drift grows without bound on the open-control stop.
+  - Dense stops show large stalls before Lumberjacks input or authority rows are recorded.

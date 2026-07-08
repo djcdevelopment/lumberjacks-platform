@@ -674,6 +674,439 @@ function New-TeleportRehearsalPublishLines {
   )
 }
 
+function New-BridgeFeasibilityReportLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$BridgeSummary
+  )
+
+  $gateLines = @($BridgeSummary.gates | ForEach-Object {
+      "- $($_.id): $($_.status) - $($_.observed)"
+    })
+  if ($gateLines.Count -eq 0) {
+    $gateLines = @("- No bridge feasibility gates were recorded.")
+  }
+
+  $matrixLines = @($BridgeSummary.decision_matrix | ForEach-Object {
+      "- $($_.layer): $($_.status) - $($_.next_gate)"
+    })
+  if ($matrixLines.Count -eq 0) {
+    $matrixLines = @("- No bridge decision matrix rows were recorded.")
+  }
+
+  $nextTitle = if ($BridgeSummary.status -eq "pass_local_visual_projection") { "Next Spike" } else { "Next Command" }
+  $nextLines = if ($BridgeSummary.status -eq "pass_local_visual_projection") {
+    @(
+      "Move to shadow movement authority: compare Lumberjacks authoritative position against Valheim local player movement for drift without applying corrections."
+    )
+  } elseif ($BridgeSummary.status -eq "pass_sidecar_protocol") {
+    @(
+      "Restart Valheim after installing ComfyNetworkSense 0.4.5, open the console, then run:",
+      "",
+      '```text',
+      "$(Format-PacketValue $BridgeSummary.projection_command)",
+      "network_sense_lumberjacks_projection status",
+      "network_sense_lumberjacks_projection stop",
+      '```',
+      "",
+      "Then rerun this scenario to capture the projection row."
+    )
+  } else {
+    @(
+      "Restart Valheim after installing ComfyNetworkSense 0.4.5, open the console, then run:",
+      "",
+      '```text',
+      "$(Format-PacketValue $BridgeSummary.console_command)",
+      '```',
+      "",
+      "Then rerun this scenario to capture the probe row."
+    )
+  }
+
+  return @(
+    "# Field Notes: $ScenarioName",
+    "",
+    "## Goal",
+    "",
+    "Determine how far a live Valheim BepInEx client can attach to the Lumberjacks networking runtime before hitting Valheim authority, ZDO replication, or transport boundaries.",
+    "",
+    "## Approach",
+    "",
+    "The command plan checked Lumberjacks service health, installed ComfyNetworkSense version, visible Valheim processes, Valheim network surface types, and any rows written by the in-game ``network_sense_lumberjacks_probe`` and ``network_sense_lumberjacks_projection`` commands.",
+    "",
+    "## Method",
+    "",
+    "- Gateway: $(Format-PacketValue $BridgeSummary.gateway_ws)",
+    "- Region: $(Format-PacketValue $BridgeSummary.region_id)",
+    "- NetworkSense log dir: $(Format-PacketValue $BridgeSummary.network_sense_log_dir)",
+    "- Probe log: $(Format-PacketValue $BridgeSummary.probe_log_path)",
+    "- Projection log: $(Format-PacketValue $BridgeSummary.projection_log_path)",
+    "- Installed plugin version: $(Format-PacketValue $BridgeSummary.plugin.version)",
+    "- Console command: ``$(Format-PacketValue $BridgeSummary.console_command)``",
+    "- Projection command: ``$(Format-PacketValue $BridgeSummary.projection_command)``",
+    "",
+    "## Results",
+    "",
+    "- Packet status: $Status",
+    "- Scenario telemetry status: $(Format-PacketValue $BridgeSummary.status)",
+    "- Gateway health: $(Format-PacketValue $BridgeSummary.health.gateway.ok)",
+    "- Bridge probe rows: $(Format-PacketValue $BridgeSummary.bridge_probe.observed_rows)",
+    "- Latest bridge probe status: $(Format-PacketValue $BridgeSummary.bridge_probe.latest.status)",
+    "- Projection rows: $(Format-PacketValue $BridgeSummary.projection.observed_rows)",
+    "- Latest projection status: $(Format-PacketValue $BridgeSummary.projection.latest.status)",
+    "- Latest projection proxy count: $(Format-PacketValue $BridgeSummary.projection.latest.proxy_count)",
+    "- Latest projection updates: $(Format-PacketValue $BridgeSummary.projection.latest.entity_updates_received)",
+    "- Valheim processes visible: $(Format-PacketValue $BridgeSummary.valheim_process_count)",
+    "",
+    "## Gates",
+    ""
+  ) + $gateLines + @(
+    "",
+    "## Decision Matrix",
+    ""
+  ) + $matrixLines + @(
+    "",
+    "## Interpretation",
+    "",
+    "A ``pass_sidecar_protocol`` result proves only that the live Valheim plugin process can speak the Lumberjacks Gateway protocol as a side-channel client. A ``pass_local_visual_projection`` result additionally proves local-only Unity proxy markers were populated from Lumberjacks rows. Neither status proves Valheim ZDO transport replacement, Valheim physics authority replacement, Steam/PlayFab socket replacement, or a Valheim dedicated server running on Lumberjacks.",
+    "",
+    "## $nextTitle",
+    ""
+  ) + $nextLines
+}
+
+function New-BridgeFeasibilityPublishLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RunId,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$BridgeSummary
+  )
+
+  return @(
+    "# Valheim To Lumberjacks Bridge Feasibility Packet",
+    "",
+    "Run: $RunId",
+    "Scenario: $ScenarioName",
+    "Status: $Status",
+    "",
+    "## Summary",
+    "",
+    "The packet staged the Valheim-to-Lumberjacks bridge proof. Lumberjacks Gateway health is $(Format-PacketValue $BridgeSummary.health.gateway.ok), installed ComfyNetworkSense is $(Format-PacketValue $BridgeSummary.plugin.version), latest bridge probe status is $(Format-PacketValue $BridgeSummary.bridge_probe.latest.status), and latest projection status is $(Format-PacketValue $BridgeSummary.projection.latest.status).",
+    "",
+    "## Run In Game",
+    "",
+    '```text',
+    "$(Format-PacketValue $BridgeSummary.console_command)",
+    "$(Format-PacketValue $BridgeSummary.projection_command)",
+    "network_sense_lumberjacks_projection status",
+    '```',
+    "",
+    "## Output",
+    "",
+    "- ``telemetry/bridge-feasibility-summary.json``",
+    "- ``telemetry/valheim-network-surface.json``",
+    "- ``raw/operator-runbook.md``",
+    "- ``raw/valheim-console-commands.txt``",
+    "",
+    "## Scope",
+    "",
+    "This packet is explicitly scoped to side-channel protocol reachability and local-only projection. ZDO replication, physics authority, Steam/PlayFab sockets, and dedicated-server replacement require separate proofs."
+  )
+}
+
+function New-ShadowAuthorityReportLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$ShadowSummary
+  )
+
+  $gateLines = @($ShadowSummary.gates | ForEach-Object {
+      "- $($_.id): $($_.status) - $($_.observed)"
+    })
+  if ($gateLines.Count -eq 0) {
+    $gateLines = @("- No shadow authority gates were recorded.")
+  }
+
+  $matrixLines = @($ShadowSummary.decision_matrix | ForEach-Object {
+      "- $($_.layer): $($_.status) - $($_.next_gate)"
+    })
+  if ($matrixLines.Count -eq 0) {
+    $matrixLines = @("- No shadow authority matrix rows were recorded.")
+  }
+
+  $nextLines = if ($ShadowSummary.status -eq "pass_shadow_movement_observed") {
+    @("Run a repeatable movement route and compare drift distribution before considering bounded correction experiments.")
+  } else {
+    @(
+      "Restart Valheim after installing ComfyNetworkSense 0.4.6, open the console, then run:",
+      "",
+      '```text',
+      "$(Format-PacketValue $ShadowSummary.shadow_command)",
+      "network_sense_lumberjacks_shadow status",
+      "network_sense_lumberjacks_shadow stop",
+      '```',
+      "",
+      "Move the local player for 60-120 seconds between start and status so drift samples can accumulate."
+    )
+  }
+
+  return @(
+    "# Field Notes: $ScenarioName",
+    "",
+    "## Goal",
+    "",
+    "Measure whether Lumberjacks can run authoritative movement in parallel with live Valheim local-player motion without applying corrections.",
+    "",
+    "## Approach",
+    "",
+    "The command plan checked Lumberjacks health, installed ComfyNetworkSense version, visible Valheim processes, prior bridge/projection evidence, and rows written by ``network_sense_lumberjacks_shadow``.",
+    "",
+    "## Method",
+    "",
+    "- Gateway: $(Format-PacketValue $ShadowSummary.gateway_ws)",
+    "- Region: $(Format-PacketValue $ShadowSummary.region_id)",
+    "- NetworkSense log dir: $(Format-PacketValue $ShadowSummary.network_sense_log_dir)",
+    "- Shadow log: $(Format-PacketValue $ShadowSummary.shadow_log_path)",
+    "- Installed plugin version: $(Format-PacketValue $ShadowSummary.plugin.version)",
+    "- Shadow command: ``$(Format-PacketValue $ShadowSummary.shadow_command)``",
+    "",
+    "## Results",
+    "",
+    "- Packet status: $Status",
+    "- Scenario telemetry status: $(Format-PacketValue $ShadowSummary.status)",
+    "- Gateway health: $(Format-PacketValue $ShadowSummary.health.gateway.ok)",
+    "- Shadow rows: $(Format-PacketValue $ShadowSummary.shadow.observed_rows)",
+    "- Latest shadow status: $(Format-PacketValue $ShadowSummary.shadow.latest.status)",
+    "- Inputs sent: $(Format-PacketValue $ShadowSummary.shadow.latest.inputs_sent)",
+    "- Self authority updates: $(Format-PacketValue $ShadowSummary.shadow.latest.self_authority_updates)",
+    "- Drift samples: $(Format-PacketValue $ShadowSummary.shadow.latest.drift_samples)",
+    "- Last drift meters: $(Format-PacketValue $ShadowSummary.shadow.latest.last_drift_meters)",
+    "- Max drift meters: $(Format-PacketValue $ShadowSummary.shadow.latest.max_drift_meters)",
+    "- Average drift meters: $(Format-PacketValue $ShadowSummary.shadow.latest.average_drift_meters)",
+    "- Errors: $(Format-PacketValue $ShadowSummary.shadow.latest.errors)",
+    "- Valheim processes visible: $(Format-PacketValue $ShadowSummary.valheim_process_count)",
+    "",
+    "## Gates",
+    ""
+  ) + $gateLines + @(
+    "",
+    "## Decision Matrix",
+    ""
+  ) + $matrixLines + @(
+    "",
+    "## Interpretation",
+    "",
+    "A ``pass_shadow_movement_observed`` result means Valheim-derived inputs reached Lumberjacks, authoritative self updates came back, and drift samples were recorded. It does not prove that transform corrections can be safely applied to Valheim, and it does not replace ZDO replication.",
+    "",
+    "## Next Step",
+    ""
+  ) + $nextLines
+}
+
+function New-ShadowAuthorityPublishLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RunId,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$ShadowSummary
+  )
+
+  return @(
+    "# Valheim To Lumberjacks Shadow Authority Packet",
+    "",
+    "Run: $RunId",
+    "Scenario: $ScenarioName",
+    "Status: $Status",
+    "",
+    "## Summary",
+    "",
+    "The packet staged the shadow movement authority proof. Installed ComfyNetworkSense is $(Format-PacketValue $ShadowSummary.plugin.version), latest shadow status is $(Format-PacketValue $ShadowSummary.shadow.latest.status), drift samples are $(Format-PacketValue $ShadowSummary.shadow.latest.drift_samples), and max drift is $(Format-PacketValue $ShadowSummary.shadow.latest.max_drift_meters) meters.",
+    "",
+    "## Run In Game",
+    "",
+    '```text',
+    "$(Format-PacketValue $ShadowSummary.shadow_command)",
+    "network_sense_lumberjacks_shadow status",
+    "network_sense_lumberjacks_shadow stop",
+    '```',
+    "",
+    "## Output",
+    "",
+    "- ``telemetry/shadow-authority-summary.json``",
+    "- ``raw/operator-runbook.md``",
+    "- ``raw/valheim-console-commands.txt``",
+    "",
+    "## Scope",
+    "",
+    "This packet is explicitly scoped to shadow movement measurement. It does not apply Valheim transform corrections, write ZDOs, replace sockets, or prove dedicated-server replacement."
+  )
+}
+
+function New-ShadowRouteReportLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$ShadowRouteSummary
+  )
+
+  $gateLines = @($ShadowRouteSummary.gates | ForEach-Object {
+      "- $($_.id): $($_.status) - $($_.observed)"
+    })
+  if ($gateLines.Count -eq 0) {
+    $gateLines = @("- No shadow route gates were recorded.")
+  }
+
+  $perStopLines = @($ShadowRouteSummary.observed.per_stop | ForEach-Object {
+      "- $($_.id): rows=$($_.row_count), inputs=$($_.inputs_sent), self_updates=$($_.self_authority_updates), drift_samples=$($_.drift_samples), max_drift_m=$($_.max_drift_meters), errors=$($_.errors)"
+    })
+  if ($perStopLines.Count -eq 0) {
+    $perStopLines = @("- No per-stop drift rows were recorded.")
+  }
+
+  $nextLines = if ($ShadowRouteSummary.status -eq "pass_shadow_route_observed") {
+    @("Compare open-control drift against dense/extreme drift and decide whether bounded local-only correction experiments are worth staging.")
+  } else {
+    @(
+      "Restart Valheim after installing ComfyNetworkSense 0.4.7, load Era16, keep the game foregrounded, then run:",
+      "",
+      '```text',
+      "$(Format-PacketValue $ShadowRouteSummary.shadow_route_command)",
+      '```',
+      "",
+      "After the route completes, rerun this scenario to capture the per-stop drift distribution."
+    )
+  }
+
+  return @(
+    "# Field Notes: $ScenarioName",
+    "",
+    "## Goal",
+    "",
+    "Collect repeatable per-density Lumberjacks shadow movement drift by reusing the existing Era16 teleport route.",
+    "",
+    "## Approach",
+    "",
+    "The command plan generated or reused ``teleport-route.tsv``, copied it into the NetworkSense config folder, checked Lumberjacks health and installed mod version, then scanned ``lumberjacks-shadow.jsonl`` for route-tagged rows written by ``network_sense_lumberjacks_shadow_route``.",
+    "",
+    "## Method",
+    "",
+    "- Gateway: $(Format-PacketValue $ShadowRouteSummary.gateway_ws)",
+    "- Region: $(Format-PacketValue $ShadowRouteSummary.region_id)",
+    "- Movement profile: $(Format-PacketValue $ShadowRouteSummary.movement_profile)",
+    "- NetworkSense log dir: $(Format-PacketValue $ShadowRouteSummary.network_sense_log_dir)",
+    "- Route source: $(Format-PacketValue $ShadowRouteSummary.route_source)",
+    "- Route file: ``telemetry/teleport-route.tsv``",
+    "- Shadow log: $(Format-PacketValue $ShadowRouteSummary.shadow_log_path)",
+    "- Installed plugin version: $(Format-PacketValue $ShadowRouteSummary.plugin.version)",
+    "- Shadow route command: ``$(Format-PacketValue $ShadowRouteSummary.shadow_route_command)``",
+    "",
+    "## Results",
+    "",
+    "- Packet status: $Status",
+    "- Scenario telemetry status: $(Format-PacketValue $ShadowRouteSummary.status)",
+    "- Gateway health: $(Format-PacketValue $ShadowRouteSummary.health.gateway.ok)",
+    "- Route steps: $(Format-PacketValue $ShadowRouteSummary.route_step_count)",
+    "- Route file copied: $(Format-PacketValue $ShadowRouteSummary.route_file.copied)",
+    "- Shadow route rows: $(Format-PacketValue $ShadowRouteSummary.observed.shadow_route_rows)",
+    "- Route stop rows: $(Format-PacketValue $ShadowRouteSummary.observed.route_stop_rows)",
+    "- Successful stops: $(Format-PacketValue $ShadowRouteSummary.observed.successful_stop_count)/$(Format-PacketValue $ShadowRouteSummary.route_step_count)",
+    "- Route end markers: $(Format-PacketValue $ShadowRouteSummary.observed.route_end_markers)",
+    "- Valheim processes visible: $(Format-PacketValue $ShadowRouteSummary.valheim_process_count)",
+    "",
+    "## Gates",
+    ""
+  ) + $gateLines + @(
+    "",
+    "## Per-Stop Drift",
+    ""
+  ) + $perStopLines + @(
+    "",
+    "## Interpretation",
+    "",
+    "A ``pass_shadow_route_observed`` result means every route stop produced route-tagged Lumberjacks shadow rows with sent inputs, authoritative self updates, drift samples, zero errors, and a route completion marker. It still does not prove that transform corrections can be safely applied to Valheim or that ZDO replication has been replaced.",
+    "",
+    "## Next Step",
+    ""
+  ) + $nextLines
+}
+
+function New-ShadowRoutePublishLines {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ScenarioName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RunId,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Status,
+
+    [Parameter(Mandatory = $true)]
+    [object]$ShadowRouteSummary
+  )
+
+  return @(
+    "# Valheim Lumberjacks Shadow Route Drift Packet",
+    "",
+    "Run: $RunId",
+    "Scenario: $ScenarioName",
+    "Status: $Status",
+    "",
+    "## Summary",
+    "",
+    "The packet stages or verifies the route-backed Lumberjacks shadow movement proof. Installed ComfyNetworkSense is $(Format-PacketValue $ShadowRouteSummary.plugin.version), route steps are $(Format-PacketValue $ShadowRouteSummary.route_step_count), route-tagged shadow rows are $(Format-PacketValue $ShadowRouteSummary.observed.shadow_route_rows), and successful stops are $(Format-PacketValue $ShadowRouteSummary.observed.successful_stop_count)/$(Format-PacketValue $ShadowRouteSummary.route_step_count).",
+    "",
+    "## Run In Game",
+    "",
+    '```text',
+    "$(Format-PacketValue $ShadowRouteSummary.shadow_route_command)",
+    '```',
+    "",
+    "## Output",
+    "",
+    "- ``telemetry/shadow-route-summary.json``",
+    "- ``telemetry/teleport-route.tsv``",
+    "- ``raw/operator-runbook.md``",
+    "- ``raw/valheim-console-commands.txt``",
+    "",
+    "## Scope",
+    "",
+    "This packet is explicitly scoped to route-backed shadow movement measurement. It does not apply Valheim transform corrections, write ZDOs, replace sockets, or prove dedicated-server replacement."
+  )
+}
+
 if (-not (Test-Path $ScenarioPath)) {
   throw "Scenario not found: $ScenarioPath"
 }
@@ -793,6 +1226,9 @@ $runtimeSummary = $null
 $matrixSummary = $null
 $volunteerReadinessSummary = $null
 $teleportRehearsalSummary = $null
+$bridgeFeasibilitySummary = $null
+$shadowAuthoritySummary = $null
+$shadowRouteSummary = $null
 $scenarioTelemetryStatus = $null
 $runtimeSummaryPath = Join-Path $runDir "telemetry\runtime-summary.json"
 if (Test-Path $runtimeSummaryPath) {
@@ -837,6 +1273,42 @@ if (Test-Path $teleportRehearsalSummaryPath) {
     }
   } catch {
     $notes += "Could not parse telemetry/teleport-rehearsal-summary.json."
+  }
+}
+
+$bridgeFeasibilitySummaryPath = Join-Path $runDir "telemetry\bridge-feasibility-summary.json"
+if (Test-Path $bridgeFeasibilitySummaryPath) {
+  try {
+    $bridgeFeasibilitySummary = Get-Content -Raw $bridgeFeasibilitySummaryPath | ConvertFrom-Json
+    if (-not $scenarioTelemetryStatus) {
+      $scenarioTelemetryStatus = $bridgeFeasibilitySummary.status
+    }
+  } catch {
+    $notes += "Could not parse telemetry/bridge-feasibility-summary.json."
+  }
+}
+
+$shadowAuthoritySummaryPath = Join-Path $runDir "telemetry\shadow-authority-summary.json"
+if (Test-Path $shadowAuthoritySummaryPath) {
+  try {
+    $shadowAuthoritySummary = Get-Content -Raw $shadowAuthoritySummaryPath | ConvertFrom-Json
+    if (-not $scenarioTelemetryStatus) {
+      $scenarioTelemetryStatus = $shadowAuthoritySummary.status
+    }
+  } catch {
+    $notes += "Could not parse telemetry/shadow-authority-summary.json."
+  }
+}
+
+$shadowRouteSummaryPath = Join-Path $runDir "telemetry\shadow-route-summary.json"
+if (Test-Path $shadowRouteSummaryPath) {
+  try {
+    $shadowRouteSummary = Get-Content -Raw $shadowRouteSummaryPath | ConvertFrom-Json
+    if (-not $scenarioTelemetryStatus) {
+      $scenarioTelemetryStatus = $shadowRouteSummary.status
+    }
+  } catch {
+    $notes += "Could not parse telemetry/shadow-route-summary.json."
   }
 }
 
@@ -890,6 +1362,24 @@ if ($runtimeSummary) {
     Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
 
   New-TeleportRehearsalPublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -RehearsalSummary $teleportRehearsalSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
+} elseif ($bridgeFeasibilitySummary) {
+  New-BridgeFeasibilityReportLines -ScenarioName $scenarioName -Status $status -BridgeSummary $bridgeFeasibilitySummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
+
+  New-BridgeFeasibilityPublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -BridgeSummary $bridgeFeasibilitySummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
+} elseif ($shadowRouteSummary) {
+  New-ShadowRouteReportLines -ScenarioName $scenarioName -Status $status -ShadowRouteSummary $shadowRouteSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
+
+  New-ShadowRoutePublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -ShadowRouteSummary $shadowRouteSummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
+} elseif ($shadowAuthoritySummary) {
+  New-ShadowAuthorityReportLines -ScenarioName $scenarioName -Status $status -ShadowSummary $shadowAuthoritySummary |
+    Set-Content -Encoding UTF8 (Join-Path $runDir "report.md")
+
+  New-ShadowAuthorityPublishLines -ScenarioName $scenarioName -RunId $runId -Status $status -ShadowSummary $shadowAuthoritySummary |
     Set-Content -Encoding UTF8 (Join-Path $runDir "publish.md")
 } else {
   New-GenericReportLines -ScenarioName $scenarioName -Status $status |
