@@ -260,6 +260,12 @@ function Write-NetworkSenseConfig {
     "autoRehearsalDelaySeconds = 20",
     "autoRehearsalRunOncePerSession = true",
     "",
+    "[Netcode]",
+    "netcodeProbeAutoStartEnabled = true",
+    "netcodeProbeAutoStartDelaySeconds = 25",
+    "netcodeProbeAutoStopSeconds = 150",
+    "netcodeProbeMaxDetailRows = 5000",
+    "",
     "[HUD]",
     "showHudOnStart = true",
     "hudPreset = Minimal"
@@ -623,6 +629,7 @@ if ($dockerVersionStep.exit_code -ne 0) {
 $marker = [ordered]@{ found = $false; path = $null; line = $null }
 $postRunReadiness = $null
 $postRunRehearsal = $null
+$netcodeSummary = $null
 
 if ($Start) {
   $upStep = Invoke-Captured -FilePath $docker.file -ArgumentList $upArgs -Name "docker-compose-up"
@@ -684,6 +691,32 @@ if ($Start) {
     }
   }
 
+  # Rung I1 (interception reachability): the netcode probe auto-starts on the server and
+  # client via the [Netcode] config. Find whichever produced a netcode-probe.jsonl and gate
+  # it. Best-effort only - a failure here must not fail the lab run.
+  $netcodeSummary = $null
+  try {
+    $netcodeLogs = @(Get-ChildItem -LiteralPath $stateRoot -Recurse -Filter "netcode-probe.jsonl" -ErrorAction SilentlyContinue |
+      Sort-Object Length -Descending)
+    if ($netcodeLogs.Count -gt 0) {
+      $bestLog = $netcodeLogs[0]
+      $netcodeLogDir = Split-Path -Parent $bestLog.FullName
+      $netcodeSummaryPath = Join-Path $telemetryDir "netcode-probe-summary.json"
+      $netcodeStep = Invoke-Captured `
+        -FilePath (Join-Path $fieldLabRoot "scripts\verify-netcode-probe.ps1") `
+        -ArgumentList @("-LogDir", $netcodeLogDir, "-OutSummary", $netcodeSummaryPath, "-MinVersion", "0.5.6") `
+        -Name "verify-netcode-probe"
+      $steps.Add($netcodeStep) | Out-Null
+      if (Test-Path $netcodeSummaryPath) {
+        $netcodeSummary = Get-Content -Raw $netcodeSummaryPath | ConvertFrom-Json
+      }
+    } else {
+      $warnings.Add("No netcode-probe.jsonl was produced under $stateRoot; check that the peer connection formed and the [Netcode] auto-start config was written.") | Out-Null
+    }
+  } catch {
+    $warnings.Add("Netcode probe verification step failed: $($_.Exception.Message)") | Out-Null
+  }
+
   if ($StopAfter) {
     $downStep = Invoke-Captured -FilePath $docker.file -ArgumentList $downArgs -Name "docker-compose-down"
     $steps.Add($downStep) | Out-Null
@@ -726,6 +759,7 @@ $observed = [ordered]@{}
 $observed["rehearsal_marker"] = $marker
 $observed["post_run_rehearsal"] = $postRunRehearsal
 $observed["post_run_readiness"] = $postRunReadiness
+$observed["netcode_probe_status"] = if ($netcodeSummary) { $netcodeSummary.status } else { $null }
 
 $summary = [ordered]@{}
 $summary["schema_version"] = 1
