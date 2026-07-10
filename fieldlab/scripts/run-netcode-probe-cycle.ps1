@@ -220,7 +220,7 @@ Show-Banner "7/7 STATUS + DASHBOARD"
 # original property order; we mutate ONLY the P1 step-12 status in place and APPEND a
 # top-level `last_probe_cycle` note via Add-Member (append never reorders/drops keys).
 # Nothing else in program-status.json is touched. ConvertTo-Json -Depth 20 round-trips it.
-$statusObj = Get-Content -Raw -Path $statusPath | ConvertFrom-Json
+$statusObj = Get-Content -Raw -Encoding UTF8 -Path $statusPath | ConvertFrom-Json
 
 $p1 = $statusObj.phases | Where-Object { $_.id -eq "P1" }
 $step12 = $p1.steps | Where-Object { $_.n -eq 12 }
