@@ -160,7 +160,7 @@ $('foot').innerHTML = `generated from <b>fieldlab/status/program-status.json</b>
 
 
 def main() -> int:
-    status = json.loads(STATUS.read_text(encoding="utf-8"))
+    status = json.loads(STATUS.read_text(encoding="utf-8-sig"))  # tolerate a UTF-8 BOM
     html = TEMPLATE.replace("/*__STATUS_JSON__*/ null", json.dumps(status, ensure_ascii=False))
     OUT.write_text(html.strip() + "\n", encoding="utf-8")
     print(f"wrote {OUT} ({OUT.stat().st_size} bytes)")

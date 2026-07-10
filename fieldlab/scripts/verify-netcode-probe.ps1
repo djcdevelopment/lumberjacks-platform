@@ -16,7 +16,13 @@
 param(
   [string]$OutSummary,
   [string]$LogDir,
-  [string]$MinVersion = "0.5.6"
+  [string]$MinVersion = "0.5.6",
+  # Freshness guard: when > 0, a probe jsonl older than this many minutes is downgraded to
+  # `blocked_stale_probe_data` so stale/copied data cannot silently PASS. 0 = record-only
+  # (age/host/hash still recorded in the summary, just not enforced — for re-gating archives).
+  [int]$MaxAgeMinutes = 0,
+  # Records where this file was read from; helps catch a probe copied off another host.
+  [string]$SourceHost = $env:COMPUTERNAME
 )
 
 $ErrorActionPreference = "Stop"
@@ -80,6 +86,29 @@ if (Test-Path $pluginPath) {
   } catch {
     $versionOk = $false
   }
+}
+
+# --- Provenance & freshness ----------------------------------------------------------
+# Record host + content hash + age so a copied or stale probe file is never mistaken for a
+# fresh live capture. Enforcement (downgrade to blocked) only when -MaxAgeMinutes > 0.
+$probeSha256 = $null
+$probeLastWriteUtc = $null
+$probeAgeMinutes = $null
+if (Test-Path $probeLogPath) {
+  try { $probeSha256 = (Get-FileHash -Path $probeLogPath -Algorithm SHA256).Hash.ToLower() } catch { $probeSha256 = $null }
+  $lw = (Get-Item $probeLogPath).LastWriteTimeUtc
+  $probeLastWriteUtc = $lw.ToString("o")
+  $probeAgeMinutes = [math]::Round((((Get-Date).ToUniversalTime()) - $lw).TotalMinutes, 2)
+}
+$freshnessEnforced = $MaxAgeMinutes -gt 0
+$isStale = $freshnessEnforced -and ($null -ne $probeAgeMinutes) -and ($probeAgeMinutes -gt $MaxAgeMinutes)
+$freshStatus = if ($isStale) { "fail" } elseif ($freshnessEnforced) { "pass" } else { "warn" }
+$shaShort = if ($probeSha256) { $probeSha256.Substring(0, 12) } else { "n/a" }
+$freshMode = if ($freshnessEnforced) { "enforced" } else { "record-only" }
+$freshObserved = if ($null -eq $probeAgeMinutes) {
+  "probe log missing - no age"
+} else {
+  "age=$probeAgeMinutes min (max=$MaxAgeMinutes, $freshMode); host=$SourceHost; sha256=$shaShort"
 }
 
 $allRows = @(Read-JsonLines -Path $probeLogPath)
@@ -178,6 +207,7 @@ $gates = @(
   New-Gate -Id "sendzdos_not_inlined" -Status ($(if ($sendZdosReachable) { "pass" } elseif ($sendInlinedFallbackOnly) { "warn" } else { "pending" })) -Observed "SendZDOs postfix calls=$sendZdosCalls (flushed=$sendZdosFlushed). $(if ($sendInlinedFallbackOnly) { 'SendZDOs appears inlined; CreateSyncList fallback seam carried the send observation.' } elseif ($sendZdosReachable) { 'SendZDOs is directly patchable (residual inlining risk retired).' } else { 'No send activity yet to judge.' })"
   New-Gate -Id "both_directions" -Status ($(if ($bothDirections) { "pass" } else { "fail" })) -Observed "recvReachable=$recvReachable, sendReachable=$sendReachable."
   New-Gate -Id "no_vanilla_mutation" -Status "pass" -Observed "Probe is observation-only: it re-parses a copy of received wire bytes and reads outbound ZDO objects; no ZDOs, owners, revisions, or transforms were written."
+  New-Gate -Id "probe_freshness" -Status $freshStatus -Observed $freshObserved
 )
 
 $failCount = @($gates | Where-Object { $_.status -eq "fail" }).Count
@@ -195,6 +225,9 @@ $status = if (-not $versionOk) {
   "fail_no_funnel_observed"
 }
 
+# Stale data can never present as a PASS, regardless of the funnel gates.
+if ($isStale) { $status = "blocked_stale_probe_data" }
+
 $summary = [ordered]@{
   schema_version = 1
   rung = "I1"
@@ -204,6 +237,15 @@ $summary = [ordered]@{
   probe_log_path = $probeLogPath
   installed_version = $installedVersion
   min_version = $MinVersion
+  provenance = [ordered]@{
+    source_host = $SourceHost
+    probe_sha256 = $probeSha256
+    probe_last_write_utc = $probeLastWriteUtc
+    probe_age_minutes = $probeAgeMinutes
+    max_age_minutes = $MaxAgeMinutes
+    freshness_enforced = $freshnessEnforced
+    is_stale = $isStale
+  }
   window = [ordered]@{
     start_utc = if ($latestStartUtc) { $latestStartUtc.ToUniversalTime().ToString("o") } else { $null }
     stop_utc = if ($latestStopUtc) { $latestStopUtc.ToUniversalTime().ToString("o") } else { $null }
