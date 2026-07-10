@@ -18,11 +18,15 @@ Related: [HANDOFF-PLAYER-ON-NETWORK-AM4-SERVER](handoffs/HANDOFF-PLAYER-ON-NETWO
 | Role | Machine | How it runs | Why |
 |---|---|---|---|
 | Dedicated server | **am4** (`100.116.82.60`, tailnet) | **native Linux Docker** | Only native Linux Docker publishes UDP to host/external peers. |
-| Player client(s) | **i5** (`100.125.141.110`), OMEN RTX 5070, etc. | **native Windows Valheim** (a real GPU + a screen) | Containers with no discrete GPU → llvmpipe software render; unusable. |
+| Player two (of record) | **OMEN** (RTX 5070) | **native Windows Valheim** (a real GPU + a screen) | Per Derek 2026-07-09: player two runs on OMEN — no Docker, nothing fancy. Containers with no discrete GPU → llvmpipe; unusable. |
+| Optional extra seat | i5 (`100.125.141.110`) | native Windows Valheim | The emergency reference client that produced the I1 run; optional only now. |
 
 - World `ComfyEra16`, pass `comfytest`, connect to `100.116.82.60:2456`.
-- One Valheim license per Steam account, single-session: `waryfool`/Zephar410 and
-  `floooooobcakes`/wary.fool (character `Durracktu`, SteamID `76561198088711642`, the active i5 player).
+- **Steam accounts — mind the near-collision (it caused real doc conflicts):** account
+  **`waryfool`** carries persona **Zephar410** (associated with am4/server side); account
+  **`floooooobcakes`** carries persona **wary.fool** (character `Durracktu`, SteamID
+  `76561198088711642`). **To put wary.fool on OMEN, log OMEN's Steam into `floooooobcakes`.**
+  One license per account, single-session each.
 - Server container: `comfy-valheim-server-am4-valheim-server-1`,
   image `ghcr.io/community-valheim-tools/valheim-server`, compose at `~/comfy-valheim-lab/server-compose.yml`.
 

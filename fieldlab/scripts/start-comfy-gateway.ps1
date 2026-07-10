@@ -16,6 +16,7 @@ $env:PYTHONPATH = $mcp
 $env:PYTHONUTF8 = "1"
 
 Write-Host "Starting comfy-gateway on http://127.0.0.1:8720/mcp ..."
+# matrix restored 2026-07-09 (the original restore silently dropped it; all its env vars have defaults)
 & $py -m comfy_gateway.kernel.gateway `
-    --providers comfy_gateway.toolsurface.valheim,comfy_gateway.toolsurface.inference `
+    --providers comfy_gateway.toolsurface.valheim,comfy_gateway.toolsurface.inference,comfy_gateway.toolsurface.matrix `
     --host 127.0.0.1 --port 8720
