@@ -1,0 +1,15 @@
+project_id = "comfy-p7-experiment"
+region     = "us-west1"
+zone       = "us-west1-b"
+
+# Replace with OMEN's current public egress address before planning.
+control_source_ranges = ["203.0.113.10/32"]
+
+# Valheim is password-protected and unlisted. Narrow this if player egress CIDRs are stable.
+valheim_source_ranges = ["0.0.0.0/0"]
+
+alert_email = "operator@example.com"
+
+# Optional project-scoped budget.
+# billing_account_id = "000000-000000-000000"
+# monthly_budget_usd = 250

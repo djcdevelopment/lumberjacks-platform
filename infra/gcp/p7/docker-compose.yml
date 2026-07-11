@@ -1,0 +1,132 @@
+name: comfy-lumberjacks-p7
+
+x-lumberjacks-telemetry: &lumberjacks-telemetry
+  GOOGLE_CLOUD_PROJECT: "${GOOGLE_CLOUD_PROJECT:?GOOGLE_CLOUD_PROJECT must be set}"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://host.docker.internal:4317"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+  OTEL_METRIC_EXPORT_INTERVAL: "10000"
+  OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=gcp-p7,service.namespace=lumberjacks"
+  OTEL_SERVICE_VERSION: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
+
+x-lumberjacks-service: &lumberjacks-service
+  restart: unless-stopped
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: game
+      POSTGRES_USER: game
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - /mnt/comfy-p7/lumberjacks/postgres:/var/lib/postgresql/data
+      - "${LUMBERJACKS_ROOT:-/opt/lumberjacks}/infra/docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U game"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  gateway:
+    <<: *lumberjacks-service
+    build:
+      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
+      target: gateway
+    ports:
+      - "4000:4000"
+      - "4005:4005/udp"
+    environment:
+      <<: *lumberjacks-telemetry
+      OTEL_SERVICE_NAME: lumberjacks-gateway
+      Urls: "http://+:4000"
+      ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
+      ServiceUrls__EventLog: "http://eventlog:4002"
+      ServiceUrls__Progression: "http://progression:4003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  eventlog:
+    <<: *lumberjacks-service
+    build:
+      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
+      target: eventlog
+    ports:
+      - "127.0.0.1:4002:4002"
+    environment:
+      <<: *lumberjacks-telemetry
+      OTEL_SERVICE_NAME: lumberjacks-eventlog
+      Urls: "http://+:4002"
+      ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  progression:
+    <<: *lumberjacks-service
+    build:
+      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
+      target: progression
+    ports:
+      - "127.0.0.1:4003:4003"
+    environment:
+      <<: *lumberjacks-telemetry
+      OTEL_SERVICE_NAME: lumberjacks-progression
+      Urls: "http://+:4003"
+      ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  operatorapi:
+    <<: *lumberjacks-service
+    build:
+      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
+      target: operatorapi
+    ports:
+      - "127.0.0.1:4004:4004"
+    environment:
+      <<: *lumberjacks-telemetry
+      OTEL_SERVICE_NAME: lumberjacks-operatorapi
+      Urls: "http://+:4004"
+      ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
+      ServiceUrls__Gateway: "http://gateway:4000"
+      ServiceUrls__EventLog: "http://eventlog:4002"
+      ServiceUrls__Progression: "http://progression:4003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  valheim-server:
+    image: ghcr.io/community-valheim-tools/valheim-server@sha256:e8b13da3c44f54a38511c8ac224f2959a437c0b2626cf916683ca7acc8dfb146
+    restart: unless-stopped
+    cap_add:
+      - sys_nice
+    stop_grace_period: 2m
+    ports:
+      - "2456-2457:2456-2457/udp"
+    environment:
+      TZ: America/Los_Angeles
+      SERVER_NAME: "Comfy Era16 Lab"
+      WORLD_NAME: "ComfyEra16"
+      SERVER_PASS: "${VALHEIM_SERVER_PASSWORD:?VALHEIM_SERVER_PASSWORD must be set}"
+      SERVER_PUBLIC: "false"
+      SERVER_PORT: "2456"
+      CROSSPLAY: "false"
+      BEPINEX: "true"
+      BACKUPS: "true"
+      UPDATE_IF_IDLE: "true"
+      RESTART_IF_IDLE: "false"
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - /mnt/comfy-p7/valheim/config:/config
+      - /mnt/comfy-p7/valheim/data:/opt/valheim
+    depends_on:
+      gateway:
+        condition: service_started

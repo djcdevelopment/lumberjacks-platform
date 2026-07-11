@@ -55,15 +55,24 @@ $routeName   = "p7-compose.tsv"
 $gatewayDll  = Join-Path $lumberjacks "src\Game.Gateway\bin\Release\net9.0\Game.Gateway.dll"
 $gatewayOut  = Join-Path $repo "fieldlab\status\lumberjacks-gateway-stdout.log"
 $gatewayErr  = Join-Path $repo "fieldlab\status\lumberjacks-gateway-stderr.log"
-$am4         = if ($env:FIELDLAB_AM4_SSH) { $env:FIELDLAB_AM4_SSH } else { "derek@am4" }
+$am4         = if ($env:FIELDLAB_VALHEIM_SSH) { $env:FIELDLAB_VALHEIM_SSH } elseif ($env:FIELDLAB_AM4_SSH) { $env:FIELDLAB_AM4_SSH } else { "derek@am4" }
 $container   = if ($env:FIELDLAB_VALHEIM_CONTAINER) { $env:FIELDLAB_VALHEIM_CONTAINER } else { "comfy-valheim-server-am4-valheim-server-1" }
-$bepinex     = if ($env:FIELDLAB_AM4_BEPINEX) { $env:FIELDLAB_AM4_BEPINEX } else { "~/comfy-valheim-lab/server-state/config/bepinex" }
+$bepinex     = if ($env:FIELDLAB_VALHEIM_BEPINEX) { $env:FIELDLAB_VALHEIM_BEPINEX } elseif ($env:FIELDLAB_AM4_BEPINEX) { $env:FIELDLAB_AM4_BEPINEX } else { "~/comfy-valheim-lab/server-state/config/bepinex" }
 $remoteCfg   = "$bepinex/djcdevelopment.valheim.comfynetworksense.cfg"   # ROOT - NOT config/ (decoy)
-$ljLocal     = "http://127.0.0.1:4000"    # OMEN-local (injection + staging POSTs run from here)
-$ljTailnet   = "http://100.124.12.37:4000" # am4-container reaches Lumberjacks over the tailnet
+$valheimEndpoint = if ($env:FIELDLAB_VALHEIM_ENDPOINT) { $env:FIELDLAB_VALHEIM_ENDPOINT } else { "100.116.82.60:2456" }
+$ljLocal     = if ($env:FIELDLAB_LUMBERJACKS_URL) { $env:FIELDLAB_LUMBERJACKS_URL.TrimEnd('/') } else { "http://127.0.0.1:4000" }
+$ljTailnet   = if ($env:FIELDLAB_LUMBERJACKS_SERVER_URL) { $env:FIELDLAB_LUMBERJACKS_SERVER_URL.TrimEnd('/') } else { "http://100.124.12.37:4000" }
+$manageLocalLumberjacks = -not [bool]$env:FIELDLAB_LUMBERJACKS_URL
 
 $env:PYTHONPATH = Join-Path $repo "network\mcp"
 $env:PYTHONUTF8 = "1"
+$env:COMFY_AM4_SSH = $am4
+$env:COMFY_AM4_CONTAINER = $container
+$env:COMFY_AM4_MOD_CFG = $remoteCfg
+$env:COMFY_AM4_PROBE_PATH = "$bepinex/comfy-network-sense/netcode-probe.jsonl"
+$env:COMFY_AM4_WORLD_DB = if ($env:FIELDLAB_VALHEIM_WORLD_DB) { $env:FIELDLAB_VALHEIM_WORLD_DB } else { "$bepinex/../worlds_local/ComfyEra16.db" }
+$env:COMFY_AM4_WORLD_FWL = if ($env:FIELDLAB_VALHEIM_WORLD_FWL) { $env:FIELDLAB_VALHEIM_WORLD_FWL } else { "$bepinex/../worlds_local/ComfyEra16.fwl" }
+$env:COMFY_LUMBERJACKS_URL = $ljLocal
 
 # --- helpers (mirrors run-injection-window.ps1 / run-redirect-window.ps1) --------------------------
 function Set-CfgValue {
@@ -126,6 +135,12 @@ function Restart-ServerAndWait {
 }
 
 function Relaunch-Lumberjacks {
+  if (-not $manageLocalLumberjacks) {
+    Wait-Http "$ljLocal/health"
+    Write-Host "Using deployed Lumberjacks gateway at $ljLocal." -ForegroundColor Green
+    return
+  }
+
   # Stop any existing gateway on :4000 first (so the build can overwrite the DLL), then rebuild from
   # CURRENT source (the handshake endpoints landed in Lumberjacks 935095b - a stale Release DLL would
   # lack them), then launch the fresh Release DLL detached with the mandatory 0.0.0.0 bind.
@@ -254,7 +269,7 @@ switch ($Stage) {
 
     Write-Host ""
     Write-Host ">>> FRESH-LAUNCH Valheim (full quit+relaunch, NOT a menu rejoin) and join wary.fool" -ForegroundColor Yellow
-    Write-Host ">>> -> 100.116.82.60:2456. Handshake decides admission at connect; the p7-compose walk" -ForegroundColor Yellow
+    Write-Host ">>> -> $valheimEndpoint. Handshake decides admission at connect; the p7-compose walk" -ForegroundColor Yellow
     Write-Host ">>> then churns the pin, floats the conifer stand for the redirect, and dwells for the" -ForegroundColor Yellow
     Write-Host ">>> injection poll. After ~${ProbeSeconds}s run: -Stage gate -WindowId $WindowId" -ForegroundColor Yellow
   }
