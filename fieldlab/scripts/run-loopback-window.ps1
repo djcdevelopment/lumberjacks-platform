@@ -107,15 +107,22 @@ function Wait-Http {
 }
 
 function Restart-ServerAndWait {
-  Write-Host "Restarting ${container} ..." -ForegroundColor Gray
-  ssh $am4 "docker restart $container" | Out-Null
-  $deadline = (Get-Date).AddMinutes(4)
+  # Restart the game-server PROCESS only (NOT the container). A `docker restart` respawns the
+  # container's valheim-updater, whose steamcmd startup-validate restarts the server AGAIN ~4 min
+  # later (clean exit 0) and clips the window - the root cause of the i7-live-w1 DC. supervisorctl
+  # restarts just the game process (re-reads the mod cfg, saves the world on the clean SIGTERM) and
+  # leaves the long-running updater untouched, so no startup-validate restart. It is the same
+  # mechanism the container's own daily cron uses (10 5 * * * supervisorctl restart valheim-server).
+  $before = [int](ssh $am4 "docker logs --since 40m $container 2>&1 | grep -c 'Game server connected'")
+  Write-Host "Restarting valheim-server process (supervisorctl, not docker) ..." -ForegroundColor Gray
+  ssh $am4 "docker exec $container /usr/local/bin/supervisorctl restart valheim-server" | Out-Null
+  $deadline = (Get-Date).AddMinutes(5)
   while ((Get-Date) -lt $deadline) {
     Start-Sleep 15
-    $up = ssh $am4 "docker logs --since 4m $container 2>&1 | grep -c 'Game server connected'"
-    if ([int]$up -ge 1) { Write-Host "am4 world up (Game server connected)." -ForegroundColor Green; return }
+    $now = [int](ssh $am4 "docker logs --since 40m $container 2>&1 | grep -c 'Game server connected'")
+    if ($now -gt $before) { Write-Host "am4 world up (fresh Game server connected)." -ForegroundColor Green; return }
   }
-  throw "am4 server did not reach 'Game server connected' within 4 minutes."
+  throw "am4 server did not reach a fresh 'Game server connected' within 5 minutes."
 }
 
 function Relaunch-Lumberjacks {
