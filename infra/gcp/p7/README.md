@@ -1,5 +1,69 @@
 # Combined Comfy and Lumberjacks P7 environment
 
+Status: P7/I7 live loopback gate passed on GCP, 2026-07-11 local / 2026-07-12 UTC.
+
+This is the current deployment target for the Valheim x Lumberjacks netcode
+replacement proof. It is not the original Godot multiplayer vertical slice. The
+deployment runs the migrated `ComfyEra16` Valheim dedicated server with
+ComfyNetworkSense 0.5.18 and co-located Lumberjacks authority services on one GCP
+VM, while OMEN remains the rendered Valheim client and fieldlab controller.
+
+## Current proven deployment
+
+Project: `lumberjacks-exp-20260711-djc`
+
+VM: `comfy-lumberjacks-p7`
+
+Zone: `us-west1-b`
+
+Machine: `n2-highmem-8`
+
+Public endpoint: `8.231.129.249`
+
+Valheim join endpoint: `8.231.129.249:2456`
+
+Fieldlab SSH target: `comfy-p7` through IAP
+
+Persistent disk mount: `/mnt/comfy-p7`
+
+Server state:
+
+- world: `ComfyEra16`
+- server name: `Comfy Era16 Lab`
+- Steam-only: `CROSSPLAY=false`, public listing disabled
+- mod: `ComfyNetworkSense 0.5.18`
+- proven live binary SHA-256:
+  `827fc6b2c3f2781039be9e9cb31c3db839a3e93ac38a418527cf17fcdc4f816d`
+
+Compose services after deployment:
+
+- `postgres`: internal PostgreSQL on `127.0.0.1:5433`
+- `gateway`: Lumberjacks public control gateway on TCP `4000`, UDP `4005`
+- `eventlog`: internal service on `127.0.0.1:4002`
+- `progression`: internal service on `127.0.0.1:4003`
+- `operatorapi`: internal service on `127.0.0.1:4004`
+- `valheim-server`: Valheim UDP `2456-2457`, pinned image digest
+  `ghcr.io/community-valheim-tools/valheim-server@sha256:e8b13da3c44f54a38511c8ac224f2959a437c0b2626cf916683ca7acc8dfb146`
+
+Runtime entry points:
+
+- player/client: Valheim direct join `8.231.129.249:2456`
+- Lumberjacks gateway health: `http://8.231.129.249:4000/health`
+- fieldlab control: `fieldlab/scripts/set-gcp-p7-target.ps1 -PublicIp 8.231.129.249 -SshHost comfy-p7`
+- P7 runner: `fieldlab/scripts/run-loopback-window.ps1`
+- systemd wrapper: `comfy-lumberjacks-p7.service`
+
+P7/I7 gate result:
+
+- I5 handshake: Lumberjacks-decided accept, steady state reached
+- I2 ownership pin: `held_with_negative_control`, 25 pinned, 106 holds
+- I3 redirect: `receipts_match_no_loss`, 6316 suppressed, 6316 received, 0 missing, 0 duplicates
+- I4 injection: `rendered_with_lumberjacks_owner`, 1 applied/rendered, owner matched
+- client stability: clean, no desync/socket/invalid-message matches
+- save integrity: pass; portals/spawned/targets/locations exact, ZDO delta within tolerance
+- memory: no OOM pressure; about 51 GiB available and swap unused during the gate
+- post-gate state: server disarmed back to observe-only baseline
+
 This Terraform root migrates the memory-starved `am4` dedicated-server role to a
 64 GiB native-Linux Compute Engine VM. It runs the real combined product:
 
