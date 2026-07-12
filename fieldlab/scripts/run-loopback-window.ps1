@@ -57,6 +57,8 @@ $gatewayOut  = Join-Path $repo "fieldlab\status\lumberjacks-gateway-stdout.log"
 $gatewayErr  = Join-Path $repo "fieldlab\status\lumberjacks-gateway-stderr.log"
 $am4         = if ($env:FIELDLAB_VALHEIM_SSH) { $env:FIELDLAB_VALHEIM_SSH } elseif ($env:FIELDLAB_AM4_SSH) { $env:FIELDLAB_AM4_SSH } else { "derek@am4" }
 $container   = if ($env:FIELDLAB_VALHEIM_CONTAINER) { $env:FIELDLAB_VALHEIM_CONTAINER } else { "comfy-valheim-server-am4-valheim-server-1" }
+$remoteDocker = if ($env:FIELDLAB_VALHEIM_DOCKER) { $env:FIELDLAB_VALHEIM_DOCKER } else { "docker" }
+$remoteSudo  = if ($remoteDocker -like "sudo *") { "sudo " } else { "" }
 $bepinex     = if ($env:FIELDLAB_VALHEIM_BEPINEX) { $env:FIELDLAB_VALHEIM_BEPINEX } elseif ($env:FIELDLAB_AM4_BEPINEX) { $env:FIELDLAB_AM4_BEPINEX } else { "~/comfy-valheim-lab/server-state/config/bepinex" }
 $remoteCfg   = "$bepinex/djcdevelopment.valheim.comfynetworksense.cfg"   # ROOT - NOT config/ (decoy)
 $valheimEndpoint = if ($env:FIELDLAB_VALHEIM_ENDPOINT) { $env:FIELDLAB_VALHEIM_ENDPOINT } else { "100.116.82.60:2456" }
@@ -68,6 +70,7 @@ $env:PYTHONPATH = Join-Path $repo "network\mcp"
 $env:PYTHONUTF8 = "1"
 $env:COMFY_AM4_SSH = $am4
 $env:COMFY_AM4_CONTAINER = $container
+$env:COMFY_AM4_DOCKER = $remoteDocker
 $env:COMFY_AM4_MOD_CFG = $remoteCfg
 $env:COMFY_AM4_PROBE_PATH = "$bepinex/comfy-network-sense/netcode-probe.jsonl"
 $env:COMFY_AM4_WORLD_DB = if ($env:FIELDLAB_VALHEIM_WORLD_DB) { $env:FIELDLAB_VALHEIM_WORLD_DB } else { "$bepinex/../worlds_local/ComfyEra16.db" }
@@ -122,13 +125,13 @@ function Restart-ServerAndWait {
   # restarts just the game process (re-reads the mod cfg, saves the world on the clean SIGTERM) and
   # leaves the long-running updater untouched, so no startup-validate restart. It is the same
   # mechanism the container's own daily cron uses (10 5 * * * supervisorctl restart valheim-server).
-  $before = [int](ssh $am4 "docker logs --since 40m $container 2>&1 | grep -c 'Game server connected'")
+  $before = [int](ssh $am4 "$remoteDocker logs --since 40m $container 2>&1 | grep -c 'Game server connected'")
   Write-Host "Restarting valheim-server process (supervisorctl, not docker) ..." -ForegroundColor Gray
-  ssh $am4 "docker exec $container /usr/local/bin/supervisorctl restart valheim-server" | Out-Null
+  ssh $am4 "$remoteDocker exec $container /usr/local/bin/supervisorctl restart valheim-server" | Out-Null
   $deadline = (Get-Date).AddMinutes(5)
   while ((Get-Date) -lt $deadline) {
     Start-Sleep 15
-    $now = [int](ssh $am4 "docker logs --since 40m $container 2>&1 | grep -c 'Game server connected'")
+    $now = [int](ssh $am4 "$remoteDocker logs --since 40m $container 2>&1 | grep -c 'Game server connected'")
     if ($now -gt $before) { Write-Host "am4 world up (fresh Game server connected)." -ForegroundColor Green; return }
   }
   throw "am4 server did not reach a fresh 'Game server connected' within 5 minutes."
@@ -259,7 +262,7 @@ switch ($Stage) {
       "-e 's/^netcodeProbeAutoStartEnabled = .*/netcodeProbeAutoStartEnabled = true/' " +
       "-e 's/^netcodeProbeAutoStartDelaySeconds = .*/netcodeProbeAutoStartDelaySeconds = $ProbeStartDelaySeconds/' " +
       "-e 's/^netcodeProbeAutoStopSeconds = .*/netcodeProbeAutoStopSeconds = $ProbeSeconds/'"
-    ssh $am4 "sed -i $sed $remoteCfg"
+    ssh $am4 "${remoteSudo}sed -i $sed $remoteCfg"
     Write-Host "am4 ROOT cfg readback:" -ForegroundColor Gray
     ssh $am4 "grep -E '^(ownership(Observe|Pin)[A-Za-z]*|zdoRedirect[A-Za-z]*|zdoInjectionEnabled|handshakeResponder(Enabled|Endpoint|WindowId)|netcodeProbeAutoS[A-Za-z]*) =' $remoteCfg"
 
@@ -301,7 +304,7 @@ switch ($Stage) {
       "-e 's/^zdoRedirectEnabled = .*/zdoRedirectEnabled = false/' " +
       "-e 's/^zdoInjectionEnabled = .*/zdoInjectionEnabled = false/' " +
       "-e 's/^handshakeResponderEnabled = .*/handshakeResponderEnabled = false/'"
-    ssh $am4 "sed -i $sed $remoteCfg"
+    ssh $am4 "${remoteSudo}sed -i $sed $remoteCfg"
     ssh $am4 "grep -E '^(ownershipPinEnabled|zdoRedirectEnabled|zdoInjectionEnabled|handshakeResponderEnabled) =' $remoteCfg"
     Restart-ServerAndWait
     Write-Host "Observe-only baseline restored. Quit/relaunch clears the client-only synthetic ZDO." -ForegroundColor Green

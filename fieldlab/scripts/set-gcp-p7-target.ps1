@@ -11,6 +11,8 @@ $ErrorActionPreference = "Stop"
 # Configure the comfy-p7 SSH alias first so it reaches the VM through IAP.
 $env:FIELDLAB_VALHEIM_SSH = $SshHost
 $env:FIELDLAB_VALHEIM_CONTAINER = $Container
+$env:FIELDLAB_VALHEIM_DOCKER = "sudo docker"
+$env:COMFY_AM4_DOCKER = "sudo docker"
 $env:FIELDLAB_VALHEIM_BEPINEX = "/mnt/comfy-p7/valheim/config/bepinex"
 $env:FIELDLAB_VALHEIM_WORLD_DB = "/mnt/comfy-p7/valheim/config/worlds_local/ComfyEra16.db"
 $env:FIELDLAB_VALHEIM_WORLD_FWL = "/mnt/comfy-p7/valheim/config/worlds_local/ComfyEra16.fwl"
