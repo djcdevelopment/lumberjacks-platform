@@ -101,7 +101,15 @@ LUMBERJACKS_VERSION=<commit-sha>
 POSTGRES_PASSWORD=<random-stage-password>
 VALHEIM_SERVER_PASSWORD=<existing-lab-password>
 LUMBERJACKS_ROOT=/opt/lumberjacks
+COMFY_LUMBERJACKS_CUTOVER_MODE=mirrored
+COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID=i7-live-w2
 ```
+
+The Compose file passes the two `COMFY_LUMBERJACKS_*` values into the Valheim
+container. Keep the mode at `mirrored` until `/api/v0/telemetry/cutover` reports
+complete coverage with zero native-only traffic. The enrollment manifest is visible
+at `/api/v0/valheim/enrollment/{manifestId}`; it is an advertisement and does not
+authorize primary cutover on its own.
 
 Do not start the GCP Valheim container until the source server is cleanly stopped and
 the final state archive has been verified. Never allow `am4` and GCP to write the same
