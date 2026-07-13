@@ -66,8 +66,16 @@ services:
     restart: unless-stopped
     ports:
       - "${COMFY_GATEWAY_PORT:-8720}:8720"
+    # host.docker.internal is auto-provided by Docker Desktop, but map it
+    # explicitly so COMFY_OLLAMA below also resolves on plain Docker Engine.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       PYTHONPATH: /workspace/network/mcp
+      # This gateway runs containerized, so Ollama on the Windows host is NOT
+      # at the container's 127.0.0.1 (the inference.py default) — reach it via
+      # the host gateway. local_generate + valheim_mcp_health both read this.
+      COMFY_OLLAMA: ${COMFY_OLLAMA:-http://host.docker.internal:11434}
       COMFY_NETWORK_SENSE_DIR: /lab/state/client01/games/GameLibrary/Steam/steamapps/common/Valheim/BepInEx/config/comfy-network-sense
       COMFY_NETWORK_SENSE_CFG: /lab/state/client01/games/GameLibrary/Steam/steamapps/common/Valheim/BepInEx/config/djcdevelopment.valheim.comfynetworksense.cfg
       COMFY_BEPINEX_LOG: /lab/state/client01/games/GameLibrary/Steam/steamapps/common/Valheim/BepInEx/LogOutput.log
