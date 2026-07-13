@@ -5,7 +5,7 @@ Status: P7/I7 live loopback gate passed on GCP, 2026-07-11 local / 2026-07-12 UT
 This is the current deployment target for the Valheim x Lumberjacks netcode
 replacement proof. It is not the original Godot multiplayer vertical slice. The
 deployment runs the migrated `ComfyEra16` Valheim dedicated server with
-ComfyNetworkSense 0.5.18 and co-located Lumberjacks authority services on one GCP
+ComfyNetworkSense 0.5.19 and co-located Lumberjacks authority services on one GCP
 VM, while OMEN remains the rendered Valheim client and fieldlab controller.
 
 ## Current proven deployment
@@ -31,9 +31,9 @@ Server state:
 - world: `ComfyEra16`
 - server name: `Comfy Era16 Lab`
 - Steam-only: `CROSSPLAY=false`, public listing disabled
-- mod: `ComfyNetworkSense 0.5.18`
+- mod: `ComfyNetworkSense 0.5.19` (publishes the sanitized Lumberjacks heartbeat)
 - proven live binary SHA-256:
-  `827fc6b2c3f2781039be9e9cb31c3db839a3e93ac38a418527cf17fcdc4f816d`
+  `29dd4f3b30fe0d67533358013f29b4cabaf82a7a242826d23488d138b8840fb7`
 
 Compose services after deployment:
 
@@ -81,7 +81,7 @@ The migration procedure must also preserve these source invariants:
 
 | Artifact | Source SHA-256 |
 |---|---|
-| `ComfyNetworkSense.dll` 0.5.18 | `827fc6b2c3f2781039be9e9cb31c3db839a3e93ac38a418527cf17fcdc4f816d` |
+| `ComfyNetworkSense.dll` 0.5.19 | `29dd4f3b30fe0d67533358013f29b4cabaf82a7a242826d23488d138b8840fb7` |
 | root BepInEx configuration | `065e942174d0912ca94d108794b4d59bbdec34e2e21a299a31b63efc6a017d01` |
 | `ComfyEra16.db` baseline | `4513d0348e9f740cad22032c476c5dd6f5304490dc05912f35b250837e25d49a` |
 | `ComfyEra16.fwl` baseline | `5f323fbe7b627fd50520d8f4f6dedd13027a92bfe056013aa52d7306d09a3539` |
