@@ -126,6 +126,8 @@ services:
       RESTART_IF_IDLE: "false"
       PUID: "1000"
       PGID: "1000"
+      COMFY_LUMBERJACKS_CUTOVER_MODE: "${COMFY_LUMBERJACKS_CUTOVER_MODE:-native}"
+      COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID: "${COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID:-}"
     volumes:
       - /mnt/comfy-p7/valheim/config:/config
       - /mnt/comfy-p7/valheim/data:/opt/valheim
