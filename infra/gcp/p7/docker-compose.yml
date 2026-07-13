@@ -8,6 +8,7 @@ x-lumberjacks-telemetry: &lumberjacks-telemetry
   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=gcp-p7,service.namespace=lumberjacks"
   OTEL_SERVICE_VERSION: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
   COMFY_NETWORKSENSE_VERSION: "${COMFY_NETWORKSENSE_VERSION:-unknown}"
+  VALHEIM_TELEMETRY_KEY: "${VALHEIM_TELEMETRY_KEY:-}"
 
 x-lumberjacks-service: &lumberjacks-service
   restart: unless-stopped
