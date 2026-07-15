@@ -81,7 +81,7 @@ The migration procedure must also preserve these source invariants:
 
 | Artifact | Source SHA-256 |
 |---|---|
-| `ComfyNetworkSense.dll` 0.5.19 | `29dd4f3b30fe0d67533358013f29b4cabaf82a7a242826d23488d138b8840fb7` |
+| `ComfyNetworkSense.dll` 0.5.21 | `f48df0af0a1fb77b175a1e45bac65d1e01b49ddcc471bf7e0bd58f63b25dde19` |
 | root BepInEx configuration | `065e942174d0912ca94d108794b4d59bbdec34e2e21a299a31b63efc6a017d01` |
 | `ComfyEra16.db` baseline | `4513d0348e9f740cad22032c476c5dd6f5304490dc05912f35b250837e25d49a` |
 | `ComfyEra16.fwl` baseline | `5f323fbe7b627fd50520d8f4f6dedd13027a92bfe056013aa52d7306d09a3539` |
@@ -110,6 +110,22 @@ container. Keep the mode at `mirrored` until `/api/v0/telemetry/cutover` reports
 complete coverage with zero native-only traffic. The enrollment manifest is visible
 at `/api/v0/valheim/enrollment/{manifestId}`; it is an advertisement and does not
 authorize primary cutover on its own.
+
+Deploy ComfyNetworkSense from OMEN with the guarded script:
+
+```powershell
+& C:\work\comfy\infra\gcp\p7\scripts\deploy-network-sense.ps1
+```
+
+The live server plugin path is
+`/opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll`. The configuration is
+the bind-mounted root BepInEx file at
+`/mnt/comfy-p7/valheim/config/bepinex/djcdevelopment.valheim.comfynetworksense.cfg`
+(container path `/config/bepinex/djcdevelopment.valheim.comfynetworksense.cfg`).
+Do not copy the config into the container without restoring UID/GID `1000:1000` and
+mode `0664`; otherwise BepInEx aborts the plugin during `ConfigFile.Bind`. The guarded
+script enforces ownership, checks the runtime DLL hash, rejects startup access
+exceptions, and waits for both `Telemetry scaffold ready` and `Game server connected`.
 
 Do not start the GCP Valheim container until the source server is cleanly stopped and
 the final state archive has been verified. Never allow `am4` and GCP to write the same
