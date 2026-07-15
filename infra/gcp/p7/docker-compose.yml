@@ -40,7 +40,7 @@ services:
       context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
       target: gateway
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
       - "4005:4005/udp"
     environment:
       <<: *lumberjacks-telemetry
@@ -49,6 +49,9 @@ services:
       ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
       ServiceUrls__EventLog: "http://eventlog:4002"
       ServiceUrls__Progression: "http://progression:4003"
+      VALHEIM_ZDO_QUEUE_PATH: "/var/lib/lumberjacks/zdo-queue/redirect.wal"
+    volumes:
+      - /mnt/comfy-p7/lumberjacks/zdo-queue:/var/lib/lumberjacks/zdo-queue
     depends_on:
       postgres:
         condition: service_healthy

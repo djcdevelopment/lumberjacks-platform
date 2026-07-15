@@ -5,7 +5,7 @@ Status: P7/I7 live loopback gate passed on GCP, 2026-07-11 local / 2026-07-12 UT
 This is the current deployment target for the Valheim x Lumberjacks netcode
 replacement proof. It is not the original Godot multiplayer vertical slice. The
 deployment runs the migrated `ComfyEra16` Valheim dedicated server with
-ComfyNetworkSense 0.5.24 and co-located Lumberjacks authority services on one GCP
+ComfyNetworkSense 0.5.25 and co-located Lumberjacks authority services on one GCP
 VM, while OMEN remains the rendered Valheim client and fieldlab controller.
 
 ## Current proven deployment
@@ -18,7 +18,7 @@ Zone: `us-west1-b`
 
 Machine: `n2-highmem-8`
 
-Public endpoint: `8.231.129.249`
+Public Valheim endpoint: `8.231.129.249`
 
 Valheim join endpoint: `8.231.129.249:2456`
 
@@ -31,14 +31,16 @@ Server state:
 - world: `ComfyEra16`
 - server name: `Comfy Era16 Lab`
 - Steam-only: `CROSSPLAY=false`, public listing disabled
-- mod: `ComfyNetworkSense 0.5.24` (publishes telemetry and consumes authoritative ZDO envelopes)
+- mod: `ComfyNetworkSense 0.5.25` (publishes telemetry and consumes authoritative ZDO envelopes)
 - proven live binary SHA-256:
-  `7012a973295b88cd5c7c96ea812d5d87fa15561cbb7d064eb19583ac7ef8bf2c`
+  `4bf586445a8c3b7ecf26fed0fef68cdff5263f3d43d3c0d7051f0e8ce638eaf8`
 
 Compose services after deployment:
 
 - `postgres`: internal PostgreSQL on `127.0.0.1:5433`
-- `gateway`: Lumberjacks public control gateway on TCP `4000`, UDP `4005`
+- `gateway`: Lumberjacks private control gateway on loopback TCP `4000`, public UDP `4005`
+  with its authoritative ZDO write-ahead log on the persistent disk at
+  `/mnt/comfy-p7/lumberjacks/zdo-queue/redirect.wal`
 - `eventlog`: internal service on `127.0.0.1:4002`
 - `progression`: internal service on `127.0.0.1:4003`
 - `operatorapi`: internal service on `127.0.0.1:4004`
@@ -48,7 +50,7 @@ Compose services after deployment:
 Runtime entry points:
 
 - player/client: Valheim direct join `8.231.129.249:2456`
-- Lumberjacks gateway health: `http://8.231.129.249:4000/health`
+- Lumberjacks gateway health through the OMEN tunnel: `http://127.0.0.1:4000/health`
 - fieldlab control: `fieldlab/scripts/set-gcp-p7-target.ps1 -PublicIp 8.231.129.249 -SshHost comfy-p7`
 - P7 runner: `fieldlab/scripts/run-loopback-window.ps1`
 - systemd wrapper: `comfy-lumberjacks-p7.service`
@@ -81,7 +83,7 @@ The migration procedure must also preserve these source invariants:
 
 | Artifact | Source SHA-256 |
 |---|---|
-| `ComfyNetworkSense.dll` 0.5.24 | `7012a973295b88cd5c7c96ea812d5d87fa15561cbb7d064eb19583ac7ef8bf2c` |
+| `ComfyNetworkSense.dll` 0.5.25 | `4bf586445a8c3b7ecf26fed0fef68cdff5263f3d43d3c0d7051f0e8ce638eaf8` |
 | root BepInEx configuration | `065e942174d0912ca94d108794b4d59bbdec34e2e21a299a31b63efc6a017d01` |
 | `ComfyEra16.db` baseline | `4513d0348e9f740cad22032c476c5dd6f5304490dc05912f35b250837e25d49a` |
 | `ComfyEra16.fwl` baseline | `5f323fbe7b627fd50520d8f4f6dedd13027a92bfe056013aa52d7306d09a3539` |
@@ -98,7 +100,7 @@ operator email, and OMEN CIDR, then run `terraform init`, `terraform plan`, and
 ```text
 GOOGLE_CLOUD_PROJECT=<project>
 LUMBERJACKS_VERSION=<commit-sha>
-COMFY_NETWORKSENSE_VERSION=0.5.24
+COMFY_NETWORKSENSE_VERSION=0.5.25
 POSTGRES_PASSWORD=<random-stage-password>
 VALHEIM_SERVER_PASSWORD=<existing-lab-password>
 LUMBERJACKS_ROOT=/opt/lumberjacks
@@ -117,6 +119,17 @@ Deploy ComfyNetworkSense from OMEN with the guarded script:
 ```powershell
 & C:\work\comfy\infra\gcp\p7\scripts\deploy-network-sense.ps1
 ```
+
+Start the private Gateway/dashboard tunnel on OMEN before launching Valheim:
+
+```powershell
+& C:\work\comfy\infra\gcp\p7\scripts\start-gateway-tunnel.ps1
+```
+
+Gateway TCP 4000 is bound only to GCP loopback. The tunnel exposes it on OMEN at
+`http://127.0.0.1:4000`; `/community`, `/networksense`, health, telemetry, and the
+authoritative client poller use that local endpoint. This avoids exposing the HTTP
+control/data surface publicly while HTTPS/authentication are still out of scope.
 
 The live server plugin path is
 `/opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll`. The configuration is
