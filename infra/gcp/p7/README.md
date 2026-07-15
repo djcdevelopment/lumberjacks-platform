@@ -1,6 +1,6 @@
 # Combined Comfy and Lumberjacks P7 environment
 
-Status: P7/I7 live loopback gate passed on GCP, 2026-07-11 local / 2026-07-12 UTC.
+Status: password-free all-prefab `lumberjacks-primary` live on GCP, 2026-07-15 UTC.
 
 This is the current deployment target for the Valheim x Lumberjacks netcode
 replacement proof. It is not the original Godot multiplayer vertical slice. The
@@ -31,6 +31,8 @@ Server state:
 - world: `ComfyEra16`
 - server name: `Comfy Era16 Lab`
 - Steam-only: `CROSSPLAY=false`, public listing disabled
+- password-free direct join; the pinned server image omits `-password` when `SERVER_PASS` is empty
+- cutover: `lumberjacks-primary`, manifest `p7-primary-v1`, all-prefab redirect remains armed
 - mod: `ComfyNetworkSense 0.5.27` (publishes telemetry and consumes authoritative ZDO envelopes)
 - proven live binary SHA-256:
   `cde0d458f2c74bc9b3dba3f73ba5bdce5e4df602bf635c42110bd24b8630d72c`
