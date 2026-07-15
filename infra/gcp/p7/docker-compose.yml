@@ -119,7 +119,7 @@ services:
       TZ: America/Los_Angeles
       SERVER_NAME: "Comfy Era16 Lab"
       WORLD_NAME: "ComfyEra16"
-      SERVER_PASS: "${VALHEIM_SERVER_PASSWORD:?VALHEIM_SERVER_PASSWORD must be set}"
+      SERVER_PASS: "${VALHEIM_SERVER_PASSWORD:-}"
       SERVER_PUBLIC: "false"
       SERVER_PORT: "2456"
       CROSSPLAY: "false"

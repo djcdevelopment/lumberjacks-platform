@@ -5,7 +5,7 @@ Status: P7/I7 live loopback gate passed on GCP, 2026-07-11 local / 2026-07-12 UT
 This is the current deployment target for the Valheim x Lumberjacks netcode
 replacement proof. It is not the original Godot multiplayer vertical slice. The
 deployment runs the migrated `ComfyEra16` Valheim dedicated server with
-ComfyNetworkSense 0.5.25 and co-located Lumberjacks authority services on one GCP
+ComfyNetworkSense 0.5.26 and co-located Lumberjacks authority services on one GCP
 VM, while OMEN remains the rendered Valheim client and fieldlab controller.
 
 ## Current proven deployment
@@ -31,9 +31,9 @@ Server state:
 - world: `ComfyEra16`
 - server name: `Comfy Era16 Lab`
 - Steam-only: `CROSSPLAY=false`, public listing disabled
-- mod: `ComfyNetworkSense 0.5.25` (publishes telemetry and consumes authoritative ZDO envelopes)
+- mod: `ComfyNetworkSense 0.5.26` (publishes telemetry and consumes authoritative ZDO envelopes)
 - proven live binary SHA-256:
-  `e70ee607ac9709c201f722324f3cc2fcf7dc04a5273b6e1f28700f10c90d14b9`
+  `144b4ffcc3e2ac78a08e1dc712f8f4ed7a20b033ebac5701bd43985d08bb5655`
 
 Compose services after deployment:
 
@@ -83,7 +83,7 @@ The migration procedure must also preserve these source invariants:
 
 | Artifact | Source SHA-256 |
 |---|---|
-| `ComfyNetworkSense.dll` 0.5.25 | `e70ee607ac9709c201f722324f3cc2fcf7dc04a5273b6e1f28700f10c90d14b9` |
+| `ComfyNetworkSense.dll` 0.5.26 | `144b4ffcc3e2ac78a08e1dc712f8f4ed7a20b033ebac5701bd43985d08bb5655` |
 | root BepInEx configuration | `065e942174d0912ca94d108794b4d59bbdec34e2e21a299a31b63efc6a017d01` |
 | `ComfyEra16.db` baseline | `4513d0348e9f740cad22032c476c5dd6f5304490dc05912f35b250837e25d49a` |
 | `ComfyEra16.fwl` baseline | `5f323fbe7b627fd50520d8f4f6dedd13027a92bfe056013aa52d7306d09a3539` |
@@ -100,9 +100,9 @@ operator email, and OMEN CIDR, then run `terraform init`, `terraform plan`, and
 ```text
 GOOGLE_CLOUD_PROJECT=<project>
 LUMBERJACKS_VERSION=<commit-sha>
-COMFY_NETWORKSENSE_VERSION=0.5.25
+COMFY_NETWORKSENSE_VERSION=0.5.26
 POSTGRES_PASSWORD=<random-stage-password>
-VALHEIM_SERVER_PASSWORD=<existing-lab-password>
+VALHEIM_SERVER_PASSWORD=
 LUMBERJACKS_ROOT=/opt/lumberjacks
 COMFY_LUMBERJACKS_CUTOVER_MODE=mirrored
 COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID=i7-live-w2
@@ -124,6 +124,12 @@ Start the private Gateway/dashboard tunnel on OMEN before launching Valheim:
 
 ```powershell
 & C:\work\comfy\infra\gcp\p7\scripts\start-gateway-tunnel.ps1
+```
+
+For the normal password-free primary session, start both the tunnel and Valheim with:
+
+```powershell
+& C:\work\comfy\infra\gcp\p7\scripts\start-primary-session.ps1
 ```
 
 Gateway TCP 4000 is bound only to GCP loopback. The tunnel exposes it on OMEN at

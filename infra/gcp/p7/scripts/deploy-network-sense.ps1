@@ -13,6 +13,7 @@ $projectDir = Split-Path $projectPath
 $dll = Join-Path $projectDir "bin\$Configuration\ComfyNetworkSense.dll"
 $remoteDll = "/tmp/ComfyNetworkSense-deploy.dll"
 $runtimeDll = "/opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll"
+$fallbackDll = "/mnt/comfy-p7/valheim/config/bepinex/plugins/ComfyNetworkSense.dll"
 $hostConfig = "/mnt/comfy-p7/valheim/config/bepinex/djcdevelopment.valheim.comfynetworksense.cfg"
 $startedUtc = (Get-Date).ToUniversalTime().ToString("o")
 
@@ -32,6 +33,7 @@ $deploy = @"
 set -eu
 sudo chown 1000:1000 '$hostConfig'
 sudo chmod 664 '$hostConfig'
+sudo install -o 1000 -g 1000 -m 0644 '$remoteDll' '$fallbackDll'
 sudo docker cp '$remoteDll' '${Container}:$runtimeDll'
 test `$(sudo stat -c '%u:%g:%a' '$hostConfig') = '1000:1000:664'
 sudo docker exec '$Container' supervisorctl restart valheim-server
@@ -59,6 +61,12 @@ $hashOutput = ssh $SshTarget "sudo docker exec '$Container' sha256sum '$runtimeD
 $actualHash = [regex]::Match(($hashOutput -join "`n"), "[0-9a-fA-F]{64}").Value.ToLowerInvariant()
 if ($actualHash -ne $expectedHash) {
   throw "Runtime DLL hash mismatch: expected $expectedHash, got $actualHash"
+}
+
+$fallbackHashOutput = ssh $SshTarget "sudo sha256sum '$fallbackDll'"
+$fallbackHash = [regex]::Match(($fallbackHashOutput -join "`n"), "[0-9a-fA-F]{64}").Value.ToLowerInvariant()
+if ($fallbackHash -ne $expectedHash) {
+  throw "Cold-start DLL hash mismatch: expected $expectedHash, got $fallbackHash"
 }
 
 # Keep the cold-start deployment fallback in sync after the server has loaded the
