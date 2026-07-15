@@ -33,7 +33,7 @@ Server state:
 - Steam-only: `CROSSPLAY=false`, public listing disabled
 - mod: `ComfyNetworkSense 0.5.24` (publishes telemetry and consumes authoritative ZDO envelopes)
 - proven live binary SHA-256:
-  `33b1a797208b8890c48632e75708f35ba17f5e682f8531561c4a557adc98ad59`
+  `7012a973295b88cd5c7c96ea812d5d87fa15561cbb7d064eb19583ac7ef8bf2c`
 
 Compose services after deployment:
 
@@ -81,7 +81,7 @@ The migration procedure must also preserve these source invariants:
 
 | Artifact | Source SHA-256 |
 |---|---|
-| `ComfyNetworkSense.dll` 0.5.24 | `33b1a797208b8890c48632e75708f35ba17f5e682f8531561c4a557adc98ad59` |
+| `ComfyNetworkSense.dll` 0.5.24 | `7012a973295b88cd5c7c96ea812d5d87fa15561cbb7d064eb19583ac7ef8bf2c` |
 | root BepInEx configuration | `065e942174d0912ca94d108794b4d59bbdec34e2e21a299a31b63efc6a017d01` |
 | `ComfyEra16.db` baseline | `4513d0348e9f740cad22032c476c5dd6f5304490dc05912f35b250837e25d49a` |
 | `ComfyEra16.fwl` baseline | `5f323fbe7b627fd50520d8f4f6dedd13027a92bfe056013aa52d7306d09a3539` |
