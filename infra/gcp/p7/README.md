@@ -5,7 +5,7 @@ Status: P7/I7 live loopback gate passed on GCP, 2026-07-11 local / 2026-07-12 UT
 This is the current deployment target for the Valheim x Lumberjacks netcode
 replacement proof. It is not the original Godot multiplayer vertical slice. The
 deployment runs the migrated `ComfyEra16` Valheim dedicated server with
-ComfyNetworkSense 0.5.19 and co-located Lumberjacks authority services on one GCP
+ComfyNetworkSense 0.5.22 and co-located Lumberjacks authority services on one GCP
 VM, while OMEN remains the rendered Valheim client and fieldlab controller.
 
 ## Current proven deployment
@@ -31,9 +31,9 @@ Server state:
 - world: `ComfyEra16`
 - server name: `Comfy Era16 Lab`
 - Steam-only: `CROSSPLAY=false`, public listing disabled
-- mod: `ComfyNetworkSense 0.5.19` (publishes the sanitized Lumberjacks heartbeat)
+- mod: `ComfyNetworkSense 0.5.22` (publishes telemetry and consumes authoritative ZDO envelopes)
 - proven live binary SHA-256:
-  `29dd4f3b30fe0d67533358013f29b4cabaf82a7a242826d23488d138b8840fb7`
+  `99b338790d139727e2b0ae01a42795d8f2d4f18bdcd3efd2a796e9fd4a29fd99`
 
 Compose services after deployment:
 
@@ -81,7 +81,7 @@ The migration procedure must also preserve these source invariants:
 
 | Artifact | Source SHA-256 |
 |---|---|
-| `ComfyNetworkSense.dll` 0.5.21 | `f48df0af0a1fb77b175a1e45bac65d1e01b49ddcc471bf7e0bd58f63b25dde19` |
+| `ComfyNetworkSense.dll` 0.5.22 | `99b338790d139727e2b0ae01a42795d8f2d4f18bdcd3efd2a796e9fd4a29fd99` |
 | root BepInEx configuration | `065e942174d0912ca94d108794b4d59bbdec34e2e21a299a31b63efc6a017d01` |
 | `ComfyEra16.db` baseline | `4513d0348e9f740cad22032c476c5dd6f5304490dc05912f35b250837e25d49a` |
 | `ComfyEra16.fwl` baseline | `5f323fbe7b627fd50520d8f4f6dedd13027a92bfe056013aa52d7306d09a3539` |
@@ -98,6 +98,7 @@ operator email, and OMEN CIDR, then run `terraform init`, `terraform plan`, and
 ```text
 GOOGLE_CLOUD_PROJECT=<project>
 LUMBERJACKS_VERSION=<commit-sha>
+COMFY_NETWORKSENSE_VERSION=0.5.22
 POSTGRES_PASSWORD=<random-stage-password>
 VALHEIM_SERVER_PASSWORD=<existing-lab-password>
 LUMBERJACKS_ROOT=/opt/lumberjacks
@@ -125,7 +126,9 @@ the bind-mounted root BepInEx file at
 Do not copy the config into the container without restoring UID/GID `1000:1000` and
 mode `0664`; otherwise BepInEx aborts the plugin during `ConfigFile.Bind`. The guarded
 script enforces ownership, checks the runtime DLL hash, rejects startup access
-exceptions, and waits for both `Telemetry scaffold ready` and `Game server connected`.
+exceptions, waits for both `Telemetry scaffold ready` and `Game server connected`,
+then reconciles `COMFY_NETWORKSENSE_VERSION` and recreates only Gateway so deployment
+telemetry matches the loaded assembly.
 
 Do not start the GCP Valheim container until the source server is cleanly stopped and
 the final state archive has been verified. Never allow `am4` and GCP to write the same
