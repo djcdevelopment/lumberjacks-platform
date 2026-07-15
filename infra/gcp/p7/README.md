@@ -50,7 +50,7 @@ Compose services after deployment:
 Runtime entry points:
 
 - player/client: Valheim direct join `8.231.129.249:2456`
-- Lumberjacks gateway health through the OMEN tunnel: `http://127.0.0.1:4000/health`
+- Lumberjacks gateway health through the OMEN tunnel: `http://127.0.0.1:14000/health`
 - fieldlab control: `fieldlab/scripts/set-gcp-p7-target.ps1 -PublicIp 8.231.129.249 -SshHost comfy-p7`
 - P7 runner: `fieldlab/scripts/run-loopback-window.ps1`
 - systemd wrapper: `comfy-lumberjacks-p7.service`
@@ -127,7 +127,7 @@ Start the private Gateway/dashboard tunnel on OMEN before launching Valheim:
 ```
 
 Gateway TCP 4000 is bound only to GCP loopback. The tunnel exposes it on OMEN at
-`http://127.0.0.1:4000`; `/community`, `/networksense`, health, telemetry, and the
+`http://127.0.0.1:14000`; `/community`, `/networksense`, health, telemetry, and the
 authoritative client poller use that local endpoint. This avoids exposing the HTTP
 control/data surface publicly while HTTPS/authentication are still out of scope.
 

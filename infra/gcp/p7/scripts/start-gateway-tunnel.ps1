@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [string] $SshTarget = "comfy-p7",
-  [int] $LocalPort = 4000,
+  [int] $LocalPort = 14000,
   [string] $RemoteHost = "127.0.0.1",
   [int] $RemotePort = 4000,
   [int] $ReadyTimeoutSeconds = 30
