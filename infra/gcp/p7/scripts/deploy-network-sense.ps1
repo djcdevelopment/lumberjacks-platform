@@ -2,7 +2,6 @@
 param(
   [string] $SshTarget = "comfy-p7",
   [string] $Container = "comfy-lumberjacks-p7-valheim-server-1",
-  [string] $GatewayContainer = "comfy-lumberjacks-p7-gateway-1",
   [string] $Project = "$PSScriptRoot\..\..\..\..\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj",
   [string] $Configuration = "Release",
   [int] $ReadyTimeoutSeconds = 360
@@ -62,18 +61,17 @@ if ($actualHash -ne $expectedHash) {
   throw "Runtime DLL hash mismatch: expected $expectedHash, got $actualHash"
 }
 
-# Deployment telemetry is supplied to Gateway from the host environment. Reconcile
-# it only after the server has loaded the exact expected DLL, then recreate Gateway
-# so dashboards cannot continue to advertise a stale mod version.
+# Keep the cold-start deployment fallback in sync after the server has loaded the
+# expected DLL. Gateway prefers the live Valheim heartbeat, so it must not be
+# restarted (and its authoritative queue discarded) just to refresh this label.
 $updateMetadata = @"
 set -eu
 sudo sed -i '/^COMFY_NETWORKSENSE_VERSION=/d' /etc/comfy-p7/environment
 printf '%s\n' 'COMFY_NETWORKSENSE_VERSION=$pluginVersion' | sudo tee -a /etc/comfy-p7/environment >/dev/null
-sudo bash -lc 'set -a; . /etc/comfy-p7/environment; set +a; cd /opt/comfy/infra/gcp/p7; docker compose up -d --no-deps --force-recreate gateway'
-sudo docker inspect '$GatewayContainer' --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -Fx 'COMFY_NETWORKSENSE_VERSION=$pluginVersion'
+sudo grep -Fx 'COMFY_NETWORKSENSE_VERSION=$pluginVersion' /etc/comfy-p7/environment
 "@
 ssh $SshTarget $updateMetadata
-if ($LASTEXITCODE -ne 0) { throw "Gateway deployment metadata reconciliation failed" }
+if ($LASTEXITCODE -ne 0) { throw "Deployment metadata fallback reconciliation failed" }
 
 [pscustomobject]@{
   Target = $SshTarget

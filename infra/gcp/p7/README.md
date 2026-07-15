@@ -127,8 +127,9 @@ Do not copy the config into the container without restoring UID/GID `1000:1000` 
 mode `0664`; otherwise BepInEx aborts the plugin during `ConfigFile.Bind`. The guarded
 script enforces ownership, checks the runtime DLL hash, rejects startup access
 exceptions, waits for both `Telemetry scaffold ready` and `Game server connected`,
-then reconciles `COMFY_NETWORKSENSE_VERSION` and recreates only Gateway so deployment
-telemetry matches the loaded assembly.
+then reconciles the cold-start `COMFY_NETWORKSENSE_VERSION` fallback. Gateway reads
+the running version from Valheim's heartbeat, so plugin deployment does not restart
+Gateway or discard an in-flight authoritative queue.
 
 Do not start the GCP Valheim container until the source server is cleanly stopped and
 the final state archive has been verified. Never allow `am4` and GCP to write the same
