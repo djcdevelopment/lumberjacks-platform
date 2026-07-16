@@ -42,6 +42,10 @@ param(
   [string] $RollbackModSha256 = 'b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b',
   # VM path holding the historical mod runtime.dll/fallback.dll backup pair.
   [string] $RollbackModBackupPath = '',
+  # Existing snapshot root on the VM (from an interrupted run) to reuse: skips the
+  # stop/tar/restart and only re-verifies, hashes, and writes the receipt. The
+  # archive must have been taken with the server stopped for it to be valid.
+  [string] $ResumeSnapshotRoot = '',
   [switch] $Execute
 )
 
@@ -60,32 +64,70 @@ function Write-Receipt([string] $Name, $Body) {
   Write-Output "receipt: $path"
 }
 
-function Invoke-Remote([string] $Script, [string] $Label) {
-  # Long multi-line commands can be dropped during IAP proxy stdin teardown;
-  # ship the transaction as a file, as deploy-gateway.ps1 does.
+function Invoke-NativeJob([string] $Exe, [string[]] $Arguments, [int] $TimeoutSeconds, [int] $Retries = 2) {
+  # ssh launched directly from a non-interactive (backgrounded) PowerShell never
+  # exits on this host: its stdin-forwarding thread blocks on a handle that never
+  # EOFs, so the process outlives its remote command indefinitely. Inside a
+  # PowerShell job the plumbing is sane, so every remote call runs in a job with
+  # a hard timeout; a wedged call is abandoned and retried instead of hanging.
+  # Returns @{ Output; Code } or $null if every attempt timed out.
+  for ($attempt = 1; $attempt -le $Retries; $attempt++) {
+    $job = Start-Job -ScriptBlock {
+      param($exe, $exeArgs)
+      $out = & $exe $exeArgs 2>$null
+      [pscustomobject]@{ Output = (@($out) -join "`n"); Code = $LASTEXITCODE }
+    } -ArgumentList $Exe, $Arguments
+    $done = Wait-Job $job -Timeout $TimeoutSeconds
+    if ($done) {
+      $result = Receive-Job $job
+      Remove-Job $job -Force
+      return $result
+    }
+    Stop-Job $job
+    Remove-Job $job -Force
+  }
+  return $null
+}
+
+$sshBaseArgs = @('-n', '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=4')
+
+function Invoke-Remote([string] $Script, [string] $Label, [int] $TimeoutSeconds = 3600) {
+  # IAP-proxied sessions reliably run the remote payload but cannot be trusted to
+  # deliver output or exit status back. So: ship the transaction as a file, launch
+  # it detached on the VM (idempotent via a pid marker, safe to retry), and poll
+  # for its exit marker; output and exit status come back from files.
   $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ')
-  $remotePath = "/tmp/promotion-drill-$stamp.sh"
+  $remoteBase = "/tmp/promotion-drill-$stamp"
   $localPath = Join-Path ([IO.Path]::GetTempPath()) "promotion-drill-$stamp.sh"
   try {
     [IO.File]::WriteAllText($localPath, ($Script -replace "`r`n", "`n"), [Text.UTF8Encoding]::new($false))
-    $ErrorActionPreference = 'Continue'
-    scp $localPath "${SshTarget}:$remotePath" 2>$null
-    $scpExit = $LASTEXITCODE
-    $ErrorActionPreference = 'Stop'
-    if ($scpExit -ne 0) { Fail "$Label transaction upload failed" }
-    Start-Sleep -Seconds 3
-    $ErrorActionPreference = 'Continue'
-    $output = ssh $SshTarget "bash '$remotePath'" 2>$null
-    $sshExit = $LASTEXITCODE
-    $ErrorActionPreference = 'Stop'
-    if ($sshExit -ne 0) { Fail "$Label remote transaction exited $sshExit`n$(($output -join "`n"))" }
-    return ($output -join "`n")
+    $upload = Invoke-NativeJob 'scp' @('-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=8', $localPath, "${SshTarget}:$remoteBase.sh") 300 3
+    if ($null -eq $upload -or $upload.Code -ne 0) { Fail "$Label transaction upload failed" }
+    $launch = "test -e $remoteBase.pid || { touch $remoteBase.pid; setsid bash -c 'bash $remoteBase.sh > $remoteBase.out 2> $remoteBase.err; echo `$? > $remoteBase.exit' < /dev/null > /dev/null 2>&1 & }"
+    $launched = Invoke-NativeJob 'ssh' ($sshBaseArgs + @($SshTarget, $launch)) 60 3
+    if ($null -eq $launched -or $launched.Code -ne 0) { Fail "$Label detached launch failed" }
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $exitCode = $null
+    while ((Get-Date) -lt $deadline) {
+      Start-Sleep -Seconds 15
+      $probe = Invoke-NativeJob 'ssh' ($sshBaseArgs + @($SshTarget, "cat $remoteBase.exit 2>/dev/null")) 45 1
+      if ($null -eq $probe) { continue }
+      $probeText = ([string]$probe.Output).Trim()
+      if ($probeText -match '^\d+$') { $exitCode = [int]$probeText; break }
+    }
+    if ($null -eq $exitCode) { Fail "$Label timed out after $TimeoutSeconds seconds without an exit marker" }
+    $fetch = Invoke-NativeJob 'ssh' ($sshBaseArgs + @($SshTarget, "cat $remoteBase.out 2>/dev/null")) 120 3
+    if ($null -eq $fetch -or $fetch.Code -ne 0) { Fail "$Label could not fetch transaction output" }
+    if ($exitCode -ne 0) {
+      $errFetch = Invoke-NativeJob 'ssh' ($sshBaseArgs + @($SshTarget, "cat $remoteBase.err 2>/dev/null")) 120 1
+      $errText = if ($null -ne $errFetch) { [string]$errFetch.Output } else { '(stderr unavailable)' }
+      Fail "$Label remote transaction exited $exitCode`n$errText"
+    }
+    return [string]$fetch.Output
   }
   finally {
     if (Test-Path -LiteralPath $localPath) { Remove-Item -LiteralPath $localPath -Force }
-    $ErrorActionPreference = 'Continue'
-    ssh $SshTarget "rm -f '$remotePath'" 2>$null | Out-Null
-    $ErrorActionPreference = 'Stop'
+    Invoke-NativeJob 'ssh' ($sshBaseArgs + @($SshTarget, "rm -f $remoteBase.sh $remoteBase.out $remoteBase.err $remoteBase.exit $remoteBase.pid")) 45 1 | Out-Null
   }
 }
 
@@ -158,22 +200,36 @@ if (-not $Execute) {
 if ([string]::IsNullOrWhiteSpace($RollbackModBackupPath)) { Fail 'RollbackModBackupPath is required with -Execute' }
 
 # ------------------------------------------------------------- phase 1: snapshot
+if (-not [string]::IsNullOrWhiteSpace($ResumeSnapshotRoot)) {
+  $snapRoot = $ResumeSnapshotRoot
+  $snapshotScript = @"
+set -eu
+sudo test -f '$RollbackModBackupPath/runtime.dll'
+sudo test -f '$RollbackModBackupPath/fallback.dll'
+sudo test -f '$snapRoot/valheim-config.tgz'
+sudo test -f '$snapRoot/environment'
+sudo test -f '$snapRoot/docker-compose.yml'
+sudo docker start '$ValheimContainer' >/dev/null 2>&1 || true
+sudo sh -c "cd '$snapRoot' && sha256sum valheim-config.tgz environment docker-compose.yml | tee snapshot.sha256"
+printf 'snapshot_root=%s\n' '$snapRoot'
+"@
+} else {
 $snapStamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
 $snapRoot = "/mnt/comfy-p7/backups/promotion-drill/$snapStamp"
 $snapshotScript = @"
 set -eu
-test -f '$RollbackModBackupPath/runtime.dll'
-test -f '$RollbackModBackupPath/fallback.dll'
+sudo test -f '$RollbackModBackupPath/runtime.dll'
+sudo test -f '$RollbackModBackupPath/fallback.dll'
 sudo docker stop '$ValheimContainer'
 sudo install -d -m 0750 '$snapRoot'
 sudo tar -czf '$snapRoot/valheim-config.tgz' -C /mnt/comfy-p7/valheim config
 sudo cp -a '$EnvironmentFile' '$snapRoot/environment'
 sudo cp -a '$ComposeRoot/docker-compose.yml' '$snapRoot/docker-compose.yml'
 sudo docker start '$ValheimContainer'
-cd '$snapRoot'
-sudo sha256sum valheim-config.tgz environment docker-compose.yml | sudo tee '$snapRoot/snapshot.sha256'
+sudo sh -c "cd '$snapRoot' && sha256sum valheim-config.tgz environment docker-compose.yml | tee snapshot.sha256"
 printf 'snapshot_root=%s\n' '$snapRoot'
 "@
+}
 $snapshotOutput = Invoke-Remote $snapshotScript 'snapshot'
 Write-Receipt 'snapshot-manifest.json' ([ordered]@{
   schema = 'comfy-p7-promotion-drill-snapshot/v1'
@@ -186,11 +242,8 @@ Write-Receipt 'snapshot-manifest.json' ([ordered]@{
 
 # ----------------------------------------------------------- phase 2: cold start
 $remoteTar = "/tmp/gateway-$releaseId.oci.tar"
-$ErrorActionPreference = 'Continue'
-scp $ociTar "${SshTarget}:$remoteTar" 2>$null
-$scpExit = $LASTEXITCODE
-$ErrorActionPreference = 'Stop'
-if ($scpExit -ne 0) { Fail 'gateway OCI archive upload failed' }
+$tarUpload = Invoke-NativeJob 'scp' @('-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=8', $ociTar, "${SshTarget}:$remoteTar") 1800 2
+if ($null -eq $tarUpload -or $tarUpload.Code -ne 0) { Fail 'gateway OCI archive upload failed' }
 Start-Sleep -Seconds 3
 
 $loadScript = @"
@@ -209,11 +262,8 @@ $coldImage = Set-GatewayImage $candidateTag $candidateImageId 'cold start'
 # Candidate mod deploy + hash verification at both runtime paths.
 function Deploy-CandidateMod([string] $Label) {
   $remoteModDll = "/tmp/ComfyNetworkSense-$releaseId.dll"
-  $ErrorActionPreference = 'Continue'
-  scp $modDll "${SshTarget}:$remoteModDll" 2>$null
-  $modScpExit = $LASTEXITCODE
-  $ErrorActionPreference = 'Stop'
-  if ($modScpExit -ne 0) { Fail "$Label mod DLL upload failed" }
+  $modUpload = Invoke-NativeJob 'scp' @('-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=8', $modDll, "${SshTarget}:$remoteModDll") 300 3
+  if ($null -eq $modUpload -or $modUpload.Code -ne 0) { Fail "$Label mod DLL upload failed" }
   Start-Sleep -Seconds 3
   $modDeployScript = @"
 set -eu
