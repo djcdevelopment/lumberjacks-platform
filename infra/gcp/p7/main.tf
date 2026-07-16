@@ -163,7 +163,10 @@ resource "google_compute_instance" "p7" {
   boot_disk {
     auto_delete = true
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+      # Minimal variant: bootstrap.sh.tftpl installs everything it needs via apt.
+      # Changing the image forces instance replacement — apply only in a planned
+      # rebuild window, never casually (the docker image store lives on this disk).
+      image = "ubuntu-os-cloud/ubuntu-minimal-2404-lts-amd64"
       size  = var.boot_disk_size_gb
       type  = "pd-balanced"
     }
