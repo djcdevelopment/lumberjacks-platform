@@ -9,6 +9,12 @@ x-lumberjacks-telemetry: &lumberjacks-telemetry
   OTEL_SERVICE_VERSION: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
   COMFY_NETWORKSENSE_VERSION: "${COMFY_NETWORKSENSE_VERSION:-unknown}"
   VALHEIM_TELEMETRY_KEY: "${VALHEIM_TELEMETRY_KEY:-}"
+  LUMBERJACKS_CLIENT_ACCESS_KEY: "${LUMBERJACKS_CLIENT_ACCESS_KEY:-}"
+  LUMBERJACKS_ENROLLMENT_PATH: "/var/lib/lumberjacks/enrollment/invites.json"
+  LUMBERJACKS_ADMIN_KEY: "${LUMBERJACKS_ADMIN_KEY:-}"
+  LUMBERJACKS_PLAYER_GATEWAY_URL: "${LUMBERJACKS_PLAYER_GATEWAY_URL:-http://127.0.0.1:14000}"
+  LUMBERJACKS_ENROLLMENT_PUBLIC_URL: "${LUMBERJACKS_ENROLLMENT_PUBLIC_URL:-http://127.0.0.1:14000}"
+  LUMBERJACKS_AUTHORITATIVE_WINDOW_ID: "${LUMBERJACKS_AUTHORITATIVE_WINDOW_ID:-p7-primary-v1}"
 
 x-lumberjacks-service: &lumberjacks-service
   restart: unless-stopped
@@ -41,7 +47,8 @@ services:
       target: gateway
     ports:
       - "127.0.0.1:4000:4000"
-      - "4005:4005/udp"
+      - "${LUMBERJACKS_PLAYER_PORT:-42317}:4000"
+      - "127.0.0.1:4005:4005/udp"
     environment:
       <<: *lumberjacks-telemetry
       OTEL_SERVICE_NAME: lumberjacks-gateway
@@ -52,6 +59,7 @@ services:
       VALHEIM_ZDO_QUEUE_PATH: "/var/lib/lumberjacks/zdo-queue/redirect.wal"
     volumes:
       - /mnt/comfy-p7/lumberjacks/zdo-queue:/var/lib/lumberjacks/zdo-queue
+      - /mnt/comfy-p7/lumberjacks/enrollment:/var/lib/lumberjacks/enrollment
     depends_on:
       postgres:
         condition: service_healthy

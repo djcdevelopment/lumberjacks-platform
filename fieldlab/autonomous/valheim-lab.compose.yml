@@ -76,15 +76,19 @@ services:
       # at the container's 127.0.0.1 (the inference.py default) — reach it via
       # the host gateway. local_generate + valheim_mcp_health both read this.
       COMFY_OLLAMA: ${COMFY_OLLAMA:-http://host.docker.internal:11434}
-      COMFY_NETWORK_SENSE_DIR: /lab/state/client01/games/GameLibrary/Steam/steamapps/common/Valheim/BepInEx/config/comfy-network-sense
-      COMFY_NETWORK_SENSE_CFG: /lab/state/client01/games/GameLibrary/Steam/steamapps/common/Valheim/BepInEx/config/djcdevelopment.valheim.comfynetworksense.cfg
-      COMFY_BEPINEX_LOG: /lab/state/client01/games/GameLibrary/Steam/steamapps/common/Valheim/BepInEx/LogOutput.log
+      # The MCP dev surface follows the rendered OMEN client. Headless swarm
+      # clients remain available through valheim_swarm_clients/clientNN tools.
+      COMFY_NETWORK_SENSE_DIR: /lab/omen-config/comfy-network-sense
+      COMFY_NETWORK_SENSE_CFG: /lab/omen-config/djcdevelopment.valheim.comfynetworksense.cfg
+      COMFY_BEPINEX_LOG: /lab/omen-log/LogOutput.log
       COMFY_MCP_ROOT: /workspace/network/mcp
       COMFY_MATRIX_VAR_DIR: /workspace/network/mcp/var/matrix
       COMFY_VALHEIM_NOTES: /workspace/network/mcp/var/valheim-dev-notes.jsonl
     volumes:
       - ${AUTONOMOUS_ROOT}/state:/lab/state
       - ${COMFY_ROOT}/network/mcp/var:/workspace/network/mcp/var
+      - "${OMEN_VALHEIM_DIR:-C:/Program Files (x86)/Steam/steamapps/common/Valheim}/BepInEx/config:/lab/omen-config"
+      - "${OMEN_VALHEIM_DIR:-C:/Program Files (x86)/Steam/steamapps/common/Valheim}/BepInEx/LogOutput.log:/lab/omen-log/LogOutput.log:ro"
     command:
       - --host
       - 0.0.0.0

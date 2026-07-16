@@ -33,18 +33,20 @@ variable "data_disk_size_gb" {
   default     = 150
 }
 
-variable "control_source_ranges" {
-  description = "IPv4 CIDRs allowed to reach Lumberjacks TCP 4000 and UDP 4005. Use the OMEN egress CIDR."
-  type        = list(string)
-
-  validation {
-    condition     = length(var.control_source_ranges) > 0 && alltrue([for cidr in var.control_source_ranges : can(cidrhost(cidr, 0))])
-    error_message = "control_source_ranges must contain at least one valid CIDR."
-  }
-}
-
 variable "valheim_source_ranges" {
   description = "IPv4 CIDRs allowed to reach the Steam-only Valheim UDP ports."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "lumberjacks_player_port" {
+  description = "Authenticated direct TCP port used by enrolled ComfyNetworkSense clients."
+  type        = number
+  default     = 42317
+}
+
+variable "lumberjacks_player_source_ranges" {
+  description = "IPv4 CIDRs allowed to reach the authenticated Lumberjacks player port."
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }

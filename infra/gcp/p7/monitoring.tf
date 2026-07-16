@@ -11,35 +11,6 @@ resource "google_monitoring_notification_channel" "operator" {
   depends_on = [google_project_service.required]
 }
 
-resource "google_monitoring_uptime_check_config" "gateway" {
-  display_name = "Comfy P7 Lumberjacks gateway"
-  timeout      = "10s"
-  period       = "60s"
-
-  monitored_resource {
-    type = "uptime_url"
-    labels = {
-      host       = google_compute_address.p7.address
-      project_id = var.project_id
-    }
-  }
-
-  http_check {
-    path           = "/health"
-    port           = 4000
-    request_method = "GET"
-    use_ssl        = false
-    validate_ssl   = false
-  }
-
-  content_matchers {
-    content = "\"status\":\"ok\""
-    matcher = "CONTAINS_STRING"
-  }
-
-  depends_on = [google_project_service.required]
-}
-
 resource "google_logging_metric" "host_oom_kill" {
   name        = "comfy_p7_host_oom_kill"
   description = "Linux kernel out-of-memory kill on the P7 VM."
@@ -56,29 +27,6 @@ resource "google_logging_metric" "host_oom_kill" {
   }
 
   depends_on = [google_project_service.required]
-}
-
-resource "google_monitoring_alert_policy" "gateway_unavailable" {
-  display_name          = "Comfy P7 gateway unavailable"
-  combiner              = "OR"
-  notification_channels = local.notification_channels
-
-  conditions {
-    display_name = "Public health check failing"
-    condition_threshold {
-      filter          = "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND resource.type=\"uptime_url\" AND metric.label.check_id=\"${google_monitoring_uptime_check_config.gateway.uptime_check_id}\""
-      comparison      = "COMPARISON_LT"
-      threshold_value = 1
-      duration        = "120s"
-      aggregations {
-        alignment_period   = "60s"
-        per_series_aligner = "ALIGN_NEXT_OLDER"
-      }
-      trigger { percent = 0.5 }
-    }
-  }
-
-  alert_strategy { auto_close = "1800s" }
 }
 
 resource "google_monitoring_alert_policy" "memory_pressure" {

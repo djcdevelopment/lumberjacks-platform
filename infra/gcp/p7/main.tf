@@ -67,41 +67,16 @@ resource "google_compute_firewall" "valheim" {
   }
 }
 
-resource "google_compute_firewall" "lumberjacks_control" {
-  name          = "${local.name}-lumberjacks-control"
+resource "google_compute_firewall" "lumberjacks_player" {
+  name          = "${local.name}-player-gateway"
   network       = google_compute_network.p7.name
   direction     = "INGRESS"
-  source_ranges = var.control_source_ranges
+  source_ranges = var.lumberjacks_player_source_ranges
   target_tags   = [local.name]
 
   allow {
     protocol = "tcp"
-    ports    = ["4000"]
-  }
-
-  allow {
-    protocol = "udp"
-    ports    = ["4005"]
-  }
-}
-
-data "google_monitoring_uptime_check_ips" "public" {
-  depends_on = [google_project_service.required]
-}
-
-resource "google_compute_firewall" "gateway_uptime" {
-  name      = "${local.name}-gateway-uptime"
-  network   = google_compute_network.p7.name
-  direction = "INGRESS"
-  source_ranges = [
-    for checker in data.google_monitoring_uptime_check_ips.public.uptime_check_ips :
-    "${checker.ip_address}/32" if !strcontains(checker.ip_address, ":")
-  ]
-  target_tags = [local.name]
-
-  allow {
-    protocol = "tcp"
-    ports    = ["4000"]
+    ports    = [tostring(var.lumberjacks_player_port)]
   }
 }
 
