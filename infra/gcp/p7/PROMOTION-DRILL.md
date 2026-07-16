@@ -104,6 +104,15 @@ recover to the pre-drill baseline manually:
       append the closing roadmap note (`node scripts/roadmap.mjs note ...`).
    Do not rewrite Comfy history before pushing, or the staged revision and the
    receipt must be re-recorded.
-3. `docker-compose.promotion.yml` remains on the VM pinning the running release.
-   Remove it only when the promotion decision is final and the base compose file has
-   been updated to match.
+3. When the promotion decision is final, retire the override: set
+   `LUMBERJACKS_GATEWAY_IMAGE=<promoted tag>` in `/etc/comfy-p7/environment`, install
+   the base `docker-compose.yml` that pins `gateway.image` from that variable (no
+   `build:` fallback), verify `up -d --no-build --no-deps gateway` leaves the container
+   untouched, then delete `docker-compose.promotion.yml`.
+
+   Done for `m0-clean-20260716-r2` on 2026-07-16: the systemd reboot path
+   (`docker compose up -d`, base file only) now resolves the promoted pin, and VM-side
+   gateway builds fail closed. Pre-change copies are on the VM under
+   `/mnt/comfy-p7/backups/retire-promotion-override-20260716/`. Rollback is now an
+   env-var re-pin: set `LUMBERJACKS_GATEWAY_IMAGE` to the rollback reference and
+   `docker compose --env-file /etc/comfy-p7/environment up -d --no-build --no-deps gateway`.

@@ -42,9 +42,11 @@ services:
 
   gateway:
     <<: *lumberjacks-service
-    build:
-      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
-      target: gateway
+    # M0 freeze: the gateway runs only promoted, prebuilt release images.
+    # LUMBERJACKS_GATEWAY_IMAGE lives in /etc/comfy-p7/environment and is set
+    # by the promotion flow (PROMOTION-DRILL.md). There is deliberately no
+    # build: fallback on the VM; rollback is an image re-pin, never a rebuild.
+    image: "${LUMBERJACKS_GATEWAY_IMAGE:?LUMBERJACKS_GATEWAY_IMAGE must be set to the promoted release image}"
     ports:
       - "127.0.0.1:4000:4000"
       - "${LUMBERJACKS_PLAYER_PORT:-42317}:4000"
