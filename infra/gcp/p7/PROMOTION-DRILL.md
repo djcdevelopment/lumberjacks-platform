@@ -94,8 +94,16 @@ recover to the pre-drill baseline manually:
 
 ## 7. After the drill
 
-1. Collect the receipts from `<BundleRoot>\drill\` into the A4 exit evidence; A5 then
-   publishes the sanitized evidence and manifest at immutable repository revisions.
-2. `docker-compose.promotion.yml` remains on the VM pinning the running release.
+1. Collect the receipts from `<BundleRoot>\drill\` into the A4 exit evidence.
+2. Close A5 — the publication set is already staged at Comfy revision `433f1cc`
+   (receipt: Lumberjacks `docs/roadmap/m0-a5-publication-receipt.json`):
+   1. Push Comfy `main` (sanitized gold-run evidence set + hash-bound `-text`
+      pinning); the receipt's permalink becomes resolvable.
+   2. Push Lumberjacks `master` (A5 staging receipt + roadmap note).
+   3. Flip roadmap `golden_proof.publication` to published with the permalink and
+      append the closing roadmap note (`node scripts/roadmap.mjs note ...`).
+   Do not rewrite Comfy history before pushing, or the staged revision and the
+   receipt must be re-recorded.
+3. `docker-compose.promotion.yml` remains on the VM pinning the running release.
    Remove it only when the promotion decision is final and the base compose file has
    been updated to match.
