@@ -124,6 +124,32 @@ Certificates and the ACME account key live on `/mnt/comfy-p7/caddy/data`, which 
 persistent: the promotion drill rebuilds this stack, and a fresh `/data` re-issues every
 time until the weekly duplicate limit locks the endpoint out of TLS for days.
 
+## Shutting the VM down: stop Valheim first
+
+**Do not `gcloud compute instances stop` a P7 with the Valheim server running.** Stop the
+container first and let it save:
+
+```
+sudo docker stop -t 120 comfy-lumberjacks-p7-valheim-server-1
+# confirm before going further:
+sudo docker logs comfy-lumberjacks-p7-valheim-server-1 --tail 60 | grep "World saved"
+```
+
+Measured 2026-07-17: **`World saved ( 50451.174ms )`** — fifty seconds, for a 15,133-portal
+world, and it grows with the world. `docker stop` took 1m08s end to end.
+
+The hazard is that the compose file promises `stop_grace_period: 2m` and the platform will not
+honour it. GCP's ACPI shutdown hard-powers-off at roughly **90 seconds** for the *whole* VM —
+every container, not just this one. So the 120s grace is a promise nothing can keep: on a plain
+instance stop, Valheim can be killed mid-save. That is a truncated world file, not a lost
+session, and the auto-backup written on the way down (`ComfyEra16_backup_auto-*`) is written
+*after* the save, so it is not a safety net for the save being cut off.
+
+Nothing today enforces the ordering — the systemd unit stops the stack on shutdown, but within
+whatever budget the platform allows. Until that is fixed (a shutdown script that stops
+valheim-server first and blocks on "World saved"), the ordering lives in a human's memory, which
+is exactly where it will eventually not be.
+
 ## Security and rollout boundary
 
 - Authoritative Valheim routes accept a valid per-enrollment ID/token pair. A shared
