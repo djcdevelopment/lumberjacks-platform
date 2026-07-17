@@ -80,6 +80,33 @@ resource "google_compute_firewall" "lumberjacks_player" {
   }
 }
 
+# TLS termination for the volunteer endpoint (M1 gate). Caddy answers on both; the gateway itself
+# is never reached from outside except through it.
+#
+# 80 is NOT optional and NOT decorative: Let's Encrypt's HTTP-01 challenge is answered there, from
+# arbitrary validator addresses, so it cannot be narrowed to an operator CIDR without breaking
+# issuance. Caddy serves nothing else on it - the only other traffic it sees is the redirect to 443.
+#
+# This is not an increase in exposure. lumberjacks_player_source_ranges already defaults to
+# 0.0.0.0/0, so the player port is world-reachable in PLAINTEXT today; 443 replaces that with a
+# certificate-validated link, which is the whole point of M1's TLS gate.
+#
+# udp/443 (HTTP/3) is deliberately not opened. The mod's client is SslStream over TCP and does not
+# speak HTTP/3 at all; a browser hitting the enrollment page negotiates HTTP/3 only if it can and
+# falls back to TCP silently. Opening it would add surface for no reader.
+resource "google_compute_firewall" "lumberjacks_tls" {
+  name          = "${local.name}-tls"
+  network       = google_compute_network.p7.name
+  direction     = "INGRESS"
+  source_ranges = var.lumberjacks_tls_source_ranges
+  target_tags   = [local.name]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443"]
+  }
+}
+
 resource "google_compute_address" "p7" {
   name       = local.name
   region     = var.region

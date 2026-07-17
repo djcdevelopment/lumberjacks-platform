@@ -87,9 +87,12 @@ services:
     # your certificates can change under a drill without anyone choosing it.
     image: caddy@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17
     ports:
+      # 80 carries the ACME HTTP-01 challenge and the redirect to 443, nothing else.
+      # No udp/443: HTTP/3 is not opened in the firewall, and publishing a port nothing can reach
+      # only invites someone to debug why it does not work. The mod speaks SslStream over TCP and
+      # has no HTTP/3 at all; a browser falls back silently.
       - "80:80"
       - "443:443"
-      - "443:443/udp"
     environment:
       # `:-` and NOT `:?`, and this is load-bearing: compose interpolates EVERY service's variables
       # before it filters by profile, so a required-marker here fails `docker compose up` for the

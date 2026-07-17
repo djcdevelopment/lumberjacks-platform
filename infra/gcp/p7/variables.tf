@@ -51,6 +51,19 @@ variable "lumberjacks_player_source_ranges" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "lumberjacks_tls_source_ranges" {
+  description = <<-EOT
+    IPv4 CIDRs allowed to reach the TLS volunteer endpoint (80 and 443).
+
+    Narrowing this breaks certificate issuance: Let's Encrypt answers HTTP-01 from arbitrary
+    validator addresses, so port 80 must stay reachable from the internet or renewal silently fails
+    and the endpoint drops off TLS ~60 days later, long after anyone connects the two events. Use
+    DNS-01 instead if this must be restricted.
+  EOT
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 variable "alert_email" {
   description = "Operator address for memory, swap, OOM-risk, disk, agent, and gateway alerts."
   type        = string
