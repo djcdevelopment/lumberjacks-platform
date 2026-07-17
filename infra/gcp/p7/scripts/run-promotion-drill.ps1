@@ -46,7 +46,13 @@ param(
   # stop/tar/restart and only re-verifies, hashes, and writes the receipt. The
   # archive must have been taken with the server stopped for it to be valid.
   [string] $ResumeSnapshotRoot = '',
-  [switch] $Execute
+  [switch] $Execute,
+  # Retire the promotion override into the durable env pin once the promotion decision
+  # is final (PROMOTION-DRILL.md step 3). Without this the drill leaves the candidate
+  # running through docker-compose.promotion.yml, which compose does NOT auto-load, so
+  # the systemd reboot path silently reverts to whatever LUMBERJACKS_GATEWAY_IMAGE
+  # still names. Drill-only runs (proving rollback, not promoting) should omit it.
+  [switch] $Finalize
 )
 
 $ErrorActionPreference = 'Stop'
@@ -129,6 +135,41 @@ function Invoke-Remote([string] $Script, [string] $Label, [int] $TimeoutSeconds 
     if (Test-Path -LiteralPath $localPath) { Remove-Item -LiteralPath $localPath -Force }
     Invoke-NativeJob 'ssh' ($sshBaseArgs + @($SshTarget, "rm -f $remoteBase.sh $remoteBase.out $remoteBase.err $remoteBase.exit $remoteBase.pid")) 45 1 | Out-Null
   }
+}
+
+function Get-DurablePin {
+  return (Invoke-Remote @"
+set -eu
+grep -E '^LUMBERJACKS_GATEWAY_IMAGE=' '$EnvironmentFile' | cut -d= -f2-
+"@ 'durable_pin').Trim()
+}
+
+# PROMOTION-DRILL.md step 3, executed rather than left as a manual footnote: point the
+# durable pin at the promoted tag, delete the override, and prove the reboot path -- the
+# base compose alone, which is exactly what systemd runs -- resolves the candidate.
+function Set-DurablePin([string] $ImageReference, [string] $ExpectedImageId) {
+  $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd')
+  $backup = "/mnt/comfy-p7/backups/retire-promotion-override-$stamp"
+  $script = @"
+set -eu
+cd '$ComposeRoot'
+sudo install -d -m 0750 '$backup'
+sudo cp -a '$EnvironmentFile' '$backup/environment'
+if test -f docker-compose.promotion.yml; then
+  sudo cp -a docker-compose.promotion.yml '$backup/docker-compose.promotion.yml'
+fi
+sudo sed -i 's|^LUMBERJACKS_GATEWAY_IMAGE=.*|LUMBERJACKS_GATEWAY_IMAGE=$ImageReference|' '$EnvironmentFile'
+sudo rm -f docker-compose.promotion.yml
+sudo docker compose --env-file '$EnvironmentFile' up -d --no-build --no-deps gateway
+actual=`$(sudo docker inspect '$GatewayContainer' --format '{{.Image}}')
+if test "`$actual" != '$ExpectedImageId'; then
+  echo "durable pin resolves to `$actual, expected $ExpectedImageId" >&2
+  exit 1
+fi
+curl --fail --silent http://127.0.0.1:4000/health | grep -q '"status":"ok"'
+printf 'durable_pin=%s\n' '$ImageReference'
+"@
+  Invoke-Remote $script 'finalize' | Out-Null
 }
 
 function Set-GatewayImage([string] $ImageReference, [string] $ExpectedImageId, [string] $Label) {
@@ -326,13 +367,40 @@ Write-Receipt 'rollback-receipt.json' ([ordered]@{
 # -------------------------------------------------------------- phase 4: restore
 $restoredImage = Set-GatewayImage $candidateTag $candidateImageId 'restore'
 Deploy-CandidateMod 'restore'
+
+if ($Finalize) {
+  Set-DurablePin $candidateTag $candidateImageId
+}
+# Always recorded, never inferred: the running container proves nothing about what comes
+# back after a reboot. Phases 2-4 pin through docker-compose.promotion.yml, which compose
+# does not auto-load, so until the override is retired the durable pin is whatever it was.
+$durablePin = Get-DurablePin
+$durablePinOk = ($durablePin -eq $candidateTag)
+
+$checks = @('gateway_health=ok', "gateway_image=$restoredImage", 'mod_runtime_hash=match', 'mod_fallback_hash=match')
+$checks += if ($durablePinOk) { 'durable_pin=candidate' } else { "durable_pin=$durablePin" }
 Write-Receipt 'restored-state-receipt.json' ([ordered]@{
   schema = 'comfy-p7-promotion-drill-restore/v1'
   release_id = $releaseId
   completed_utc = NowUtc
   gateway_image_id = $restoredImage
   mod_sha256 = $candidateModSha
-  checks = @('gateway_health=ok', "gateway_image=$restoredImage", 'mod_runtime_hash=match', 'mod_fallback_hash=match')
+  durable_pin = $durablePin
+  durable_pin_matches_candidate = $durablePinOk
+  override_retired = [bool] $Finalize
+  checks = $checks
 })
 
 Write-Output "Promotion drill complete for $releaseId. Receipts under $(Join-Path $BundleRoot 'drill')."
+if ($durablePinOk) {
+  Write-Output "Durable pin: $durablePin -- the systemd reboot path resolves the promoted release."
+} else {
+  Write-Warning @"
+NOT DURABLE. $GatewayContainer is running the candidate only via docker-compose.promotion.yml,
+which compose does NOT auto-load. $EnvironmentFile still pins:
+    $durablePin
+so `docker compose up -d` -- what systemd runs on reboot -- will revert the Gateway to that
+image, with nothing to indicate it happened. Re-run with -Finalize when the promotion decision
+is final, or retire the override by hand per PROMOTION-DRILL.md step 3.
+"@
+}
