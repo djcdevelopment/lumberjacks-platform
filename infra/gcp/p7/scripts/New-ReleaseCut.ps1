@@ -95,10 +95,29 @@ if (-not $WhatIf) {
 # Reading source back would only prove the regex worked. Reading the build log would only prove a
 # flag was passed. The question is what the DLLs actually carry, because that is what ships and
 # what the gate compares at runtime.
+# Windows PowerShell 5.1 - the only shell on this box - has no GAC entry for
+# System.Reflection.Metadata, so `Add-Type -AssemblyName` cannot find it and PEReader below dies
+# with a type-not-found. It failed *after* the source edit and both builds had already run, so the
+# damage was a half-applied cut, and `-ErrorAction SilentlyContinue` hid the actual cause. The
+# netstandard2.0 builds vendored in lib/ do load on .NET Framework 4.8. Load those, in this order
+# (Metadata needs Immutable), and never silently: a reader we cannot load must fail loudly, because
+# the alternative is a cut that ships without ever checking what it shipped.
+function Initialize-MetadataReader {
+  if ('System.Reflection.PortableExecutable.PEReader' -as [type]) { return }
+  foreach ($dll in @('System.Collections.Immutable.dll', 'System.Reflection.Metadata.dll')) {
+    $path = Join-Path (Join-Path $PSScriptRoot 'lib') $dll
+    if (!(Test-Path -LiteralPath $path)) { throw "metadata reader missing: $path" }
+    Add-Type -Path $path
+  }
+  if (-not ('System.Reflection.PortableExecutable.PEReader' -as [type])) {
+    throw 'metadata assemblies loaded but PEReader is still unavailable; cannot verify release identity.'
+  }
+}
+
 function Get-AssemblyMetadataValue {
   param([string] $DllPath, [string] $Key)
   if (!(Test-Path -LiteralPath $DllPath)) { throw "artifact not found: $DllPath" }
-  Add-Type -AssemblyName System.Reflection.Metadata -ErrorAction SilentlyContinue
+  Initialize-MetadataReader
   $stream = [IO.File]::OpenRead($DllPath)
   try {
     $pe = New-Object System.Reflection.PortableExecutable.PEReader($stream)
