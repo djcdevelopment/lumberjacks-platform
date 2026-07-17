@@ -80,15 +80,65 @@ passes when it reaches 100% coverage, zero native-only/fallback, receipts equal
 acknowledgements, pending zero, `complete=true`, and zero reject/duplicate/retry/client
 transport failures.
 
+## TLS: the name is decided, the switch is not thrown
+
+The public name is **`comfy-p7.duckdns.org`**, pointed at the reserved static address
+`8.231.129.249` (`google_compute_address.p7`, `terraform output public_ip`). Verified
+2026-07-17 against 1.1.1.1 and 8.8.8.8; TTL 60.
+
+The static address is what makes a name workable at all: P7 sits TERMINATED between
+sessions, and an ephemeral IP would break the record on every boot. duckdns is being used
+as *static* DNS here — the IP never changes, so there is no updater daemon and no cron.
+`duckdns.org` is on the Public Suffix List, so this name carries its own Let's Encrypt
+rate limit rather than sharing one exhausted bucket with every other duckdns user.
+
+**A trap worth knowing:** duckdns pre-fills its "current ip" box with the address of
+whoever loaded the page — correct for a box updating its own dynamic IP, wrong for naming
+a machine you are not browsing from. It first pointed at an operator laptop and looked
+entirely successful. Nothing warns you. **Always resolve the name and compare to
+`terraform output public_ip` before enabling TLS**, because Caddy retries issuance
+automatically and each failure spends one of five per week.
+
+To turn TLS on, at the next boot:
+
+1. Add to `/etc/comfy-p7/environment` (read by `comfy-lumberjacks-p7.service` via
+   `EnvironmentFile`):
+
+   ```
+   LUMBERJACKS_PUBLIC_DNS_NAME=comfy-p7.duckdns.org
+   LUMBERJACKS_ACME_EMAIL=<an address a human reads>
+   COMPOSE_PROFILES=tls
+   ```
+
+   The ACME address is deliberately not recorded here: it is where Let's Encrypt sends
+   expiry warnings, and this repo publishes evidence. Set it on the VM, not in git.
+
+2. `terraform apply` for the `-tls` firewall rule (80 and 443). Port 80 is not optional —
+   HTTP-01 is answered there — and narrowing it does not fail at apply, it fails at
+   renewal ~60 days later, silently.
+
+3. Confirm `https://comfy-p7.duckdns.org/` serves and the certificate validates, then the
+   plaintext player port can stop being the volunteer path.
+
+Certificates and the ACME account key live on `/mnt/comfy-p7/caddy/data`, which must stay
+persistent: the promotion drill rebuilds this stack, and a fresh `/data` re-issues every
+time until the weekly duplicate limit locks the endpoint out of TLS for days.
+
 ## Security and rollout boundary
 
 - Authoritative Valheim routes accept a valid per-enrollment ID/token pair. A shared
   fallback client key may still exist for operator compatibility but is not the normal
   volunteer credential.
-- The current endpoint is plain HTTP on a non-default port. Dashboard GET routes are
-  not access-controlled. This is acceptable only for the explicitly limited pilot.
+- The current endpoint is plain HTTP on a non-default port — and that port is world-open
+  (`lumberjacks_player_source_ranges` defaults to `0.0.0.0/0`), so this is not a private
+  plane. Dashboard GET routes are not access-controlled. Acceptable only for the
+  explicitly limited pilot.
 - Before wider public use, add TLS, rate limiting, credential revocation/rotation,
   access logging, and separation of public telemetry from control paths.
+  **TLS is now built and staged but not on** — mod client, Caddy sidecar, firewall and
+  name all exist; see "TLS: the name is decided, the switch is not thrown" above. Until
+  it is enabled, the volunteer's credential still crosses a plaintext public link, which
+  is the open half of M1 gate 4.
 - Before simultaneous volunteers, make queue delivery and acknowledgements
   recipient-scoped and pass a two-real-client isolation test. Authentication alone
   does not make today's shared queue multiplayer-correct.
