@@ -66,6 +66,51 @@ services:
       postgres:
         condition: service_healthy
 
+  # TLS termination for the public volunteer endpoint (M1 gate). INERT BY DEFAULT: the `tls` profile
+  # means this service does not exist for any plain `docker compose up` - it starts only under
+  # COMPOSE_PROFILES=tls. A profile rather than an override file on purpose: M0 retired the
+  # promotion override precisely because a second file that must be remembered is a footgun, and an
+  # in-file switch that must be named cannot be forgotten into the default path.
+  #
+  # PREREQUISITES, none of which this file can satisfy on its own:
+  #   1. LUMBERJACKS_PUBLIC_DNS_NAME - a real DNS A record pointing at this VM. ACME will not issue
+  #      for a bare IP, so there is no TLS without a name. Operator decision, still open.
+  #   2. LUMBERJACKS_ACME_EMAIL - where Let's Encrypt sends expiry warnings.
+  #   3. Firewall: 80 and 443 open. 80 is not optional - HTTP-01 issuance needs it - and neither is
+  #      in the current terraform, which opens only the player port.
+  # Enabling the profile without these fails fast at startup rather than half-serving, which is the
+  # behaviour we want from a switch that only ever gets thrown once.
+  caddy:
+    <<: *lumberjacks-service
+    profiles: ["tls"]
+    # Digest-pinned like valheim-server: a floating tag on a TLS terminator means the thing holding
+    # your certificates can change under a drill without anyone choosing it.
+    image: caddy@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      # `:-` and NOT `:?`, and this is load-bearing: compose interpolates EVERY service's variables
+      # before it filters by profile, so a required-marker here fails `docker compose up` for the
+      # whole stack - including the default, caddy-less path P7 actually boots with. Caught by
+      # `docker compose config --services` on the default profile, which errored on a service that
+      # was never going to start. The requirement is enforced where it can be without breaking
+      # unrelated boots: an empty name is not a site address, so Caddy refuses to start (Caddyfile).
+      LUMBERJACKS_PUBLIC_DNS_NAME: "${LUMBERJACKS_PUBLIC_DNS_NAME:-}"
+      LUMBERJACKS_ACME_EMAIL: "${LUMBERJACKS_ACME_EMAIL:-}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # /data holds the issued certificates AND the ACME account key. It MUST be persistent: the
+      # promotion drill rebuilds this stack routinely, and a fresh /data re-issues every time until
+      # Let's Encrypt's duplicate-certificate limit (5/week for the same name set) locks the endpoint
+      # out of TLS for days. This mount is the difference between a drill and an outage.
+      - /mnt/comfy-p7/caddy/data:/data
+      - /mnt/comfy-p7/caddy/config:/config
+    depends_on:
+      gateway:
+        condition: service_started
+
   eventlog:
     <<: *lumberjacks-service
     build:
