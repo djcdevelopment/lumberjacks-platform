@@ -222,7 +222,15 @@ sudo test -f '$RollbackModBackupPath/runtime.dll'
 sudo test -f '$RollbackModBackupPath/fallback.dll'
 sudo docker stop '$ValheimContainer'
 sudo install -d -m 0750 '$snapRoot'
-sudo tar -czf '$snapRoot/valheim-config.tgz' -C /mnt/comfy-p7/valheim config
+# Snapshot the state a rollback actually needs to restore: the live worlds and the
+# BepInEx runtime/config. Explicitly NOT config/backups -- that is the Valheim
+# server's own hourly world zips, which are already backups and grow without bound
+# (44 GB / 75 files by 2026-07-17, against 8.6 GB of live worlds). Archiving them
+# made this phase scale with backup history rather than world size: the server sat
+# stopped for the whole gzip, and the archive threatened the volume that also holds
+# postgres, the ZDO WAL and the enrollment store. Excluding them is safe precisely
+# because they are backups -- restoring one has never been part of this drill.
+sudo tar -czf '$snapRoot/valheim-config.tgz' -C /mnt/comfy-p7/valheim --exclude='config/backups' config
 sudo cp -a '$EnvironmentFile' '$snapRoot/environment'
 sudo cp -a '$ComposeRoot/docker-compose.yml' '$snapRoot/docker-compose.yml'
 sudo docker start '$ValheimContainer'
