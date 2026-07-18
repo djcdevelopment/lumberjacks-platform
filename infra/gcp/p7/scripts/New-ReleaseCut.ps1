@@ -70,7 +70,13 @@ if (-not $WhatIf) {
 # --- 2. build both, each from the same $ReleaseId ------------------------------------------------
 if (-not $WhatIf) {
   Write-Host "`nbuilding mod (net48, Release)..."
-  & dotnet build $modProject -c Release -v quiet --nologo
+  # A cut must not ship anything until the identity check has passed, and this build is no
+  # exception: the csproj's CopyAssembly target auto-copies every build into the live Steam
+  # client's plugins folder (that is the OMEN client-deploy convenience, keep it elsewhere).
+  # Here it would land a release-id DLL on the client BEFORE the check below has run - a failed
+  # cut would already have shipped locally. Point the copy at a path that does not exist so the
+  # target's Exists() gate stays shut.
+  & dotnet build $modProject -c Release -v quiet --nologo -p:PluginOutputPath=C:\__comfy_cut_no_plugin_copy__
   if ($LASTEXITCODE -ne 0) { throw 'mod build failed' }
 
   # The Gateway targets net9.0 and this workstation ships only the .NET 8 SDK, so a bare
@@ -172,6 +178,9 @@ Next, and NOT done by this script:
   5. Only then flip StrictReleaseEnabled on the window - it must stay OFF until the cut has landed
      everywhere, because a mod predating mod_release_id sends nothing and absence rejects.
 
-Rebuild-to-verify is NOT established (plan risk 12): a clone and this working tree still build
-different DLLs, so these hashes attest what this machine built, not what the commit builds.
+Rebuild-to-verify (plan risk 12): established SAME-MACHINE 2026-07-18 - a clean detached worktree
+at the same commit built a byte-identical ComfyNetworkSense.dll (Deterministic+CIB+PathMap doing
+their job, SDK 8.0.422). Cross-machine reproducibility is still unproven: a different SDK patch or
+different Valheim reference assemblies can change the bytes, so a clone on another box still owes
+one hash comparison before its build may be called the release.
 "@
