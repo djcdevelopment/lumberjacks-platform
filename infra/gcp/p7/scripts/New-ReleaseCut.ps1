@@ -178,9 +178,15 @@ Next, and NOT done by this script:
   5. Only then flip StrictReleaseEnabled on the window - it must stay OFF until the cut has landed
      everywhere, because a mod predating mod_release_id sends nothing and absence rejects.
 
-Rebuild-to-verify (plan risk 12): established SAME-MACHINE 2026-07-18 - a clean detached worktree
-at the same commit built a byte-identical ComfyNetworkSense.dll (Deterministic+CIB+PathMap doing
-their job, SDK 8.0.422). Cross-machine reproducibility is still unproven: a different SDK patch or
-different Valheim reference assemblies can change the bytes, so a clone on another box still owes
-one hash comparison before its build may be called the release.
+Rebuild-to-verify (plan risk 12): ROOT CAUSE FOUND 2026-07-18. The .NET 8 SDK's implicit
+source-control tasks embed the git HEAD sha in the portable PDB (only when origin is a recognized
+host like github; a local-path clone embeds nothing), and the PDB checksum rides in the DLL's
+debug directory. So the DLL's identity bytes change on EVERY COMMIT with unchanged source, and a
+local clone can never match this tree - that was the whole clone-vs-worktree mystery. Proven:
+-p:EnableSourceControlManagerQueries=false makes a clone and this tree build byte-identical DLLs.
+Consequence for cuts as ordered today (build, THEN commit): the shipped DLL embeds the sha of the
+release commit's PARENT, so no checkout of the release commit can ever rebuild it. The fix is a
+decision, not code here: pin the queries off in the csproj (hash = source alone, loses embedded
+provenance), or reorder to commit-first-build-second (keeps provenance, rebuild needs same origin
+URL). Until one is chosen these hashes attest what this machine built at this exact HEAD.
 "@
