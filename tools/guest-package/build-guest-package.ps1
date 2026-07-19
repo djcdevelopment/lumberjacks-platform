@@ -43,10 +43,20 @@ Copy-Stamped (Join-Path $PSScriptRoot 'Uninstall-ComfyGuest.ps1') (Join-Path $Ou
 Copy-Stamped (Join-Path $PSScriptRoot 'Collect-ComfyGuestDiagnostics.ps1') (Join-Path $OutputRoot 'scripts\Collect-ComfyGuestDiagnostics.ps1')
 Copy-Stamped (Join-Path $PSScriptRoot 'lib\ComfyGuestCommon.psm1') (Join-Path $OutputRoot 'scripts\lib\ComfyGuestCommon.psm1')
 
-$python = 'C:\Users\derek\AppData\Local\Programs\Python\Python312\python.exe'
-$guide = & $python (Join-Path $PSScriptRoot '..\render_guest_guide.py') --manifest $manifestPath --inputs $inputsPath --output (Join-Path $OutputRoot 'GUEST-GUIDE.md')
+function Test-PythonCommand([string]$Exe, [string[]]$Prefix) {
+    try { $null = & $Exe @Prefix -c 'import sys; sys.exit(0)' 2>$null; return ($LASTEXITCODE -eq 0) } catch { return $false }
+}
+$pythonExe = $null; $pythonArgs = @()
+$py = Get-Command py.exe -ErrorAction SilentlyContinue
+if ($py -and (Test-PythonCommand $py.Source @('-3'))) { $pythonExe = $py.Source; $pythonArgs = @('-3') }
+if (!$pythonExe) {
+    $python = Get-Command python.exe -ErrorAction SilentlyContinue
+    if ($python -and (Test-PythonCommand $python.Source @())) { $pythonExe = $python.Source; $pythonArgs = @() }
+}
+if (!$pythonExe) { throw 'Python 3 was not found; install Python or expose a working py.exe/python.exe on PATH.' }
+$guide = & $pythonExe @pythonArgs (Join-Path $PSScriptRoot '..\render_guest_guide.py') --manifest $manifestPath --inputs $inputsPath --output (Join-Path $OutputRoot 'GUEST-GUIDE.md')
 if ($LASTEXITCODE -ne 0) { Fail 'guide renderer failed' }
-$guide = & $python (Join-Path $PSScriptRoot '..\render_guest_guide.py') --manifest $manifestPath --inputs $inputsPath --output (Join-Path $OutputRoot 'GUEST-GUIDE.md') --drift-scan
+$guide = & $pythonExe @pythonArgs (Join-Path $PSScriptRoot '..\render_guest_guide.py') --manifest $manifestPath --inputs $inputsPath --output (Join-Path $OutputRoot 'GUEST-GUIDE.md') --drift-scan
 if ($LASTEXITCODE -ne 0) { Fail 'guide drift scan failed' }
 $captured = [DateTime]::Parse([string]$manifest.captured_utc).ToUniversalTime().ToString('o')
 $entries = @()

@@ -16,7 +16,16 @@ foreach ($file in @($receipt.files)) {
     $full = [IO.Path]::GetFullPath($path)
     if (!$full.StartsWith($bepFull + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw ('receipt path escapes BepInEx: ' + $path) }
     $backup = [string]$file.backup
-    if ([bool]$file.existed) {
+    $isConfig = ([string]$full).EndsWith('djcdevelopment.valheim.comfynetworksense.cfg', [StringComparison]::OrdinalIgnoreCase)
+    $managedKeys = if ($file.PSObject.Properties['managed_keys']) { @($file.managed_keys) } else { @() }
+    $installedHash = if ($file.PSObject.Properties['installed_sha256']) { [string]$file.installed_sha256 } else { '' }
+    $currentMatchesInstall = (Test-Path -LiteralPath $full -PathType Leaf) -and $installedHash -and ((Get-ComfySha256 $full) -eq $installedHash)
+    if ($isConfig -and $managedKeys.Count -gt 0 -and !$currentMatchesInstall) {
+        $currentText = [IO.File]::ReadAllText($full, (New-Object Text.UTF8Encoding($false)))
+        $cleaned = Remove-ComfyBepInExKeys $currentText $managedKeys
+        if ([string]::IsNullOrWhiteSpace($cleaned) -and ![bool]$file.existed) { Remove-Item -LiteralPath $full -Force }
+        else { Invoke-ComfyAtomicReplace $full { param($tmp); Write-ComfyUtf8NoBom $tmp $cleaned } }
+    } elseif ([bool]$file.existed) {
         if (!$backup -or !(Test-Path -LiteralPath $backup -PathType Leaf)) { throw ('receipt backup missing: ' + $path) }
         Copy-Item -LiteralPath $backup -Destination $full -Force
     } elseif (Test-Path -LiteralPath $full) {

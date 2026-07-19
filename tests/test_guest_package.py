@@ -96,6 +96,14 @@ class GuestPackageTests(unittest.TestCase):
         self.assertEqual(config.read_bytes(), before_config)
         self.assertEqual(third.read_bytes(), before_third)
         self.assertFalse((self.valheim / "BepInEx" / "comfy-guest-install.json").exists())
+        self._ps(INSTALLER, "-BootstrapUrl", self._bootstrap(), "-ValheimPath", self.valheim, "-PackageRoot", self.package)
+        with config.open("a", encoding="utf-8") as handle:
+            handle.write("\n[General]\nuserEdited=true\n\n[Lumberjacks]\nuserOwnedKey=keep\n")
+        self._ps(UNINSTALLER, "-ValheimPath", self.valheim)
+        edited = config.read_text(encoding="utf-8")
+        self.assertIn("userEdited=true", edited)
+        self.assertIn("userOwnedKey=keep", edited)
+        self.assertNotIn("lumberjacksGatewayUrl=", edited)
 
     def test_preflight_ready_fixture(self):
         data = json.loads((self.package / "guest-package-inputs.json").read_text(encoding="utf-8-sig"))

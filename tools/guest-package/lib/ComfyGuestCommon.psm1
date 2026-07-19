@@ -77,6 +77,29 @@ function Merge-ComfyBepInExSection {
     return [string]::Join($newline, $lines.ToArray())
 }
 
+function Remove-ComfyBepInExKeys {
+    param(
+        [Parameter(Mandatory=$true)][string]$Text,
+        [Parameter(Mandatory=$true)][string[]]$Keys,
+        [string]$Section = 'Lumberjacks'
+    )
+    $newline = if ($Text.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $lines = [Collections.Generic.List[string]]::new()
+    foreach ($line in ($Text -split "`r?`n", -1)) { [void]$lines.Add($line) }
+    $start = -1; $end = $lines.Count
+    for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i].Trim() -eq ('[' + $Section + ']')) { $start = $i; break } }
+    if ($start -lt 0) { return $Text }
+    for ($i = $start + 1; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^\s*\[[^\]]+\]\s*$') { $end = $i; break } }
+    $keySet = @{}
+    foreach ($key in $Keys) { $keySet[[string]$key] = $true }
+    for ($i = $end - 1; $i -gt $start; $i--) {
+        if ($lines[$i] -match '^\s*([^#;=\s]+)\s*=') {
+            if ($keySet.ContainsKey($Matches[1])) { $lines.RemoveAt($i) }
+        }
+    }
+    return [string]::Join($newline, $lines.ToArray())
+}
+
 function Find-ComfySteamValheimInstall {
     param([string[]]$Roots)
     $candidates = New-Object System.Collections.Generic.List[string]
@@ -136,4 +159,4 @@ function Get-ComfyBootstrap {
     return [pscustomobject]@{ StatusCode = $status; Body = $body; Values = $values }
 }
 
-Export-ModuleMember -Function Get-ComfySha256,Write-ComfyUtf8NoBom,Invoke-ComfyAtomicReplace,Merge-ComfyBepInExSection,Find-ComfySteamValheimInstall,Remove-ComfySensitiveText,Get-ComfyBootstrap
+Export-ModuleMember -Function Get-ComfySha256,Write-ComfyUtf8NoBom,Invoke-ComfyAtomicReplace,Merge-ComfyBepInExSection,Remove-ComfyBepInExKeys,Find-ComfySteamValheimInstall,Remove-ComfySensitiveText,Get-ComfyBootstrap

@@ -37,7 +37,7 @@ try {
     $values = [ordered]@{ lumberjacksGatewayUrl = $boot.Values['lumberjacksGatewayUrl']; lumberjacksAuthoritativeWindowId = $boot.Values['lumberjacksAuthoritativeWindowId']; lumberjacksEnrollmentId = $boot.Values['lumberjacksEnrollmentId']; lumberjacksClientAccessKey = $boot.Values['lumberjacksClientAccessKey']; zdoAuthoritativeConsumerEnabled = 'true' }
     $merged = Merge-ComfyBepInExSection $cfgText $values
     Invoke-ComfyAtomicReplace $cfgPath { param($tmp); Write-ComfyUtf8NoBom $tmp $merged }
-    $touched += [ordered]@{ path = $cfgPath; existed = $cfgExisted; backup = $(if ($cfgExisted) { Join-Path $backupDir 'config.cfg' } else { $null }) }
+    $touched += [ordered]@{ path = $cfgPath; existed = $cfgExisted; backup = $(if ($cfgExisted) { Join-Path $backupDir 'config.cfg' } else { $null }); managed_keys = @($values.Keys); installed_sha256 = Get-ComfySha256 $cfgPath }
     Invoke-ComfyAtomicReplace $pluginPath { param($tmp); Copy-Item -LiteralPath $dll -Destination $tmp -Force }
     $touched += [ordered]@{ path = $pluginPath; existed = $pluginExisted; backup = $(if ($pluginExisted) { Join-Path $backupDir 'plugin.dll' } else { $null }) }
     $receipt = [ordered]@{ schema = 'comfy-guest-install/v1'; installed_utc = [DateTime]::UtcNow.ToString('o'); package_release_id = [string]$manifest.release_id; backup_dir = $backupDir; files = $touched }
