@@ -99,73 +99,97 @@ if (-not $WhatIf) {
 
 # --- 3. THE CHECK: ask the ARTIFACTS, not the source --------------------------------------------
 # Reading source back would only prove the regex worked. Reading the build log would only prove a
-# flag was passed. The question is what the DLLs actually carry, because that is what ships and
+# flag was passed. The question is what the artifacts actually carry, because that is what ships and
 # what the gate compares at runtime.
-# Windows PowerShell 5.1 - the only shell on this box - has no GAC entry for
-# System.Reflection.Metadata, so `Add-Type -AssemblyName` cannot find it and PEReader below dies
-# with a type-not-found. It failed *after* the source edit and both builds had already run, so the
-# damage was a half-applied cut, and `-ErrorAction SilentlyContinue` hid the actual cause. The
-# netstandard2.0 builds vendored in lib/ do load on .NET Framework 4.8. Load those, in this order
-# (Metadata needs Immutable), and never silently: a reader we cannot load must fail loudly, because
-# the alternative is a cut that ships without ever checking what it shipped.
-function Initialize-MetadataReader {
-  if ('System.Reflection.PortableExecutable.PEReader' -as [type]) { return }
-  foreach ($dll in @('System.Collections.Immutable.dll', 'System.Reflection.Metadata.dll')) {
-    $path = Join-Path (Join-Path $PSScriptRoot 'lib') $dll
-    if (!(Test-Path -LiteralPath $path)) { throw "metadata reader missing: $path" }
-    Add-Type -Path $path
-  }
-  if (-not ('System.Reflection.PortableExecutable.PEReader' -as [type])) {
-    throw 'metadata assemblies loaded but PEReader is still unavailable; cannot verify release identity.'
-  }
+#
+# The metadata reader lives in lib/ReleaseIdentity.ps1, shared with Test-GatewayImageRelease.ps1.
+# Two readers of the same value is how a release gate ends up with two answers and a preference for
+# the convenient one; there is exactly one implementation, and both callers use it. (It also carries
+# the Windows PowerShell 5.1 note about why the assemblies are vendored rather than loaded from the
+# GAC - read it before "simplifying" that.)
+$releaseIdentityLib = Join-Path $PSScriptRoot 'lib\ReleaseIdentity.ps1'
+if (!(Test-Path -LiteralPath $releaseIdentityLib)) {
+  # Same reasoning as the reader's own load-loudly rule: a cut that cannot verify what it built must
+  # stop, not continue and report success it never established.
+  throw "missing metadata reader: $releaseIdentityLib"
 }
-
-function Get-AssemblyMetadataValue {
-  param([string] $DllPath, [string] $Key)
-  if (!(Test-Path -LiteralPath $DllPath)) { throw "artifact not found: $DllPath" }
-  Initialize-MetadataReader
-  $stream = [IO.File]::OpenRead($DllPath)
-  try {
-    $pe = New-Object System.Reflection.PortableExecutable.PEReader($stream)
-    try {
-      $md = [System.Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($pe)
-      foreach ($h in $md.CustomAttributes) {
-        $attr = $md.GetCustomAttribute($h)
-        try {
-          $blob = $md.GetBlobReader($attr.Value)
-          [void]$blob.ReadUInt16()
-          $k = $blob.ReadSerializedString()
-          $v = $blob.ReadSerializedString()
-          if ($k -eq $Key) { return $v }
-        } catch { }
-      }
-    } finally { $pe.Dispose() }
-  } finally { $stream.Dispose() }
-  return $null
-}
+. $releaseIdentityLib
 
 if (-not $WhatIf) {
-  $gatewayDll = Get-ChildItem -Path (Join-Path $LumberjacksRoot 'src\Game.Gateway\bin\Release') `
-      -Filter 'Game.Gateway.dll' -Recurse | Select-Object -First 1
-  if (-not $gatewayDll) { throw 'gateway artifact not found after build' }
+  # --- 3a. the mod side: unchanged, and still authoritative --------------------------------------
+  # The mod ships as this very DLL - it is copied to clients as-is - so reading it here is reading
+  # the shipped artifact. Nothing about the Gateway problem below applies to it.
+  $modBaked = Get-AssemblyMetadataValue -DllPath $modDll -Key 'LumberjacksModReleaseId'
 
-  $modBaked     = Get-AssemblyMetadataValue -DllPath $modDll            -Key 'LumberjacksModReleaseId'
-  $gatewayBaked = Get-AssemblyMetadataValue -DllPath $gatewayDll.FullName -Key 'LumberjacksExpectedModRelease'
+  Write-Host "`n--- what the MOD artifact says ---"
+  Write-Host ("  mod ComfyNetworkSense.dll : {0}" -f $modBaked)
 
-  Write-Host "`n--- what the ARTIFACTS say ---"
-  Write-Host ("  mod     ComfyNetworkSense.dll : {0}" -f $modBaked)
-  Write-Host ("  gateway Game.Gateway.dll      : {0}" -f $gatewayBaked)
-
-  $problems = @()
-  if ($modBaked     -ne $ReleaseId) { $problems += "mod DLL says '$modBaked', cut is '$ReleaseId'" }
-  if ($gatewayBaked -ne $ReleaseId) { $problems += "gateway DLL says '$gatewayBaked', cut is '$ReleaseId'" }
-  if ($modBaked -ne $gatewayBaked)  { $problems += "THE TWO SIDES DISAGREE - this gateway would reject this mod" }
-
-  if ($problems.Count -gt 0) {
-    $problems | ForEach-Object { Write-Host "  FAIL: $_" -ForegroundColor Red }
+  if ($modBaked -ne $ReleaseId) {
+    Write-Host "  FAIL: mod DLL says '$modBaked', cut is '$ReleaseId'" -ForegroundColor Red
     throw 'release identity check failed; nothing from this cut should ship'
   }
-  Write-Host "  OK: both artifacts agree on '$ReleaseId'" -ForegroundColor Green
+  Write-Host "  OK: mod artifact carries '$ReleaseId'" -ForegroundColor Green
+
+  # --- 3b. the gateway's bin/Release DLL: ADVISORY ONLY, NOT A GATE ------------------------------
+  # This read used to be the Gateway's release check, and it was checking the wrong object. The
+  # Gateway does not ship as a loose DLL; it ships as a Docker image. bin/Release is a local publish
+  # that never leaves this machine, and it was green while the IMAGE carried no release attribute at
+  # all - because the Dockerfile published the Gateway without the property, and "dev" maps to null,
+  # and null DISABLES the gate. A passing check on an object nobody deploys is worse than no check:
+  # it is a gate that reports armed while being off.
+  #
+  # It is kept only because a disagreement here is a useful early hint that the local build and the
+  # image were made from different inputs. It CANNOT fail the cut. The image below decides.
+  $gatewayDll = Get-ChildItem -Path (Join-Path $LumberjacksRoot 'src\Game.Gateway\bin\Release') `
+      -Filter 'Game.Gateway.dll' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+
+  Write-Host "`n--- gateway bin/Release (ADVISORY - not the gate, this DLL never ships) ---"
+  if (-not $gatewayDll) {
+    Write-Host '  advisory: no bin/Release DLL found; skipping (this does not affect the cut).'
+  } else {
+    $gatewayLocalBaked = Get-AssemblyMetadataValue -DllPath $gatewayDll.FullName -Key 'LumberjacksExpectedModRelease'
+    Write-Host ("  local Game.Gateway.dll : {0}" -f $gatewayLocalBaked)
+    if ($gatewayLocalBaked -ne $ReleaseId) {
+      Write-Host "  advisory only: local DLL says '$gatewayLocalBaked', cut is '$ReleaseId'." -ForegroundColor Yellow
+      Write-Host '  NOT failing the cut on this - bin/Release is not what ships. The image check decides.' -ForegroundColor Yellow
+    }
+  }
+
+  # --- 3c. THE GATEWAY GATE: the IMAGE ------------------------------------------------------------
+  # Build the artifact that actually ships, with the release args, and read the id back out of it.
+  # LUMBERJACKS_REQUIRE_RELEASE=1 additionally makes the Dockerfile refuse to produce an image at all
+  # for an empty/'dev'/malformed id, so this fails at build time rather than verification time when
+  # the id is wrong in an obvious way.
+  $imageTag = "lumberjacks-gateway:$ReleaseId"
+  Write-Host "`nbuilding gateway IMAGE $imageTag (this is the artifact that ships)..." -ForegroundColor Cyan
+
+  Push-Location $LumberjacksRoot
+  try {
+    # No 2>&1: docker writes progress to stderr, and in WinPS 5.1 merging a native command's stderr
+    # into the success stream makes every progress line an ErrorRecord, which under
+    # $ErrorActionPreference='Stop' aborts a healthy build.
+    & docker build --target gateway -t $imageTag `
+        --build-arg "LUMBERJACKS_EXPECTED_MOD_RELEASE=$ReleaseId" `
+        --build-arg 'LUMBERJACKS_REQUIRE_RELEASE=1' `
+        .
+    if ($LASTEXITCODE -ne 0) { throw "gateway image build failed (exit $LASTEXITCODE); nothing from this cut should ship" }
+  }
+  finally { Pop-Location }
+
+  Write-Host "`n--- what the gateway IMAGE says (AUTHORITATIVE) ---"
+  $verifier = Join-Path $PSScriptRoot 'Test-GatewayImageRelease.ps1'
+  if (!(Test-Path -LiteralPath $verifier)) { throw "missing verifier: $verifier" }
+
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $verifier `
+      -Image $imageTag -ExpectedRelease $ReleaseId
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "  FAIL: the gateway IMAGE does not admit '$ReleaseId'." -ForegroundColor Red
+    Write-Host '        THE TWO SIDES DISAGREE - this gateway would reject this mod.' -ForegroundColor Red
+    throw 'release identity check failed; nothing from this cut should ship'
+  }
+
+  Write-Host "`n  OK: the mod artifact and the gateway IMAGE both carry '$ReleaseId'" -ForegroundColor Green
+  Write-Host "  gateway image: $imageTag" -ForegroundColor Green
 }
 
 Write-Host @"
@@ -173,10 +197,25 @@ Write-Host @"
 Next, and NOT done by this script:
   1. Commit the mod ReleaseId change (it is a source edit and belongs in the release commit).
   2. build-release-bundle.ps1 / capture-release-manifest.ps1 -> record '$ReleaseId' + artifact hashes.
+     Record the gateway IMAGE (lumberjacks-gateway:$ReleaseId) as the gateway artifact. bin/Release
+     is not an artifact; it is a local build output that never ships.
   3. validate-release-bundle.ps1, then run-promotion-drill.ps1.
-  4. Deploy: deploy-network-sense.ps1 (mod) and the gateway image re-pin.
+  4. Deploy: deploy-network-sense.ps1 (mod) and re-pin the gateway image built above.
   5. Only then flip StrictReleaseEnabled on the window - it must stay OFF until the cut has landed
      everywhere, because a mod predating mod_release_id sends nothing and absence rejects.
+
+The gateway's release identity is gated on the IMAGE, by Test-GatewayImageRelease.ps1 reading
+/app/Game.Gateway.dll out of it. The bin/Release read this script still prints is ADVISORY and
+cannot fail the cut: that DLL never ships, and checking it is how a disabled gate passed review.
+Re-verify any gateway image at any time with:
+  .\Test-GatewayImageRelease.ps1 -Image lumberjacks-gateway:$ReleaseId -ExpectedRelease $ReleaseId
+
+GATEWAY-ONLY CUTS DO NOT USE THIS SCRIPT. Use New-GatewayReleaseCut.ps1 instead. This script rewrites
+ComfyNetworkSense.cs and rebuilds the mod, which for a Gateway-only promotion would invalidate the
+frozen mod artifact and every guest package pinned to it. New-GatewayReleaseCut.ps1 keeps the two
+identities apart - a new image_release_id admitting the unchanged admitted_mod_release - and leaves
+the mod alone:
+  .\New-GatewayReleaseCut.ps1 -ImageReleaseId m4-clean-20260719-r1 -AdmittedModRelease $ReleaseId
 
 Rebuild-to-verify (plan risk 12): ROOT CAUSE FOUND 2026-07-18. The .NET 8 SDK's implicit
 source-control tasks embed the git HEAD sha in the portable PDB (only when origin is a recognized
