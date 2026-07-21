@@ -121,9 +121,12 @@ services:
 
   eventlog:
     <<: *lumberjacks-service
-    build:
-      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
-      target: eventlog
+    # Pinned like gateway (m5 cutover): build+hash+pin, no admission check - eventlog has no
+    # cross-artifact identity to admit, unlike gateway/mod. There is deliberately no build:
+    # fallback; rollback is an image re-pin, never a rebuild. See docker-compose.yml history for
+    # the release-gate defect this closes: this used to be one of three services that built from
+    # whatever source happened to sit on the VM, with no release identity, no gate, no hash.
+    image: "${LUMBERJACKS_EVENTLOG_IMAGE:?LUMBERJACKS_EVENTLOG_IMAGE must be set to the promoted release image}"
     ports:
       - "127.0.0.1:4002:4002"
     environment:
@@ -137,9 +140,8 @@ services:
 
   progression:
     <<: *lumberjacks-service
-    build:
-      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
-      target: progression
+    # Pinned like gateway/eventlog (m5 cutover): build+hash+pin, no admission check.
+    image: "${LUMBERJACKS_PROGRESSION_IMAGE:?LUMBERJACKS_PROGRESSION_IMAGE must be set to the promoted release image}"
     ports:
       - "127.0.0.1:4003:4003"
     environment:
@@ -153,9 +155,8 @@ services:
 
   operatorapi:
     <<: *lumberjacks-service
-    build:
-      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
-      target: operatorapi
+    # Pinned like gateway/eventlog/progression (m5 cutover): build+hash+pin, no admission check.
+    image: "${LUMBERJACKS_OPERATORAPI_IMAGE:?LUMBERJACKS_OPERATORAPI_IMAGE must be set to the promoted release image}"
     ports:
       - "127.0.0.1:4004:4004"
     environment:

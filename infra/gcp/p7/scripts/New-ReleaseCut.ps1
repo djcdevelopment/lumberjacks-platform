@@ -190,6 +190,23 @@ if (-not $WhatIf) {
 
   Write-Host "`n  OK: the mod artifact and the gateway IMAGE both carry '$ReleaseId'" -ForegroundColor Green
   Write-Host "  gateway image: $imageTag" -ForegroundColor Green
+
+  # --- 4. the other three services: build + tag, no gate --------------------------------------
+  # eventlog/progression/operatorapi have no cross-artifact identity to admit - nothing else
+  # needs to agree with them the way the Gateway needs to agree with the mod - so their release
+  # discipline is build+hash+pin, not build+hash+pin+admission-check. Same $ReleaseId tag, purely
+  # so one release id still names all five images; build-release-bundle.ps1 records the digests.
+  Push-Location $LumberjacksRoot
+  try {
+    foreach ($svc in @('eventlog', 'progression', 'operatorapi')) {
+      $svcTag = "lumberjacks-${svc}:$ReleaseId"
+      Write-Host "`nbuilding $svc IMAGE $svcTag ..." -ForegroundColor Cyan
+      & docker build --target $svc -t $svcTag .
+      if ($LASTEXITCODE -ne 0) { throw "$svc image build failed (exit $LASTEXITCODE); nothing from this cut should ship" }
+      Write-Host "  OK: $svcTag" -ForegroundColor Green
+    }
+  }
+  finally { Pop-Location }
 }
 
 Write-Host @"
@@ -198,9 +215,11 @@ Next, and NOT done by this script:
   1. Commit the mod ReleaseId change (it is a source edit and belongs in the release commit).
   2. build-release-bundle.ps1 / capture-release-manifest.ps1 -> record '$ReleaseId' + artifact hashes.
      Record the gateway IMAGE (lumberjacks-gateway:$ReleaseId) as the gateway artifact. bin/Release
-     is not an artifact; it is a local build output that never ships.
+     is not an artifact; it is a local build output that never ships. Also record
+     lumberjacks-eventlog:$ReleaseId, lumberjacks-progression:$ReleaseId, and
+     lumberjacks-operatorapi:$ReleaseId, built above alongside the gateway.
   3. validate-release-bundle.ps1, then run-promotion-drill.ps1.
-  4. Deploy: deploy-network-sense.ps1 (mod) and re-pin the gateway image built above.
+  4. Deploy: deploy-network-sense.ps1 (mod) and re-pin all five images built above.
   5. Only then flip StrictReleaseEnabled on the window - it must stay OFF until the cut has landed
      everywhere, because a mod predating mod_release_id sends nothing and absence rejects.
 

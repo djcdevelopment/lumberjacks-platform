@@ -14,6 +14,12 @@ GOOGLE_CLOUD_PROJECT=CHANGE_ME_gcp_project_id
 LUMBERJACKS_VERSION=CHANGE_ME_release_version
 POSTGRES_PASSWORD=CHANGE_ME_strong_password
 LUMBERJACKS_GATEWAY_IMAGE=CHANGE_ME_promoted_gateway_image_ref
+# eventlog/progression/operatorapi joined the release gate alongside gateway (m5 cutover) — same
+# build+hash+pin discipline, no admission check (see docker-compose.yml). Before this they built
+# from whatever source sat on the VM, with no release identity, no gate, no hash.
+LUMBERJACKS_EVENTLOG_IMAGE=CHANGE_ME_promoted_eventlog_image_ref
+LUMBERJACKS_PROGRESSION_IMAGE=CHANGE_ME_promoted_progression_image_ref
+LUMBERJACKS_OPERATORAPI_IMAGE=CHANGE_ME_promoted_operatorapi_image_ref
 
 # --- Runtime identity / build root ---
 LUMBERJACKS_ROOT=/opt/lumberjacks-ed83bd8

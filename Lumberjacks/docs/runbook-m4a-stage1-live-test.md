@@ -147,8 +147,18 @@ Then write the manifest JSON under `Lumberjacks\docs\roadmap\`, modelled on
     -OutputRoot     fieldlab\runs\releases\m4-clean-20260718-r1 `
     -BaselineRepo   . `
     -ModDllPath     <path to frozen 0.5.31 mod dll> `
-    -GatewayImage   lumberjacks-gateway:m4-clean-20260718-r1
+    -GatewayImage   lumberjacks-gateway:m4-clean-20260718-r1 `
+    -EventlogImage    <unchanged - reference the still-deployed eventlog image> `
+    -ProgressionImage <unchanged - reference the still-deployed progression image> `
+    -OperatorApiImage <unchanged - reference the still-deployed operatorapi image>
+```
 
+A bundle records all five artifacts every time (build-release-bundle.ps1, fixed 2026-07-21), even on
+a Gateway-only promotion like this one: eventlog/progression/operatorapi didn't change, so point
+these three at whatever image is already live for them rather than rebuilding - the manifest still
+needs their real digests to be a complete, checkable record of what this release actually deploys.
+
+```powershell
 & infra\gcp\p7\scripts\validate-release-bundle.ps1 `
     -ManifestPath Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
     -BundleRoot   fieldlab\runs\releases\m4-clean-20260718-r1

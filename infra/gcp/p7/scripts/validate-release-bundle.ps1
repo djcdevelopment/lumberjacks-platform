@@ -53,6 +53,11 @@ Require-Property $mod 'version' | Out-Null
 $gateway = Require-Property $manifest 'gateway'
 if ((Require-Property $gateway 'image_id') -notmatch '^sha256:[0-9a-fA-F]{64}$') { Fail 'gateway.image_id is not an image digest' }
 Require-Property $gateway 'build_command' | Out-Null
+foreach ($svc in @('eventlog', 'progression', 'operatorapi')) {
+  $svcBlock = Require-Property $manifest $svc
+  if ((Require-Property $svcBlock 'image_id') -notmatch '^sha256:[0-9a-fA-F]{64}$') { Fail "$svc.image_id is not an image digest" }
+  Require-Property $svcBlock 'build_command' | Out-Null
+}
 $toolchain = Require-Property $manifest 'toolchain'
 Require-Property $toolchain 'mod_sdk' | Out-Null
 Require-Property $toolchain 'gateway_sdk_digest' | Out-Null

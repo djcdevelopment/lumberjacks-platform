@@ -9,7 +9,13 @@ param(
   [Parameter(Mandatory = $true)]
   [string] $ModDllPath,
   [Parameter(Mandatory = $true)]
-  [string] $GatewayImage
+  [string] $GatewayImage,
+  [Parameter(Mandatory = $true)]
+  [string] $EventlogImage,
+  [Parameter(Mandatory = $true)]
+  [string] $ProgressionImage,
+  [Parameter(Mandatory = $true)]
+  [string] $OperatorApiImage
 )
 
 $ErrorActionPreference = 'Stop'
@@ -37,14 +43,35 @@ if ((Invoke-Git $baselineFull @('rev-parse', 'HEAD')) -ne $manifest.source.basel
 
 $expectedMod = ([string]$manifest.mod.clean_build_sha256).ToLowerInvariant()
 if ((Hash $ModDllPath) -ne $expectedMod) { Fail 'mod DLL does not match manifest' }
+
+# gateway keeps its own check (above the loop) because it is the one artifact with a manifest field
+# ($manifest.gateway) with that exact name from before the other four existed; folding it into the
+# loop below would just rename gateway.image_id without changing what it checks.
 $image = docker image inspect $GatewayImage | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0 -or !$image) { Fail "Gateway image is unavailable: $GatewayImage" }
 $imageId = [string]$image[0].Id
 if ($imageId -ne [string]$manifest.gateway.image_id) { Fail 'Gateway image does not match manifest' }
 
+# eventlog/progression/operatorapi: build+hash+pin, no admission check - see New-ReleaseCut.ps1 §4.
+$otherServices = [ordered]@{
+  eventlog     = $EventlogImage
+  progression  = $ProgressionImage
+  operatorapi  = $OperatorApiImage
+}
+$otherImageIds = @{}
+foreach ($svc in $otherServices.Keys) {
+  $svcImage = $otherServices[$svc]
+  $svcInspect = docker image inspect $svcImage | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or !$svcInspect) { Fail "$svc image is unavailable: $svcImage" }
+  $svcImageId = [string]$svcInspect[0].Id
+  $manifestImageId = [string]$manifest.$svc.image_id
+  if ($svcImageId -ne $manifestImageId) { Fail "$svc image does not match manifest" }
+  $otherImageIds[$svc] = $svcImageId
+}
+
 New-Item -ItemType Directory -Path $OutputRoot | Out-Null
 $bundleFull = (Resolve-Path -LiteralPath $OutputRoot).Path
-New-Item -ItemType Directory -Path (Join-Path $bundleFull 'mod'), (Join-Path $bundleFull 'gateway'), (Join-Path $bundleFull 'source') | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $bundleFull 'mod'), (Join-Path $bundleFull 'gateway'), (Join-Path $bundleFull 'eventlog'), (Join-Path $bundleFull 'progression'), (Join-Path $bundleFull 'operatorapi'), (Join-Path $bundleFull 'source') | Out-Null
 Copy-Item -LiteralPath $ManifestPath -Destination (Join-Path $bundleFull 'manifest.json')
 Copy-Item -LiteralPath $ModDllPath -Destination (Join-Path $bundleFull 'mod/ComfyNetworkSense.dll')
 Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Dockerfile') -Destination (Join-Path $bundleFull 'source/Dockerfile')
@@ -52,7 +79,11 @@ Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Directory.Build.pro
 Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Directory.Packages.props') -Destination (Join-Path $bundleFull 'source/Directory.Packages.props')
 Copy-Item -LiteralPath (Join-Path $baselineFull 'network/mod/ComfyNetworkSense/ComfyNetworkSense.csproj') -Destination (Join-Path $bundleFull 'source/ComfyNetworkSense.csproj')
 docker save --output (Join-Path $bundleFull 'gateway/gateway.oci.tar') $GatewayImage
-if ($LASTEXITCODE -ne 0) { Fail 'docker save failed' }
+if ($LASTEXITCODE -ne 0) { Fail 'docker save failed (gateway)' }
+foreach ($svc in $otherServices.Keys) {
+  docker save --output (Join-Path $bundleFull "$svc/$svc.oci.tar") $otherServices[$svc]
+  if ($LASTEXITCODE -ne 0) { Fail "docker save failed ($svc)" }
+}
 
 $fileEntries = @()
 Get-ChildItem -LiteralPath $bundleFull -File -Recurse | Where-Object { $_.Name -ne 'bundle-index.json' } | ForEach-Object {
