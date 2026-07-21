@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+    <title>Lumberjacks — NetworkSense HUD</title>
+    <style>
+        :root {
+            --bg-base: rgba(15, 20, 25, 0.85);
+            --bg-panel: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --color-green: #4ade80;
+            --color-yellow: #facc15;
+            --color-red: #f87171;
+            --color-blue: #60a5fa;
+            --color-purple: #c084fc;
+            --color-orange: #fb923c;
+            --font-family: system-ui, -apple-system, sans-serif;
+            --border-radius: 8px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            color: var(--text-main);
+            font-family: var(--font-family);
+            font-size: 12px;
+            overflow: hidden;
+        }
+
+        /* Overlay positioning */
+        #hud-overlay {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--bg-base);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+        }
+
+        /* Header */
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--color-red);
+            box-shadow: 0 0 8px var(--color-red);
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        .status-dot.ok { background: var(--color-green); box-shadow: 0 0 8px var(--color-green); }
+        .status-dot.warn { background: var(--color-yellow); box-shadow: 0 0 8px var(--color-yellow); }
+
+        .badge {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        /* Panels */
+        .panel {
+            position: relative;
+            background: var(--bg-panel);
+            border-radius: var(--border-radius);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 40px;
+            overflow: hidden;
+        }
+
+        .panel-stale-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--color-red);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 10;
+            letter-spacing: 1px;
+        }
+
+        .panel.is-stale .panel-stale-overlay {
+            opacity: 1;
+        }
+
+        .panel-title {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Tick Health Bar */
+        .gauge-container {
+            width: 100%;
+            height: 14px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 7px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .gauge-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--color-green);
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .gauge-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin-top: 2px;
+            font-family: monospace;
+        }
+
+        .alert-text { color: var(--color-red); font-weight: bold; }
+        
+        /* Sparkline */
+        .sparkline-wrapper {
+            width: 100%;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* Chips & Flex items */
+        .chip-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .chip {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .chip-val { font-weight: bold; font-family: monospace; }
+        
+        /* Stacked Bar */
+        .stacked-bar {
+            display: flex;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            background: rgba(0,0,0,0.4);
+        }
+        .stacked-segment {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        /* Utilities */
+        .flex-row { display: flex; align-items: center; justify-content: space-between; }
+        .text-large { font-size: 18px; font-weight: bold; }
+        .pulse { animation: pulse 2s infinite; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- DESIGN NOTE: NetworkSense HUD sits over live gameplay (alpha testers). It must convey server health at a glance in peripheral vision. We avoid dense tables in favor of big color-coded status chips, a single prominent health bar/gauge for tick budget, and compact badges. The overlay is semi-transparent, rounded, and floating to blend with game UI aesthetics without stealing focus. -->
+
+    <div id="hud-overlay">
+        <div class="hud-header">
+            <div class="header-title">
+                <div id="global-status" class="status-dot"></div>
+                NetworkSense
+            </div>
+            <div id="env-badge" class="badge">--</div>
+        </div>
+        <div id="deployment-status" style="font-size:11px;opacity:.75;margin:4px 0 8px">Deployment: loading...</div>
+        <div id="valheim-status" style="font-size:11px;opacity:.75;margin:0 0 8px">Valheim: waiting for heartbeat...</div>
+        <div id="cutover-status" style="font-size:11px;opacity:.75;margin:0 0 8px">Cutover: waiting for coverage...</div>
+
+        <!-- TICK TIMING -->
+        <div id="panel-tick" class="panel">
+            <div class="panel-stale-overlay" id="tick-stale-text">DISCONNECTED</div>
+            <div class="panel-title">
+                <span>Tick Health (p99 vs Budget)</span>
+                <span id="tick-overruns"></span>
+            </div>
+            
+            <div class="gauge-container">
+                <div id="tick-gauge-fill" class="gauge-fill"></div>
+            </div>
+            <div class="gauge-labels">
+                <span id="tick-val" style="font-weight: bold;">-- ms</span>
+                <span id="tick-budget">50 ms</span>
+            </div>
+
+            <div class="sparkline-wrapper">
+                <canvas id="sparkline-canvas" width="294" height="40"></canvas>
+            </div>
+
+            <div class="chip-group" id="tick-substats">
+                <!-- Substats injected here -->
+            </div>
+        </div>
+
+        <!-- SESSIONS -->
+        <div id="panel-sessions" class="panel">
+            <div class="panel-stale-overlay">STALE DATA</div>
+            <div class="flex-row">
+                <div class="panel-title">Active Sessions</div>
+                <div id="sessions-total" class="text-large">--</div>
+            </div>
+            <div class="chip-group" id="sessions-protocols"></div>
+            <div class="chip-group" id="sessions-regions"></div>
+        </div>
+
+        <!-- DELIVERY -->
+        <div id="panel-delivery" class="panel">
+            <div class="panel-stale-overlay">STALE DATA</div>
+            <div class="panel-title">Delivery Path Mix</div>
+            <div class="stacked-bar" id="delivery-bar"></div>
+            <div class="chip-group" id="delivery-legend"></div>
+            <div style="margin-top: 4px;" class="panel-title">Transitions</div>
+            <div class="chip-group" id="delivery-transitions"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONSTANTS & STATE ---
+        const ENDPOINTS = {
+            tick: '/api/v0/telemetry/tick',
+            sessions: '/api/v0/telemetry/sessions',
+            delivery: '/api/v0/telemetry/delivery'
+        };
+
+        const POLL_INTERVAL = 2000;
+        const HISTORY_SIZE = 60;
+        
+        let sparklineHistory = new Array(HISTORY_SIZE).fill(null);
+        let envBadgeSet = false;
+
+        // Palette for dynamic charts/chips
+        const COLORS = ['#60a5fa', '#c084fc', '#4ade80', '#fb923c', '#f472b6', '#a78bfa', '#2dd4bf'];
+
+        // Elements
+        const elGlobalStatus = document.getElementById('global-status');
+        const elEnvBadge = document.getElementById('env-badge');
+        const elCanvas = document.getElementById('sparkline-canvas');
+        const ctx = elCanvas.getContext('2d');
+
+        // --- UTILS ---
+        const escapeHTML = (str) => {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[m]);
+        };
+
+        const setStale = (panelId, isStale, overlayMsg = 'DISCONNECTED') => {
+            const panel = document.getElementById(panelId);
+            if (isStale) {
+                panel.classList.add('is-stale');
+                const overlay = panel.querySelector('.panel-stale-overlay');
+                if (overlay) overlay.textContent = overlayMsg;
+            } else {
+                panel.classList.remove('is-stale');
+            }
+        };
+
+        const updateEnvBadge = (version, stability) => {
+            if (envBadgeSet || !version) return;
+            elEnvBadge.textContent = `${escapeHTML(version)} ${escapeHTML(stability)}`;
+            envBadgeSet = true;
+        };
+
+        // --- FETCHING ---
+        async function fetchAPI(url) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 1800);
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                clearTimeout(id);
+                if (!res.ok) return null;
+                return await res.json();
+            } catch (err) {
+                return null;
+            }
+        }
+
+        // --- RENDERERS ---
+        function renderTick(data) {
+            if (!data) {
+                setStale('panel-tick', true);
+                sparklineHistory.push(null);
+                sparklineHistory.shift();
+                drawSparkline();
+                return;
+            }
+            updateEnvBadge(data.api_version, data.stability);
+
+            const t = data.tick_timing;
+            if (!t) {
+                // Warming up state
+                setStale('panel-tick', true, 'WARMING UP...');
+                sparklineHistory.push(null);
+                sparklineHistory.shift();
+                drawSparkline();
+                return;
+            }
+
+            setStale('panel-tick', false);
+
+            const p50 = t.phases?.total?.p50_ms || 0;
+            const p99 = t.phases?.total?.p99_ms || 0;
+            const budget = t.budget_ms || 50;
+            const overruns = t.overruns || 0;
+
+            // Health Gauge
+            const gaugeFill = document.getElementById('tick-gauge-fill');
+            const pct = Math.min(100, (p99 / budget) * 100);
+            gaugeFill.style.width = `${pct}%`;
+
+            let gaugeColor = 'var(--color-green)';
+            if (overruns > 0 || pct >= 100) {
+                gaugeColor = 'var(--color-red)';
+            } else if (pct > 70) {
+                gaugeColor = 'var(--color-yellow)';
+            }
+            gaugeFill.style.backgroundColor = gaugeColor;
+
+            document.getElementById('tick-val').textContent = `${p99.toFixed(1)} ms`;
+            document.getElementById('tick-val').style.color = gaugeColor;
+            document.getElementById('tick-budget').textContent = `${budget} ms (Budget)`;
+
+            // Overruns Alert
+            const elOverruns = document.getElementById('tick-overruns');
+            if (overruns > 0) {
+                elOverruns.innerHTML = `<span class="alert-text pulse">⚠ ${escapeHTML(overruns)} OVERRUNS</span>`;
+            } else {
+                elOverruns.textContent = 'OK';
+            }
+
+            // Substats (Policy, Sent, Culled)
+            const elSubstats = document.getElementById('tick-substats');
+            const rep = t.replication || {};
+            const policy = escapeHTML(rep.policy || 'none');
+            const sent = escapeHTML(rep.sent || 0);
+            const culled = escapeHTML(rep.culled || 0);
+            elSubstats.innerHTML = `
+                <div class="chip"><span style="color:var(--text-muted)">Policy</span><span class="chip-val">${policy}</span></div>
+                <div class="chip"><span style="color:var(--text-muted)">Sent</span><span class="chip-val" style="color:var(--color-blue)">${sent}</span></div>
+                <div class="chip"><span style="color:var(--text-muted)">Culled</span><span class="chip-val" style="color:var(--color-orange)">${culled}</span></div>
+            `;
+
+            // Sparkline update
+            sparklineHistory.push({ p50, p99, budget });
+            sparklineHistory.shift();
+            drawSparkline();
+        }
+
+        function renderSessions(data) {
+            if (!data) {
+                setStale('panel-sessions', true);
+                return;
+            }
+            setStale('panel-sessions', false);
+            updateEnvBadge(data.api_version, data.stability);
+
+            document.getElementById('sessions-total').textContent = escapeHTML(data.total);
+
+            // Protocols
+            const elProtos = document.getElementById('sessions-protocols');
+            elProtos.innerHTML = '';
+            if (data.by_protocol) {
+                for (const [k, v] of Object.entries(data.by_protocol)) {
+                    elProtos.innerHTML += `<div class="chip"><span style="color:var(--color-blue)">${escapeHTML(k)}</span> <span class="chip-val">${escapeHTML(v)}</span></div>`;
+                }
+            }
+
+            // Regions
+            const elRegions = document.getElementById('sessions-regions');
+            elRegions.innerHTML = '';
+            if (data.by_region) {
+                for (const [k, v] of Object.entries(data.by_region)) {
+                    elRegions.innerHTML += `<div class="chip"><span style="color:var(--color-purple)">${escapeHTML(k)}</span> <span class="chip-val">${escapeHTML(v)}</span></div>`;
+                }
+            }
+        }
+
+        function renderDelivery(data) {
+            if (!data) {
+                setStale('panel-delivery', true);
+                return;
+            }
+            setStale('panel-delivery', false);
+            updateEnvBadge(data.api_version, data.stability);
+
+            // Delivery Mix Stacked Bar
+            const elBar = document.getElementById('delivery-bar');
+            const elLegend = document.getElementById('delivery-legend');
+            elBar.innerHTML = '';
+            elLegend.innerHTML = '';
+
+            const d = data.delivery || {};
+            const totalDelivery = Object.values(d).reduce((sum, val) => sum + Number(val), 0);
+            
+            let colorIdx = 0;
+            for (const [k, v] of Object.entries(d)) {
+                if (v <= 0) continue;
+                const pct = (v / totalDelivery) * 100;
+                const c = COLORS[colorIdx % COLORS.length];
+                
+                elBar.innerHTML += `<div class="stacked-segment" style="width: ${pct}%; background-color: ${c};"></div>`;
+                elLegend.innerHTML += `<div class="chip"><span style="color:${c}">■</span> ${escapeHTML(k)} <span class="chip-val">${Math.round(pct)}%</span></div>`;
+                colorIdx++;
+            }
+
+            // Transitions
+            const elTrans = document.getElementById('delivery-transitions');
+            elTrans.innerHTML = '';
+            const trans = data.transitions || {};
+            for (const [k, v] of Object.entries(trans)) {
+                elTrans.innerHTML += `<div class="chip"><span style="color:var(--text-muted)">${escapeHTML(k)}</span> <span class="chip-val">${escapeHTML(v)}</span></div>`;
+            }
+        }
+
+        function drawSparkline() {
+            const w = elCanvas.width;
+            const h = elCanvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // Find Max Y
+            let maxY = 60; // minimum scale
+            let currentBudget = 50;
+            for (const pt of sparklineHistory) {
+                if (pt) {
+                    if (pt.p99 > maxY) maxY = pt.p99;
+                    currentBudget = pt.budget;
+                }
+            }
+            maxY = maxY * 1.1; // 10% headroom
+
+            const getY = (val) => h - ((val / maxY) * h);
+            const dx = w / (HISTORY_SIZE - 1);
+
+            // Draw Budget Line
+            const budgetY = getY(currentBudget);
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.moveTo(0, budgetY);
+            ctx.lineTo(w, budgetY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw p50 Area & Line
+            ctx.beginPath();
+            ctx.moveTo(0, h);
+            let first = true;
+            for (let i = 0; i < HISTORY_SIZE; i++) {
+                const pt = sparklineHistory[i];
+                if (!pt) continue;
+                const x = i * dx;
+                const y = getY(pt.p50);
+                if (first) { ctx.lineTo(x, h); ctx.lineTo(x, y); first = false; }
+                else { ctx.lineTo(x, y); }
+            }
+            if (!first) {
+                ctx.lineTo(w, h);
+                ctx.fillStyle = 'rgba(96, 165, 250, 0.2)'; // blue tint
+                ctx.fill();
+            }
+
+            // Draw p99 Line
+            ctx.beginPath();
+            let p99First = true;
+            for (let i = 0; i < HISTORY_SIZE; i++) {
+                const pt = sparklineHistory[i];
+                if (!pt) {
+                    p99First = true;
+                    continue;
+                }
+                const x = i * dx;
+                const y = getY(pt.p99);
+                if (p99First) {
+                    ctx.moveTo(x, y);
+                    p99First = false;
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.strokeStyle = 'rgba(74, 222, 128, 0.8)'; // green default
+            
+            // If the latest point is over budget, color line yellow/red
+            const lastPt = sparklineHistory[HISTORY_SIZE - 1];
+            if (lastPt) {
+                if (lastPt.p99 >= lastPt.budget) ctx.strokeStyle = 'rgba(248, 113, 113, 1)';
+                else if (lastPt.p99 > lastPt.budget * 0.7) ctx.strokeStyle = 'rgba(250, 204, 21, 1)';
+            }
+            
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // --- MAIN LOOP ---
+        async function poll() {
+            const [tickData, sessionsData, deliveryData] = await Promise.all([
+                fetchAPI(ENDPOINTS.tick),
+                fetchAPI(ENDPOINTS.sessions),
+                fetchAPI(ENDPOINTS.delivery)
+            ]);
+
+            // Update overall status
+            const allHealthy = tickData && sessionsData && deliveryData;
+            const someHealthy = tickData || sessionsData || deliveryData;
+            
+            elGlobalStatus.className = 'status-dot';
+            if (allHealthy) elGlobalStatus.classList.add('ok');
+            else if (someHealthy) elGlobalStatus.classList.add('warn');
+
+            renderTick(tickData);
+            renderSessions(sessionsData);
+            renderDelivery(deliveryData);
+        }
+
+        // Init
+        drawSparkline();
+        poll();
+        async function pollDeployment() {
+            const el = document.getElementById('deployment-status');
+            try {
+                const d = await fetch('/api/v0/telemetry/deployment').then(r => r.ok ? r.json() : Promise.reject(r.status));
+                el.textContent = `Deployment: ${d.environment} - ${d.lumberjacks_version}`;
+            } catch (_) { el.textContent = 'Deployment: unavailable'; }
+        }
+        async function pollValheim() {
+            const el = document.getElementById('valheim-status');
+            try {
+                const d = await fetch('/api/v0/telemetry/valheim').then(r => r.ok ? r.json() : Promise.reject(r.status));
+                el.textContent = d.stale ? 'Valheim: heartbeat stale' : `Valheim: ${d.heartbeat?.server_state || 'ready'} - ${d.heartbeat?.peer_count ?? 0} peers`;
+            } catch (_) { el.textContent = 'Valheim: telemetry unavailable'; }
+        }
+        async function pollCutover() {
+            const el = document.getElementById('cutover-status');
+            try {
+                const d = await fetch('/api/v0/telemetry/cutover').then(r => r.ok ? r.json() : Promise.reject(r.status));
+                if (d.stale && !d.consumer_draining) { el.textContent = 'Cutover: heartbeat stale'; return; }
+                const coverage = d.coverage_percent == null ? 'coverage pending' : `${d.coverage_percent}% gameplay coverage`;
+                const a = d.authoritative_window;
+                const authoritative = a?.receipts > 0
+                    ? `ZDO ${a.acknowledged}/${a.receipts} ack, ${a.applied} applied, ${a.superseded ?? 0} superseded, ${a.pending} queued, ${a.rejected} rejected, ${a.durable_queue && a.persistence_healthy ? 'durable' : 'volatile'}${a.complete ? ' ✓' : ''}`
+                    : 'authoritative window pending';
+                const freshness = d.consumer_draining ? 'consumer draining' : (d.heartbeat_stale ? 'heartbeat stale' : 'live');
+                el.textContent = `Cutover: ${d.mode || 'unknown'} - ${coverage} - native-only ${d.coverage_native_only ?? 'n/a'} - ${freshness} - ${authoritative}`;
+            } catch (_) { el.textContent = 'Cutover: telemetry unavailable'; }
+        }
+        pollDeployment();
+        pollValheim();
+        pollCutover();
+        setInterval(pollDeployment, POLL_INTERVAL);
+        setInterval(pollValheim, POLL_INTERVAL);
+        setInterval(pollCutover, POLL_INTERVAL);
+        setInterval(poll, POLL_INTERVAL);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/Entities/RemoteEntity.cs" id="1"]
+
+[sub_resource type="CapsuleMesh" id="capsule"]
+radius = 0.35
+height = 1.8
+
+[sub_resource type="CylinderMesh" id="axe_handle"]
+top_radius = 0.03
+bottom_radius = 0.03
+height = 0.8
+
+[sub_resource type="StandardMaterial3D" id="wood_mat"]
+albedo_color = Color(0.39, 0.26, 0.13, 1)
+
+[sub_resource type="BoxMesh" id="axe_blade"]
+size = Vector3(0.05, 0.3, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="metal_mat"]
+albedo_color = Color(0.6, 0.6, 0.6, 1)
+metallic = 1.0
+roughness = 0.3
+
+[node name="Player" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("capsule")
+
+[node name="Nametag" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+pixel_size = 0.01
+text = "Player"
+font_size = 32
+outline_size = 8
+modulate = Color(1, 1, 1, 0.9)
+
+[node name="CameraPivot" type="Node3D" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot"]
+transform = Transform3D(1, 0, 0, 0, 0.866, 0.5, 0, -0.5, 0.866, 0, 8, 12)
+current = false
+fov = 50.0
+
+[node name="Axe" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1, -0.5)
+
+[node name="Handle" type="MeshInstance3D" parent="Axe"]
+mesh = SubResource("axe_handle")
+surface_material_override/0 = SubResource("wood_mat")
+
+[node name="Blade" type="MeshInstance3D" parent="Axe"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, -0.15)
+mesh = SubResource("axe_blade")
+surface_material_override/0 = SubResource("metal_mat")

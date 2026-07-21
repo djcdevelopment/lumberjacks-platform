@@ -1,0 +1,3 @@
+<Project>
+  <!-- Block root Directory.Build.props from overriding Godot's SDK settings -->
+</Project>

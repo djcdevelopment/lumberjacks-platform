@@ -1,0 +1,21 @@
+# Copy to terraform.tfvars (gitignored) and fill in your values.
+project_id             = "your-gcp-project-id"
+region                 = "us-west1"
+zone                   = "us-west1-b"
+machine_type           = "e2-medium"
+alert_email            = "you@example.com"
+billing_account_id     = "XXXXXX-XXXXXX-XXXXXX"
+monthly_budget_usd     = 100
+# Open gameplay ports so the multi-region synthetic-client fleet can reach the SUT.
+gameplay_source_ranges = ["0.0.0.0/0"]
+
+# The fleet is driven separately via fleet.auto.tfvars (also gitignored), e.g.:
+#   fleet_regions = {
+#     "us-west1"             = "us-west1-b"
+#     "us-east4"             = "us-east4-a"
+#     "europe-west3"         = "europe-west3-a"
+#     "asia-northeast1"      = "asia-northeast1-a"
+#     "southamerica-east1"   = "southamerica-east1-a"
+#     "australia-southeast1" = "australia-southeast1-a"
+#   }
+# Set fleet_regions = {} (or delete fleet.auto.tfvars) and re-apply to destroy ONLY the fleet, leaving the SUT.

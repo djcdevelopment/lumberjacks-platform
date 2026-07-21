@@ -1,0 +1,15 @@
+# The living roadmap's generated artifact and its two sources are byte-load-bearing.
+#
+# `npm run roadmap:check` compares roadmap.html byte-for-byte against a fresh
+# render, and the Gateway reports the served bytes' SHA-256 as X-Roadmap-Sha256 so
+# the published page can be verified against the committed artifact. scripts/roadmap.mjs
+# writes all three with LF. With core.autocrlf=true — the default on Windows — a fresh
+# clone would check them out as CRLF, which changes the bytes: roadmap:check then fails
+# with a spurious "stale", the served SHA stops matching the artifact, and every render
+# rewrites the files back to LF as permanent working-tree churn.
+#
+# Pin them to the bytes the generator writes. Comfy pins its evidence folder the same
+# way, for the same reason (fieldlab/.gitattributes).
+src/Game.Gateway/Community/roadmap.html -text
+docs/roadmap/commit-notes.jsonl -text
+docs/roadmap/valheim-volunteer-roadmap.json -text

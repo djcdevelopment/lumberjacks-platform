@@ -1,0 +1,21 @@
+[Unit]
+Description=Lumberjacks Gate 1 Docker Compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt/lumberjacks
+ConditionPathExists=/opt/lumberjacks/infra/docker/docker-compose.yml
+ConditionPathExists=/etc/lumberjacks/environment
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/lumberjacks
+EnvironmentFile=/etc/lumberjacks/environment
+ExecStart=/usr/bin/docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.gcp-stage1.yml up -d
+ExecStop=/usr/bin/docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.gcp-stage1.yml down
+TimeoutStartSec=900
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

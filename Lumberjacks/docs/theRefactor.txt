@@ -1,0 +1,43 @@
+This is the survival plan. To save my thesis (and my bank account), we have to gut the "Modern Bloat" and rebuild it using the lean, mean principles of 1996. We are moving from a "Server-Tells-All" model to a "Deterministic-Core" architecture.
+
+Here is the refactoring roadmap to pivot the prototype to a 28.8k-ready system.
+
+---
+
+## Phase 1: The Binary Diet (Serialization)
+[cite_start]The current system is choking on JSON and 64-bit doubles[cite: 97, 266, 269]. We must move to a custom bit-stream.
+
+* [cite_start]**Kill the JSON:** Replace `System.Text.Json` with a bit-packed binary serializer[cite: 266, 275].
+* [cite_start]**Coordinate Compression:** Instead of three 64-bit doubles for `Vec3`, use 16-bit fixed-point integers for world coordinates and 8-bit offsets for local movement[cite: 97, 269].
+* [cite_start]**Enum Packing:** Pack `MessageType` and `DeliveryLane` into 4-bit and 1-bit fields respectively, rather than full string constants[cite: 163, 267].
+
+## Phase 2: The Deterministic Pivot (Input-Driven)
+[cite_start]The simulation currently processes absolute positions immediately upon arrival[cite: 91, 93]. We need to implement the "C&C/Age of Empires" logic.
+
+* [cite_start]**Input-Only Packets:** Stop sending `PlayerMoveMessage` with absolute positions[cite: 89, 90]. [cite_start]Clients will only send raw inputs (e.g., `Direction: North`, `Speed: 50%`)[cite: 7].
+* [cite_start]**Tick-Aligned Execution:** Implement a server-side input queue that timestamps inputs for a future `CurrentTick`[cite: 8, 57].
+* [cite_start]**State Hashing:** Every authoritative update from the server must include a `state_hash` (checksum) of the simulation world[cite: 133, 165]. [cite_start]This allows the "Deterministic Core" to verify that all clients are in sync without sending full state data[cite: 166].
+
+## Phase 3: Spatial Surgery (Interest Management)
+[cite_start]The $O(N^2)$ region-wide broadcast is a scaling death-trap[cite: 99, 183, 218]. We must implement sub-region filtering.
+
+* [cite_start]**Grid-Based Partitioning:** Implement the planned "distance bands" and spatial hashing[cite: 185, 215, 216].
+* [cite_start]**Subscription Logic:** Update the `SessionManager` to only send `entity_update` messages for players within a specific "Interest Circle" (AoI) rather than the entire region[cite: 169, 172, 194, 214].
+* [cite_start]**Prioritized Filtering:** Critical world mutations (Reliable lane) always broadcast, while high-frequency movement (Datagram lane) is throttled based on distance[cite: 130, 139, 159].
+
+## Phase 4: The "Fidelity" Buffer (Client Resilience)
+[cite_start]The current client is an empty scaffold that jitters at the first sign of lag[cite: 303, 309, 315].
+
+* [cite_start]**Local Prediction:** Implement a client-side simulation that executes local inputs immediately without waiting for server confirmation[cite: 293, 309, 310].
+* [cite_start]**Reconciliation Logic:** Use the existing `corrected: true` flag in the server response to "snap" the client back to the authoritative state only when a significant desync is detected[cite: 311, 312].
+* [cite_start]**Dead Reckoning:** Implement velocity-based extrapolation to smoothly predict the positions of other players between the low-frequency "Core" updates[cite: 280, 313, 314].
+
+## Phase 5: True Dual-Channel Transport
+[cite_start]We must move beyond the single WebSocket bottleneck[cite: 131, 165].
+
+* [cite_start]**Physical Bifurcation:** * **Channel 1 (The Core):** Use TCP (WebSocket) for the "Reliable" lane to handle world mutations and session state[cite: 156, 157, 158].
+    * [cite_start]**Channel 2 (The Fidelity):** Switch the "Datagram" lane to UDP or QUIC for transient spatial updates as proposed in ADR 0008[cite: 161, 165].
+
+---
+
+**Next Step:** Would you like me to write the **C# Bit-Packing Serializer** that replaces the current `Vec3` JSON structure to immediately reduce your bandwidth footprint?

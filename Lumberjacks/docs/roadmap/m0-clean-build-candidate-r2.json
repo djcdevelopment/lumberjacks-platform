@@ -1,0 +1,57 @@
+{
+  "schema": "comfy-p7-release/v2-candidate",
+  "release_id": "m0-clean-20260716-r2",
+  "captured_utc": "2026-07-16T07:05:00Z",
+  "source": {
+    "lumberjacks_commit": "a7c47b55700807ca881a30f10002d26ac864aa4f",
+    "comfy_commit": "b32bb5e1e1ec0dc4320acad3cd3c467ee196053a",
+    "lumberjacks_clean": true,
+    "comfy_clean": true
+  },
+  "build_contract": {
+    "continuous_integration_build": true,
+    "deterministic": true,
+    "path_map": "fixed repository source roots",
+    "mod_repeatability": "two clean-checkout builds produced the same hash"
+  },
+  "mod": {
+    "version": "0.5.31.0",
+    "clean_build_sha256": "94a3843ef8042adceaca6bc4d5c0c38c7c8dc5a1aa05b5f2a3019879840ba3a8",
+    "known_runtime_sha256": "b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b",
+    "byte_match": false,
+    "il_match": "verified_equal",
+    "build_command": "dotnet build network/mod/ComfyNetworkSense/ComfyNetworkSense.csproj -c Release -p:PluginOutputPath=<isolated>",
+    "external_assembly_sha256": {
+      "0Harmony.dll": "1a21cc03424fc82c3dd1346905d16494536b9595ae4162228d99fb7c285c1031",
+      "BepInEx.dll": "e9ac3a950e91e71b13df5480b36ce06af27e981a688f0e62125b674d03a0713a",
+      "assembly_valheim.dll": "3b26c8512778f6e0664b5af2a26f3c30993a00f584c1e76d9123a742b67e2004",
+      "assembly_utils.dll": "41c2d53ec0351e974bb962b88a122c9e915e3fa0b8b1e6ace59786bae6405993",
+      "UnityEngine.dll": "445f20d46cbeb2492fdfb694e125e9eeaea44b2a760c9cea31f695d6f83564b3",
+      "UnityEngine.CoreModule.dll": "0594a377dc22a168a4ae1ca70dded5d571a415a959e0c4aa6159095cd58bdd83",
+      "UnityEngine.IMGUIModule.dll": "4c44d0e20e290472544d63e5cb35335117c99da773f177eb7d808cd56d39a36d",
+      "UnityEngine.JSONSerializeModule.dll": "b670c2fdcda910b062b72666c41899cfcb755b63bb6556e90b0577829870b5ac",
+      "UnityEngine.InputLegacyModule.dll": "1493beec13b037f350bde868a7e695436e0615a5e90541e22038b21efb7b4ac9",
+      "UnityEngine.PhysicsModule.dll": "fb87177080b82209825ae54f745c7b7038ce0c53d2a30a93b1019ae40bfef352",
+      "UnityEngine.TextRenderingModule.dll": "16bba0e9b199e6b94cb2b0a87ee1664d675316d6395126053e78d82cb454080a"
+    }
+  },
+  "gateway": {
+    "image_id": "sha256:141bd9e5a2ce8bd95f1bd93a9f123637cbc1cffcb0795594fae94e28d7fe86fb",
+    "release_label": "m0-clean-20260716-r2",
+    "revision_label": "a7c47b5",
+    "clean_start_health": "PASS",
+    "clean_tests": "46/46 passed in .NET 9 SDK container",
+    "build_command": "docker build --target gateway -t lumberjacks-m0-clean:a7c47b5 ."
+  },
+  "toolchain": {
+    "mod_sdk": "8.0.422",
+    "mod_msbuild": "17.11.48",
+    "gateway_sdk_digest": "sha256:24fe7c00719afc72e2b67cace264dea2ee39ae45f5b553bd59493fe3ddfc920f",
+    "gateway_aspnet_digest": "sha256:8b9f90e53d41154d42e537517aef22e8fe497baabd43e423d5f2edafd06f04f6"
+  },
+  "limitations": [
+    "This is a candidate, not a promoted deployment. The historical runtime DLL remains the rollback artifact.",
+    "The clean mod hash differs from the historical DLL only in PE identity/debug metadata observed during comparison; IL is equal.",
+    "No GCP mutation, world snapshot, or volunteer session occurred."
+  ]
+}

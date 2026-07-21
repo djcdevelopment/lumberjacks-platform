@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Comfy Lumberjacks — Community Dashboard: Strategy &amp; Workflow</title>
+<style>
+  :root{
+    --bg:#f7f7f5; --panel:#ffffff; --ink:#1a1a1a; --ink-soft:#5b5b57;
+    --line:#e3e3df; --line-strong:#cfcfc9;
+    --accent:#2f6f4e; --accent-soft:#e7f1ea;
+    --blue:#3457a6; --blue-soft:#e8eef8;
+    --amber:#9a6a12; --amber-soft:#fbf1dc;
+    --red:#a33028; --red-soft:#fbe6e3;
+    --grey:#6a6a66; --grey-soft:#ececea;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --maxw:980px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#16171a; --panel:#1f2125; --ink:#e9e9e6; --ink-soft:#a6a6a0;
+      --line:#2c2f34; --line-strong:#3a3e44;
+      --accent:#6fce9f; --accent-soft:#1c2a22;
+      --blue:#8fb0f0; --blue-soft:#1b2334;
+      --amber:#e0b45f; --amber-soft:#2c2416;
+      --red:#e88b82; --red-soft:#2e1c1a;
+      --grey:#9a9a94; --grey-soft:#25272b;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);line-height:1.6;font-size:16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--mono);font-size:.86em;background:var(--grey-soft);
+    padding:.1em .38em;border-radius:4px;border:1px solid var(--line)}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+
+  /* Top bar */
+  header.top{
+    position:sticky;top:0;z-index:20;background:var(--panel);
+    border-bottom:1px solid var(--line);backdrop-filter:saturate(120%);
+  }
+  .top-inner{max-width:var(--maxw);margin:0 auto;padding:14px 20px;
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px}
+  .top h1{font-size:18px;margin:0;font-weight:650;letter-spacing:-.01em}
+  .top .sub{color:var(--ink-soft);font-size:13px}
+  .meta{margin-left:auto;display:flex;gap:14px;font-size:12px;color:var(--ink-soft);
+    font-family:var(--mono)}
+  .meta b{color:var(--ink);font-weight:600}
+
+  /* Nav */
+  nav.toc{border-bottom:1px solid var(--line);background:var(--bg)}
+  nav.toc .wrap{display:flex;flex-wrap:wrap;gap:6px 4px;padding-top:10px;padding-bottom:10px}
+  nav.toc a{font-size:12.5px;color:var(--ink-soft);padding:3px 9px;border-radius:20px;
+    border:1px solid transparent;white-space:nowrap}
+  nav.toc a:hover{color:var(--ink);border-color:var(--line-strong);text-decoration:none}
+
+  main{padding:34px 0 90px}
+  section{margin:0 0 46px;scroll-margin-top:120px}
+  h2{font-size:22px;margin:0 0 6px;letter-spacing:-.015em;font-weight:680}
+  h2 .n{color:var(--ink-soft);font-weight:500;font-family:var(--mono);font-size:15px;margin-right:8px}
+  h3{font-size:16px;margin:26px 0 8px;font-weight:650}
+  .lede{color:var(--ink-soft);margin:2px 0 18px;font-size:15px;max-width:70ch}
+  p{margin:12px 0;max-width:74ch}
+  ul,ol{max-width:74ch}
+  li{margin:5px 0}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:20px 22px;margin:16px 0}
+  .panel.tight{padding:14px 16px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+
+  /* Pills / badges */
+  .pill{display:inline-block;font-size:11px;font-weight:650;letter-spacing:.02em;
+    padding:2px 9px;border-radius:20px;border:1px solid;vertical-align:middle;
+    font-family:var(--mono);white-space:nowrap}
+  .pill.live{color:var(--accent);background:var(--accent-soft);border-color:var(--accent)}
+  .pill.partial{color:var(--amber);background:var(--amber-soft);border-color:var(--amber)}
+  .pill.gap{color:var(--red);background:var(--red-soft);border-color:var(--red)}
+  .pill.plan{color:var(--blue);background:var(--blue-soft);border-color:var(--blue)}
+  .pill.info{color:var(--grey);background:var(--grey-soft);border-color:var(--line-strong)}
+
+  .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink-soft);margin:0 0 4px}
+
+  /* Tables */
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:16px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+  th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{background:var(--grey-soft);font-weight:650;font-size:12px;
+    letter-spacing:.02em;color:var(--ink-soft);position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  td .src{font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+
+  /* callouts */
+  .note{border-left:3px solid var(--line-strong);padding:6px 0 6px 16px;margin:16px 0;
+    color:var(--ink-soft);font-size:14.5px}
+  .note.warn{border-color:var(--amber)}
+  .note.stop{border-color:var(--red)}
+  .note b{color:var(--ink)}
+
+  /* tree / abstraction */
+  pre.tree{font-family:var(--mono);font-size:13px;line-height:1.5;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow-x:auto;
+    color:var(--ink)}
+
+  /* phase cards */
+  .phase{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-top:1px solid var(--line)}
+  .phase:first-child{border-top:none}
+  .phase .dot{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+    font-family:var(--mono);font-size:13px;font-weight:700;border:1px solid var(--line-strong);
+    background:var(--panel);color:var(--ink-soft)}
+  .phase.now .dot{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .phase .body{flex:1}
+  .phase h4{margin:2px 0 4px;font-size:15.5px}
+  .phase .g{color:var(--ink-soft);font-size:13.5px}
+
+  /* changelog */
+  .log{font-size:14px}
+  .log .row{display:flex;gap:14px;padding:9px 0;border-top:1px dashed var(--line)}
+  .log .row:first-child{border-top:none}
+  .log .d{font-family:var(--mono);font-size:12px;color:var(--ink-soft);flex:0 0 92px}
+
+  footer{border-top:1px solid var(--line);color:var(--ink-soft);font-size:13px;
+    padding:22px 0 60px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin:10px 0 0;font-size:12.5px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+
+  @media print{
+    header.top,nav.toc{position:static}
+    body{background:#fff;color:#000;font-size:11.5px}
+    .panel,pre.tree,.tablewrap{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <h1>Comfy&nbsp;Lumberjacks · Community Dashboard</h1>
+    <span class="sub">Strategy &amp; Workflow — a living document</span>
+    <div class="meta">
+      <span>v<b>0.21.0</b></span>
+      <span>updated <b>2026-07-13</b></span>
+      <span>status <b style="color:var(--accent)">ACTIVE · situated in platform vision</b></span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <a href="#thesis">Thesis</a>
+    <a href="#reconcile">Concept ↔ Reality</a>
+    <a href="#products">Three products</a>
+    <a href="#signals">Signal reality-check</a>
+    <a href="#provenance">Claim provenance</a>
+    <a href="#abstraction">Community model</a>
+    <a href="#workflow">Operating model</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="#backlog">Backlog</a>
+    <a href="#platform">Platform context</a>
+    <a href="#log">Changelog</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <section id="thesis">
+    <p class="kicker">Why this document exists</p>
+    <h2>The next real capability is making the operation <em>legible</em></h2>
+    <p class="lede">
+      The P7 deployment proved we can run an authoritative server. The next capability is not running a
+      server — it is making that operation <b>legible and trustworthy to the people whose community lives on it</b>.
+      This document is the single source of truth for what we are building, how it maps to what already exists,
+      and how we grind it forward with minimal human interruption.
+    </p>
+
+    <div class="panel">
+      <p style="margin-top:0"><b>The one-line thesis.</b> The network system already separates
+      <b>simulation authority</b>, <b>representation</b>, <b>delivery</b>, and <b>visibility</b>. The dashboard adds a
+      fifth cross-cutting concern the architecture does not yet name:</p>
+      <p style="font-size:17px;margin:10px 0 4px"><b style="color:var(--accent)">Accountability</b> — people can see
+      <em>what happened</em>, <em>why the system believes it</em>, and <em>who had authority to change it</em>.</p>
+      <p class="note" style="margin-bottom:0">Do not begin with Grafana as the product. Grafana / Cloud
+      Monitoring is the engineering workbench underneath. The Lumberjacks dashboard is opinionated and
+      community-readable, built around five concepts: <b>health, safety, history, achievement, and authority</b>.</p>
+    </div>
+
+    <div class="legend">
+      <span><span class="pill live">LIVE</span> emitted &amp; wired today</span>
+      <span><span class="pill partial">PARTIAL</span> data exists, not surfaced</span>
+      <span><span class="pill gap">GAP</span> not emitted / not built</span>
+      <span><span class="pill plan">PLANNED</span> designed, not built</span>
+    </div>
+  </section>
+
+  <section id="reconcile">
+    <h2><span class="n">01</span>Concept ↔ Repository reality</h2>
+    <p class="lede">The design conversation is directionally right, but a large share of it is aspirational
+      against the actual code and Terraform. This is the honest ledger of what is real. Every claim below is
+      anchored to a file in the repo.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th style="width:30%">Concept pillar</th><th style="width:14%">State</th><th>Where it lives / what's missing</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Four-concern architecture (authority / representation / delivery / visibility)</td>
+            <td><span class="pill live">LIVE</span></td>
+            <td>The spine of the whole system. <span class="src">docs/network/README.md</span>, <span class="src">docs/network/architecture.md</span></td>
+          </tr>
+          <tr>
+            <td>Operator / “Live” signals — server health, sessions, tick health</td>
+            <td><span class="pill live">LIVE</span></td>
+            <td>Emitted as OTel metrics and already on a Cloud Monitoring dashboard. <span class="src">src/Game.ServiceDefaults/LumberjacksTelemetry.cs</span>, <span class="src">infra/gcp/stage1/observability.tf</span></td>
+          </tr>
+          <tr>
+            <td>Existing Operator Console UI (status / events / regions / players / guilds)</td>
+            <td><span class="pill live">LIVE</span></td>
+            <td>Working React SPA — this is the Operator + partial Community dashboard already prototyped. <span class="src">clients/admin-web/src/App.tsx</span></td>
+          </tr>
+          <tr>
+            <td>Transport distribution (UDP / binary-WS / JSON-WS)</td>
+            <td><span class="pill partial">PARTIAL</span></td>
+            <td>Metric <code>lumberjacks.delivery{path}</code> exists; no dashboard widget renders the split yet.</td>
+          </tr>
+          <tr>
+            <td>Network latency &amp; packet-loss</td>
+            <td><span class="pill gap">GAP</span></td>
+            <td>No RTT histogram, no loss-rate metric. <code>lumberjacks.udp.packets{outcome}</code> counts outcomes but no rate is derived. Targets named only in <span class="src">docs/deployment-strategy.md</span>.</td>
+          </tr>
+          <tr>
+            <td>“Accountability” as a fifth concern</td>
+            <td><span class="pill plan">PLANNED</span></td>
+            <td>Net-new framing. Raw material exists (durable event log; evidence/interpretation split &amp; immutability rule in <span class="src">docs/github-integration-strategy.md</span>) but no doc anchors it as a peer concern yet.</td>
+          </tr>
+          <tr>
+            <td>Community as top-level object; “Game” as adapter beneath</td>
+            <td><span class="pill gap">GAP</span></td>
+            <td>Today’s top nouns are Region / Player / Guild / Structure / Event / Challenge. No Community aggregate, no Achievement entity. <span class="src">src/Game.Contracts/Events/EventType.cs</span></td>
+          </tr>
+          <tr>
+            <td>Four-tier achievement provenance (Observed / Verified / Community-awarded / Reconstructed)</td>
+            <td><span class="pill live">BUILT</span></td>
+            <td>Now implemented (D-07): an 8-entry achievement catalog projected over the event log. <b>Observed</b> + <b>Reconstructed</b> auto-unlock with evidence; <b>Verified</b> / <b>Community-awarded</b> are modeled tiers held as extension points (a test asserts they never auto-emit). See §04.</td>
+          </tr>
+          <tr>
+            <td>Safety surfaces — backups, restore rehearsal, restore point</td>
+            <td><span class="pill plan">PLANNED</span></td>
+            <td>Strategy text only (Postgres disk + snapshots). No backup-status metric or endpoint. <span class="src">docs/github-integration-strategy.md §11</span></td>
+          </tr>
+          <tr>
+            <td>Trust surfaces — roles, access, privileged actions, ownership</td>
+            <td><span class="pill gap">GAP</span></td>
+            <td>No auth/role model. Operator API is currently unauthenticated by design. <span class="src">docs/google-cloud-migration-strategy.md</span> (non-goal)</td>
+          </tr>
+          <tr>
+            <td>“GCP P7” = the proven deployment the dashboard describes</td>
+            <td><span class="pill info">NOTE</span></td>
+            <td>Lives in a <b>separate repo</b> <span class="src">C:\work\comfy\infra\gcp\p7</span>. <b>Confirmed 2026-07-11:</b> it runs the <em>same</em> Ops Agent OTLP collector and per-service OTLP wiring as stage1 — but has <b>no Cloud Monitoring dashboard</b>, and gameplay series are empty while disarmed. See P7 fact sheet in §03.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note warn">
+      <b>Resolved (D-01, 2026-07-11).</b> The caveat “does P7 emit the same telemetry?” is answered: <b>yes for the
+      pipeline, no for the dashboard.</b> P7 has the identical Ops Agent OTLP receiver (<code>:4317</code>) and
+      OTLP env wiring as stage1; it lacks a <code>google_monitoring_dashboard</code> and — while disarmed to
+      observe-only — carries no live gameplay traffic through Lumberjacks. Details in the §03 P7 fact sheet.
+    </div>
+  </section>
+
+  <section id="products">
+    <h2><span class="n">02</span>Three products in one interface</h2>
+    <p class="lede">One interface answering three distinct questions for three distinct readers. The first
+      vertical slice collapses these into four sections — <b>Live / Safety / History / Trust</b>.</p>
+
+    <div class="grid3">
+      <div class="panel tight">
+        <p class="kicker">Operator</p>
+        <h3 style="margin-top:2px">Is the community safe &amp; healthy right now?</h3>
+        <p class="g" style="color:var(--ink-soft);font-size:13.5px">Server health, players online, tick health,
+          transport distribution, latency, gateway status. <span class="pill live">mostly LIVE</span></p>
+      </div>
+      <div class="panel tight">
+        <p class="kicker">Community</p>
+        <h3 style="margin-top:2px">What has this group accomplished together?</h3>
+        <p class="g" style="color:var(--ink-soft);font-size:13.5px">Achievements <em>derived from authoritative
+          observations</em>, not badges stapled on. Every claim carries provenance. <span class="pill live">achievements shipped (D-07)</span></p>
+      </div>
+      <div class="panel tight">
+        <p class="kicker">Stewardship</p>
+        <h3 style="margin-top:2px">Can a nontechnical community operate this without blind trust?</h3>
+        <p class="g" style="color:var(--ink-soft);font-size:13.5px">Backups, changes, trust &amp; roles, evidence,
+          data-export authority. <span class="pill gap">mostly GAP</span></p>
+      </div>
+    </div>
+
+    <h3>First vertical slice — the four sections</h3>
+    <pre class="tree">GCP P7 Community Dashboard
+
+Live                 Safety                History              Trust
+- server health      - last save           - deployments        - evidence for each status
+- online players     - last backup         - joins / leaves     - source timestamp
+- tick rate          - verified restore    - restarts           - observation provenance
+- latency            - deployed digest     - updates / failures - responsible component
+- transport mode     - mod/server version  - achievements
+- gateway status</pre>
+    <p class="note">
+      Full trust does not mean every member gets root. It means: authority is explicit, actions are
+      attributable, state is exportable, backups are independently verifiable, claims have evidence, changes
+      are reversible — and <b>no community is trapped by the host</b>.
+    </p>
+  </section>
+
+  <section id="signals">
+    <h2><span class="n">03</span>Signal reality-check</h2>
+    <p class="lede">Every dashboard signal graded against what the system actually emits today, with the exact
+      metric or source. This is the build-order driver: green needs a widget, amber needs surfacing, red needs
+      instrumentation first.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th style="width:26%">Signal</th><th style="width:14%">State</th><th>Source of truth (exact)</th></tr></thead>
+        <tbody>
+          <tr><td colspan="3" style="background:var(--grey-soft);font-weight:650;font-size:12px;letter-spacing:.04em;color:var(--ink-soft)">LIVE</td></tr>
+          <tr><td>Gateway / server health</td><td><span class="pill live">LIVE</span></td><td><span class="src">/health</span> uptime check, content match <code>"status":"ok"</code> · observability.tf</td></tr>
+          <tr><td>Players / active sessions</td><td><span class="pill live">LIVE</span></td><td><code>lumberjacks.sessions.active</code> (UpDownCounter) — dashboard widget exists</td></tr>
+          <tr><td>Tick health (p99, budget 50 ms @ 20 Hz)</td><td><span class="pill live">LIVE</span></td><td><code>lumberjacks.tick.duration</code>, <code>lumberjacks.tick.overruns</code> — widget threshold drawn at 50 ms</td></tr>
+          <tr><td>Application errors</td><td><span class="pill live">LIVE</span></td><td>Log-based metric <code>lumberjacks_application_errors</code> (severity≥ERROR)</td></tr>
+          <tr><td>Transport distribution (UDP / binary-WS / JSON-WS)</td><td><span class="pill live">LIVE</span></td><td>3-way labels <code>udp</code>/<code>binary_ws</code>/<code>json_ws</code> (decided 07-11) → in-process tally → <code>/api/transport</code> → admin-web stacked-bar widget. <b>Verified live on AM4</b> (07-11): a real WS client drove <code>json_ws</code> 0→45 while <code>udp</code>/<code>binary_ws</code> stayed 0 — exactly-once counting held. Proxied clean via <code>/api/transport</code>.</td></tr>
+          <tr><td>Joins / leaves (session transitions)</td><td><span class="pill live">LIVE</span></td><td><code>lumberjacks.sessions.transitions</code> tallied → <code>/api/sessions</code> → admin-web stat cards. <b>Verified live:</b> connect→<code>created:1,active:1</code>, disconnect→<code>detached:1,active:0</code>.</td></tr>
+          <tr><td>Achievements (first-class, provenance-tagged)</td><td><span class="pill live">LIVE</span></td><td>D-07: 8-entry catalog as a pure projection over the event log; <code>Observed</code>/<code>Reconstructed</code> auto-unlock, <code>Verified</code>/<code>Community-awarded</code> are extension points. <code>Game.EventLog /achievements</code> → Operator API <code>/api/achievements</code> → admin-web History view with provenance badges. Runtime-verified on AM4 (07-11, v0.10.2).</td></tr>
+          <tr><td>Gameplay events (G4, anonymized feed)</td><td><span class="pill live">LIVE</span></td><td>v0.20.0: <code>GET /api/v0/telemetry/events</code> — in-process ring (<code>GameplayEventFeed</code>, allow-list, no actor) + exposure-delay knob (<code>Telemetry__PublicEventsDelaySeconds</code>, live by default). Served at <code>/events</code> as a pure API client. 7 of 18 canonical types have producers today (structure_placed, item_picked_up, item_stored, interest_subscription_changed, region_activated, region_deactivated, player_entered_region); feed grows as producers are added.</td></tr>
+
+          <tr><td colspan="3" style="background:var(--grey-soft);font-weight:650;font-size:12px;letter-spacing:.04em;color:var(--ink-soft)">PARTIAL — data exists, not surfaced</td></tr>
+          <tr><td>UDP packet outcomes</td><td><span class="pill partial">PARTIAL</span></td><td><code>lumberjacks.udp.packets{outcome}</code> — no widget (roll into transport widget next)</td></tr>
+          <tr><td>Deployed image digest / mod &amp; server versions</td><td><span class="pill partial">PARTIAL</span></td><td>Known at deploy time; not surfaced as a signal</td></tr>
+          <tr><td>Restarts / incidents</td><td><span class="pill partial">PARTIAL</span></td><td>Cloud Monitoring incident list widget + 6 alert policies; no app-level entity</td></tr>
+
+          <tr><td colspan="3" style="background:var(--grey-soft);font-weight:650;font-size:12px;letter-spacing:.04em;color:var(--ink-soft)">GAP — instrument first</td></tr>
+          <tr><td>Network latency (RTT)</td><td><span class="pill partial">MEASURED</span></td><td><b>Real 6-region geo dataset</b> (07-11): UDP p50 <b>30 ms</b> (us-west1) → <b>205 ms</b> (São Paulo), loss 0 — see the geo snapshot below. Now a <b>standing Cloud Monitoring dashboard</b> (D-17): <code>synthclient.rtt_p50_ms{region,transport}</code>. <b>D-05:</b> synthclient also emits a <code>synthclient.rtt_ms</code> histogram (explicit ms buckets 5–500) for full distribution, not just percentiles.</td></tr>
+          <tr><td>Packet-loss rate</td><td><span class="pill partial">MEASURED</span></td><td>synthclient loss = <b>0 across all 6 regions × 3 transports</b> (25.5k deliveries, 07-11). Client-measured. <b>D-06:</b> server-side <code>udp_packets.reject_rate</code> now derived on <code>/api/v0/telemetry/delivery</code> — a reject/error rate (invalid + unknown_session + send_error ÷ total), <b>NOT network loss</b> (unobservable server-side; true loss stays client-measured).</td></tr>
+          <tr><td>Backups / restore point / restore rehearsal</td><td><span class="pill gap">GAP</span></td><td>Strategy text only; no metric or endpoint</td></tr>
+          <tr><td>Roles / access / privileged actions / ownership</td><td><span class="pill gap">GAP</span></td><td>No auth model; Operator API unauthenticated</td></tr>
+          <tr><td>Deployment history / changes log</td><td><span class="pill plan">PLANNED</span></td><td>Designed in github-integration-strategy.md; no <code>.github/</code>, <code>evidence/</code>, or <code>scenarios/</code> dirs yet</td></tr>
+          <tr><td>Immutable evidence bundles (GCS + manifests)</td><td><span class="pill plan">PLANNED</span></td><td>Designed §5; not implemented</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <p class="kicker">P7 today — fact sheet (D-01, confirmed 2026-07-11)</p>
+      <p style="margin-top:2px;font-size:13.5px">Read-only inspection of <span class="src">C:\work\comfy\infra\gcp\p7</span>.
+        The Phase-0 premise was partly wrong: P7 is <b>not</b> telemetry-blind. It runs the identical Ops Agent OTLP
+        receiver (<code>:4317</code>, <code>googlecloudmonitoring</code>) and identical per-service OTLP env wiring
+        (<code>deployment.environment=gcp-p7</code>), building the same <code>lumberjacks.*</code>-emitting binaries.
+        What it lacks is a <b>Cloud Monitoring dashboard</b> and, while disarmed, live gameplay traffic through Lumberjacks.</p>
+      <div class="tablewrap" style="margin-bottom:0">
+        <table>
+          <thead><tr><th style="width:26%">Live signal on P7</th><th style="width:14%">Today</th><th>Reason / cheapest fix</th></tr></thead>
+          <tbody>
+            <tr><td>Server health</td><td><span class="pill live">LIVE</span></td><td>Uptime check on <code>/health:4000</code> + <code>gateway_unavailable</code> alert already provisioned. <span class="src">infra/gcp/p7/monitoring.tf</span></td></tr>
+            <tr><td>Tick health</td><td><span class="pill partial">PARTIAL</span></td><td><code>lumberjacks.tick.duration</code> wired end-to-end via OTLP; idle until a fieldlab window is armed. Fix: add a P7 dashboard tile.</td></tr>
+            <tr><td>Transport distribution</td><td><span class="pill partial">PARTIAL</span></td><td><code>lumberjacks.delivery{path}</code> / <code>udp.packets{outcome}</code> exported by the same binaries; flow only under armed traffic.</td></tr>
+            <tr><td>Players online</td><td><span class="pill gap">GAP</span></td><td>Players join Valheim directly (<code>SERVER_PUBLIC=false</code>, <code>:2456</code>), not via Lumberjacks sessions, so <code>sessions.active</code> reads 0. Needs a source decision — see D-11.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin-bottom:0"><b>Single cheapest lever:</b> clone stage1’s <code>google_monitoring_dashboard</code>
+        (“Lumberjacks — Gate 1 Operations”) into <span class="src">infra/gcp/p7</span> — the collector already exists,
+        only the dashboard is missing. That edit lives in <code>C:\work\comfy</code> → <b>cross-repo, requires sign-off</b> (D-10).</p>
+    </div>
+
+    <div class="panel">
+      <p class="kicker">Live geo snapshot — real RTT by region (D-16/D-17, 2026-07-11)</p>
+      <p style="margin-top:2px;font-size:13.5px">Measured by the <b>6-region synthetic-client fleet</b> (a GCP
+        <code>e2-micro</code> in each region, spun up on-demand and torn down — ~$0.05 for the window) against the SUT in
+        <b>us-west1</b>. Bars show <b>UDP p50</b> (the datagram lane, warmed); <b>loss was 0 in every region × transport</b>
+        (25.5k deliveries confirmed server-side). Ordering is exactly what geography predicts.</p>
+      <div style="display:flex;flex-direction:column;gap:7px;margin-top:14px;font-family:var(--mono);font-size:12.5px">
+        <div style="display:grid;grid-template-columns:200px 1fr 118px;align-items:center;gap:10px">
+          <span>us-west1 <span style="color:var(--ink-soft)">· SUT home</span></span>
+          <span style="background:var(--grey-soft);border-radius:5px;overflow:hidden;height:15px"><span style="display:block;height:100%;width:15%;background:var(--accent)"></span></span>
+          <span><b>30</b> ms <span style="color:var(--ink-soft)">p99 51</span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr 118px;align-items:center;gap:10px">
+          <span>us-east4 <span style="color:var(--ink-soft)">· Virginia</span></span>
+          <span style="background:var(--grey-soft);border-radius:5px;overflow:hidden;height:15px"><span style="display:block;height:100%;width:45%;background:var(--amber)"></span></span>
+          <span><b>93</b> ms <span style="color:var(--ink-soft)">p99 113</span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr 118px;align-items:center;gap:10px">
+          <span>asia-northeast1 <span style="color:var(--ink-soft)">· Tokyo</span></span>
+          <span style="background:var(--grey-soft);border-radius:5px;overflow:hidden;height:15px"><span style="display:block;height:100%;width:58%;background:var(--amber)"></span></span>
+          <span><b>119</b> ms <span style="color:var(--ink-soft)">p99 144</span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr 118px;align-items:center;gap:10px">
+          <span>europe-west3 <span style="color:var(--ink-soft)">· Frankfurt</span></span>
+          <span style="background:var(--grey-soft);border-radius:5px;overflow:hidden;height:15px"><span style="display:block;height:100%;width:86%;background:var(--red)"></span></span>
+          <span><b>177</b> ms <span style="color:var(--ink-soft)">p99 200</span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr 118px;align-items:center;gap:10px">
+          <span>australia-southeast1 <span style="color:var(--ink-soft)">· Sydney</span></span>
+          <span style="background:var(--grey-soft);border-radius:5px;overflow:hidden;height:15px"><span style="display:block;height:100%;width:93%;background:var(--red)"></span></span>
+          <span><b>190</b> ms <span style="color:var(--ink-soft)">p99 213</span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr 118px;align-items:center;gap:10px">
+          <span>southamerica-east1 <span style="color:var(--ink-soft)">· São Paulo</span></span>
+          <span style="background:var(--grey-soft);border-radius:5px;overflow:hidden;height:15px"><span style="display:block;height:100%;width:100%;background:var(--red)"></span></span>
+          <span><b>205</b> ms <span style="color:var(--ink-soft)">p99 226</span></span>
+        </div>
+      </div>
+      <p class="note" style="margin-bottom:0">All three transports were exercised from every region; UDP is shown because
+        it had the tightest tail (e.g. us-west1 UDP p99 51 ms vs binary-WS 250 ms). A cold-start warm-up skewed the very
+        first probe in two regions (us-west1/europe-west3 <em>json</em>), which is why the warmed UDP pass is the honest
+        per-region number. These now emit as <code>workload.googleapis.com/synthclient.rtt_p50_ms{region,transport}</code>
+        (via OTLP → per-VM Ops Agent) to a <b>standing Cloud Monitoring dashboard, “Synthclient — Geo Latency”</b> — this
+        panel is a point-in-time copy of that live view (D-17 done).</p>
+    </div>
+  </section>
+
+  <section id="provenance">
+    <h2><span class="n">04</span>Claim provenance — reconciling two vocabularies</h2>
+    <p class="lede">The repo already runs an evidence discipline and once did a naming-drift audit — so we must not
+      fork the vocabulary. The dashboard’s four-tier achievement provenance is defined as an <em>extension that maps
+      onto</em> the existing three-tier doc-provenance, on a distinct axis.</p>
+
+    <div class="grid2">
+      <div class="panel">
+        <p class="kicker">Existing — documentation provenance</p>
+        <p style="margin-top:2px;font-size:13.5px">From <span class="src">docs/current-focus.md</span>. Answers “how do we know this claim about the <em>system</em>?”</p>
+        <ul style="font-size:14px">
+          <li><b>Recorded</b> — stated in a contemporaneous document/result</li>
+          <li><b>Observed</b> — directly visible in current code or tests</li>
+          <li><b>Reconstructed</b> — ordering inferred from technical dependencies</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <p class="kicker">New — achievement provenance (dashboard)</p>
+        <p style="margin-top:2px;font-size:13.5px">Answers “how do we know this <em>community accomplishment</em>?” Same discipline, different axis.</p>
+        <ul style="font-size:14px">
+          <li><b>Observed</b> — directly derived from authoritative server events → maps to <em>Observed</em></li>
+          <li><b>Verified</b> — confirmed by multiple independent signals <span class="pill gap">NEW</span></li>
+          <li><b>Community-awarded</b> — explicitly granted by members/stewards; must be attributable <span class="pill gap">NEW</span></li>
+          <li><b>Reconstructed</b> — inferred from imported historical data → maps to <em>Reconstructed</em></li>
+        </ul>
+      </div>
+    </div>
+    <p class="note warn">
+      <b>Rule:</b> never present the four categories as equivalent. “Community-awarded” is the only tier backed by
+      human authority rather than machine observation — which is exactly why it is the anchor for the
+      <b>Accountability</b> concern: a community-awarded claim must always carry <em>who</em> awarded it and
+      <em>when</em>, honoring the existing immutability rule (a correction is a new record, never an edit).
+    </p>
+  </section>
+
+  <section id="abstraction">
+    <h2><span class="n">05</span>The Community model</h2>
+    <p class="lede">Target abstraction where “Community” is the top-level object and “Game” is an adapter beneath
+      it — so a Valheim guild, a private co-op group, a public server, a classroom, a tournament, or a
+      mod-dev collective all fit one model. <span class="pill gap">not built — target only</span></p>
+
+    <pre class="tree">Community
+├── Members        └── Deployments
+├── Roles          ├── Incidents
+├── Worlds         └── Evidence
+├── Sessions
+├── Events         (today's real nouns: Region · Player · Guild ·
+├── Achievements    Structure · Event · Challenge — see EventType.cs)
+├── Services
+├── Artifacts
+└── Backups</pre>
+    <p>
+      This is a north star, not the next sprint. We do <b>not</b> refactor toward a Community aggregate until the
+      Live slice is shipped and the Community/Stewardship data actually exists to hang on it. Introducing the
+      abstraction before the data is real would be modelling fiction.
+    </p>
+  </section>
+
+  <section id="workflow">
+    <h2><span class="n">06</span>Operating model — how we build this without you in the loop</h2>
+    <p class="lede">Default posture: the agent drives, keeps the human out of the loop, and only pulls them in to
+      prevent thrash. This section is the standing contract for that.</p>
+
+    <div class="grid2">
+      <div class="panel">
+        <p class="kicker">Delegation policy</p>
+        <ul style="font-size:14px;margin-bottom:0">
+          <li><b>Do it inline</b> when the tool-use of batching/sending/retrieving exceeds the cost of just doing it.</li>
+          <li><b>Spawn a subagent</b> for fan-out reads, isolated slices, and parallelizable build/verify work. Sonnet for mechanical, Opus for judgment-heavy slices.</li>
+          <li><b>Offload to HEARTH</b> (local MCP door, :8710, ~35 tools, Ollama up) for lightweight generation and git-shaped chores — keep it warm, prefer it for cheap local work.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <p class="kicker">Pull-in triggers (interrupt the human)</p>
+        <ul style="font-size:14px;margin-bottom:0">
+          <li>A decision would <b>fork the vocabulary</b> or an invariant (lanes, tick budget, evidence tiers).</li>
+          <li>Cross-repo action touching <code>C:\work\comfy</code> or the disarmed P7 VM.</li>
+          <li>Anything irreversible, outward-facing, or in the safety-rule prohibited/permission list.</li>
+          <li>Ambiguity that would otherwise cause rework — surface it early to prevent thrash.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>The build loop (per work item)</h3>
+    <ol>
+      <li><b>Ground</b> — confirm the signal’s real source against §03; never build on a metric that isn’t emitted.</li>
+      <li><b>Slice</b> — smallest shippable increment that adds one legible signal end-to-end.</li>
+      <li><b>Delegate</b> — pick inline / subagent / HEARTH per the policy above.</li>
+      <li><b>Verify</b> — exercise the actual surface (metric flowing, widget rendering), not just tests.</li>
+      <li><b>Record</b> — update this document (§03 grade + changelog) and tag evidence with provenance.</li>
+    </ol>
+    <p class="note">
+      This document <b>is</b> the ledger. Every shipped increment flips a pill in §03 and adds a changelog row.
+      A signal is not “done” until it renders in the community-readable dashboard and its source is provenance-tagged.
+    </p>
+  </section>
+
+  <section id="roadmap">
+    <h2><span class="n">07</span>Roadmap — vertical slices</h2>
+    <p class="lede">Each phase ships one product-question’s worth of legibility. We do not start a phase until the
+      prior one renders and verifies.</p>
+
+    <div class="panel" style="padding:6px 22px">
+      <div class="phase">
+        <div class="dot">✓</div>
+        <div class="body">
+          <h4>Confirm P7 telemetry ground-truth <span class="pill live">DONE · 2026-07-11</span></h4>
+          <p class="g">P7 runs the same Ops Agent OTLP collector + OTLP wiring as stage1; the gap is the missing
+            Cloud Monitoring dashboard (not the collector). Server-health LIVE; tick/transport PARTIAL (idle while
+            disarmed); players-online GAP (direct Valheim join). Full fact sheet in §03.</p>
+        </div>
+      </div>
+      <div class="phase now">
+        <div class="dot">1</div>
+        <div class="body">
+          <h4>Live slice — Operator dashboard <span class="pill live">code-complete · verify pending</span></h4>
+          <p class="g">Track (a) <b>in-repo — DONE (07-11):</b> transport-distribution (3-way udp/binary_ws/json_ws) +
+            joins/leaves widgets built via in-process tallies → <code>/api/transport</code>, <code>/api/sessions</code>;
+            admin-web re-framed into Live/Safety/History/Trust with honest Safety/Trust placeholders. Frontend
+            typechecks clean; <b>backend build + 162 tests + live-endpoint smoke all verified on AM4</b>
+            (homebase, .NET 9.0.315). Live proof: a WS client's join+move drove <code>json_ws</code> 0→45
+            (exactly-once; udp/binary_ws=0) plus session created/detached tallies, confirmed through the
+            OperatorApi <code>/api/*</code> proxy admin-web calls (D-12 done). Track (b) <b>cross-repo, still needs sign-off:</b> clone stage1 dashboard → <code>infra/gcp/p7</code> (D-10),
+            decide P7 players-online source (D-11).</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="dot">2</div>
+        <div class="body">
+          <h4>Instrument the gaps — latency &amp; loss <span class="pill live">real 6-region data ✓</span></h4>
+          <p class="g">Rather than synthesize RTT server-side, source it from a <b>multi-region synthetic-client
+            fleet</b> (GCP, project <code>lumberjacks-synthmon-260711</code>): real clients in 5–6 regions measure
+            true end-to-end RTT (seq-echo), packet loss, and transport path, tagged by geography → the dashboard shows
+            p50/p99 latency <em>per region</em>. Harness <code>tools/synthclient</code> validated (D-14); <b>SUT live</b>
+            at <code>136.118.58.123:4000</code> and a real external smoke from AM4 measured p50 52–58 ms us-west1 across
+            all 3 transports, loss 0 (D-15). Next: the 5–6 region fleet (D-16).</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="dot">✓</div>
+        <div class="body">
+          <h4>Community slice — achievements with provenance <span class="pill live">DONE · 2026-07-11</span></h4>
+          <p class="g">Shipped (D-07): an 8-entry catalog projected purely over the authoritative event log —
+            Observed unlocks from concrete events (carrying evidence), Reconstructed from aggregates (world age).
+            Never manually-asserted. Exposed via <code>/api/achievements</code>, rendered in the console's History
+            section with provenance badges. 9 unit tests; full suite green.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="dot">4</div>
+        <div class="body">
+          <h4>Stewardship slice — safety &amp; trust</h4>
+          <p class="g">Surface backup status + verified restore point (Safety) and an attributable action log
+            (Trust). Depends on an auth/role model — largest net-new build; sequence last.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="backlog">
+    <h2><span class="n">08</span>Backlog — derived from the gaps</h2>
+    <p class="lede">One work item per §03 gap, ordered by the roadmap. IDs are stable so the changelog can
+      reference them.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th style="width:8%">ID</th><th style="width:16%">Phase</th><th>Item</th><th style="width:14%">Owner mode</th></tr></thead>
+        <tbody>
+          <tr><td>D-01</td><td>0 · Ground</td><td>P7 telemetry fact sheet (does the P7 VM emit <code>lumberjacks.*</code>?)</td><td><b style="color:var(--accent)">✓ done 07-11</b></td></tr>
+          <tr><td>D-02</td><td>1 · Live</td><td>Transport-distribution widget (3-way udp/binary_ws/json_ws)</td><td><b style="color:var(--accent)">✓ code 07-11</b></td></tr>
+          <tr><td>D-03</td><td>1 · Live</td><td>Joins/leaves widget from <code>sessions.transitions</code></td><td><b style="color:var(--accent)">✓ code 07-11</b></td></tr>
+          <tr><td>D-04</td><td>1 · Live</td><td>Re-frame admin-web into Live / Safety / History / Trust</td><td><b style="color:var(--accent)">✓ code 07-11</b></td></tr>
+          <tr><td>D-05</td><td>2 · Instrument</td><td>RTT latency histogram metric</td><td><b style="color:var(--accent)">✓ code 07-13</b></td></tr>
+          <tr><td>D-06</td><td>2 · Instrument</td><td>Packet-loss rate metric derived from <code>udp.packets{outcome}</code> — shipped honestly as a server-side <b>reject/error rate</b> (not network loss)</td><td><b style="color:var(--accent)">✓ code 07-13</b></td></tr>
+          <tr><td>D-07</td><td>3 · Community</td><td>Achievement catalog (8) as pure event-log projection + provenance (Observed/Reconstructed auto; Verified/Community-awarded as extension points) → <code>/api/achievements</code> → console History view. <b>Runtime-verified</b> on AM4: 34 events → all 8 unlock, provenance + evidence correct.</td><td><b style="color:var(--accent)">✓ done 07-11</b></td></tr>
+          <tr><td>D-08</td><td>4 · Steward</td><td>Backup-status + verified-restore-point signal</td><td>needs design</td></tr>
+          <tr><td>D-09</td><td>4 · Steward</td><td>Auth/role model + attributable action log</td><td>pull-in human</td></tr>
+          <tr><td>D-10</td><td>1 · Live</td><td>Clone stage1 <code>google_monitoring_dashboard</code> into <code>infra/gcp/p7</code> (cross-repo, comfy)</td><td>pull-in human</td></tr>
+          <tr><td>D-11</td><td>1 · Live</td><td>Players-online source decision for P7 (arm window vs parse Valheim server logs)</td><td>needs design</td></tr>
+          <tr><td>D-12</td><td>1 · Live</td><td>Verify Live slice — <b style="color:var(--accent)">✓ build + 162 tests + live smoke on AM4 07-11</b> (json_ws 0→45 exactly-once; sessions created/detached; via <code>/api/*</code> proxy). Residual: frontend render only — <b>udp/binary_ws now verified</b> via synthclient (D-14).</td><td><b style="color:var(--accent)">✓ done</b></td></tr>
+          <tr><td>D-13</td><td>2 · Instrument</td><td><b>Decided:</b> resource/tree broadcasts stay OUT of <code>delivery{path}</code>. That metric answers "how is each client connected" (per-session transport choice); tree updates are server-initiated world state that only flows over JSON-WS and would inflate <code>json_ws</code>. A by-message-type volume metric is the right home if that view is ever wanted.</td><td><b style="color:var(--accent)">✓ resolved</b></td></tr>
+          <tr><td>D-18</td><td>4 · Steward</td><td>EventLog has no auto-migration — the <code>events</code> table is provisioned by <code>infra/docker/init.sql</code> (the TS services own the schema), not EF. Decide: add an EF migration / startup ensure, or document this as the deployment contract. (Found during D-07 runtime verify.)</td><td>needs design</td></tr>
+          <tr><td>D-19</td><td>3 · Community</td><td>Cross-process gameplay events — challenge/guild/reward events fire in the separate <code>Game.Progression</code> process and don't reach the Gateway's in-process feed ring; needs a design decision (cross-process relay vs. Progression pushing to the feed) — 5 event types blocked on this.</td><td>needs design</td></tr>
+          <tr><td colspan="4" style="background:var(--grey-soft);font-weight:650;font-size:12px;letter-spacing:.04em;color:var(--ink-soft)">Synthetic monitoring (GCP <code>lumberjacks-synthmon-260711</code>, on-demand)</td></tr>
+          <tr><td>D-14</td><td>2 · Instrument</td><td>Measuring client harness <code>tools/synthclient</code> — seq-echo RTT, loss, transport breakdown; json/binary/udp modes</td><td><b style="color:var(--accent)">✓ validated AM4 07-11</b></td></tr>
+          <tr><td>D-15</td><td>2 · Instrument</td><td>SUT deploy — <code>infra/gcp/synthmon</code> (33 res, us-west1); gateway serving public <code>136.118.58.123:4000</code>. External smoke from AM4: all 3 transports, loss 0, real WAN RTT p50 52–58 ms.</td><td><b style="color:var(--accent)">✓ done 07-11</b></td></tr>
+          <tr><td>D-16</td><td>2 · Instrument</td><td>Multi-region fleet (6 regions: US×2, Frankfurt, Tokyo, São Paulo, Sydney) — ran + collected + <b>torn down</b>, no orphans</td><td><b style="color:var(--accent)">✓ done 07-11</b></td></tr>
+          <tr><td>D-17</td><td>2 · Instrument</td><td>Geo latency as real metrics — <code>synthclient.rtt_p50_ms/p99_ms/loss_rate{region,transport}</code> via OTLP → Ops Agent → the standing <b>“Synthclient — Geo Latency”</b> Cloud Monitoring dashboard</td><td><b style="color:var(--accent)">✓ done 07-11</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="platform">
+    <h2><span class="n">10</span>Strategic context — the Community Compute platform</h2>
+    <p class="lede">Three strategy docs (2026-07-11) situate this dashboard inside a larger arc: evolving Lumberjacks
+      from a single authoritative server into a <b>community-assisted distributed hosting platform</b> — a cloud
+      <em>coordinator</em> plus <em>trusted volunteer nodes</em>, with a control plane for node enrollment, capability
+      reporting, placement, leases, snapshots, telemetry, and failover. This dashboard is that platform's
+      <b>legibility &amp; accountability layer</b>.</p>
+
+    <div class="panel">
+      <p class="kicker">What we've built, mapped onto the platform build order</p>
+      <ul style="margin-bottom:0;font-size:14.5px">
+        <li><b>“Instrument tick phases &amp; telemetry”</b> → the Live slice + <code>LumberjacksTelemetry</code>, and as of
+          2026-07-12 <b>per-tick-<em>phase</em> profiling</b> (commit <code>6f1670d</code>, branch
+          <code>claude/optimistic-mclean-435ef7</code>): p50/p99/max per phase, DB-less via a “Tick timing” log window +
+          <code>GET /tick</code>. First measurement attributes the 400-bot knee ~entirely to the broadcast <b>send</b>
+          phase (152–168 ms p99 vs ~8 ms interest).</li>
+        <li><b>“Benchmark cloud vs AM4 under identical workloads”</b> (step 5) → <b>DONE (2026-07-12)</b> —
+          three-way sweep (cloud / AM4 / OMEN) + GPU-contention probe + off-host knee runs
+          (<code>docs/benchmark-host-capacity-2026-07-12.md</code>). The core bet holds: local hardware carries the
+          authority workload at sunk cost; co-tenancy with real local inference showed <em>no</em> RTT regression
+          (“anytime”, not “off-hours-only”); and cloud and AM4 knee at the <b>same 400 bots</b> with CPU far from
+          saturated — the wall is the single-threaded O(N²) broadcast fan-out, so capacity work now points at
+          interest management (steps 3–4), not hardware.</li>
+        <li><b>Stewardship backlog reframed as the control plane:</b> D-09 (identity/roles) = <em>node enrollment &amp;
+          identity</em>; D-08 (backups/restore) = <em>snapshot management</em>.</li>
+        <li><b>Evidence discipline already aligned:</b> the Workbook's “evidence immutable, interpretation separate” is
+          this repo's provenance model — Observed/Reconstructed events (evidence) vs. the achievement projection
+          (interpretation). See §04.</li>
+      </ul>
+    </div>
+
+    <div class="grid2">
+      <div class="panel tight">
+        <p class="kicker">SUT evolution (migration strategy)</p>
+        <p style="font-size:13.5px;margin:2px 0 0">The synthmon SUT is <b>Stage 1</b> (VM + Compose, DB-less). Stages 2–4
+          add <b>Cloud SQL</b>, <b>Caddy/TLS</b>, <b>Artifact Registry + CI/CD</b>, and production monitoring — the
+          concrete hardening path once behavioral parity holds.</p>
+      </div>
+      <div class="panel tight">
+        <p class="kicker">Community capacity economy</p>
+        <p style="font-size:13.5px;margin:2px 0 0">Contributors earn non-transferable <b>Hosting Credits</b> for reliable
+          compute (valued by availability, reliability, capability, network quality, regional demand), spent to launch
+          private instances — a future Trust/Stewardship surface.</p>
+      </div>
+    </div>
+    <p class="note" style="margin-bottom:0">Guiding principle (Workbook): make existing capabilities
+      <b>reproducible, observable, and transferable</b> before expanding scope — automate bookkeeping, not judgment.</p>
+  </section>
+
+  <section id="log">
+    <h2><span class="n">11</span>Changelog</h2>
+    <p class="lede">The living ledger. Every shipped increment flips a §03 pill and lands a row here.</p>
+    <div class="panel log">
+      <div class="row"><div class="d">2026-07-13</div><div>v0.21.0 — <b>Instrument metrics: RTT histogram + server-side UDP reject rate (D-05, D-06).</b> Branch <code>agent/instrument-metrics-d05-d06</code> (off master, independent of the G4 stack): synthclient now emits a <code>synthclient.rtt_ms{region,transport}</code> <b>histogram</b> (explicit ms buckets 5–500) alongside the existing p50/p99 gauges — a full distribution, not two percentiles. Server-side, <code>LumberjacksTelemetry</code> tallies UDP packet outcomes and <code>GET /api/v0/telemetry/delivery</code> gains a <code>udp_packets</code> block: per-outcome counts + a derived <code>reject_rate</code> = (invalid + unknown_session + send_error) / total. <b>Named honestly as a reject/error rate, NOT packet loss</b> — a server can't observe never-arrived packets; true network loss stays client-measured (synthclient <code>loss_rate</code>). 235 Simulation tests green (+4); merged to master.</div></div>
+      <div class="row"><div class="d">2026-07-13</div><div>v0.20.1 — <b>G4 feed enriched: 3 more producers wired (region_activated, region_deactivated, player_entered_region), 4→7 live types.</b> Branch <code>agent/g4-more-producers</code> (stacks on v0.20.0 / <code>agent/g4-events-backend</code>): captures added at the real action seams in the Gateway process — <code>POST /regions</code> and <code>DELETE /regions/{id}</code> (<code>RegionEndpoints</code>) and the player <code>Join</code> path (<code>PlayerHandler</code>). Region id only, provenance <code>observed</code>, <b>no actor</b> (player_entered_region carries neither id/name nor spawn position — the no-leak test extends to the exercised Join path). The remaining 11 canonical types still have no Gateway-process producer (5 of them fire in the separate <code>Game.Progression</code> process — logged as D-19). Cross-process types out of scope here.</div></div>
+      <div class="row"><div class="d">2026-07-13</div><div>v0.20.0 — <b>G4 gameplay-event feed is live (mock → real).</b> Branch <code>agent/g4-events-backend</code>: new <code>GET /api/v0/telemetry/events</code> over an in-process bounded ring (<code>GameplayEventFeed</code>, capacity 200, newest-first), captured <b>pre-persistence</b> at the four producers that actually emit today (structure_placed, item_picked_up, item_stored, interest_subscription_changed) — the other 14 canonical types have no producer yet and are honestly absent, not mocked. <b>Doubly privacy-guarded:</b> no actor at all (no id/name/position — the no-leak test extends to this endpoint), plus a configurable exposure <b>delay</b> (<code>Telemetry__PublicEventsDelaySeconds</code>) so an unauthed public feed can sit behind the "aggregated or delayed" line — ships <code>0</code>/live for build, set <code>30</code> for public. The <code>/events</code> page is now a pure client of the endpoint (all <code>SAMPLE_DATA</code> removed; live/empty/error states verified). Also folded <code>Game.Gateway.Tests</code> into <code>Game.sln</code> (the solution test run had been skipping it). Mechanism = static feed mirroring <code>LumberjacksTelemetry</code> (Option B); DB-less invariant held. <b>390 tests green</b> (Contracts 120 + Simulation 239 + Gateway 31); merged to master.</div></div>
+      <div class="row"><div class="d">2026-07-12</div><div>v0.19.0 — <b>Phase 3 a′: the ceiling MOVED — ~400 → ~600 bots/region (+50% capacity).</b> Branch <code>agent/parallel-send-dispatch</code>: made the <code>SendWorkers&gt;1</code> fan-out genuinely dispatch to the thread pool (<code>Parallel.ForEachAsync</code>, per-socket locks, per-chunk-local accumulators; serial path byte-identical). Off-host A/B with a serial control: radius/500 went from 100/100 overruns (serial, p99 68 ms, bots collapsing) to <b>0 overruns</b> (parallel, p99 16 ms, all 500 sustained); radius/600 holds. <code>send:wall</code> ratio 0.81 (serial) → 5.3–7.0 (parallel) = <b>5–7× speedup</b> at ~70–88% efficiency — and cheaper than "CPU-bound" predicted (only ~2.8 cores; it overlaps socket-write I/O too, correcting Follow-up F). New ceiling 600–800: past there the O(N²) fan-out is the wall — the next lever is serialize-once payloads, not more threads. Tiered NOT rescued (blocked on a separate mid-band lock — uses less CPU, won't parallelize). Fairness "inversion" was largely a loader artifact (partial retraction). Full write-up: Follow-up G. 197 tests green; on branch, not merged.</div></div>
+      <div class="row"><div class="d">2026-07-12</div><div>v0.18.0 — <b>G3/G4/G5 UI first pass (client/UX track).</b> Branch <code>agent/community-ui-g3-g4-g5</code>, Gemini-Pro-drafted + Claude-reviewed, three gateway-served pages (design rationale per goal in <code>docs/ui/g3-g4-g5-first-pass.md</code>): <b>G3 NetworkSense HUD</b> (<code>/networksense</code>, live v0 API) — a glanceable color-coded overlay, not a table, because it sits over live play; <b>G4 Gameplay Events</b> (<code>/events</code>, sample data) — an evidence timeline reusing the achievements provenance vocabulary, so the surface keeps one "evidence vs interpretation" mental model; <b>G5 Local Testing Tools</b> (<code>/testing</code>, simulated) — confirm-guarded scenario cards, benchmark card wraps the existing load harness, honoring "UI over console" with no second load path. Live v0 data where it exists, labeled "sample — backend pending" elsewhere. 149 tests green; on feature branch, not merged.</div></div>
+      <div class="row"><div class="d">2026-07-12</div><div>v0.17.0 — <b>Public Telemetry API v0 + Live Community View (strategy Phases 3–4).</b> Branch <code>agent/api-v0-community-view</code>: read-only <code>/api/v0/telemetry/{server,tick,sessions,delivery,regions}</code> — every response tagged <code>stability: unstable</code>, CORS GET-only, DB-less; <b>aggregates only</b> (a privacy test asserts no player id/name/position can appear in any response). A self-contained <code>/community</code> page (Gemini-Pro-drafted, XSS-hardened in review) polls the API every 2 s — the "dashboard consumes APIs, owns no state" principle made literal. 180 tests green. On feature branch pending review; not merged to master.</div></div>
+      <div class="row"><div class="d">2026-07-12</div><div>v0.16.0 — <b>Phase 3(a) measured: the shared-socket hypothesis is refuted; the real bottleneck is named.</b> Branch <code>agent/udp-sockets-degrade-v2</code>: <code>Replication__UdpSockets</code> (per-worker send sockets) + burst-aligned adaptive-degrade v2. Verdict (Follow-up F): 8 workers + 8 sockets gave <b>zero wall-clock parallelism</b> (broadcast wall still = interest+send summed) — the <code>Task.WhenAll</code> fan-out never dispatched because sends complete synchronously; CPU stayed ~3/24 cores. The fix is thread-pool dispatch, not more sockets. Degrade v2 now fires correctly (halves tiered/400 overruns 25→12–19 per 100) but is insufficient alone. Dial sweep: view distance costs ~quadratically (NearRadius 100/200/300 → p99 49/141/469 ms at 400 bots) — 100 u is the only budget-fitting radius. Fairness inversion persists (first-joiners 40–65× worse), rotation didn't fix it.</div></div>
+      <div class="row"><div class="d">2026-07-12</div><div>v0.15.0 — <b>Phase 2 (send-loop rework) shipped &amp; measured: the cliff is dead; the ceiling stands.</b> Branch <code>agent/send-loop-phase2</code>: chunked parallel fan-out (<code>Replication__SendWorkers</code>), fairness rotation, per-broadcast <b>deadline shedding</b>, adaptive degrade, + loader steady-state RTT percentiles (263 tests green). After-matrix vs Follow-up D: budget ceiling <b>unchanged at ~400 bots</b> (parallelism didn't overlap — summed worker time ≈ wall time; prime suspect: the single shared <code>UdpClient</code> all workers funnel through), but failure shape transformed — 500→800 degrade linearly instead of collapsing, and <b>deadline shedding cut the worst-case stall 20.9 s → 250 ms (~84×)</b> for 17 targeted disconnects. Adaptive degrade missed (fires the tick after tiered's burst — fix identified); fairness split <em>inverted</em> (open issue). Phase-3 leads: per-worker UDP sockets, per-client send budgets (ADR-0011). Full write-up: Follow-up E.</div></div>
+      <div class="row"><div class="d">2026-07-12</div><div>v0.14.0 — <b>Phase 1 shipped &amp; measured: replication policies moved the knee.</b> Branch <code>agent/replication-policies</code> adds env-selectable <code>Replication__Policy</code> = <code>tiered</code>(default)/<code>full</code>/<code>radius</code> with configurable radii, sent/culled counters in the tick-timing window + <code>GET /tick</code>, a <code>World__SpawnSpread</code> knob, and loader waypoint-wander (187 tests green). Off-host A/B: continuity confirmed (tiered/clustered reproduces the 168 ms baseline exactly); <b><code>radius</code>(100u) holds 400 bots at tick p99 ~46 ms</b> (~6× better than tiered under the same spread conditions) — the ~200-bot ceiling doubled, and bisection pins the knee in (400,500]: 500 soft-fails at ~1.5–2× budget, 600 collapses (20.9 s max-tick stall); <code>full</code> can't reach steady state even at 200 bots (every historical capacity number owed itself to interest filtering); realistic spread is <em>harsher</em> than the old clustered spawns (tiered 400: 168→272 ms) — old baselines flattered the tiers; late-joiner unfairness persists under every policy (Phase-2: the serial send loop itself). Full matrix + knee bisection in <code>docs/benchmark-host-capacity-2026-07-12.md</code> Follow-up D.</div></div>
+      <div class="row"><div class="d">2026-07-12</div><div>v0.13.0 — <b>Community Telemetry Surface strategy adopted</b> (<code>docs/community-telemetry-strategy.md</code>): evolve the dashboard into the community-facing telemetry surface. Six goals (public API, live community view, NetworkSense integration, quest telemetry, in-game testing tools, network-filtering experiments) with refined sequencing driven by the day's evidence: <b>G6 first</b> (replication-policy experiments attack the measured <code>send</code>-phase wall and reprice capacity-per-volunteer-node), then API v0 (explicitly unstable until the fan-out rework settles the schema), then the live view. Privacy decided up front: public feeds aggregated/delayed, raw feeds authed, API served from the coordinator — never volunteer nodes. Phase 1 (policy rig: <code>full</code>/<code>radius</code>/<code>tiered</code> + A/B via the off-host harness) is in build.</div></div>
+      <div class="row"><div class="d">2026-07-12</div><div>v0.12.1 — <b>Tick-phase truth: the knee is the broadcast <code>send</code> phase.</b> Per-tick/per-phase instrumentation landed (commit <code>6f1670d</code>, branch <code>claude/optimistic-mclean-435ef7</code>: p50/p99/max per phase, DB-less “Tick timing” log window + <code>GET /tick</code>) and a rebuilt image re-ran the off-host AM4 levels: 200 bots → tick p99 39–44 ms (fits the 50 ms budget, ~85% consumed); 400 bots → p99 <b>160–175 ms, 25% of ticks overrun</b>, with <code>send</code> p99 152–168 ms vs interest ~8 ms (~20:1) — sim/hash negligible. <code>interval</code> stays nominal until overruns cascade → delays are self-inflicted, not scheduler jitter (retro-validates the contention probe). Bonus findings: idle region ≈ free (p50 0.01 ms); serial fan-out is unfair to late joiners (49 ms vs 1798 ms avg RTT across shards). Full-interest safe ceiling ≈ <b>200 bots/region</b>; next lever = parallelize send / interest tiers (steps 3–4).</div></div>
+      <div class="row"><div class="d">2026-07-12</div><div>v0.12.0 — <b>Step-5 benchmark ran end-to-end (three-way + contention probe + off-host knees).</b> Identical gateway image on cloud n2-highmem-8 / AM4 5900X / OMEN 285K: all sustain 200 bots at 0 errors, ~1–3 cores, ~150 MiB — local hardware wins cost-per-capacity. Contention probe on AM4 (llama.cpp SYCL on 2× Intel Battlemage; locality proven via RAPL 26→120 W): GPU-loaded RTT ≤ idle at every level — co-tenancy holds <em>anytime</em>, not just off-hours. Off-host drivers then found the true knee: <b>400 bots on both cloud and AM4</b> (cloud tick 20→12 Hz at &lt;50% CPU) — the single-threaded O(N²) broadcast fan-out is the wall, host-independent. Full write-up: <code>docs/benchmark-host-capacity-2026-07-12.md</code>. All bench infra torn down (driver VM deleted, cloud VM restored to stopped, AM4 ufw reverted).</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.11.0 — <b>Situated in the Community Compute platform vision (§10).</b> Reconciled three strategy docs (Community Compute Strategy, Development Workbook, GCP Migration Strategy): the dashboard is the platform's legibility/accountability layer; the synthetic-monitoring rig <em>is</em> build-order step 5 (“benchmark cloud vs AM4”); Stewardship backlog reframes as the control plane (node identity, snapshots); provenance discipline already matches the Workbook's evidence-vs-interpretation rule.</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.10.2 — <b>D-07 runtime-verified.</b> Ran the achievements chain end-to-end on AM4 (real Postgres + EventLog): 34 canonical events POSTed → all 8 achievements unlocked with correct provenance + evidence; the <code>reconstructed</code> world-age tier confirmed. Finding: EventLog doesn't auto-migrate — the <code>events</code> table is provisioned by <code>infra/docker/init.sql</code>, not EF (logged as D-18).</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.10.1 — <b>D-13 resolved (decision, no code).</b> Resource/tree broadcasts stay excluded from <code>delivery{path}</code>: that metric measures per-client transport choice (UDP / binary-WS / JSON-WS); tree updates are server-initiated JSON-only world state that would skew <code>json_ws</code>. A by-message-type volume metric is the right home if that view is ever needed.</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.10.0 — <b>Community slice shipped (D-07).</b> Achievements as a pure projection over the authoritative event log: 8-entry catalog, <code>Observed</code> unlocks with event evidence + <code>Reconstructed</code> (world age) auto-unlock; <code>Verified</code>/<code>Community-awarded</code> modeled as extension points (test asserts they never auto-emit). New <code>Game.EventLog</code> <code>/achievements</code> endpoint → Operator API <code>/api/achievements</code> → admin-web History view with provenance badges. 9 new unit tests pass; full suite green (120 + 51); builds clean; frontend typechecks.</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.9.0 — <b>Geo latency is now a standing Cloud Monitoring dashboard (D-17 done).</b> synthclient emits percentile gauges (<code>synthclient.rtt_p50_ms / rtt_p99_ms / loss_rate</code> tagged region+transport) via OTLP; fleet VMs run the Ops Agent to ship them to Cloud Monitoring. Re-ran all 6 regions — metrics verified landed per region (loss 0), permanent dashboard <b>“Synthclient — Geo Latency”</b> created. Fleet torn down (no orphans); full solution builds clean after the shared OpenTelemetry package addition.</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.8.0 — <b>6-region geo latency captured (D-16/D-17).</b> Fleet of <code>e2-micro</code> in us-west1, us-east4, Frankfurt, Tokyo, São Paulo, Sydney measured real RTT against the us-west1 SUT: UDP p50 30 → 205 ms by geography, <b>loss 0 everywhere</b> (server confirmed +23.5k deliveries across all 3 transports). Fleet then destroyed — verified only SUT resources remain, GCS artifact bucket deleted, no orphans. Geo snapshot rendered in §03. Fleet cost ≈ pennies.</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.7.0 — <b>SUT live on GCP + real external traffic (D-15).</b> Applied <code>infra/gcp/synthmon</code> (33 res, us-west1), deployed the current branch (gateway image built in-VM, running DB-less), public at <code>136.118.58.123:4000</code>. Ran synthclient from AM4 over real WAN: json p50 58 ms / binary p50 58 ms (p99 232) / <b>udp p50 52 ms</b>, loss 0 all modes — UDP lowest-latency as designed. Server cross-check <code>/live/transport</code> {udp:611, binary_ws:613, json_ws:607} — exactly-once held over WAN. Next: 6-region fleet (D-16).</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.6.0 — <b>Synthetic-monitoring workstream started.</b> Built <code>tools/synthclient</code> (BCL-only measuring client: seq-echo RTT, packet loss, transport breakdown; json/binary/udp modes). Validated on AM4: all three paths delivered 304 each, loss 0, RTT p50 ~25–30ms (tick-quantization, correct), exactly-once held — this also <b>closes the udp/binary_ws live-verification residual</b> (D-12/D-14). Reverse-engineered the UDP bind handshake (8-byte <code>ulong</code> token prefix). Created GCP project <code>lumberjacks-synthmon-260711</code> (billing linked, compute/monitoring/logging on; zero VMs = $0). Next: SUT deploy + region fleet.</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.5.0 — <b>Live slice verified LIVE (D-12 done).</b> On AM4 booted the gateway (DB-less) + OperatorApi, seeded a region in-memory, ran a real WS client (join + 25 move inputs). Result: <code>/live/transport</code> <code>json_ws</code> 0→45 with <code>udp</code>/<code>binary_ws</code>=0 (exactly-once counting held), <code>/live/sessions</code> created:1 → detached:1/active:0 — both correct through the <code>/api/*</code> proxy admin-web calls. Residual (inspection-only): udp/binary_ws label paths, frontend render.</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.4.0 — <b>Live slice build-verified (D-12).</b> Installed .NET 9.0.315 user-local on AM4 (homebase), synced source, built <code>Game.sln</code> clean (0 warn/0 err) and ran the suite — <b>162 tests pass</b> (51 simulation + 111 contracts). Backend transport/sessions endpoints + tallies compile and don't regress. Remaining: live-endpoint smoke against a running stack.</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.3.0 — <b>Live slice code-complete (D-02/03/04).</b> Full 3-way transport split (<code>udp</code>/<code>binary_ws</code>/<code>json_ws</code>) chosen; in-process tallies added to <code>LumberjacksTelemetry</code>, exposed via Gateway <code>/live/*</code> → Operator API <code>/api/transport</code>+<code>/api/sessions</code>, rendered in admin-web (stacked bar + stat cards); sidebar re-framed Live/Safety/History/Trust with honest placeholders. Frontend <code>tsc</code> clean. Backend runtime-verify blocked — local .NET 8 vs repo net9.0 (D-12). Added D-13 (resource-broadcast labeling).</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.2.0 — <b>D-01 done.</b> P7 fact sheet (read-only into <code>C:\work\comfy</code>): P7 has the same Ops Agent OTLP collector + OTLP wiring as stage1; real gap is the missing dashboard. Graded P7 Live signals — server-health LIVE, tick/transport PARTIAL, players-online GAP. Added D-10 (clone dashboard → comfy, sign-off) and D-11 (P7 players-online source). Phase 1 now current.</div></div>
+      <div class="row"><div class="d">2026-07-11</div><div>v0.1.0 — Initial reconciliation. Graded all dashboard signals against emitted metrics; defined Accountability as fifth concern; reconciled 3-tier doc-provenance with 4-tier achievement-provenance; set roadmap Phase 0 → confirm P7 telemetry ground-truth. HEARTH verified HEALTHY.</div></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <p>
+    <b>Comfy Lumberjacks — Community Dashboard: Strategy &amp; Workflow.</b> A living document; update it in the same
+    commit as the change it describes. Grounded in <span class="src">docs/network/</span>,
+    <span class="src">docs/google-cloud-*</span>, <span class="src">docs/github-integration-strategy.md</span>,
+    <span class="src">src/Game.ServiceDefaults/LumberjacksTelemetry.cs</span>, and
+    <span class="src">infra/gcp/stage1/observability.tf</span>. Cross-repo P7 truth lives in
+    <span class="src">C:\work\comfy</span>.
+  </p>
+</footer>
+
+</body>
+</html>

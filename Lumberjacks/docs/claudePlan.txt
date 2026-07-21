@@ -1,0 +1,112 @@
+Plan: Complete Phase 2 Refactor & Prep for Multi-User Testing                                                   │
+     │                                                                                                                 │
+     │ Context                                                                                                         │
+     │                                                                                                                 │
+     │ Build is clean (0 errors, 90 tests pass). Gateway is the unified host running WebSocket + TickLoop in-process.  │
+     │ Phase 1 (binary serialization) is complete with 48 tests. Phase 2 (input-driven simulation) is ~85% — the tick  │
+     │ loop, physics, input queue, and broadcasting all work. But MessageRouter still makes HTTP calls to itself for   │
+     │ join/leave/place/interact, which is both unnecessary (services are in-process now) and fragile. The goal is to  │
+     │ get to multi-user testing readiness.                                                                            │
+     │                                                                                                                 │
+     │ What does NOT need to happen before multi-user testing                                                          │
+     │                                                                                                                 │
+     │ - Binary payload serializers — JSON payloads inside binary envelopes work fine, Godot client doesn't exist yet  │
+     │ - Phase 3 (SpatialGrid, InterestManager) — O(N) broadcast at 5-10 users is negligible                           │
+     │ - Phase 5 (UDP/QUIC dual-channel) — deferred optimization                                                       │
+     │                                                                                                                 │
+     │ ---                                                                                                             │
+     │ Step 1: Extract PlayerHandler from PlayerEndpoints                                                              │
+     │                                                                                                                 │
+     │ Why: Business logic for join/leave/move is currently inline in Minimal API lambdas. MessageRouter needs         │
+     │ callable methods, not HTTP endpoints.                                                                           │
+     │                                                                                                                 │
+     │ Create: src/Game.Simulation/Handlers/PlayerHandler.cs                                                           │
+     │ - Follow the PlaceStructureHandler pattern (request/result records, injected dependencies)                      │
+     │ - JoinAsync(JoinRequest) → JoinResult — extract from PlayerEndpoints.cs:22-107                                  │
+     │ - LeaveAsync(LeaveRequest) → LeaveResult — extract from PlayerEndpoints.cs:171-214                              │
+     │ - Move(MoveRequest) → MoveResult — extract from PlayerEndpoints.cs:110-168                                      │
+     │ - Dependencies: WorldState, IHttpClientFactory, IConfiguration (for event log fire-and-forget)                  │
+     │                                                                                                                 │
+     │ Modify: src/Game.Simulation/Endpoints/PlayerEndpoints.cs                                                        │
+     │ - Thin endpoints that delegate to PlayerHandler (same as StructureEndpoints → PlaceStructureHandler)            │
+     │                                                                                                                 │
+     │ Register: Add PlayerHandler to DI in both src/Game.Gateway/Program.cs and src/Game.Simulation/Program.cs        │
+     │                                                                                                                 │
+     │ ---                                                                                                             │
+     │ Step 2: Convert MessageRouter from HTTP to direct handler calls                                                 │
+     │                                                                                                                 │
+     │ Why: Highest-value change. Eliminates Gateway HTTP-calling-itself for every player action.                      │
+     │                                                                                                                 │
+     │ Modify: src/Game.Gateway/WebSocket/MessageRouter.cs                                                             │
+     │ - Replace constructor deps: add PlayerHandler, PlaceStructureHandler, InventoryHandler; remove                  │
+     │ IHttpClientFactory and IConfiguration (SimUrl no longer needed)                                                 │
+     │ - HandleJoinRegionAsync — call _playerHandler.JoinAsync() directly instead of HTTP POST to /players/join        │
+     │ - HandleLeaveRegionAsync — call _playerHandler.LeaveAsync() directly                                            │
+     │ - HandlePlayerMoveAsync — call _playerHandler.Move() directly                                                   │
+     │ - HandlePlaceStructureAsync — call _placeStructureHandler.HandleAsync() directly                                │
+     │ - HandleInteractAsync — call inventory handler methods directly                                                 │
+     │ - SendWorldSnapshotAsync — call _playerHandler.JoinAsync() directly                                             │
+     │                                                                                                                 │
+     │ DI scoping fix: src/Game.Gateway/Program.cs                                                                     │
+     │ - MessageRouter is currently AddSingleton but handlers are AddScoped. Fix: either change handlers to            │
+     │ AddSingleton (they use IDbContextFactory not DbContext, so they're effectively stateless) or inject             │
+     │ IServiceScopeFactory into MessageRouter. Simplest: make PlaceStructureHandler/InventoryHandler/PlayerHandler    │
+     │ all singletons.                                                                                                 │
+     │                                                                                                                 │
+     │ ---                                                                                                             │
+     │ Step 3: Fix Simulation standalone Program.cs                                                                    │
+     │                                                                                                                 │
+     │ Why: Cheap fix. Prevents runtime crash when running Simulation standalone (TickLoop requires ITickBroadcaster). │
+     │                                                                                                                 │
+     │ Create: src/Game.Contracts/Protocol/NullTickBroadcaster.cs                                                      │
+     │ - No-op ITickBroadcaster implementation (returns Task.CompletedTask)                                            │
+     │ - Lives in Contracts so both projects can see it; also useful for unit tests                                    │
+     │                                                                                                                 │
+     │ Modify: src/Game.Simulation/Program.cs                                                                          │
+     │ - Add builder.Services.AddSingleton<InputQueue>()                                                               │
+     │ - Add builder.Services.AddSingleton<ITickBroadcaster, NullTickBroadcaster>()                                    │
+     │                                                                                                                 │
+     │ ---                                                                                                             │
+     │ Step 4: Create Game.Simulation.Tests                                                                            │
+     │                                                                                                                 │
+     │ Why: Regression safety before Azure deployment. Core simulation logic has zero test coverage.                   │
+     │                                                                                                                 │
+     │ Create: tests/Game.Simulation.Tests/Game.Simulation.Tests.csproj                                                │
+     │ - References: Game.Simulation, Game.Contracts, xUnit                                                            │
+     │                                                                                                                 │
+     │ Test files:                                                                                                     │
+     │ - SimulationStepTests.cs — input→direction, speed clamping, bounds clamping, friction, disconnected players     │
+     │ skipped                                                                                                         │
+     │ - InputQueueTests.cs — enqueue/drain, last-write-wins, PurgeStale, PendingCount                                 │
+     │ - StateHasherTests.cs — determinism, different states produce different hashes, player ordering independence    │
+     │ - PlayerHandlerTests.cs — join adds player, leave removes player, move clamps bounds                            │
+     │                                                                                                                 │
+     │ All tests instantiate WorldState + dependencies directly — no HTTP, no mocks needed.                            │
+     │                                                                                                                 │
+     │ ---                                                                                                             │
+     │ Step 5: Multi-user smoke test                                                                                   │
+     │                                                                                                                 │
+     │ Why: Validates the full input→tick→broadcast pipeline with real WebSocket connections.                          │
+     │                                                                                                                 │
+     │ Extend: scripts/test-multiplayer.js (already exists)                                                            │
+     │ - Connect 3 WebSocket clients to Gateway                                                                        │
+     │ - Each joins "region-spawn", verifies world_snapshot                                                            │
+     │ - Client 1 sends player_input, all clients verify entity_update within 2 ticks                                  │
+     │ - Client 2 disconnects, others verify entity_removed                                                            │
+     │ - Client 2 reconnects with resume token, verifies world_snapshot                                                │
+     │                                                                                                                 │
+     │ ---                                                                                                             │
+     │ Dependency Order                                                                                                │
+     │                                                                                                                 │
+     │ Step 1 (PlayerHandler)  ──→  Step 2 (MessageRouter conversion)  ──→  Step 5 (smoke test)                        │
+     │ Step 3 (standalone fix)  ── can run in parallel with Step 1                                                     │
+     │ Step 4 (simulation tests) ── SimulationStep/InputQueue/StateHasher tests can run in parallel;                   │
+     │                               PlayerHandler tests depend on Step 1                                              │
+     │                                                                                                                 │
+     │ Verification                                                                                                    │
+     │                                                                                                                 │
+     │ 1. dotnet build — 0 errors                                                                                      │
+     │ 2. dotnet test — all existing + new tests pass                                                                  │
+     │ 3. dotnet run --project src/Game.Gateway — starts, tick loop logs at 20Hz                                       │
+     │ 4. dotnet run --project src/Game.Simulation — starts standalone without crash                                   │
+     │ 5. node scripts/test-multiplayer.js — multi-user smoke test passesf

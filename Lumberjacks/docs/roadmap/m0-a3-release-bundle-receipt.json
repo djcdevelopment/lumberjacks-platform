@@ -1,0 +1,55 @@
+{
+  "schema": "comfy-p7-bundle-receipt/v1",
+  "release_id": "m0-clean-20260716-r2",
+  "validated_utc": "2026-07-16T10:15:55Z",
+  "validator": "infra/gcp/p7/scripts/validate-release-bundle.ps1 (Comfy commit 0cd40f4)",
+  "validation_status": "valid",
+  "manifest": {
+    "path": "docs/roadmap/m0-clean-build-candidate-r2.json",
+    "sha256": "59835b0b0b7658b22cd2f07c37aa4c7ba4923e424953b228d886e1f7242a6520",
+    "schema": "comfy-p7-release/v2-candidate"
+  },
+  "bundle": {
+    "location": "local FieldLab workspace: fieldlab/runs/releases/m0-clean-20260716-r2 (not tracked in git; large binary artifacts)",
+    "index_schema": "comfy-p7-bundle/v1",
+    "created_utc": "2026-07-16T07:16:17Z",
+    "files": [
+      { "path": "manifest.json", "sha256": "59835b0b0b7658b22cd2f07c37aa4c7ba4923e424953b228d886e1f7242a6520", "bytes": 3136 },
+      { "path": "gateway/gateway.oci.tar", "sha256": "9b6b9cc1c797ce544dfd8ef6a80bdbbc0130e4f12783835f28b5bac6b39ce7d6", "bytes": 96413184 },
+      { "path": "mod/ComfyNetworkSense.dll", "sha256": "94a3843ef8042adceaca6bc4d5c0c38c7c8dc5a1aa05b5f2a3019879840ba3a8", "bytes": 397312 },
+      { "path": "source/ComfyNetworkSense.csproj", "sha256": "e1f4fae4cb9b5f0994022a1364b1d785cf3bb4c1a8539ae7e8669e9a43db20a5", "bytes": 3256 },
+      { "path": "source/Directory.Build.props", "sha256": "41561215b21d095cdf40b5adf1f462a1b00d00134e31721cf3c9ac824610a50f", "bytes": 467 },
+      { "path": "source/Directory.Packages.props", "sha256": "02339c31e5b32c1e3eb79950bbac5e3e1f17a309afd26b0cc3da0009a4ada623", "bytes": 1099 },
+      { "path": "source/Dockerfile", "sha256": "9ed34ac6528e5d228c9be751a2ce55e5b570b5374bd60ddafb2e38656dd8214f", "bytes": 2832 }
+    ]
+  },
+  "fieldlab_catalog": {
+    "path": "fieldlab/runs/index.json (Comfy repository)",
+    "index_sha256": "3c22d6e049cab1ea1a1b3e75bf9050e1b7672dbe970ad19d3a367ba0e711dfae",
+    "human_catalog": "fieldlab/runs/CATALOG.md",
+    "human_catalog_sha256": "1bbbcf284bca6ffe76d349f4e33d534abc9f497e3ebf4fb623ca1783cb54118e",
+    "entries": 125,
+    "counts": { "gold": 1, "valid": 0, "negative": 17, "superseded": 37, "historical": 70 },
+    "gold": [
+      "20260716-011112-valheim-lumberjacks-authoritative-priority-cutover"
+    ]
+  },
+  "secret_scan": {
+    "patterns": [
+      "SteamID64 (7656119 + 10 digits)",
+      "credential-shaped key/token/password assignments"
+    ],
+    "scope": [
+      "manifest (docs/roadmap/m0-clean-build-candidate-r2.json)",
+      "this receipt",
+      "fieldlab/runs/index.json",
+      "fieldlab/runs/CATALOG.md"
+    ],
+    "result": "clean"
+  },
+  "limitations": [
+    "The bundle is a validated local artifact set; A4 (no-build cold-start, rollback, restore drill) and A5 (immutable publication) remain open.",
+    "The clean candidate is deliberately not promoted over the historical runtime until the A4 drill passes.",
+    "Catalog hashes bind the catalog as generated on 2026-07-16; they must be re-recorded if the catalog is regenerated."
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "schema": "comfy-p7-release/v2-candidate",
+  "release_id": "m5-recipients-20260720-r1",
+  "captured_utc": "2026-07-21T06:01:10Z",
+  "source": {
+    "lumberjacks_commit": "1d801e7c88767bf31f49bf0cd281e6ecb04aea2a",
+    "comfy_commit": "8ca27eda0c332dd94af1d899957bcf8869343a16",
+    "lumberjacks_clean": true,
+    "comfy_clean": true
+  },
+  "build_contract": {
+    "continuous_integration_build": true,
+    "deterministic": true,
+    "path_map": "fixed repository source roots",
+    "mod_repeatability": "both-sides cut via New-ReleaseCut.ps1; the mod ReleaseId const was rewritten to this release and the mod rebuilt",
+    "gateway_reproducibility": "image payload is the reproducibility unit (Lumberjacks c34b255): .dockerignore excludes .git so the build stage cannot query the repository"
+  },
+  "mod": {
+    "version": "0.5.31.0",
+    "release_id": "m5-recipients-20260720-r1",
+    "clean_build_sha256": "035faa8793114c75ccb4295e219a6c10a91250a3a4f3764e70aed499a32a0dfd",
+    "frozen": false,
+    "unfreeze_note": "This release UNFREEZES the 0.5.31 artifact that m1-clean-20260717-r1 pinned. Deliberate: the mod had to change to stamp the destination peer. Guest packages pinned to the old hash must be reissued; at cut time the only installs were the operator client and one second account.",
+    "supersedes_mod_sha256": "94a3843ef8042adceaca6bc4d5c0c38c7c8dc5a1aa05b5f2a3019879840ba3a8",
+    "build_command": "New-ReleaseCut.ps1 -ReleaseId m5-recipients-20260720-r1"
+  },
+  "gateway": {
+    "image_id": "sha256:69e025e8c13bc7ce01a21a054c9dcb42478415531d727e8b55b4b2d37ca7b38b",
+    "image_release_id": "m5-recipients-20260720-r1",
+    "admitted_mod_release": "m5-recipients-20260720-r1",
+    "release_label": "m5-recipients-20260720-r1",
+    "revision_label": "1d801e7",
+    "clean_start_health": "PASS",
+    "identity_check": "Test-GatewayImageRelease.ps1 read /app/Game.Gateway.dll FROM the built image and confirmed it admits m5-recipients-20260720-r1",
+    "build_command": "New-ReleaseCut.ps1 -ReleaseId m5-recipients-20260720-r1"
+  },
+  "runtime_config": {
+    "note": "This release is only coherent with these settings. They are NOT carried by the image and must move with it.",
+    "ValheimQueue__ProducerEmitsRecipients": "true",
+    "compose_reference_required": "infra/gcp/p7/docker-compose.yml must map ValheimQueue__ProducerEmitsRecipients from ${VALHEIM_QUEUE_PRODUCER_EMITS_RECIPIENTS}; the env file is read by the compose process and reaches the container through nothing else",
+    "strict_roster_enabled": "true, but IN-MEMORY ONLY - POST /valheim/handshake/config re-arms it and every container recreate silently disarms it"
+  },
+  "toolchain": {
+    "mod_sdk": "8.0.422",
+    "gateway_sdk_digest": "sha256:24fe7c00719afc72e2b67cace264dea2ee39ae45f5b553bd59493fe3ddfc920f",
+    "gateway_aspnet_digest": "sha256:8b9f90e53d41154d42e537517aef22e8fe497baabd43e423d5f2edafd06f04f6"
+  },
+  "deployment": {
+    "deployed_utc": "2026-07-21T05:30:00Z",
+    "target": "comfy-lumberjacks-p7 (GCP, us-west1-b)",
+    "method": "MANUAL - image docker save/scp/load, mod DLL scp + docker cp, compose file scp. NOT reproducible from either repo as of this cut; see the reproducibility gap below.",
+    "reproducibility_gap": "/opt/comfy on the VM is not a git checkout, so the running compose has no provenance. Rebuilding the VM from either repo would NOT reproduce the state this release was world-tested in.",
+    "world_tested": "Real player session 2026-07-21: server stamped the destination peer, Gateway mapped it to the enrolled opaque recipient, and the client drained its own partition with populated correlation ids."
+  },
+  "limitations": [
+    "Two-consumer isolation is UNTESTED. Pinned deliberately until volunteers exist. All observed envelopes were structural_anchor with a single consumer.",
+    "Rollback is a re-pin of LUMBERJACKS_GATEWAY_IMAGE plus reinstalling the superseded mod hash, never a rebuild. Note that rolling the Gateway back WITHOUT rolling the mod back leaves recipients stamped and the flag honoured by an older image - verify both halves move together.",
+    "run-promotion-drill.ps1 was NOT used; its rollback defaults still name M0-era identities and would overwrite the deployed mod.",
+    "THE RELEASE GATE COVERS ONLY THE GATEWAY. In the P7 compose, gateway is pinned to this release image, but eventlog, progression and operatorapi are BUILT FROM SOURCE at whatever sits in /opt/lumberjacks on the VM (docker-compose.yml build: context LUMBERJACKS_ROOT). Three of the five Lumberjacks services in this stack carry no release identity, no admission gate, and no hash in this manifest, so this release id does not describe them. Found by cross-repo audit 2026-07-21; not previously documented in either repo."
+  ]
+}

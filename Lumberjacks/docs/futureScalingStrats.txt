@@ -1,0 +1,37 @@
+Searched web: "Azure Container Apps UDP ingress support"
+Listed directory infra
+
+Unfortunately, **Azure Container Apps (ACA) still does not natively support UDP ingress.** It relies on an underlying managed Envoy proxy that only passes HTTP/HTTPS and TCP traffic. To receive your UDP bound datagrams, you *must* move the Gateway to a compute host that can bind "naked" UDP ports.
+
+Here are the three most economical ways forward, ranked from cheapest/simplest to most scalable:
+
+### 1. The Cheapest: A Burstable Linux VM (IaaS)
+**Estimated Cost: ~$8 - $15 / month**
+If you want exactly what you ran locally (`docker compose` or just running the raw apps), the most economical route by far is spinning up an entry-level Linux Virtual Machine (e.g., a "B2ts v2" burstable instance).
+
+* **How it works:** You deploy your exact local stack using Docker or systemd. You attach a Public IP, and open `TCP 4000` and `UDP 4005` on the Network Security Group (NSG). 
+* **Pros:** Dirt cheap. 100% network control. Runs exactly like your local dev environment.
+* **Cons:** You own the OS. You're responsible for patching, and CI/CD requires SSHing or using an agent to pull the latest changes. It doesn't auto-scale.
+
+### 2. The Serverless Middle Ground: Azure Container Instances (ACI)
+**Estimated Cost: ~$25 - $35 / month (if running 24/7)**
+Azure Container Instances are the serverless equivalent of running a raw Docker container. Unlike Container Apps, ACI does completely support exposing both TCP and UDP ports on a public IP.
+
+* **How it works:** You define a "Container Group" that deploys your Gateway container, exposing both ports directly to the internet.
+* **Pros:** No VM to manage. Dead simple Terraform/CLI deployment. Great for game servers because you can spin them up on demand when a match starts, and kill them to stop paying when players leave.
+* **Cons:** If you run it 24/7, the per-second billing ends up being more expensive than a baseline VM. 
+
+### 3. The Future-Proof Path: Azure Kubernetes Service (AKS) Free Tier
+**Estimated Cost: ~$75 - $90 / month**
+I noticed you have `infra/k8s/` and `infra/terraform/` folders in your repo. If the plan is to scale this to thousands of players eventually, you can leverage the "Free" control plane tier of AKS. 
+
+* **How it works:** You run a tiny 2-node cluster of cheap burstable VMs. You define a Kubernetes `Service` of type `LoadBalancer` and explicitly set `protocol: UDP` for port 4005. Azure automatically provisions a Public Load Balancer that bridges the UDP packets down to your Gateway pods.
+* **Pros:** You get the glorious UDP performance you just saw locally, combined with the extreme scalability of Kubernetes. You can add more gateway nodes as your bot count grows from 50 to 5,000.
+* **Cons:** Most expensive of the three options due to the underlying node and Load Balancer costs.
+
+---
+
+### My Recommendation
+Since this project already has dual-transport seamlessly falling back to WebSockets if UDP isn't available, **I recommend sticking with Azure Container Apps for now** while developing the core loop if cost is the *strict* priority. The game clients will just use WebSocket fallback (which works perfectly, as the test showed). 
+
+Once the simulation gets heavy enough that you strictly *need* UDP to prevent stuttering, migrate the Gateway service out of ACA and into an **entry-level Linux VM** using Docker Compose. It takes 15 minutes to set up, costs $10/mo, and gives you total architectural validation of your dual-channel network before you commit to the high monthly price tag of a Kubernetes cluster!

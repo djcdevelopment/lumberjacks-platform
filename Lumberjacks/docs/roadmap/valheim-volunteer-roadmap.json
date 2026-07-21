@@ -1,0 +1,860 @@
+{
+  "schema_version": 2,
+  "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
+  "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
+  "updated_at": "2026-07-21T06:04:23.018Z",
+  "overall_status": "active",
+  "platform_readiness": "not_ready",
+  "active_milestone": "M1",
+  "current_release": {
+    "release_id": "m1-clean-20260717-r1",
+    "mod": "ComfyNetworkSense 0.5.31",
+    "mod_sha256": "94a3843ef8042adceaca6bc4d5c0c38c7c8dc5a1aa05b5f2a3019879840ba3a8",
+    "gateway_image": "sha256:3576d8e03fb49b6a03f920a367c69cd841fffa74c07cfecbcc065f1ff89fee55",
+    "deployment": "comfy-lumberjacks-p7",
+    "window": "p7-primary-v1",
+    "authoritative_consumer_ceiling": 1,
+    "ceiling_enforcement": "Operator safety ceiling; Gateway-enforced reservation is an M1 exit criterion."
+  },
+  "claim": "The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.",
+  "primer": {
+    "title": "What is being replaced in this test?",
+    "summary": "Valheim still decides which world-object revisions a player should receive. The server mod redirects those eligible revisions through Lumberjacks, the Gateway stores and leases them, and the enrolled client mod applies them on Unity's main thread before acknowledging a terminal outcome.",
+    "denominator": "100% means 83,220 of 83,220 eligible ZDO revisions observed in the declared strict one-client window closed through Lumberjacks, with zero eligible native ZDO sends. It does not mean 100% of Valheim networking.",
+    "dataflow": [
+      {
+        "stage": "1 · SELECT",
+        "owner": "Native Valheim",
+        "action": "Build the peer-specific list of world-object revisions.",
+        "boundary": "Candidate relevance and inference remain native today."
+      },
+      {
+        "stage": "2 · REDIRECT",
+        "owner": "Lumberjacks server adapter",
+        "action": "Intercept eligible revisions, attach stable ordering metadata, and redirect the declared ZDO delivery path.",
+        "boundary": "Producer loss safety and per-peer readiness are M4a work."
+      },
+      {
+        "stage": "3 · STORE AND LEASE",
+        "owner": "Lumberjacks Gateway",
+        "action": "Durably record envelopes and make pending work available to the authenticated consumer.",
+        "boundary": "The current queue is safe only at the one-consumer ceiling; recipient isolation is M4a."
+      },
+      {
+        "stage": "4 · APPLY",
+        "owner": "Lumberjacks client adapter",
+        "action": "Poll in the background, marshal onto Unity's main thread, invoke RPC_ZDOData, and validate the outcome.",
+        "boundary": "Unity remains the game engine and compatibility target."
+      },
+      {
+        "stage": "5 · ACKNOWLEDGE",
+        "owner": "Lumberjacks client and Gateway",
+        "action": "Acknowledge only an applied or safely superseded terminal outcome and retain the accounting result.",
+        "boundary": "Per-run retained volunteer proof is M3 work."
+      }
+    ]
+  },
+  "glossary": [
+    {
+      "term": "ZDO",
+      "definition": "Zone Data Object: Valheim's persistent networked world-state record for an object such as a structure piece, item, creature, or environmental object."
+    },
+    {
+      "term": "Eligible revision",
+      "definition": "A ZDO revision selected by Valheim for the declared intercepted delivery scope during the strict test window. It is the denominator for the current cutover claim."
+    },
+    {
+      "term": "Strict window",
+      "definition": "A named evidence-producing interval in which eligible ZDO delivery must use Lumberjacks and any eligible native send is a failure."
+    },
+    {
+      "term": "Candidate relevance",
+      "definition": "The judgment that decides which world objects a particular peer should receive. Valheim still owns this plane today."
+    },
+    {
+      "term": "Recipient",
+      "definition": "An opaque Gateway delivery subject derived from an enrolled Steam account; clients never choose another recipient's identity."
+    },
+    {
+      "term": "Safely superseded",
+      "definition": "A received revision that no longer needs application because a validated newer state already makes its effect redundant."
+    },
+    {
+      "term": "Durable receipt",
+      "definition": "Gateway confirmation that an envelope is persisted and can survive normal process restart and replay."
+    },
+    {
+      "term": "Producer outbox",
+      "definition": "Server-side retry state that preserves an eligible revision until the Gateway confirms durable acceptance."
+    }
+  ],
+  "status_axes": [
+    {
+      "id": "readiness",
+      "label": "Readiness",
+      "question": "May this participant start the scheduled test now?",
+      "states": [
+        {
+          "name": "NOT READY",
+          "meaning": "At least one mandatory enrollment, release, service, capacity, persistence, or rollback check is not green."
+        },
+        {
+          "name": "READY TO JOIN",
+          "meaning": "Every mandatory preflight check for this participant and scheduled run is green."
+        }
+      ]
+    },
+    {
+      "id": "routing_mode",
+      "label": "Routing mode",
+      "question": "Which delivery path is the session using?",
+      "states": [
+        {
+          "name": "LUMBERJACKS ACTIVE",
+          "meaning": "The declared strict ZDO delivery path is active."
+        },
+        {
+          "name": "NATIVE RECOVERY",
+          "meaning": "The strict session has stopped and the operator has explicitly selected the labeled native recovery path."
+        },
+        {
+          "name": "NO ACTIVE SESSION",
+          "meaning": "No evidence-producing run is active."
+        }
+      ]
+    },
+    {
+      "id": "live_evidence",
+      "label": "Live evidence",
+      "question": "What is the ledger doing right now?",
+      "states": [
+        {
+          "name": "IDLE",
+          "meaning": "Services are healthy but no recent qualifying traffic proves cutover."
+        },
+        {
+          "name": "FLOWING",
+          "meaning": "Fresh qualifying traffic is advancing through the conservation pipeline."
+        },
+        {
+          "name": "DRAINING",
+          "meaning": "No new qualifying work is expected and the remaining durable queue is closing."
+        },
+        {
+          "name": "FAULT",
+          "meaning": "A live invariant, persistence, routing, application, or visibility check has failed."
+        }
+      ]
+    },
+    {
+      "id": "participation",
+      "label": "Participation",
+      "question": "Did the volunteer's effort produce a usable packet?",
+      "states": [
+        {
+          "name": "PARTICIPATION INCOMPLETE",
+          "meaning": "The requested attempt or bounded observation/evidence packet has not yet been retained."
+        },
+        {
+          "name": "PARTICIPATION COMPLETE",
+          "meaning": "The volunteer attempted the assigned work and the platform retained a usable packet, even if a defect was found."
+        }
+      ]
+    },
+    {
+      "id": "system_verdict",
+      "label": "Final system verdict",
+      "question": "What did the sealed run prove about the declared network test?",
+      "states": [
+        {
+          "name": "PENDING",
+          "meaning": "The run is not sealed; PROVEN is never a live-session label."
+        },
+        {
+          "name": "PROVEN",
+          "meaning": "The sealed receipt closes every declared correctness gate."
+        },
+        {
+          "name": "DEGRADED",
+          "meaning": "The sealed receipt records a fallback, error, performance problem, or failed invariant."
+        },
+        {
+          "name": "INCONCLUSIVE",
+          "meaning": "The run closed without enough qualifying traffic or evidence; the receipt names what was missing."
+        }
+      ]
+    }
+  ],
+  "current_focus": [
+    "COMPLETE · M0 RELEASE FREEZE — A1–A5 closed 2026-07-16: source frozen, candidate r2 reproducible from clean tagged checkouts, sanitized bundle and FieldLab catalog committed, promotion drill passed with artifact-only rollback, and the golden-proof evidence set published immutably with byte-verified hashes.",
+    "COMPLETE · PROMOTION FINALIZED — P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.",
+    "ACTIVE · M1 — Enrollment identity, the least-privilege capability split, the one-seat reservation, and a strict-admission roster gate keyed on the actual joining Steam account are deployed on P7 in m1-clean-20260717-r1, a Gateway-only cut that leaves the mod frozen at 0.5.31; the roster gate was verified against a real join on 2026-07-17 (gate 3 closed live: a strict window accepted the enrolled Steam account, Lumberjacks-decided on the frozen 0.5.31 mod, no cut needed), and it stays opt-in per window — the flag is in-memory and reverts to off on gateway restart, because a roster miss refuses a join. Remaining: certificate-validating TLS — the stable public DNS name now exists (comfy-p7.duckdns.org, a reserved static address), leaving only the ACME contact set on the VM at next boot plus the stage-3 cut and deploy; and fail-closed admission when the authority is unavailable, which needs that next mod release.",
+    "AFTER M1 · PARALLEL — Build M2's reversible guest package, M3's seal-before-reset per-run ledger and retained dashboards, and M4a's recipient isolation and producer loss safety.",
+    "WIDEN ONLY AFTER · M4b + M5 — Require the real two-client correctness packet and one exact-release invited-volunteer SYSTEM PROVEN receipt before admitting a cohort."
+  ],
+  "tracks": [
+    {
+      "id": "volunteer",
+      "name": "Volunteer experience",
+      "description": "A safe one-seat pilot with immutable packaging, preflight, proof, and rollback."
+    },
+    {
+      "id": "multiplayer",
+      "name": "Multiplayer correctness",
+      "description": "Recipient isolation, loss-safe delivery, and real two-account proof."
+    },
+    {
+      "id": "widening",
+      "name": "Evidence-backed widening",
+      "description": "The proven volunteer journey and two-client correctness join before measured cohorts."
+    },
+    {
+      "id": "authority",
+      "name": "Network authority",
+      "description": "Shadow, validate, and replace Valheim relevance and the remaining network planes."
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Freeze the known-good release and evidence",
+      "track": "shared",
+      "status": "complete",
+      "depends_on": [],
+      "owns": "Reproducible source-to-binary release identity, immutable evidence publication, deployment verification, and tested rollback artifacts.",
+      "does_not_own": "New admission, packaging, dashboard, or multiplayer behavior.",
+      "summary": "Turn the exact working Gateway, mod, deployment, world, and evidence into a reproducible release.",
+      "work": [
+        "Commit the exact Gateway/mod/deployment sources without discarding unrelated work.",
+        "Build the promoted Gateway image and mod package exactly once from clean, tagged checkouts; retain the current working image only as the rollback artifact.",
+        "Generate a complete release manifest and verify source, build, package, OMEN, GCP, assembly, configuration, world, protocol, and cold-start identities.",
+        "Catalog FieldLab runs as immutable gold, valid, negative, historical, or superseded evidence.",
+        "Harden and exercise Gateway and mod rollback so restoration verifies runtime readiness and exact artifact hashes instead of rebuilding partial backed-up source."
+      ],
+      "exit_criteria": [
+        "A fresh checkout reproduces the declared artifacts and a cold start reports the manifest's exact runtime hashes.",
+        "Rollback artifacts and the Era16 world snapshot are present, restore without a source rebuild, and pass readiness plus exact-hash verification in the documented drill.",
+        "The validated P7 baseline is published at an immutable repository revision, and no secret appears in tracked or generic artifacts."
+      ],
+      "inputs": [
+        "Validated, hash-recorded local P7 baseline; immutable public publication is pending M0.",
+        "Current Gateway image digest, mod DLL SHA-256, deployment receipt, world snapshot, and FieldLab run packets.",
+        "The 2026-07-16 owner observation confirmed that OMEN, GCP, and the declared 0.5.31 artifacts align at runtime, while dirty source provenance still prevents clean-checkout reproduction.",
+        "The live Gateway image was built from a non-Git source copy. Normalized cutover/runtime sources match the working tree, but roadmap-only sources differ and the existing capture manifest and rollback scripts omit required identities and readiness checks."
+      ],
+      "exit_evidence": [
+        "Closed 2026-07-16. Promoted release m0-clean-20260716-r2: reproducible candidate manifest at docs/roadmap/m0-clean-build-candidate-r2.json; checkpoint receipts at docs/roadmap/m0-a3-release-bundle-receipt.json, m0-a4-promotion-drill-receipt.json, and m0-a5-publication-receipt.json.",
+        {
+          "label": "Published golden-proof evidence set (immutable, byte-verified)",
+          "href": "https://github.com/djcdevelopment/comfy/blob/433f1cc33605561ae1287db9cd8f37125d795c5d/fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover/PUBLICATION.md"
+        },
+        "Promotion finalized 2026-07-16: the r2 release runs on P7 with the temporary compose override retired; the base compose pins the promoted image from the host environment (reboot-path verified, no container recreate, health ok) and VM-side gateway rebuilds fail closed."
+      ]
+    },
+    {
+      "id": "M1",
+      "title": "Make identity and admission authoritative",
+      "track": "shared",
+      "status": "active",
+      "depends_on": [
+        "M0"
+      ],
+      "owns": "Steam enrollment identity, least-privilege authorization, strict admission, the enforced one-seat reservation, and validated public TLS.",
+      "does_not_own": "Recipient-scoped queue semantics, producer loss safety, guest installation, traffic-proof presentation, or volunteer readiness scheduling.",
+      "summary": "Bind the actual joining Steam account to enrollment, compatibility, and capacity.",
+      "work": [
+        "Add enrollment list, revoke, expiry, last-used state, and unique active SteamID rules.",
+        "Split admin, producer, consumer, telemetry, and public proof permissions.",
+        "Make strict admission fail closed and reserve one authoritative seat.",
+        "Add certificate-validating TLS for public volunteer traffic."
+      ],
+      "exit_criteria": [
+        "An invited, enrolled, compatible account is accepted through the strict admission decision.",
+        "Uninvited, revoked, expired, mismatched, replayed, and over-capacity clients are rejected with actionable reasons.",
+        "Consumer credentials cannot reach admin, producer, reset, compaction, handshake-mutation, or arbitrarily named recipient operations.",
+        "Strict admission fails closed when its authority is unavailable, and no reusable credential crosses an unencrypted public link."
+      ],
+      "inputs": [
+        "M0 immutable release identity and protocol manifest.",
+        "Existing Steam OpenID enrollment, Gateway handshake responder, and client-auth middleware."
+      ],
+      "exit_evidence": []
+    },
+    {
+      "id": "M2",
+      "title": "Ship a boring, reversible guest package",
+      "track": "volunteer",
+      "status": "active",
+      "depends_on": [
+        "M1"
+      ],
+      "owns": "The immutable guest artifact, one-use bootstrap, installer, preflight, redacted diagnostics, generated guide, backup, and uninstall experience.",
+      "does_not_own": "The per-session traffic ledger, dashboard conservation verdict, participation receipt, or concurrent delivery isolation.",
+      "summary": "Replace hand copying and hand-edited config with an immutable generic package plus a personal one-use bootstrap.",
+      "work": [
+        "Package the DLL, manifest, checksums, installer, preflight, diagnostics, uninstall, guide, and notices.",
+        "Find Steam libraries, stop on a running game, back up existing files, and merge only Lumberjacks config keys.",
+        "Verify release, BepInEx, TLS, enrollment, Gateway, server, persistence, and capacity before launch.",
+        "Redact credentials and direct Steam identity from diagnostics."
+      ],
+      "exit_criteria": [
+        "A non-developer completes enrollment through READY TO JOIN in roughly ten minutes without editing configuration or sending a secret to the operator.",
+        "Clean install and existing-BepInEx upgrade paths preserve unrelated files and install the exact declared DLL atomically.",
+        "The bounded diagnostic bundle is redacted, and uninstall restores the prior state without removing files the package does not own.",
+        "The guide is generated from the release manifest so versions, hashes, endpoint, password policy, and feature claims cannot drift independently."
+      ],
+      "inputs": [
+        "M0 immutable guest release and compatibility manifest.",
+        "M1 enrollment bootstrap, TLS endpoint, `/enrollment/me`, readiness, and capacity contracts."
+      ],
+      "exit_evidence": []
+    },
+    {
+      "id": "M3",
+      "title": "Make traffic proof definitive and durable",
+      "track": "volunteer",
+      "status": "queued",
+      "depends_on": [
+        "M1"
+      ],
+      "owns": "The capacity-one per-run ledger, conservation pipeline, volunteer/operator/public dashboard views, bounded telemetry, sealed receipt, and final verdict rules.",
+      "does_not_own": "Concurrent recipient queue isolation, producer outbox correctness, or the real two-client gate; those belong to M4a and M4b.",
+      "summary": "For the enforced one-seat window, prove each selected ZDO revision reached durable Gateway storage, the authenticated client, Unity application or safe supersession, and a durable terminal acknowledgement.",
+      "work": [
+        "Replace destructive empty-server reset with a run-scoped OPEN -> CLOSING -> SEALED lifecycle; stop suppression on last-peer transition and open the next epoch only after the prior seal is fsynced.",
+        "Bind receipts, pending delivery, terminal applied/superseded outcomes, and consumer telemetry to run_id; persist sealed summaries in the WAL through restart and compaction.",
+        "Show live deltas, rates, queue age, applied/superseded outcomes, native sends, gaps, failures, and release identity.",
+        "Keep readiness, routing mode, live evidence, participation, and final system verdict on separate axes; reserve PROVEN for a sealed receipt.",
+        "Bound and rotate raw telemetry instead of producing unbounded per-ZDO logs."
+      ],
+      "exit_criteria": [
+        "At the one-consumer ceiling, a seeded envelope visibly advances through every conservation stage and closes in a retained receipt.",
+        "Deliberate fallback, stale readiness, missing sequence, persistence failure, native eligible send, or unauthorized recipient request changes the correct live axis to FAULT or the sealed verdict away from PROVEN.",
+        "An idle heartbeat remains IDLE, never proof, and a run that closes without qualifying traffic becomes INCONCLUSIVE.",
+        "A service restart or WAL compaction does not erase or alter the sealed run, its release identity, conservation result, or canonical receipt hash.",
+        "Late old-run messages and a fast reconnect cannot mutate the next run or suppress traffic into a closing epoch; a forced incomplete close is retained with a non-PROVEN verdict."
+      ],
+      "inputs": [
+        "M0 immutable release identity and hash-recorded P7 metric vocabulary.",
+        "M1 enrollment, readiness, authorization, and run-identity contracts.",
+        "The top-level conservation proof pipeline in this roadmap source.",
+        "The 2026-07-16 owner observation captured exact live closure, then observed the empty-server reset erase the Gateway receipt denominator before any per-run receipt was sealed."
+      ],
+      "exit_evidence": []
+    },
+    {
+      "id": "M4a",
+      "title": "Prove automated recipient isolation and loss safety",
+      "track": "multiplayer",
+      "status": "active",
+      "depends_on": [
+        "M1"
+      ],
+      "owns": "Recipient-scoped durable queue semantics, exact per-peer readiness, stable delivery identity, structured terminal outcomes, reconnect/takeover rules, and the producer outbox.",
+      "does_not_own": "Real Steam-client quality, human onboarding, or cohort capacity claims.",
+      "summary": "Remove the shared-window queue and producer-loss hazards while preserving the peer identity available at Valheim's per-peer sync-list boundary.",
+      "work": [
+        "Key durable delivery by world epoch, opaque recipient, and stable delivery ID.",
+        "Derive recipient from credentials; scope pending and structured ACK outcomes server-side.",
+        "Require an exact per-peer readiness lease and define reconnect/takeover behavior.",
+        "Advance native peer bookkeeping only after durable Gateway acceptance, backed by a producer outbox."
+      ],
+      "exit_criteria": [
+        "Two and then ten synthetic consumers cannot poll, inspect, acknowledge, block, or close another recipient's work.",
+        "Duplicate producer POST, poll, terminal ACK, reconnect, lease takeover, Gateway restart, WAL replay, and boundary crash tests converge idempotently.",
+        "Every recipient closes its own conservation equation, and producer outbox recovery produces neither loss nor double application."
+      ],
+      "inputs": [
+        "M1 opaque recipient, consumer credential, and least-privilege authorization contracts.",
+        "Valheim's existing per-peer sync-list boundary and FieldLab crash/replay fixtures."
+      ],
+      "exit_evidence": [
+        "Gateway-only M4a stage-1 proof in progress: recipient policy, default-off frozen-producer compatibility, N=2/N=10 synthetic isolation, recipient-keyed activity leases, additive WAL replay fixtures, and per-recipient durable-receipt conservation tests are implemented and remain undeployed. Producer outbox recovery and the stage-3 mod recipient emitter are explicitly open."
+      ]
+    },
+    {
+      "id": "M4b",
+      "title": "Prove two real Steam clients",
+      "track": "multiplayer",
+      "status": "gated",
+      "depends_on": [
+        "M4a"
+      ],
+      "owns": "The first real concurrent correctness result across dense/shared and separated regions, reconnects, restarts, and save/reload.",
+      "does_not_own": "External volunteer onboarding or claims beyond two real clients.",
+      "summary": "Move the automated recipient model through two simultaneous real Valheim clients before any multi-seat invitation exists.",
+      "work": [
+        "Exercise both clients in the same dense build zone and in opposite map regions.",
+        "Run the known dense and extreme FieldLab route while one client disconnects and rejoins.",
+        "Restart the Gateway with backlog, restart the server, rejoin, and verify save/reload integrity.",
+        "Close each recipient independently with exact release, routing, persistence, and queue evidence."
+      ],
+      "exit_criteria": [
+        "Two distinct ready recipients complete the declared real-client matrix with zero cross-delivery and zero cross-acknowledgement.",
+        "The strict window records zero eligible native ZDO sends, zero missing or terminal rejects, independently closed queues, and healthy persistence.",
+        "Neither client exhibits a correctness or world-integrity failure through restart, reconnect, and save/reload."
+      ],
+      "inputs": [
+        "M4a automated isolation and loss-safety exit evidence.",
+        "Two owned Steam accounts, the exact promoted release, Era16 snapshot, and validated FieldLab route."
+      ],
+      "exit_evidence": []
+    },
+    {
+      "id": "M5",
+      "title": "Run the one-seat external canary",
+      "track": "volunteer",
+      "status": "gated",
+      "depends_on": [
+        "M2",
+        "M3"
+      ],
+      "owns": "The first end-to-end non-developer volunteer journey from informed invite through retained participation receipt and clean uninstall.",
+      "does_not_own": "Concurrent delivery correctness; the optional 60-minute play extension is useful evidence but is not required to close M5.",
+      "summary": "Invite one trusted non-developer only after the host has proved the exact cold-started deployment and rollback path.",
+      "work": [
+        "Host preflight before sending the invite; freeze deployments during the window.",
+        "Complete the required setup and 20-minute guided dense/frontier/quiet-drain route described in the first-canary time budget.",
+        "Offer, but do not require, a 60-minute ordinary-play extension only after the required guided run closes cleanly.",
+        "Automatically seal the run packet and collect a sub-60-second experience survey.",
+        "Stop on correctness, persistence, queue-age, native-send, version, application, or world-integrity failures."
+      ],
+      "exit_criteria": [
+        "One non-developer completes the required setup and guided cards without manual configuration and sees personal fresh Lumberjacks traffic while testing.",
+        "The platform retains PARTICIPATION COMPLETE independently from the PROVEN, DEGRADED, or INCONCLUSIVE system verdict and captures the sub-60-second survey.",
+        "The volunteer can uninstall cleanly, and no credential or direct identity leaks into public evidence.",
+        "The operator reproduces and validates the sealed packet; an optional ordinary-play extension is reported separately and cannot hold participation completion hostage."
+      ],
+      "inputs": [
+        "M2 clean-package, preflight, diagnostics, backup, and uninstall exit evidence.",
+        "M3 capacity-one dashboard, conservation, receipt, restart, and verdict exit evidence.",
+        "Cold-started host preflight, Era16 snapshot, rollback drill, scheduled run, and declared first-canary time budget."
+      ],
+      "exit_evidence": []
+    },
+    {
+      "id": "M6",
+      "title": "Widen in evidence-backed waves",
+      "track": "widening",
+      "status": "gated",
+      "depends_on": [
+        "M4b",
+        "M5"
+      ],
+      "owns": "Evidence-backed promotion from the proven two-client model and volunteer journey to 2–4 and then 5–8 real-player cohorts.",
+      "does_not_own": "Lumberjacks relevance/inference authority or claims extrapolated solely from synthetic clients.",
+      "summary": "Move from the owned two-account gate to 2–4 and then 5–8 invited players only when correctness and capacity evidence permit.",
+      "work": [
+        "Measure join-to-first/priority/full-load, queue age/slope, frame hitches, Gateway latency, WAL, CPU, memory, disk, and egress.",
+        "Exercise same-zone contention, separated regions, reconnects, restarts, and normal play.",
+        "Compare against validated, hash-recorded native and P7 baselines without treating synthetic bots as real-player capacity.",
+        "Automatically stop widening on any correctness failure."
+      ],
+      "exit_criteria": [
+        "The 2–4-player wave closes independently for every recipient with bounded queues, healthy persistence, and no correctness failure.",
+        "The 5–8-player soak meets the predeclared QoL and capacity envelope recorded in its run packet.",
+        "Published capacity limits are supported by real-player queue, compute, memory, disk, egress, and experience evidence rather than synthetic extrapolation."
+      ],
+      "inputs": [
+        "M4b two-real-client correctness exit evidence.",
+        "M5 end-to-end external-volunteer exit evidence.",
+        "Validated native/P7 baselines and predeclared per-wave QoL and capacity measures."
+      ],
+      "exit_evidence": []
+    },
+    {
+      "id": "M7",
+      "title": "Move inference and remaining authority into Lumberjacks",
+      "track": "authority",
+      "status": "later",
+      "depends_on": [
+        "M6"
+      ],
+      "owns": "Shadowing, validating, and promoting Lumberjacks relevance/inference and later authority planes one bounded claim at a time.",
+      "does_not_own": "Unmeasured transport replacement or removal of Steam/Valheim compatibility dependencies that still provide value.",
+      "summary": "Use the volunteer platform as the safety harness for shadowing and replacing Valheim's relevance, ownership, replication, and remaining RPC judgments.",
+      "work": [
+        "Shadow Lumberjacks interest management beside Valheim's per-peer candidate list.",
+        "Measure omissions, extra sends, bytes, CPU, queue age, and visible pop-in by class and region.",
+        "Promote one safe object class or policy at a time with strict rollback.",
+        "Evaluate base-transport replacement on measured value rather than assumption."
+      ],
+      "exit_criteria": [
+        "The authority matrix and retained evidence show every declared promoted plane is Lumberjacks-owned.",
+        "Any remaining Steam/Valheim dependency is explicitly classified as bootstrap, identity, or compatibility.",
+        "Every promoted class or policy has paired shadow/strict evidence and a tested rollback path."
+      ],
+      "inputs": [
+        "M6 real-player correctness, quality, and capacity exit evidence.",
+        "Lumberjacks interest-management design at docs/network/interest-management.md.",
+        "FieldLab native, shadow, and strict route fixtures."
+      ],
+      "exit_evidence": []
+    }
+  ],
+  "readiness": [
+    {
+      "name": "One external volunteer",
+      "status": "not_ready",
+      "requirements": [
+        "M0–M3 pass.",
+        "Strict capacity remains one.",
+        "Owner passes the same clean-package flow immediately beforehand.",
+        "Host preflight and rollback drill are green.",
+        "All reusable public credentials use validated TLS.",
+        "The invite names the versioned test cards, duration, data policy, and recovery path.",
+        "The dashboard supports before, during, and after-run states with a retained participation receipt."
+      ]
+    },
+    {
+      "name": "Concurrent volunteers",
+      "status": "not_ready",
+      "requirements": [
+        "M4a automated isolation and M4b real two-account gates pass.",
+        "M5 proves the complete external-volunteer journey and retained receipt.",
+        "Each peer has an independent readiness lease and durable recipient ledger.",
+        "No peer can alter another peer's routing or closure.",
+        "Capacity is supported by observed queue, compute, disk, and egress evidence."
+      ]
+    }
+  ],
+  "volunteer_success": {
+    "headline": "INVITED → INFORMED → READY → TESTING → PARTICIPATION COMPLETE",
+    "definition": "A volunteer succeeds by completing or attempting the assigned work and returning a usable evidence packet. Finding a networking defect is valuable successful participation; it does not require the system test itself to pass.",
+    "catalog_revision": "draft-v1",
+    "availability": "Planned for the first canary; invitations are not open until M0-M3 close.",
+    "receipt_axes": [
+      "participation",
+      "system_verdict"
+    ],
+    "first_canary_time_budget": [
+      {
+        "phase": "Setup and preflight",
+        "commitment": "required",
+        "duration": "target ≤10 min",
+        "detail": "Redeem the invite, install the exact package, pass preflight, choose a backed-up character, and reach READY TO JOIN."
+      },
+      {
+        "phase": "Guided quality route",
+        "commitment": "required",
+        "duration": "~20 min",
+        "detail": "Complete T02 dense arrival, T03 rapid frontier travel, and T05 quiet drain."
+      },
+      {
+        "phase": "Experience survey",
+        "commitment": "required",
+        "duration": "<1 min",
+        "detail": "Return the bounded observation report so participation can close independently of the system verdict."
+      },
+      {
+        "phase": "Ordinary play extension",
+        "commitment": "optional opt-in",
+        "duration": "up to 60 min",
+        "detail": "Offered only after the required guided route closes cleanly; declining it does not reduce participation status."
+      }
+    ],
+    "journey": [
+      {
+        "stage": "1 · INVITE",
+        "title": "Know the work before accepting",
+        "done_when": "The page states the experiment, assigned test cards, expected time, risks, captured data, support, and recovery path."
+      },
+      {
+        "stage": "2 · READY",
+        "title": "Install and preflight without hand edits",
+        "done_when": "Steam enrollment, exact release, BepInEx, TLS, Gateway, server, capacity, readiness, and rollback checks are green."
+      },
+      {
+        "stage": "3 · TESTING",
+        "title": "See Lumberjacks and the next action",
+        "done_when": "The personal dashboard shows LUMBERJACKS ACTIVE, current card instructions, and fresh received/applied/acknowledged traffic."
+      },
+      {
+        "stage": "4 · RECEIPT",
+        "title": "Know that participation counted",
+        "done_when": "A retained pseudonymous receipt separates participation completion from the networking verdict and includes the submitted observations."
+      }
+    ],
+    "test_cards": [
+      {
+        "id": "T01",
+        "title": "Setup and first join",
+        "duration": "~10 min",
+        "exercise": "Redeem, install, preflight, choose a backed-up character, and join.",
+        "observe": "Confusing, manual, failed, or unexpectedly slow steps.",
+        "proof": "Enrollment → readiness → admission → first apply.",
+        "availability": "planned first pilot · required"
+      },
+      {
+        "id": "T02",
+        "title": "Dense spawn arrival",
+        "duration": "~5 min",
+        "exercise": "Remain in the portal/building area until visually usable.",
+        "observe": "Missing art/buildings, severe pop-in, freezes, or corruption.",
+        "proof": "Priority-playable/full-drain time and frame hitches.",
+        "availability": "planned first pilot · required"
+      },
+      {
+        "id": "T03",
+        "title": "Rapid frontier travel",
+        "duration": "~10 min",
+        "exercise": "Fly rapidly into a direction not previously visited.",
+        "observe": "Tree/terrain pop-in, stalls, and movement responsiveness.",
+        "proof": "Priority rate, queue slope/age, and first-useful delivery.",
+        "availability": "planned first pilot · required"
+      },
+      {
+        "id": "T04",
+        "title": "Elaborate build revisit",
+        "duration": "~10 min",
+        "exercise": "Approach and circle a known complex construction.",
+        "observe": "Recognition/completion time and incorrect pieces.",
+        "proof": "Dense apply, supersession, starvation, and full closure.",
+        "availability": "planned optional"
+      },
+      {
+        "id": "T05",
+        "title": "Quiet drain",
+        "duration": "~5 min",
+        "exercise": "Stop in wilderness and wait without teleporting.",
+        "observe": "Late pop-in, pauses, disconnects, or unexpected activity.",
+        "proof": "Backlog drain, oldest age, idle state, and conservation.",
+        "availability": "planned first pilot · required"
+      },
+      {
+        "id": "T06",
+        "title": "Controlled reconnect",
+        "duration": "~10 min",
+        "exercise": "Disconnect and rejoin only when assigned by the operator.",
+        "observe": "Lost state, duplicates, blank screen, and join friction.",
+        "proof": "Resume, dedupe, lease, and outstanding-delivery recovery.",
+        "availability": "planned controlled"
+      },
+      {
+        "id": "T07",
+        "title": "Two-client isolation",
+        "duration": "~20 min",
+        "exercise": "Two players occupy shared, then separated regions.",
+        "observe": "Cross-player stalls or inconsistent world state.",
+        "proof": "Recipient isolation and independent queue closure.",
+        "availability": "after M4b"
+      }
+    ],
+    "receipt": [
+      "Run ID, participant alias, timestamps, and assigned/completed/attempted card revisions.",
+      "Exact mod, Gateway, server, protocol, deployment, world epoch, and artifact hashes.",
+      "Enrollment, preflight, admission, readiness, and qualifying-traffic results.",
+      "Per-recipient received, applied, superseded, acknowledged, pending, native, and failure summary.",
+      "Submitted observations plus diagnostic/survey packet status.",
+      "Separate participation status and system verdict with plain-language reasons.",
+      "Support, privacy/deletion, recovery, and uninstall links."
+    ]
+  },
+  "proof_pipeline": {
+    "stages": [
+      {
+        "stage": "candidate",
+        "event": "Valheim selects a peer-specific eligible ZDO revision.",
+        "proof": "Stable candidate identity and the declared eligibility scope establish the denominator."
+      },
+      {
+        "stage": "route",
+        "event": "The server records either a native send or a Lumberjacks redirect intent.",
+        "proof": "Every candidate has exactly one route decision."
+      },
+      {
+        "stage": "durable receipt",
+        "event": "The Gateway durably accepts the redirected envelope.",
+        "proof": "A stable delivery identity prevents retries from increasing the unique denominator."
+      },
+      {
+        "stage": "delivery",
+        "event": "The authenticated consumer leases or polls its pending envelope.",
+        "proof": "The recipient comes from the credential and the ledger records pending or leased state."
+      },
+      {
+        "stage": "Unity outcome",
+        "event": "The client validates an exact application or safe supersession on Unity's main thread.",
+        "proof": "Only a validated terminal outcome is eligible for acknowledgement."
+      },
+      {
+        "stage": "durable acknowledgement",
+        "event": "The Gateway records the applied or safely superseded terminal outcome.",
+        "proof": "The sealed per-run ledger retains the final conservation result."
+      }
+    ],
+    "conservation": [
+      "candidate decisions = native sends + redirect intents",
+      "redirect intents = durable receipts + producer outbox pending",
+      "durable receipts = acknowledged applied + acknowledged superseded + leased or pending"
+    ],
+    "strict_closure": [
+      "native eligible sends = 0",
+      "producer outbox pending = 0",
+      "leased or pending = 0",
+      "durable receipts = acknowledged applied + acknowledged superseded"
+    ]
+  },
+  "latest_observation": {
+    "id": "castle-port-session-20260716T054805Z",
+    "kind": "OWNER OBSERVATION",
+    "label": "Castle-port stationary-drain session",
+    "captured_at": "2026-07-16 05:48–06:00 UTC",
+    "scope": "One enrolled owner client · dense castle wait · automated port · stationary backlog drain",
+    "delivery_result": "COMPLETE",
+    "system_verdict": "INCONCLUSIVE",
+    "conservation": {
+      "eligible": 81241,
+      "durable": 81241,
+      "applied": 71108,
+      "superseded": 10133,
+      "acknowledged": 81241,
+      "pending": 0,
+      "native": 0
+    },
+    "verdict_reason": "Exact delivery accounting was captured, but this was not a predeclared acceptance run and the empty-server reset erased live Gateway receipt state before a retained per-run receipt could be sealed.",
+    "milestone_effect": "No milestone advanced. This corroborates the existing one-client P7 baseline and confirms the M3 retained-ledger exit criterion.",
+    "operational_observation": "Two auxiliary consumer-telemetry POST attempts failed after the main drain and recovered; poll, application, and acknowledgement delivery were unaffected.",
+    "informs": [
+      "M0",
+      "M3"
+    ],
+    "evidence": {
+      "status": "local_only",
+      "label": "FieldLab castle-port session packet",
+      "detail": "The local packet includes analysis, provenance, session summary, and captured samples; immutable publication remains M0 work."
+    }
+  },
+  "golden_proof": {
+    "label": "Validated, hash-recorded P7 authoritative priority ZDO baseline",
+    "captured_at": "2026-07-16 UTC",
+    "scope": "One enrolled client · persistent all-prefab ZDO redirect",
+    "denominator": {
+      "eligible": 83220,
+      "redirected": 83220,
+      "acknowledged": 83220,
+      "native": 0,
+      "statement": "83,220 of 83,220 eligible ZDO revisions in the declared strict single-client window closed through Lumberjacks; this is not a denominator for all Valheim networking."
+    },
+    "metrics": [
+      [
+        "Eligible revisions in declared window",
+        "83,220"
+      ],
+      [
+        "Durable receipts",
+        "83,220"
+      ],
+      [
+        "Exact applications",
+        "72,946"
+      ],
+      [
+        "Safe supersessions",
+        "10,274"
+      ],
+      [
+        "Acknowledgements",
+        "83,220"
+      ],
+      [
+        "Pending",
+        "0"
+      ],
+      [
+        "Eligible native-only sends",
+        "0"
+      ],
+      [
+        "Priority tagged",
+        "83,220 (100%)"
+      ],
+      [
+        "Observed reject / duplicate / retry",
+        "0 / 0 / 0"
+      ],
+      [
+        "Poll / ACK / telemetry failures",
+        "0 / 0 / 0"
+      ],
+      [
+        "Peer-ready → first apply",
+        "6.721 s"
+      ],
+      [
+        "Peer-ready → complete",
+        "102.114 s"
+      ]
+    ],
+    "publication": {
+      "status": "published",
+      "detail": "The sanitized publication set is public and immutable at https://github.com/djcdevelopment/comfy/blob/433f1cc33605561ae1287db9cd8f37125d795c5d/fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover/PUBLICATION.md — pushed 2026-07-16 after the A4 promotion drill passed (receipt: docs/roadmap/m0-a4-promotion-drill-receipt.json, evidence public at Comfy e6a1402). Published bytes re-verified against the recorded SHA-256 hashes after push."
+    }
+  },
+  "authority_planes": [
+    [
+      "Invite / Steam enrollment",
+      "Partial",
+      "Implemented, but not yet the sole live admission roster."
+    ],
+    [
+      "Valheim admission",
+      "Partial",
+      "Gateway responder exists; must bind actual SteamID, enrollment, release, readiness, and capacity."
+    ],
+    [
+      "Eligible server-to-client ZDO delivery",
+      "Proved for one client",
+      "Validated, hash-recorded strict P7 window; concurrent queue isolation is not yet proved."
+    ],
+    [
+      "Candidate relevance / inference",
+      "Native",
+      "Valheim still creates the peer-specific candidate list."
+    ],
+    [
+      "ZDO application",
+      "Lumberjacks adapter",
+      "Client poller applies and validates on Unity's main thread before ACK."
+    ],
+    [
+      "Ownership / simulation / non-ZDO RPC",
+      "Native",
+      "Later authority-plane work."
+    ],
+    [
+      "Steam login / base peer transport",
+      "Native by design",
+      "May remain bootstrap and compatibility unless replacement adds measured value."
+    ]
+  ],
+  "no_go": [
+    "The current p7-primary-v1 queue and ACK state are shared; two consumers can steal or close each other's peer-specific records.",
+    "Redirect readiness is not yet bound to the exact joining peer.",
+    "Native peer bookkeeping advances before durable Gateway acceptance, leaving a producer-side loss window.",
+    "Live enrollment does not yet exclusively gate Valheim admission.",
+    "Consumer authorization is broader than the least-privilege target.",
+    "The public volunteer client path is plain HTTP today.",
+    "The existing guest handoff is stale prose, not a verified immutable package.",
+    "Current dashboard proof is aggregate and resettable rather than per-run and per-recipient; the 2026-07-16 owner observation saw the empty-server reset erase 81,241 live receipt records two seconds after disconnect.",
+    "Acceptance telemetry defaults are too large for volunteers."
+  ],
+  "links": [
+    {
+      "label": "Full volunteer platform plan",
+      "href": "https://github.com/djcdevelopment/Lumberjacks/blob/master/docs/network/valheim-volunteer-platform-plan.md"
+    },
+    {
+      "label": "P7 network overview",
+      "href": "https://github.com/djcdevelopment/Lumberjacks/blob/master/docs/network/valheim-lumberjacks-p7-overview.md"
+    },
+    {
+      "label": "Network evidence index",
+      "href": "https://github.com/djcdevelopment/Lumberjacks/blob/master/docs/network/evidence-index.md"
+    },
+    {
+      "label": "FieldLab",
+      "href": "https://github.com/djcdevelopment/comfy/tree/main/fieldlab"
+    }
+  ]
+}

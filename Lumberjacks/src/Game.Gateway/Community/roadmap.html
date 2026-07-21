@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline';">
+  <meta name="generator" content="scripts/roadmap.mjs">
+  <title>Comfy × Valheim — Lumberjacks Volunteer Roadmap</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1013;
+      --paper: #11191d;
+      --panel: #162126;
+      --panel-2: #1b292e;
+      --line: #2c3a3f;
+      --ink: #edf5f2;
+      --muted: #9eb0ad;
+      --green: #68d391;
+      --green-bg: rgba(104, 211, 145, .11);
+      --amber: #f6c453;
+      --amber-bg: rgba(246, 196, 83, .11);
+      --red: #f28b82;
+      --red-bg: rgba(242, 139, 130, .11);
+      --blue: #75c9f1;
+      --blue-bg: rgba(117, 201, 241, .11);
+      --violet: #c7a7ff;
+      --wood: #d7a86e;
+      --shadow: 0 18px 55px rgba(0, 0, 0, .25);
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: radial-gradient(circle at 15% 0%, #18302e 0, transparent 28rem), var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.55; }
+    a { color: var(--blue); text-underline-offset: .2em; }
+    a:hover { color: #b7e7ff; }
+    code { font-family: var(--mono); color: #d8ece7; overflow-wrap: anywhere; }
+    .wrap { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    .topbar { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,.08); background: rgba(11,16,19,.92); backdrop-filter: blur(14px); }
+    .topbar-inner { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .02em; }
+    .mark { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--wood); color: var(--wood); border-radius: 7px; font-family: var(--mono); }
+    nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 14px; font-size: .85rem; }
+    nav a { color: var(--muted); text-decoration: none; }
+    nav a[aria-current="page"] { color: var(--ink); }
+    .hero { padding: 72px 0 38px; }
+    .eyebrow { color: var(--wood); text-transform: uppercase; letter-spacing: .16em; font-size: .76rem; font-weight: 800; }
+    h1 { max-width: 920px; margin: 12px 0 18px; font-size: clamp(2.25rem, 7vw, 5.7rem); line-height: .94; letter-spacing: -.055em; }
+    .headline { max-width: 900px; color: var(--amber); font-family: var(--mono); font-size: clamp(.9rem, 2vw, 1.18rem); font-weight: 800; }
+    .lede { max-width: 920px; margin: 24px 0; color: #c4d2cf; font-size: 1.06rem; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+    .hero-meta span { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; color: var(--muted); background: rgba(255,255,255,.025); font-size: .78rem; }
+    section { padding: 38px 0; }
+    section + section { border-top: 1px solid rgba(255,255,255,.07); }
+    .section-head { display: grid; grid-template-columns: minmax(160px, .35fr) 1fr; gap: 28px; margin-bottom: 24px; }
+    .section-number { color: var(--wood); font-family: var(--mono); font-size: .78rem; letter-spacing: .12em; }
+    h2 { margin: 0 0 8px; font-size: clamp(1.45rem, 3vw, 2.35rem); letter-spacing: -.025em; }
+    h3 { margin: 0; line-height: 1.25; }
+    .section-copy { color: var(--muted); max-width: 780px; }
+    .truth-grid, .readiness-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .truth-card, .readiness-card, .proof-card, .no-go-card { padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(150deg, var(--panel), var(--paper)); box-shadow: var(--shadow); }
+    .truth-card.proved { border-color: rgba(104,211,145,.38); }
+    .truth-card.not-yet { border-color: rgba(246,196,83,.38); }
+    .truth-card h3 { margin-bottom: 11px; color: var(--green); }
+    .truth-card.not-yet h3 { color: var(--amber); }
+    ul { margin: 10px 0 0; padding-left: 1.15rem; }
+    li { margin: 7px 0; }
+    .primer { margin-top: 16px; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(145deg, var(--paper), var(--panel)); }
+    .primer-head { display: grid; grid-template-columns: .75fr 1.25fr; gap: 22px; align-items: start; }
+    .primer-head h3 { color: var(--blue); font-size: 1.22rem; }
+    .primer-head p { margin: 0; color: #cad7d4; }
+    .denominator { margin: 16px 0; padding: 12px 14px; border-left: 3px solid var(--green); background: var(--green-bg); color: #cce1da; font-size: .86rem; }
+    .denominator strong { display: block; margin-bottom: 3px; color: var(--green); font-family: var(--mono); font-size: .67rem; text-transform: uppercase; letter-spacing: .07em; }
+    .dataflow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
+    .flow-step { position: relative; min-width: 0; padding: 13px; border: 1px solid var(--line); border-top: 3px solid var(--blue); border-radius: 8px; background: rgba(0,0,0,.16); }
+    .flow-step:first-child { border-top-color: var(--muted); }
+    .flow-step:not(:last-child)::after { content: "→"; position: absolute; right: -8px; top: 44px; z-index: 2; color: var(--wood); font-weight: 900; }
+    .flow-stage { color: var(--wood); font-family: var(--mono); font-size: .63rem; font-weight: 900; }
+    .flow-step h3 { margin-top: 5px; font-size: .86rem; }
+    .flow-step p { color: #c5d2cf; font-size: .75rem; }
+    .flow-boundary { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: .68rem; }
+    .flow-boundary strong { display: block; color: var(--amber); font-family: var(--mono); font-size: .58rem; text-transform: uppercase; letter-spacing: .06em; }
+    .glossary { margin-top: 14px; padding: 0; }
+    .glossary summary { display: inline-block; }
+    .glossary dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .glossary dl > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.12); }
+    .glossary dt { color: var(--ink); font-family: var(--mono); font-size: .72rem; font-weight: 900; }
+    .glossary dd { margin: 3px 0 0; color: var(--muted); font-size: .75rem; }
+    .status-legend { display: grid; gap: 9px; margin: 16px 0; }
+    .status-axis { display: grid; grid-template-columns: 220px 1fr; gap: 14px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 9px; background: rgba(0,0,0,.13); }
+    .status-axis-head h3 { font-size: .9rem; }
+    .status-axis-head p { margin: 3px 0 0; color: var(--muted); font-size: .72rem; }
+    .axis-states { display: flex; flex-wrap: wrap; gap: 7px; }
+    .axis-state { flex: 1 1 170px; padding: 8px 10px; border-left: 3px solid var(--blue); background: var(--blue-bg); }
+    .axis-state strong { display: block; font-family: var(--mono); font-size: .65rem; }
+    .axis-state span { display: block; margin-top: 2px; color: var(--muted); font-size: .68rem; }
+    .axis-state.not-ready, .axis-state.fault, .axis-state.degraded, .axis-state.participation-incomplete { border-left-color: var(--red); background: var(--red-bg); }
+    .axis-state.ready-to-join, .axis-state.lumberjacks-active, .axis-state.flowing, .axis-state.participation-complete, .axis-state.proven { border-left-color: var(--green); background: var(--green-bg); }
+    .axis-state.idle, .axis-state.pending, .axis-state.no-active-session { border-left-color: var(--amber); background: var(--amber-bg); }
+    .axis-state.native-recovery { border-left-color: var(--muted); background: rgba(158,176,173,.08); }
+    .tracks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .track { padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue); border-radius: 10px; }
+    .track.multiplayer { border-left-color: var(--violet); }
+    .track.authority { border-left-color: var(--wood); }
+    .track-label { font-weight: 800; }
+    .track p { color: var(--muted); margin: 4px 0 0; font-size: .82rem; }
+    .dag { padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: rgba(0,0,0,.14); }
+    .dag-layer { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .dag-arrow { height: 28px; display: grid; place-items: center; color: var(--muted); font-family: var(--mono); font-weight: 900; }
+    .dag-node { min-width: 175px; max-width: 280px; flex: 1 1 190px; display: grid; grid-template-columns: auto 1fr; gap: 3px 9px; padding: 11px 13px; color: var(--ink); text-decoration: none; border: 1px solid var(--line); border-top: 3px solid var(--blue); border-radius: 8px; background: var(--panel); }
+    .dag-node.multiplayer { border-top-color: var(--violet); }
+    .dag-node.authority { border-top-color: var(--wood); }
+    .dag-node.gated { opacity: .78; }
+    .dag-node.complete { border-top-color: var(--green); }
+    .dag-node:hover { color: var(--ink); border-color: var(--blue); }
+    .dag-id { grid-row: 1 / span 2; color: var(--wood); font-family: var(--mono); font-size: .72rem; font-weight: 900; }
+    .dag-node strong { font-size: .8rem; }
+    .dag-node > span:last-child { color: var(--muted); font-family: var(--mono); font-size: .63rem; }
+    .milestone-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+    .milestone { padding: 22px; border: 1px solid var(--line); border-top: 4px solid var(--blue); border-radius: 13px; background: linear-gradient(155deg, var(--panel), var(--paper)); }
+    .milestone.active { border-top-color: var(--amber); }
+    .milestone.gated { border-top-color: var(--amber); }
+    .milestone.later { border-top-color: var(--muted); }
+    .milestone.complete { border-top-color: var(--green); }
+    .milestone-head, .readiness-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+    .milestone-head > div { display: flex; align-items: baseline; gap: 10px; }
+    .milestone-id { color: var(--wood); font-family: var(--mono); font-size: .8rem; font-weight: 800; }
+    .pill { display: inline-flex; align-items: center; flex: 0 0 auto; padding: 4px 8px; border-radius: 999px; font-family: var(--mono); font-size: .67rem; font-weight: 900; letter-spacing: .06em; border: 1px solid currentColor; }
+    .pill.active { color: var(--amber); background: var(--amber-bg); }
+    .pill.queued { color: var(--blue); background: var(--blue-bg); }
+    .pill.gated { color: var(--amber); background: var(--amber-bg); }
+    .pill.later { color: var(--muted); background: rgba(158,176,173,.08); }
+    .pill.complete { color: var(--green); background: var(--green-bg); }
+    .meta-line { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 12px 0; color: var(--muted); font-family: var(--mono); font-size: .72rem; text-transform: uppercase; }
+    .deps { display: flex; align-items: center; gap: 5px; }
+    .dep { padding: 1px 5px; background: rgba(255,255,255,.06); border-radius: 4px; color: var(--ink); }
+    .milestone > p { color: #cad7d4; }
+    .ownership { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+    .ownership > span { padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); font-size: .75rem; }
+    .ownership strong { display: block; margin-bottom: 2px; color: var(--ink); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
+    .work-list { color: var(--muted); font-size: .9rem; }
+    .gate { margin-top: 18px; padding: 14px; display: grid; gap: 5px; border-left: 3px solid var(--amber); background: var(--amber-bg); font-size: .88rem; }
+    .gate strong { color: var(--amber); text-transform: uppercase; letter-spacing: .08em; font-size: .7rem; }
+    .gate.closed { border-left-color: var(--green); background: var(--green-bg); }
+    .gate.closed strong { color: var(--green); }
+    .exit-criteria { margin-top: 3px; padding-left: 1rem; }
+    .exit-criteria li { margin: 4px 0; }
+    .milestone-evidence { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; font-size: .76rem; }
+    .milestone-evidence > div { display: grid; align-content: start; gap: 4px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.13); }
+    .milestone-evidence strong { color: var(--muted); font-family: var(--mono); font-size: .65rem; text-transform: uppercase; letter-spacing: .06em; }
+    .milestone-evidence ul { margin: 2px 0 0; padding-left: 1rem; }
+    .milestone-evidence li { margin: 3px 0; }
+    .empty-evidence { color: #70827e; font-style: italic; }
+    .readiness-head { margin-bottom: 12px; }
+    .check-list { list-style: none; padding: 0; color: var(--muted); }
+    .check-list li { position: relative; padding-left: 24px; }
+    .check-list li::before { content: "□"; position: absolute; left: 0; color: var(--amber); font-family: var(--mono); }
+    .success-contract { margin-top: 28px; padding: 24px; border: 1px solid rgba(104,211,145,.34); border-radius: 14px; background: linear-gradient(145deg, rgba(104,211,145,.07), var(--paper) 34%); }
+    .success-contract > h3 { margin-bottom: 7px; color: var(--green); font-size: 1.35rem; }
+    .success-headline { color: var(--green); font-family: var(--mono); font-size: .85rem; font-weight: 900; letter-spacing: .04em; }
+    .success-definition { max-width: 920px; color: #c8d7d3; }
+    .catalog-state { display: inline-block; margin: 0 0 4px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-family: var(--mono); font-size: .68rem; }
+    .journey-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 20px 0; }
+    .journey-step { position: relative; padding: 16px; border: 1px solid var(--line); border-radius: 9px; background: rgba(0,0,0,.18); }
+    .journey-step:not(:last-child)::after { content: "→"; position: absolute; right: -10px; top: 50%; z-index: 2; color: var(--wood); font-weight: 900; }
+    .journey-stage { margin-bottom: 7px; color: var(--wood); font-family: var(--mono); font-size: .7rem; font-weight: 900; }
+    .journey-step h3 { font-size: .98rem; }
+    .journey-step p { margin-bottom: 0; color: var(--muted); font-size: .82rem; }
+    .receipt-axis-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 18px 0 24px; }
+    .receipt-axis { padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: rgba(0,0,0,.15); }
+    .receipt-axis h4 { margin: 0; font-size: .88rem; }
+    .receipt-axis > div:first-child p { margin: 3px 0 10px; color: var(--muted); font-size: .73rem; }
+    .receipt-outcome { display: grid; gap: 2px; padding: 9px 11px; border-left: 3px solid var(--blue); background: var(--blue-bg); }
+    .receipt-outcome + .receipt-outcome { margin-top: 6px; }
+    .receipt-outcome strong { font-family: var(--mono); font-size: .67rem; }
+    .receipt-outcome span { color: var(--muted); font-size: .74rem; }
+    .receipt-outcome.participation-complete, .receipt-outcome.proven { border-left-color: var(--green); background: var(--green-bg); }
+    .receipt-outcome.participation-incomplete, .receipt-outcome.degraded { border-left-color: var(--red); background: var(--red-bg); }
+    .receipt-outcome.pending, .receipt-outcome.inconclusive { border-left-color: var(--amber); background: var(--amber-bg); }
+    .budget-summary { margin: 18px 0 24px; }
+    .budget-summary > h3 { margin-bottom: 3px; }
+    .budget-summary > p { margin-top: 0; color: var(--muted); font-size: .82rem; }
+    .budget-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .budget-phase { padding: 12px; border: 1px solid rgba(117,201,241,.28); border-radius: 8px; background: var(--blue-bg); }
+    .budget-phase.optional-opt-in { border-color: var(--line); background: rgba(158,176,173,.07); }
+    .budget-head { display: flex; justify-content: space-between; gap: 8px; color: var(--blue); font-family: var(--mono); font-size: .64rem; text-transform: uppercase; }
+    .budget-phase.optional-opt-in .budget-head { color: var(--muted); }
+    .budget-phase h4 { margin: 9px 0 3px; font-size: .86rem; }
+    .budget-phase p { margin: 0; color: var(--muted); font-size: .73rem; }
+    .subhead { margin: 25px 0 6px; color: var(--ink); }
+    .subcopy { margin-top: 0; color: var(--muted); }
+    .test-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(275px, 1fr)); gap: 10px; }
+    .test-card { padding: 15px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
+    .test-card-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .test-id { color: var(--wood); font-family: var(--mono); font-weight: 900; }
+    .availability { padding: 2px 6px; border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.05); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; }
+    .test-card h3 { margin-top: 8px; font-size: 1rem; }
+    .test-duration { color: var(--blue); font-family: var(--mono); font-size: .7rem; }
+    .test-card dl { display: grid; grid-template-columns: 56px 1fr; gap: 5px 8px; margin: 12px 0 0; font-size: .78rem; }
+    .test-card dt { color: var(--ink); font-weight: 800; }
+    .test-card dd { margin: 0; color: var(--muted); }
+    .receipt-box { margin-top: 16px; padding: 16px 18px; border: 1px solid rgba(104,211,145,.28); border-radius: 9px; background: var(--green-bg); }
+    .receipt-box h3 { color: var(--green); }
+    .receipt-box ul { columns: 2; column-gap: 32px; color: #c8d7d3; font-size: .84rem; }
+    .latest-observation { margin-bottom: 16px; padding: 22px; border: 1px solid rgba(246,196,83,.4); border-radius: 14px; background: linear-gradient(145deg, rgba(246,196,83,.07), var(--paper) 38%); box-shadow: var(--shadow); }
+    .observation-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
+    .observation-kind { color: var(--wood); font-family: var(--mono); font-size: .65rem; font-weight: 900; letter-spacing: .09em; }
+    .observation-head h3 { margin: 5px 0 3px; font-size: 1.25rem; }
+    .observation-meta { margin: 0; color: var(--muted); font-size: .77rem; }
+    .observation-informs { color: var(--muted); font-family: var(--mono); font-size: .68rem; white-space: nowrap; }
+    .observation-axes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+    .observation-axis { padding: 12px 14px; border-left: 3px solid var(--green); background: var(--green-bg); }
+    .observation-axis.verdict { border-left-color: var(--amber); background: var(--amber-bg); }
+    .observation-axis span { display: block; color: var(--muted); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; }
+    .observation-axis strong { display: block; margin-top: 2px; font-family: var(--mono); font-size: .9rem; }
+    .observation-conservation { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: rgba(0,0,0,.16); }
+    .observation-conservation > div { flex: 1 1 105px; padding: 8px 9px; border-radius: 6px; background: var(--panel-2); }
+    .observation-conservation > div span { display: block; color: var(--muted); font-size: .62rem; }
+    .observation-conservation > div strong { display: block; font-family: var(--mono); font-size: .92rem; }
+    .observation-conservation > b, .observation-plus { align-self: center; color: var(--wood); font-family: var(--mono); }
+    .observation-conservation .observation-zero { border: 1px solid rgba(104,211,145,.32); background: var(--green-bg); }
+    .observation-explanation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+    .observation-explanation > div { padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: .78rem; }
+    .observation-explanation strong { display: block; margin-bottom: 3px; color: var(--ink); font-family: var(--mono); font-size: .65rem; text-transform: uppercase; }
+    .observation-telemetry { margin: 10px 0 0; color: var(--muted); font-size: .77rem; }
+    .observation-evidence { margin-top: 10px; padding: 10px 12px; border-left: 3px solid var(--amber); background: var(--amber-bg); color: #d7cba9; font-size: .74rem; }
+    .observation-evidence strong { display: block; color: var(--amber); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; }
+    .proof-layout { display: grid; grid-template-columns: .85fr 1.15fr; gap: 16px; }
+    .proof-card h3 { color: var(--green); }
+    .proof-scope { margin: 8px 0 18px; color: var(--muted); }
+    .proof-pipeline-card { margin-bottom: 16px; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(150deg, var(--panel), var(--paper)); }
+    .proof-pipeline-card > h3 { color: var(--blue); }
+    .proof-pipeline-card > p { color: var(--muted); }
+    .proof-stage-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+    .proof-stage { position: relative; padding: 11px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.16); }
+    .proof-stage:not(:last-child)::after { content: "→"; position: absolute; top: 38px; right: -7px; z-index: 2; color: var(--wood); font-weight: 900; }
+    .proof-stage-name { color: var(--wood); font-family: var(--mono); font-size: .61rem; text-transform: uppercase; }
+    .proof-stage strong { display: block; margin: 5px 0; font-size: .72rem; }
+    .proof-stage span { display: block; color: var(--muted); font-size: .67rem; }
+    .equation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+    .equation-box { padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.12); }
+    .equation-box strong { color: var(--muted); font-family: var(--mono); font-size: .63rem; text-transform: uppercase; }
+    .equation-box ul { margin-top: 4px; color: #c5d2cf; font-family: var(--mono); font-size: .68rem; }
+    .conservation-flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 8px; align-items: stretch; margin-bottom: 14px; }
+    .conservation-flow > div { display: grid; place-content: center; min-height: 82px; padding: 10px; text-align: center; border: 1px solid rgba(104,211,145,.35); border-radius: 8px; background: var(--green-bg); }
+    .conservation-flow > b { display: grid; place-items: center; color: var(--wood); }
+    .conservation-flow span { color: var(--muted); font-size: .68rem; }
+    .conservation-flow strong { font-family: var(--mono); font-size: 1.25rem; }
+    .conservation-flow .native-zero { grid-column: 1 / -1; min-height: auto; display: flex; justify-content: center; gap: 10px; border-color: var(--line); background: rgba(0,0,0,.14); }
+    .proof-denominator { color: #c8d7d3; font-size: .82rem; }
+    .metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .metric { padding: 12px; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.05); border-radius: 8px; }
+    .metric span { display: block; color: var(--muted); font-size: .72rem; }
+    .metric strong { display: block; margin-top: 2px; font-family: var(--mono); font-size: 1.05rem; }
+    .no-go-card h3 { color: var(--red); }
+    .no-go-card ul { color: #d2bfbc; }
+    .publication { margin-top: 12px; padding: 11px 13px; border-left: 3px solid var(--amber); background: var(--amber-bg); color: #d7cba9; font-size: .76rem; }
+    .publication strong { display: block; color: var(--amber); font-family: var(--mono); font-size: .64rem; text-transform: uppercase; letter-spacing: .06em; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; min-width: 720px; background: var(--paper); }
+    th, td { padding: 13px 15px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    thead th { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; background: var(--panel); }
+    tbody th { width: 25%; }
+    tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+    .state-text { display: inline-block; padding: 3px 7px; border: 1px solid currentColor; border-radius: 999px; color: var(--amber); background: var(--amber-bg); font-family: var(--mono); font-size: .72rem; font-weight: 800; white-space: nowrap; }
+    .state-text.proved-for-one-client { color: var(--green); background: var(--green-bg); }
+    .state-text.lumberjacks-adapter { color: var(--blue); background: var(--blue-bg); }
+    .state-text.native, .state-text.native-by-design { color: var(--muted); background: rgba(158,176,173,.08); }
+    .journal { max-width: 980px; }
+    .journal-entry { position: relative; display: grid; grid-template-columns: 22px 1fr; gap: 15px; }
+    .journal-entry + .journal-entry { margin-top: 22px; }
+    .journal-rail { position: relative; }
+    .journal-rail::before { content: ""; position: absolute; left: 8px; top: 5px; bottom: -28px; width: 1px; background: var(--line); }
+    .journal-rail::after { content: ""; position: absolute; left: 3px; top: 5px; width: 11px; height: 11px; border-radius: 50%; background: var(--wood); box-shadow: 0 0 0 4px rgba(215,168,110,.12); }
+    .journal-entry:last-child .journal-rail::before { bottom: 0; }
+    .journal-body { padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+    .journal-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; color: var(--muted); font-family: var(--mono); font-size: .69rem; }
+    .pill.note-kind { color: var(--blue); background: var(--blue-bg); }
+    .journal-body h3 { margin: 10px 0 8px; }
+    .journal-body p { margin: 0; color: #c5d2cf; }
+    details { margin-top: 12px; color: var(--muted); }
+    summary { cursor: pointer; color: var(--blue); }
+    .journal-evidence { margin-top: 12px; color: var(--muted); font-size: .78rem; }
+    .journal-evidence code { display: inline-block; margin: 3px 4px 0 0; padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; }
+    .containing-commit { margin-top: 12px; color: #728783; font-size: .7rem; }
+    footer { padding: 38px 0 60px; color: var(--muted); font-size: .82rem; }
+    .footer-links { margin-bottom: 10px; }
+    .generated { color: #6f817e; font-family: var(--mono); font-size: .7rem; }
+    @media (max-width: 820px) {
+      .section-head, .proof-layout, .primer-head, .status-axis, .observation-explanation { grid-template-columns: 1fr; gap: 10px; }
+      .truth-grid, .readiness-grid, .milestone-grid, .tracks { grid-template-columns: 1fr; }
+      .dataflow { grid-template-columns: 1fr; }
+      .flow-step::after, .proof-stage::after { display: none; }
+      .proof-stage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .budget-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .journey-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .journey-step::after { display: none; }
+      .topbar-inner { align-items: flex-start; padding: 12px 0; }
+      nav { gap: 8px; }
+      .hero { padding-top: 48px; }
+    }
+    @media (max-width: 560px) {
+      .wrap { width: min(1180px, calc(100% - 20px)); }
+      .topbar-inner { display: block; }
+      nav { justify-content: flex-start; margin-top: 8px; }
+      .metric-grid { grid-template-columns: 1fr; }
+      .journey-grid, .receipt-axis-grid, .budget-grid, .proof-stage-grid, .equation-grid, .observation-axes { grid-template-columns: 1fr; }
+      .observation-head { display: grid; }
+      .observation-informs { white-space: normal; }
+      .observation-conservation > b, .observation-plus { display: none; }
+      .glossary dl { grid-template-columns: 1fr; }
+      .conservation-flow { grid-template-columns: 1fr; }
+      .conservation-flow > b { transform: rotate(90deg); }
+      .conservation-flow .native-zero { grid-column: auto; }
+      .receipt-box ul { columns: 1; }
+      .milestone-evidence, .ownership { grid-template-columns: 1fr; }
+      .milestone-head { display: grid; }
+    }
+    @media print {
+      :root { color-scheme: light; --bg: #fff; --paper: #fff; --panel: #f6f7f7; --panel-2: #eee; --line: #ccd2d0; --ink: #15201d; --muted: #53635e; }
+      body { background: #fff; }
+      .topbar { position: static; background: #fff; }
+      .milestone, .truth-card, .proof-card, .no-go-card, .readiness-card { break-inside: avoid; box-shadow: none; }
+      nav { display: none; }
+      a { color: #075985; }
+    }
+  </style>
+</head>
+<body>
+  <!-- GENERATED FILE: edit docs/roadmap sources and run npm run roadmap:render -->
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand"><span class="mark">LJ</span><span>Valheim volunteer roadmap</span></div>
+      <nav aria-label="Gateway surfaces">
+        <a href="/roadmap" aria-current="page">Roadmap</a>
+        <a href="/community">Community</a>
+        <a href="/networksense">NetworkSense</a>
+        <a href="/events">Events</a>
+        <a href="/testing">Testing</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap hero">
+      <div class="eyebrow">Comfy × Valheim · Lumberjacks P7</div>
+      <h1>Lumberjacks Volunteer Roadmap</h1>
+      <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
+      <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
+      <div class="hero-meta">
+        <span>Updated 2026-07-21T06:04:23.018Z</span>
+        <span>ComfyNetworkSense 0.5.31</span>
+        <span>comfy-lumberjacks-p7</span>
+        <span>authoritative consumer ceiling 1</span>
+        <span>window p7-primary-v1</span>
+      </div>
+    </div>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head"><div class="section-number">01 · CURRENT TRUTH</div><div><h2>Protect the proof; earn the platform.</h2><p class="section-copy">The validated, hash-recorded one-client result is real. Volunteer readiness and concurrent correctness have separate, visible gates.</p></div></div>
+        <div class="truth-grid">
+          <article class="truth-card proved"><h3>Proved now</h3><p>One enrolled client closed the complete observed all-prefab ZDO window through Lumberjacks priority delivery with exact durable accounting.</p><p><a href="#proof">See the validated result ↓</a></p></article>
+          <article class="truth-card not-yet"><h3>Not proved yet</h3><ul><li>Safe public credential transport and authoritative admission.</li><li>A clean no-hand-edit package for a non-developer.</li><li>Per-session and per-recipient retained proof.</li><li>Two simultaneous consumers with isolated pending and ACK state.</li><li>Lumberjacks-owned candidate relevance, simulation, or non-ZDO RPCs.</li></ul></article>
+        </div>
+        <div class="truth-card" style="margin-top:16px"><h3 style="color:var(--blue)">Next actions</h3><ul class="focus-list"><li>COMPLETE · M0 RELEASE FREEZE — A1–A5 closed 2026-07-16: source frozen, candidate r2 reproducible from clean tagged checkouts, sanitized bundle and FieldLab catalog committed, promotion drill passed with artifact-only rollback, and the golden-proof evidence set published immutably with byte-verified hashes.</li><li>COMPLETE · PROMOTION FINALIZED — P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.</li><li>ACTIVE · M1 — Enrollment identity, the least-privilege capability split, the one-seat reservation, and a strict-admission roster gate keyed on the actual joining Steam account are deployed on P7 in m1-clean-20260717-r1, a Gateway-only cut that leaves the mod frozen at 0.5.31; the roster gate was verified against a real join on 2026-07-17 (gate 3 closed live: a strict window accepted the enrolled Steam account, Lumberjacks-decided on the frozen 0.5.31 mod, no cut needed), and it stays opt-in per window — the flag is in-memory and reverts to off on gateway restart, because a roster miss refuses a join. Remaining: certificate-validating TLS — the stable public DNS name now exists (comfy-p7.duckdns.org, a reserved static address), leaving only the ACME contact set on the VM at next boot plus the stage-3 cut and deploy; and fail-closed admission when the authority is unavailable, which needs that next mod release.</li><li>AFTER M1 · PARALLEL — Build M2&#39;s reversible guest package, M3&#39;s seal-before-reset per-run ledger and retained dashboards, and M4a&#39;s recipient isolation and producer loss safety.</li><li>WIDEN ONLY AFTER · M4b + M5 — Require the real two-client correctness packet and one exact-release invited-volunteer SYSTEM PROVEN receipt before admitting a cohort.</li></ul></div>
+        <article class="primer">
+          <div class="primer-head"><h3>What is being replaced in this test?</h3><p>Valheim still decides which world-object revisions a player should receive. The server mod redirects those eligible revisions through Lumberjacks, the Gateway stores and leases them, and the enrolled client mod applies them on Unity&#39;s main thread before acknowledging a terminal outcome.</p></div>
+          <div class="denominator"><strong>The exact denominator</strong>100% means 83,220 of 83,220 eligible ZDO revisions observed in the declared strict one-client window closed through Lumberjacks, with zero eligible native ZDO sends. It does not mean 100% of Valheim networking.</div>
+          <div class="dataflow" aria-label="Current ZDO cutover dataflow"><article class="flow-step native-valheim">
+    <div class="flow-stage">1 · SELECT</div>
+    <h3>Native Valheim</h3>
+    <p>Build the peer-specific list of world-object revisions.</p>
+    <div class="flow-boundary"><strong>Boundary</strong>Candidate relevance and inference remain native today.</div>
+  </article><article class="flow-step lumberjacks-server-adapter">
+    <div class="flow-stage">2 · REDIRECT</div>
+    <h3>Lumberjacks server adapter</h3>
+    <p>Intercept eligible revisions, attach stable ordering metadata, and redirect the declared ZDO delivery path.</p>
+    <div class="flow-boundary"><strong>Boundary</strong>Producer loss safety and per-peer readiness are M4a work.</div>
+  </article><article class="flow-step lumberjacks-gateway">
+    <div class="flow-stage">3 · STORE AND LEASE</div>
+    <h3>Lumberjacks Gateway</h3>
+    <p>Durably record envelopes and make pending work available to the authenticated consumer.</p>
+    <div class="flow-boundary"><strong>Boundary</strong>The current queue is safe only at the one-consumer ceiling; recipient isolation is M4a.</div>
+  </article><article class="flow-step lumberjacks-client-adapter">
+    <div class="flow-stage">4 · APPLY</div>
+    <h3>Lumberjacks client adapter</h3>
+    <p>Poll in the background, marshal onto Unity&#39;s main thread, invoke RPC_ZDOData, and validate the outcome.</p>
+    <div class="flow-boundary"><strong>Boundary</strong>Unity remains the game engine and compatibility target.</div>
+  </article><article class="flow-step lumberjacks-client-and-gateway">
+    <div class="flow-stage">5 · ACKNOWLEDGE</div>
+    <h3>Lumberjacks client and Gateway</h3>
+    <p>Acknowledge only an applied or safely superseded terminal outcome and retain the accounting result.</p>
+    <div class="flow-boundary"><strong>Boundary</strong>Per-run retained volunteer proof is M3 work.</div>
+  </article></div>
+          <details class="glossary"><summary>Terms used on this page</summary><dl><div><dt>ZDO</dt><dd>Zone Data Object: Valheim&#39;s persistent networked world-state record for an object such as a structure piece, item, creature, or environmental object.</dd></div><div><dt>Eligible revision</dt><dd>A ZDO revision selected by Valheim for the declared intercepted delivery scope during the strict test window. It is the denominator for the current cutover claim.</dd></div><div><dt>Strict window</dt><dd>A named evidence-producing interval in which eligible ZDO delivery must use Lumberjacks and any eligible native send is a failure.</dd></div><div><dt>Candidate relevance</dt><dd>The judgment that decides which world objects a particular peer should receive. Valheim still owns this plane today.</dd></div><div><dt>Recipient</dt><dd>An opaque Gateway delivery subject derived from an enrolled Steam account; clients never choose another recipient&#39;s identity.</dd></div><div><dt>Safely superseded</dt><dd>A received revision that no longer needs application because a validated newer state already makes its effect redundant.</dd></div><div><dt>Durable receipt</dt><dd>Gateway confirmation that an envelope is persisted and can survive normal process restart and replay.</dd></div><div><dt>Producer outbox</dt><dd>Server-side retry state that preserves an eligible revision until the Gateway confirms durable acceptance.</dd></div></dl></details>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head"><div class="section-number">02 · CRITICAL PATH</div><div><h2>Two lanes, one honest widening point.</h2><p class="section-copy">The graph is generated from each milestone's declared dependencies. Build the single-volunteer experience without waiting for the queue redesign; keep capacity at one until recipient isolation passes.</p></div></div>
+        <div class="tracks"><article class="track volunteer">
+    <div class="track-label">Volunteer experience</div>
+    <p>A safe one-seat pilot with immutable packaging, preflight, proof, and rollback.</p>
+  </article><article class="track multiplayer">
+    <div class="track-label">Multiplayer correctness</div>
+    <p>Recipient isolation, loss-safe delivery, and real two-account proof.</p>
+  </article><article class="track widening">
+    <div class="track-label">Evidence-backed widening</div>
+    <p>The proven volunteer journey and two-client correctness join before measured cohorts.</p>
+  </article><article class="track authority">
+    <div class="track-label">Network authority</div>
+    <p>Shadow, validate, and replace Valheim relevance and the remaining network planes.</p>
+  </article></div>
+        <div class="dag" role="list" aria-label="Milestone dependency graph"><div class="dag-layer"><a class="dag-node shared complete" href="#M0" role="listitem">
+        <span class="dag-id">M0</span>
+        <strong>Freeze the known-good release and evidence</strong>
+        <span>foundation</span>
+      </a></div><div class="dag-arrow" aria-hidden="true">↓</div><div class="dag-layer"><a class="dag-node shared active" href="#M1" role="listitem">
+        <span class="dag-id">M1</span>
+        <strong>Make identity and admission authoritative</strong>
+        <span>after M0</span>
+      </a></div><div class="dag-arrow" aria-hidden="true">↓</div><div class="dag-layer"><a class="dag-node volunteer active" href="#M2" role="listitem">
+        <span class="dag-id">M2</span>
+        <strong>Ship a boring, reversible guest package</strong>
+        <span>after M1</span>
+      </a><a class="dag-node volunteer queued" href="#M3" role="listitem">
+        <span class="dag-id">M3</span>
+        <strong>Make traffic proof definitive and durable</strong>
+        <span>after M1</span>
+      </a><a class="dag-node multiplayer active" href="#M4a" role="listitem">
+        <span class="dag-id">M4a</span>
+        <strong>Prove automated recipient isolation and loss safety</strong>
+        <span>after M1</span>
+      </a></div><div class="dag-arrow" aria-hidden="true">↓</div><div class="dag-layer"><a class="dag-node multiplayer gated" href="#M4b" role="listitem">
+        <span class="dag-id">M4b</span>
+        <strong>Prove two real Steam clients</strong>
+        <span>after M4a</span>
+      </a><a class="dag-node volunteer gated" href="#M5" role="listitem">
+        <span class="dag-id">M5</span>
+        <strong>Run the one-seat external canary</strong>
+        <span>after M2 + M3</span>
+      </a></div><div class="dag-arrow" aria-hidden="true">↓</div><div class="dag-layer"><a class="dag-node widening gated" href="#M6" role="listitem">
+        <span class="dag-id">M6</span>
+        <strong>Widen in evidence-backed waves</strong>
+        <span>after M4b + M5</span>
+      </a></div><div class="dag-arrow" aria-hidden="true">↓</div><div class="dag-layer"><a class="dag-node authority later" href="#M7" role="listitem">
+        <span class="dag-id">M7</span>
+        <strong>Move inference and remaining authority into Lumberjacks</strong>
+        <span>after M6</span>
+      </a></div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head"><div class="section-number">03 · MILESTONES</div><div><h2>State is a gate, not a percentage.</h2><p class="section-copy">A milestone moves only when its exit statement is supported by reproducible evidence.</p></div></div>
+        <div class="milestone-grid"><article class="milestone complete" id="M0">
+    <div class="milestone-head">
+      <div><span class="milestone-id">M0</span><h3>Freeze the known-good release and evidence</h3></div>
+      <span class="pill complete">COMPLETE</span>
+    </div>
+    <div class="meta-line"><span>shared</span><span class="deps">depends on <span class="dep">foundation</span></span></div>
+    <p>Turn the exact working Gateway, mod, deployment, world, and evidence into a reproducible release.</p>
+    <div class="ownership"><span><strong>Owns</strong>Reproducible source-to-binary release identity, immutable evidence publication, deployment verification, and tested rollback artifacts.</span><span><strong>Does not own</strong>New admission, packaging, dashboard, or multiplayer behavior.</span></div>
+    <ul class="work-list"><li>Commit the exact Gateway/mod/deployment sources without discarding unrelated work.</li><li>Build the promoted Gateway image and mod package exactly once from clean, tagged checkouts; retain the current working image only as the rollback artifact.</li><li>Generate a complete release manifest and verify source, build, package, OMEN, GCP, assembly, configuration, world, protocol, and cold-start identities.</li><li>Catalog FieldLab runs as immutable gold, valid, negative, historical, or superseded evidence.</li><li>Harden and exercise Gateway and mod rollback so restoration verifies runtime readiness and exact artifact hashes instead of rebuilding partial backed-up source.</li></ul>
+    <div class="gate closed"><strong>Exit gate · met</strong><ul class="exit-criteria"><li>A fresh checkout reproduces the declared artifacts and a cold start reports the manifest&#39;s exact runtime hashes.</li><li>Rollback artifacts and the Era16 world snapshot are present, restore without a source rebuild, and pass readiness plus exact-hash verification in the documented drill.</li><li>The validated P7 baseline is published at an immutable repository revision, and no secret appears in tracked or generic artifacts.</li></ul></div>
+    <div class="milestone-evidence">
+      <div><strong>Inputs</strong><ul><li>Validated, hash-recorded local P7 baseline; immutable public publication is pending M0.</li><li>Current Gateway image digest, mod DLL SHA-256, deployment receipt, world snapshot, and FieldLab run packets.</li><li>The 2026-07-16 owner observation confirmed that OMEN, GCP, and the declared 0.5.31 artifacts align at runtime, while dirty source provenance still prevents clean-checkout reproduction.</li><li>The live Gateway image was built from a non-Git source copy. Normalized cutover/runtime sources match the working tree, but roadmap-only sources differ and the existing capture manifest and rollback scripts omit required identities and readiness checks.</li></ul></div>
+      <div><strong>Closing evidence</strong><ul><li><span>Closed 2026-07-16. Promoted release m0-clean-20260716-r2: reproducible candidate manifest at docs/roadmap/m0-clean-build-candidate-r2.json; checkpoint receipts at docs/roadmap/m0-a3-release-bundle-receipt.json, m0-a4-promotion-drill-receipt.json, and m0-a5-publication-receipt.json.</span></li><li><a href="https://github.com/djcdevelopment/comfy/blob/433f1cc33605561ae1287db9cd8f37125d795c5d/fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover/PUBLICATION.md" target="_blank" rel="noreferrer">Published golden-proof evidence set (immutable, byte-verified)</a></li><li><span>Promotion finalized 2026-07-16: the r2 release runs on P7 with the temporary compose override retired; the base compose pins the promoted image from the host environment (reboot-path verified, no container recreate, health ok) and VM-side gateway rebuilds fail closed.</span></li></ul></div>
+    </div>
+  </article>
+<article class="milestone active" id="M1">
+    <div class="milestone-head">
+      <div><span class="milestone-id">M1</span><h3>Make identity and admission authoritative</h3></div>
+      <span class="pill active">IN PROGRESS</span>
+    </div>
+    <div class="meta-line"><span>shared</span><span class="deps">depends on <span class="dep">M0</span></span></div>
+    <p>Bind the actual joining Steam account to enrollment, compatibility, and capacity.</p>
+    <div class="ownership"><span><strong>Owns</strong>Steam enrollment identity, least-privilege authorization, strict admission, the enforced one-seat reservation, and validated public TLS.</span><span><strong>Does not own</strong>Recipient-scoped queue semantics, producer loss safety, guest installation, traffic-proof presentation, or volunteer readiness scheduling.</span></div>
+    <ul class="work-list"><li>Add enrollment list, revoke, expiry, last-used state, and unique active SteamID rules.</li><li>Split admin, producer, consumer, telemetry, and public proof permissions.</li><li>Make strict admission fail closed and reserve one authoritative seat.</li><li>Add certificate-validating TLS for public volunteer traffic.</li></ul>
+    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>An invited, enrolled, compatible account is accepted through the strict admission decision.</li><li>Uninvited, revoked, expired, mismatched, replayed, and over-capacity clients are rejected with actionable reasons.</li><li>Consumer credentials cannot reach admin, producer, reset, compaction, handshake-mutation, or arbitrarily named recipient operations.</li><li>Strict admission fails closed when its authority is unavailable, and no reusable credential crosses an unencrypted public link.</li></ul></div>
+    <div class="milestone-evidence">
+      <div><strong>Inputs</strong><ul><li>M0 immutable release identity and protocol manifest.</li><li>Existing Steam OpenID enrollment, Gateway handshake responder, and client-auth middleware.</li></ul></div>
+      <div><strong>Closing evidence</strong><span class="empty-evidence">None recorded; this exit gate remains open.</span></div>
+    </div>
+  </article>
+<article class="milestone active" id="M2">
+    <div class="milestone-head">
+      <div><span class="milestone-id">M2</span><h3>Ship a boring, reversible guest package</h3></div>
+      <span class="pill active">IN PROGRESS</span>
+    </div>
+    <div class="meta-line"><span>volunteer</span><span class="deps">depends on <span class="dep">M1</span></span></div>
+    <p>Replace hand copying and hand-edited config with an immutable generic package plus a personal one-use bootstrap.</p>
+    <div class="ownership"><span><strong>Owns</strong>The immutable guest artifact, one-use bootstrap, installer, preflight, redacted diagnostics, generated guide, backup, and uninstall experience.</span><span><strong>Does not own</strong>The per-session traffic ledger, dashboard conservation verdict, participation receipt, or concurrent delivery isolation.</span></div>
+    <ul class="work-list"><li>Package the DLL, manifest, checksums, installer, preflight, diagnostics, uninstall, guide, and notices.</li><li>Find Steam libraries, stop on a running game, back up existing files, and merge only Lumberjacks config keys.</li><li>Verify release, BepInEx, TLS, enrollment, Gateway, server, persistence, and capacity before launch.</li><li>Redact credentials and direct Steam identity from diagnostics.</li></ul>
+    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>A non-developer completes enrollment through READY TO JOIN in roughly ten minutes without editing configuration or sending a secret to the operator.</li><li>Clean install and existing-BepInEx upgrade paths preserve unrelated files and install the exact declared DLL atomically.</li><li>The bounded diagnostic bundle is redacted, and uninstall restores the prior state without removing files the package does not own.</li><li>The guide is generated from the release manifest so versions, hashes, endpoint, password policy, and feature claims cannot drift independently.</li></ul></div>
+    <div class="milestone-evidence">
+      <div><strong>Inputs</strong><ul><li>M0 immutable guest release and compatibility manifest.</li><li>M1 enrollment bootstrap, TLS endpoint, `/enrollment/me`, readiness, and capacity contracts.</li></ul></div>
+      <div><strong>Closing evidence</strong><span class="empty-evidence">None recorded; this exit gate remains open.</span></div>
+    </div>
+  </article>
+<article class="milestone queued" id="M3">
+    <div class="milestone-head">
+      <div><span class="milestone-id">M3</span><h3>Make traffic proof definitive and durable</h3></div>
+      <span class="pill queued">QUEUED</span>
+    </div>
+    <div class="meta-line"><span>volunteer</span><span class="deps">depends on <span class="dep">M1</span></span></div>
+    <p>For the enforced one-seat window, prove each selected ZDO revision reached durable Gateway storage, the authenticated client, Unity application or safe supersession, and a durable terminal acknowledgement.</p>
+    <div class="ownership"><span><strong>Owns</strong>The capacity-one per-run ledger, conservation pipeline, volunteer/operator/public dashboard views, bounded telemetry, sealed receipt, and final verdict rules.</span><span><strong>Does not own</strong>Concurrent recipient queue isolation, producer outbox correctness, or the real two-client gate; those belong to M4a and M4b.</span></div>
+    <ul class="work-list"><li>Replace destructive empty-server reset with a run-scoped OPEN -&gt; CLOSING -&gt; SEALED lifecycle; stop suppression on last-peer transition and open the next epoch only after the prior seal is fsynced.</li><li>Bind receipts, pending delivery, terminal applied/superseded outcomes, and consumer telemetry to run_id; persist sealed summaries in the WAL through restart and compaction.</li><li>Show live deltas, rates, queue age, applied/superseded outcomes, native sends, gaps, failures, and release identity.</li><li>Keep readiness, routing mode, live evidence, participation, and final system verdict on separate axes; reserve PROVEN for a sealed receipt.</li><li>Bound and rotate raw telemetry instead of producing unbounded per-ZDO logs.</li></ul>
+    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>At the one-consumer ceiling, a seeded envelope visibly advances through every conservation stage and closes in a retained receipt.</li><li>Deliberate fallback, stale readiness, missing sequence, persistence failure, native eligible send, or unauthorized recipient request changes the correct live axis to FAULT or the sealed verdict away from PROVEN.</li><li>An idle heartbeat remains IDLE, never proof, and a run that closes without qualifying traffic becomes INCONCLUSIVE.</li><li>A service restart or WAL compaction does not erase or alter the sealed run, its release identity, conservation result, or canonical receipt hash.</li><li>Late old-run messages and a fast reconnect cannot mutate the next run or suppress traffic into a closing epoch; a forced incomplete close is retained with a non-PROVEN verdict.</li></ul></div>
+    <div class="milestone-evidence">
+      <div><strong>Inputs</strong><ul><li>M0 immutable release identity and hash-recorded P7 metric vocabulary.</li><li>M1 enrollment, readiness, authorization, and run-identity contracts.</li><li>The top-level conservation proof pipeline in this roadmap source.</li><li>The 2026-07-16 owner observation captured exact live closure, then observed the empty-server reset erase the Gateway receipt denominator before any per-run receipt was sealed.</li></ul></div>
+      <div><strong>Closing evidence</strong><span class="empty-evidence">None recorded; this exit gate remains open.</span></div>
+    </div>
+  </article>
+<article class="milestone active" id="M4a">
+    <div class="milestone-head">
+      <div><span class="milestone-id">M4a</span><h3>Prove automated recipient isolation and loss safety</h3></div>
+      <span class="pill active">IN PROGRESS</span>
+    </div>
+    <div class="meta-line"><span>multiplayer</span><span class="deps">depends on <span class="dep">M1</span></span></div>
+    <p>Remove the shared-window queue and producer-loss hazards while preserving the peer identity available at Valheim&#39;s per-peer sync-list boundary.</p>
+    <div class="ownership"><span><strong>Owns</strong>Recipient-scoped durable queue semantics, exact per-peer readiness, stable delivery identity, structured terminal outcomes, reconnect/takeover rules, and the producer outbox.</span><span><strong>Does not own</strong>Real Steam-client quality, human onboarding, or cohort capacity claims.</span></div>
+    <ul class="work-list"><li>Key durable delivery by world epoch, opaque recipient, and stable delivery ID.</li><li>Derive recipient from credentials; scope pending and structured ACK outcomes server-side.</li><li>Require an exact per-peer readiness lease and define reconnect/takeover behavior.</li><li>Advance native peer bookkeeping only after durable Gateway acceptance, backed by a producer outbox.</li></ul>
+    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>Two and then ten synthetic consumers cannot poll, inspect, acknowledge, block, or close another recipient&#39;s work.</li><li>Duplicate producer POST, poll, terminal ACK, reconnect, lease takeover, Gateway restart, WAL replay, and boundary crash tests converge idempotently.</li><li>Every recipient closes its own conservation equation, and producer outbox recovery produces neither loss nor double application.</li></ul></div>
+    <div class="milestone-evidence">
+      <div><strong>Inputs</strong><ul><li>M1 opaque recipient, consumer credential, and least-privilege authorization contracts.</li><li>Valheim&#39;s existing per-peer sync-list boundary and FieldLab crash/replay fixtures.</li></ul></div>
+      <div><strong>Closing evidence</strong><ul><li><span>Gateway-only M4a stage-1 proof in progress: recipient policy, default-off frozen-producer compatibility, N=2/N=10 synthetic isolation, recipient-keyed activity leases, additive WAL replay fixtures, and per-recipient durable-receipt conservation tests are implemented and remain undeployed. Producer outbox recovery and the stage-3 mod recipient emitter are explicitly open.</span></li></ul></div>
+    </div>
+  </article>
+<article class="milestone gated" id="M4b">
+    <div class="milestone-head">
+      <div><span class="milestone-id">M4b</span><h3>Prove two real Steam clients</h3></div>
+      <span class="pill gated">GATED</span>
+    </div>
+    <div class="meta-line"><span>multiplayer</span><span class="deps">depends on <span class="dep">M4a</span></span></div>
+    <p>Move the automated recipient model through two simultaneous real Valheim clients before any multi-seat invitation exists.</p>
+    <div class="ownership"><span><strong>Owns</strong>The first real concurrent correctness result across dense/shared and separated regions, reconnects, restarts, and save/reload.</span><span><strong>Does not own</strong>External volunteer onboarding or claims beyond two real clients.</span></div>
+    <ul class="work-list"><li>Exercise both clients in the same dense build zone and in opposite map regions.</li><li>Run the known dense and extreme FieldLab route while one client disconnects and rejoins.</li><li>Restart the Gateway with backlog, restart the server, rejoin, and verify save/reload integrity.</li><li>Close each recipient independently with exact release, routing, persistence, and queue evidence.</li></ul>
+    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>Two distinct ready recipients complete the declared real-client matrix with zero cross-delivery and zero cross-acknowledgement.</li><li>The strict window records zero eligible native ZDO sends, zero missing or terminal rejects, independently closed queues, and healthy persistence.</li><li>Neither client exhibits a correctness or world-integrity failure through restart, reconnect, and save/reload.</li></ul></div>
+    <div class="milestone-evidence">
+      <div><strong>Inputs</strong><ul><li>M4a automated isolation and loss-safety exit evidence.</li><li>Two owned Steam accounts, the exact promoted release, Era16 snapshot, and validated FieldLab route.</li></ul></div>
+      <div><strong>Closing evidence</strong><span class="empty-evidence">None recorded; this exit gate remains open.</span></div>
+    </div>
+  </article>
+<article class="milestone gated" id="M5">
+    <div class="milestone-head">
+      <div><span class="milestone-id">M5</span><h3>Run the one-seat external canary</h3></div>
+      <span class="pill gated">GATED</span>
+    </div>
+    <div class="meta-line"><span>volunteer</span><span class="deps">depends on <span class="dep">M2</span><span class="dep">M3</span></span></div>
+    <p>Invite one trusted non-developer only after the host has proved the exact cold-started deployment and rollback path.</p>
+    <div class="ownership"><span><strong>Owns</strong>The first end-to-end non-developer volunteer journey from informed invite through retained participation receipt and clean uninstall.</span><span><strong>Does not own</strong>Concurrent delivery correctness; the optional 60-minute play extension is useful evidence but is not required to close M5.</span></div>
+    <ul class="work-list"><li>Host preflight before sending the invite; freeze deployments during the window.</li><li>Complete the required setup and 20-minute guided dense/frontier/quiet-drain route described in the first-canary time budget.</li><li>Offer, but do not require, a 60-minute ordinary-play extension only after the required guided run closes cleanly.</li><li>Automatically seal the run packet and collect a sub-60-second experience survey.</li><li>Stop on correctness, persistence, queue-age, native-send, version, application, or world-integrity failures.</li></ul>
+    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>One non-developer completes the required setup and guided cards without manual configuration and sees personal fresh Lumberjacks traffic while testing.</li><li>The platform retains PARTICIPATION COMPLETE independently from the PROVEN, DEGRADED, or INCONCLUSIVE system verdict and captures the sub-60-second survey.</li><li>The volunteer can uninstall cleanly, and no credential or direct identity leaks into public evidence.</li><li>The operator reproduces and validates the sealed packet; an optional ordinary-play extension is reported separately and cannot hold participation completion hostage.</li></ul></div>
+    <div class="milestone-evidence">
+      <div><strong>Inputs</strong><ul><li>M2 clean-package, preflight, diagnostics, backup, and uninstall exit evidence.</li><li>M3 capacity-one dashboard, conservation, receipt, restart, and verdict exit evidence.</li><li>Cold-started host preflight, Era16 snapshot, rollback drill, scheduled run, and declared first-canary time budget.</li></ul></div>
+      <div><strong>Closing evidence</strong><span class="empty-evidence">None recorded; this exit gate remains open.</span></div>
+    </div>
+  </article>
+<article class="milestone gated" id="M6">
+    <div class="milestone-head">
+      <div><span class="milestone-id">M6</span><h3>Widen in evidence-backed waves</h3></div>
+      <span class="pill gated">GATED</span>
+    </div>
+    <div class="meta-line"><span>widening</span><span class="deps">depends on <span class="dep">M4b</span><span class="dep">M5</span></span></div>
+    <p>Move from the owned two-account gate to 2–4 and then 5–8 invited players only when correctness and capacity evidence permit.</p>
+    <div class="ownership"><span><strong>Owns</strong>Evidence-backed promotion from the proven two-client model and volunteer journey to 2–4 and then 5–8 real-player cohorts.</span><span><strong>Does not own</strong>Lumberjacks relevance/inference authority or claims extrapolated solely from synthetic clients.</span></div>
+    <ul class="work-list"><li>Measure join-to-first/priority/full-load, queue age/slope, frame hitches, Gateway latency, WAL, CPU, memory, disk, and egress.</li><li>Exercise same-zone contention, separated regions, reconnects, restarts, and normal play.</li><li>Compare against validated, hash-recorded native and P7 baselines without treating synthetic bots as real-player capacity.</li><li>Automatically stop widening on any correctness failure.</li></ul>
+    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>The 2–4-player wave closes independently for every recipient with bounded queues, healthy persistence, and no correctness failure.</li><li>The 5–8-player soak meets the predeclared QoL and capacity envelope recorded in its run packet.</li><li>Published capacity limits are supported by real-player queue, compute, memory, disk, egress, and experience evidence rather than synthetic extrapolation.</li></ul></div>
+    <div class="milestone-evidence">
+      <div><strong>Inputs</strong><ul><li>M4b two-real-client correctness exit evidence.</li><li>M5 end-to-end external-volunteer exit evidence.</li><li>Validated native/P7 baselines and predeclared per-wave QoL and capacity measures.</li></ul></div>
+      <div><strong>Closing evidence</strong><span class="empty-evidence">None recorded; this exit gate remains open.</span></div>
+    </div>
+  </article>
+<article class="milestone later" id="M7">
+    <div class="milestone-head">
+      <div><span class="milestone-id">M7</span><h3>Move inference and remaining authority into Lumberjacks</h3></div>
+      <span class="pill later">LATER</span>
+    </div>
+    <div class="meta-line"><span>authority</span><span class="deps">depends on <span class="dep">M6</span></span></div>
+    <p>Use the volunteer platform as the safety harness for shadowing and replacing Valheim&#39;s relevance, ownership, replication, and remaining RPC judgments.</p>
+    <div class="ownership"><span><strong>Owns</strong>Shadowing, validating, and promoting Lumberjacks relevance/inference and later authority planes one bounded claim at a time.</span><span><strong>Does not own</strong>Unmeasured transport replacement or removal of Steam/Valheim compatibility dependencies that still provide value.</span></div>
+    <ul class="work-list"><li>Shadow Lumberjacks interest management beside Valheim&#39;s per-peer candidate list.</li><li>Measure omissions, extra sends, bytes, CPU, queue age, and visible pop-in by class and region.</li><li>Promote one safe object class or policy at a time with strict rollback.</li><li>Evaluate base-transport replacement on measured value rather than assumption.</li></ul>
+    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>The authority matrix and retained evidence show every declared promoted plane is Lumberjacks-owned.</li><li>Any remaining Steam/Valheim dependency is explicitly classified as bootstrap, identity, or compatibility.</li><li>Every promoted class or policy has paired shadow/strict evidence and a tested rollback path.</li></ul></div>
+    <div class="milestone-evidence">
+      <div><strong>Inputs</strong><ul><li>M6 real-player correctness, quality, and capacity exit evidence.</li><li>Lumberjacks interest-management design at docs/network/interest-management.md.</li><li>FieldLab native, shadow, and strict route fixtures.</li></ul></div>
+      <div><strong>Closing evidence</strong><span class="empty-evidence">None recorded; this exit gate remains open.</span></div>
+    </div>
+  </article></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head"><div class="section-number">04 · READINESS</div><div><h2>Who may we responsibly invite—and how do they know it counted?</h2><p class="section-copy">Host preflight happens before an invitation is sent. A known-red deployment never becomes volunteer troubleshooting, and joining alone is not participation completion.</p></div></div>
+        <div class="status-legend" aria-label="Independent roadmap and test status axes"><article class="status-axis" id="status-readiness">
+    <div class="status-axis-head"><h3>Readiness</h3><p>May this participant start the scheduled test now?</p></div>
+    <div class="axis-states"><div class="axis-state not-ready"><strong>NOT READY</strong><span>At least one mandatory enrollment, release, service, capacity, persistence, or rollback check is not green.</span></div><div class="axis-state ready-to-join"><strong>READY TO JOIN</strong><span>Every mandatory preflight check for this participant and scheduled run is green.</span></div></div>
+  </article><article class="status-axis" id="status-routing_mode">
+    <div class="status-axis-head"><h3>Routing mode</h3><p>Which delivery path is the session using?</p></div>
+    <div class="axis-states"><div class="axis-state lumberjacks-active"><strong>LUMBERJACKS ACTIVE</strong><span>The declared strict ZDO delivery path is active.</span></div><div class="axis-state native-recovery"><strong>NATIVE RECOVERY</strong><span>The strict session has stopped and the operator has explicitly selected the labeled native recovery path.</span></div><div class="axis-state no-active-session"><strong>NO ACTIVE SESSION</strong><span>No evidence-producing run is active.</span></div></div>
+  </article><article class="status-axis" id="status-live_evidence">
+    <div class="status-axis-head"><h3>Live evidence</h3><p>What is the ledger doing right now?</p></div>
+    <div class="axis-states"><div class="axis-state idle"><strong>IDLE</strong><span>Services are healthy but no recent qualifying traffic proves cutover.</span></div><div class="axis-state flowing"><strong>FLOWING</strong><span>Fresh qualifying traffic is advancing through the conservation pipeline.</span></div><div class="axis-state draining"><strong>DRAINING</strong><span>No new qualifying work is expected and the remaining durable queue is closing.</span></div><div class="axis-state fault"><strong>FAULT</strong><span>A live invariant, persistence, routing, application, or visibility check has failed.</span></div></div>
+  </article><article class="status-axis" id="status-participation">
+    <div class="status-axis-head"><h3>Participation</h3><p>Did the volunteer&#39;s effort produce a usable packet?</p></div>
+    <div class="axis-states"><div class="axis-state participation-incomplete"><strong>PARTICIPATION INCOMPLETE</strong><span>The requested attempt or bounded observation/evidence packet has not yet been retained.</span></div><div class="axis-state participation-complete"><strong>PARTICIPATION COMPLETE</strong><span>The volunteer attempted the assigned work and the platform retained a usable packet, even if a defect was found.</span></div></div>
+  </article><article class="status-axis" id="status-system_verdict">
+    <div class="status-axis-head"><h3>Final system verdict</h3><p>What did the sealed run prove about the declared network test?</p></div>
+    <div class="axis-states"><div class="axis-state pending"><strong>PENDING</strong><span>The run is not sealed; PROVEN is never a live-session label.</span></div><div class="axis-state proven"><strong>PROVEN</strong><span>The sealed receipt closes every declared correctness gate.</span></div><div class="axis-state degraded"><strong>DEGRADED</strong><span>The sealed receipt records a fallback, error, performance problem, or failed invariant.</span></div><div class="axis-state inconclusive"><strong>INCONCLUSIVE</strong><span>The run closed without enough qualifying traffic or evidence; the receipt names what was missing.</span></div></div>
+  </article></div>
+        <div class="readiness-grid"><article class="readiness-card">
+    <div class="readiness-head"><h3>One external volunteer</h3><span class="pill gated">NOT READY</span></div>
+    <ul class="check-list"><li>M0–M3 pass.</li><li>Strict capacity remains one.</li><li>Owner passes the same clean-package flow immediately beforehand.</li><li>Host preflight and rollback drill are green.</li><li>All reusable public credentials use validated TLS.</li><li>The invite names the versioned test cards, duration, data policy, and recovery path.</li><li>The dashboard supports before, during, and after-run states with a retained participation receipt.</li></ul>
+  </article><article class="readiness-card">
+    <div class="readiness-head"><h3>Concurrent volunteers</h3><span class="pill gated">NOT READY</span></div>
+    <ul class="check-list"><li>M4a automated isolation and M4b real two-account gates pass.</li><li>M5 proves the complete external-volunteer journey and retained receipt.</li><li>Each peer has an independent readiness lease and durable recipient ledger.</li><li>No peer can alter another peer&#39;s routing or closure.</li><li>Capacity is supported by observed queue, compute, disk, and egress evidence.</li></ul>
+  </article></div>
+        <div class="success-contract" id="success">
+          <div class="success-headline">INVITED → INFORMED → READY → TESTING → PARTICIPATION COMPLETE</div>
+          <h3>Volunteer participation contract</h3>
+          <p class="success-definition">A volunteer succeeds by completing or attempting the assigned work and returning a usable evidence packet. Finding a networking defect is valuable successful participation; it does not require the system test itself to pass.</p>
+          <p class="catalog-state"><strong>draft-v1</strong> · Planned for the first canary; invitations are not open until M0-M3 close.</p>
+          <div class="journey-grid"><article class="journey-step">
+    <div class="journey-stage">1 · INVITE</div>
+    <h3>Know the work before accepting</h3>
+    <p>The page states the experiment, assigned test cards, expected time, risks, captured data, support, and recovery path.</p>
+  </article><article class="journey-step">
+    <div class="journey-stage">2 · READY</div>
+    <h3>Install and preflight without hand edits</h3>
+    <p>Steam enrollment, exact release, BepInEx, TLS, Gateway, server, capacity, readiness, and rollback checks are green.</p>
+  </article><article class="journey-step">
+    <div class="journey-stage">3 · TESTING</div>
+    <h3>See Lumberjacks and the next action</h3>
+    <p>The personal dashboard shows LUMBERJACKS ACTIVE, current card instructions, and fresh received/applied/acknowledged traffic.</p>
+  </article><article class="journey-step">
+    <div class="journey-stage">4 · RECEIPT</div>
+    <h3>Know that participation counted</h3>
+    <p>A retained pseudonymous receipt separates participation completion from the networking verdict and includes the submitted observations.</p>
+  </article></div>
+          <h3 class="subhead">Two independent receipt outcomes</h3>
+          <p class="subcopy">Participation records whether the volunteer's effort counted. The system verdict separately records what the sealed networking run proved.</p>
+          <div class="receipt-axis-grid"><article class="receipt-axis participation">
+      <div><h4>Participation</h4><p>Did the volunteer&#39;s effort produce a usable packet?</p></div>
+      <div><div class="receipt-outcome participation-incomplete"><strong>PARTICIPATION INCOMPLETE</strong><span>The requested attempt or bounded observation/evidence packet has not yet been retained.</span></div><div class="receipt-outcome participation-complete"><strong>PARTICIPATION COMPLETE</strong><span>The volunteer attempted the assigned work and the platform retained a usable packet, even if a defect was found.</span></div></div>
+    </article><article class="receipt-axis system_verdict">
+      <div><h4>Final system verdict</h4><p>What did the sealed run prove about the declared network test?</p></div>
+      <div><div class="receipt-outcome pending"><strong>PENDING</strong><span>The run is not sealed; PROVEN is never a live-session label.</span></div><div class="receipt-outcome proven"><strong>PROVEN</strong><span>The sealed receipt closes every declared correctness gate.</span></div><div class="receipt-outcome degraded"><strong>DEGRADED</strong><span>The sealed receipt records a fallback, error, performance problem, or failed invariant.</span></div><div class="receipt-outcome inconclusive"><strong>INCONCLUSIVE</strong><span>The run closed without enough qualifying traffic or evidence; the receipt names what was missing.</span></div></div>
+    </article></div>
+          <div class="budget-summary">
+            <h3>First-canary time budget</h3>
+            <p>The required commitment is explicit; the ordinary-play extension is optional and declining it never reduces participation status.</p>
+            <div class="budget-grid"><article class="budget-phase required">
+    <div class="budget-head"><span>required</span><strong>target ≤10 min</strong></div>
+    <h4>Setup and preflight</h4>
+    <p>Redeem the invite, install the exact package, pass preflight, choose a backed-up character, and reach READY TO JOIN.</p>
+  </article><article class="budget-phase required">
+    <div class="budget-head"><span>required</span><strong>~20 min</strong></div>
+    <h4>Guided quality route</h4>
+    <p>Complete T02 dense arrival, T03 rapid frontier travel, and T05 quiet drain.</p>
+  </article><article class="budget-phase required">
+    <div class="budget-head"><span>required</span><strong>&lt;1 min</strong></div>
+    <h4>Experience survey</h4>
+    <p>Return the bounded observation report so participation can close independently of the system verdict.</p>
+  </article><article class="budget-phase optional-opt-in">
+    <div class="budget-head"><span>optional opt-in</span><strong>up to 60 min</strong></div>
+    <h4>Ordinary play extension</h4>
+    <p>Offered only after the required guided route closes cleanly; declining it does not reduce participation status.</p>
+  </article></div>
+          </div>
+          <h3 class="subhead">Versioned test cards</h3>
+          <p class="subcopy">The invite assigns a small subset. Each card tells the volunteer what to do, what to notice, how long it takes, and what the instrumentation proves.</p>
+          <div class="test-card-grid"><article class="test-card">
+    <div class="test-card-head"><span class="test-id">T01</span><span class="availability">planned first pilot · required</span></div>
+    <h3>Setup and first join</h3>
+    <div class="test-duration">~10 min</div>
+    <dl>
+      <dt>Exercise</dt><dd>Redeem, install, preflight, choose a backed-up character, and join.</dd>
+      <dt>Notice</dt><dd>Confusing, manual, failed, or unexpectedly slow steps.</dd>
+      <dt>Evidence</dt><dd>Enrollment → readiness → admission → first apply.</dd>
+    </dl>
+  </article><article class="test-card">
+    <div class="test-card-head"><span class="test-id">T02</span><span class="availability">planned first pilot · required</span></div>
+    <h3>Dense spawn arrival</h3>
+    <div class="test-duration">~5 min</div>
+    <dl>
+      <dt>Exercise</dt><dd>Remain in the portal/building area until visually usable.</dd>
+      <dt>Notice</dt><dd>Missing art/buildings, severe pop-in, freezes, or corruption.</dd>
+      <dt>Evidence</dt><dd>Priority-playable/full-drain time and frame hitches.</dd>
+    </dl>
+  </article><article class="test-card">
+    <div class="test-card-head"><span class="test-id">T03</span><span class="availability">planned first pilot · required</span></div>
+    <h3>Rapid frontier travel</h3>
+    <div class="test-duration">~10 min</div>
+    <dl>
+      <dt>Exercise</dt><dd>Fly rapidly into a direction not previously visited.</dd>
+      <dt>Notice</dt><dd>Tree/terrain pop-in, stalls, and movement responsiveness.</dd>
+      <dt>Evidence</dt><dd>Priority rate, queue slope/age, and first-useful delivery.</dd>
+    </dl>
+  </article><article class="test-card">
+    <div class="test-card-head"><span class="test-id">T04</span><span class="availability">planned optional</span></div>
+    <h3>Elaborate build revisit</h3>
+    <div class="test-duration">~10 min</div>
+    <dl>
+      <dt>Exercise</dt><dd>Approach and circle a known complex construction.</dd>
+      <dt>Notice</dt><dd>Recognition/completion time and incorrect pieces.</dd>
+      <dt>Evidence</dt><dd>Dense apply, supersession, starvation, and full closure.</dd>
+    </dl>
+  </article><article class="test-card">
+    <div class="test-card-head"><span class="test-id">T05</span><span class="availability">planned first pilot · required</span></div>
+    <h3>Quiet drain</h3>
+    <div class="test-duration">~5 min</div>
+    <dl>
+      <dt>Exercise</dt><dd>Stop in wilderness and wait without teleporting.</dd>
+      <dt>Notice</dt><dd>Late pop-in, pauses, disconnects, or unexpected activity.</dd>
+      <dt>Evidence</dt><dd>Backlog drain, oldest age, idle state, and conservation.</dd>
+    </dl>
+  </article><article class="test-card">
+    <div class="test-card-head"><span class="test-id">T06</span><span class="availability">planned controlled</span></div>
+    <h3>Controlled reconnect</h3>
+    <div class="test-duration">~10 min</div>
+    <dl>
+      <dt>Exercise</dt><dd>Disconnect and rejoin only when assigned by the operator.</dd>
+      <dt>Notice</dt><dd>Lost state, duplicates, blank screen, and join friction.</dd>
+      <dt>Evidence</dt><dd>Resume, dedupe, lease, and outstanding-delivery recovery.</dd>
+    </dl>
+  </article><article class="test-card">
+    <div class="test-card-head"><span class="test-id">T07</span><span class="availability">after M4b</span></div>
+    <h3>Two-client isolation</h3>
+    <div class="test-duration">~20 min</div>
+    <dl>
+      <dt>Exercise</dt><dd>Two players occupy shared, then separated regions.</dd>
+      <dt>Notice</dt><dd>Cross-player stalls or inconsistent world state.</dd>
+      <dt>Evidence</dt><dd>Recipient isolation and independent queue closure.</dd>
+    </dl>
+  </article></div>
+          <div class="receipt-box"><h3>Participation receipt</h3><ul><li>Run ID, participant alias, timestamps, and assigned/completed/attempted card revisions.</li><li>Exact mod, Gateway, server, protocol, deployment, world epoch, and artifact hashes.</li><li>Enrollment, preflight, admission, readiness, and qualifying-traffic results.</li><li>Per-recipient received, applied, superseded, acknowledged, pending, native, and failure summary.</li><li>Submitted observations plus diagnostic/survey packet status.</li><li>Separate participation status and system verdict with plain-language reasons.</li><li>Support, privacy/deletion, recovery, and uninstall links.</li></ul></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="proof">
+      <div class="wrap">
+        <div class="section-head"><div class="section-number">05 · PROOF & RISK</div><div><h2>Validated result beside the remaining no-go facts.</h2><p class="section-copy">The latest owner observation corroborates the data path but does not replace or widen the historical 83,220-revision baseline. Live delivery and the formal sealed verdict remain visibly separate.</p></div></div>
+        <article class="latest-observation" id="observation-castle-port-session-20260716T054805Z">
+          <div class="observation-head">
+            <div><div class="observation-kind">OWNER OBSERVATION</div><h3>Castle-port stationary-drain session</h3><p class="observation-meta">One enrolled owner client · dense castle wait · automated port · stationary backlog drain · 2026-07-16 05:48–06:00 UTC</p></div>
+            <div class="observation-informs">informs M0 + M3</div>
+          </div>
+          <div class="observation-axes">
+            <div class="observation-axis"><span>Observed delivery</span><strong>COMPLETE</strong></div>
+            <div class="observation-axis verdict"><span>Formal system verdict</span><strong>INCONCLUSIVE</strong></div>
+          </div>
+          <div class="observation-conservation" aria-label="Latest owner observation conservation result">
+    <div><span>Eligible</span><strong>81,241</strong></div>
+    <b aria-hidden="true">→</b>
+    <div><span>Durable</span><strong>81,241</strong></div>
+    <b aria-hidden="true">→</b>
+    <div><span>Applied</span><strong>71,108</strong></div>
+    <span class="observation-plus" aria-hidden="true">+</span>
+    <div><span>Superseded</span><strong>10,133</strong></div>
+    <b aria-hidden="true">=</b>
+    <div><span>Acknowledged</span><strong>81,241</strong></div>
+    <div class="observation-zero"><span>Pending / native</span><strong>0 / 0</strong></div>
+  </div>
+          <div class="observation-explanation">
+            <div><strong>Why not PROVEN</strong>Exact delivery accounting was captured, but this was not a predeclared acceptance run and the empty-server reset erased live Gateway receipt state before a retained per-run receipt could be sealed.</div>
+            <div><strong>Milestone effect</strong>No milestone advanced. This corroborates the existing one-client P7 baseline and confirms the M3 retained-ledger exit criterion.</div>
+          </div>
+          <p class="observation-telemetry"><strong>Operational note:</strong> Two auxiliary consumer-telemetry POST attempts failed after the main drain and recovered; poll, application, and acknowledgement delivery were unaffected.</p>
+          <div class="observation-evidence"><strong>Evidence · local_only</strong>FieldLab castle-port session packet — The local packet includes analysis, provenance, session summary, and captured samples; immutable publication remains M0 work.</div>
+        </article>
+        <article class="proof-pipeline-card">
+          <h3>What definitive traffic proof must conserve</h3>
+          <p>Each eligible revision advances through an accountable route and terminal outcome. Retries do not create new unique work, and a heartbeat alone cannot close this chain.</p>
+          <div class="proof-stage-grid"><article class="proof-stage">
+    <div class="proof-stage-name">candidate</div>
+    <strong>Valheim selects a peer-specific eligible ZDO revision.</strong>
+    <span>Stable candidate identity and the declared eligibility scope establish the denominator.</span>
+  </article><article class="proof-stage">
+    <div class="proof-stage-name">route</div>
+    <strong>The server records either a native send or a Lumberjacks redirect intent.</strong>
+    <span>Every candidate has exactly one route decision.</span>
+  </article><article class="proof-stage">
+    <div class="proof-stage-name">durable receipt</div>
+    <strong>The Gateway durably accepts the redirected envelope.</strong>
+    <span>A stable delivery identity prevents retries from increasing the unique denominator.</span>
+  </article><article class="proof-stage">
+    <div class="proof-stage-name">delivery</div>
+    <strong>The authenticated consumer leases or polls its pending envelope.</strong>
+    <span>The recipient comes from the credential and the ledger records pending or leased state.</span>
+  </article><article class="proof-stage">
+    <div class="proof-stage-name">Unity outcome</div>
+    <strong>The client validates an exact application or safe supersession on Unity&#39;s main thread.</strong>
+    <span>Only a validated terminal outcome is eligible for acknowledgement.</span>
+  </article><article class="proof-stage">
+    <div class="proof-stage-name">durable acknowledgement</div>
+    <strong>The Gateway records the applied or safely superseded terminal outcome.</strong>
+    <span>The sealed per-run ledger retains the final conservation result.</span>
+  </article></div>
+          <div class="equation-grid">
+            <div class="equation-box"><strong>Conservation equations</strong><ul><li>candidate decisions = native sends + redirect intents</li><li>redirect intents = durable receipts + producer outbox pending</li><li>durable receipts = acknowledged applied + acknowledged superseded + leased or pending</li></ul></div>
+            <div class="equation-box"><strong>Strict closure requires</strong><ul><li>native eligible sends = 0</li><li>producer outbox pending = 0</li><li>leased or pending = 0</li><li>durable receipts = acknowledged applied + acknowledged superseded</li></ul></div>
+          </div>
+        </article>
+        <div class="proof-layout">
+          <article class="proof-card">
+            <h3>Validated, hash-recorded P7 authoritative priority ZDO baseline</h3>
+            <p class="proof-scope">One enrolled client · persistent all-prefab ZDO redirect · 2026-07-16 UTC</p>
+            <div class="conservation-flow" aria-label="Validated P7 conservation result">
+    <div><span>Eligible revisions</span><strong>83,220</strong></div>
+    <b aria-hidden="true">→</b>
+    <div><span>Durably redirected</span><strong>83,220</strong></div>
+    <b aria-hidden="true">→</b>
+    <div><span>Terminally acknowledged</span><strong>83,220</strong></div>
+    <div class="native-zero"><span>Eligible native sends</span><strong>0</strong></div>
+  </div>
+            <p class="proof-denominator">83,220 of 83,220 eligible ZDO revisions in the declared strict single-client window closed through Lumberjacks; this is not a denominator for all Valheim networking.</p>
+            <div class="metric-grid"><div class="metric"><span>Eligible revisions in declared window</span><strong>83,220</strong></div><div class="metric"><span>Durable receipts</span><strong>83,220</strong></div><div class="metric"><span>Exact applications</span><strong>72,946</strong></div><div class="metric"><span>Safe supersessions</span><strong>10,274</strong></div><div class="metric"><span>Acknowledgements</span><strong>83,220</strong></div><div class="metric"><span>Pending</span><strong>0</strong></div><div class="metric"><span>Eligible native-only sends</span><strong>0</strong></div><div class="metric"><span>Priority tagged</span><strong>83,220 (100%)</strong></div><div class="metric"><span>Observed reject / duplicate / retry</span><strong>0 / 0 / 0</strong></div><div class="metric"><span>Poll / ACK / telemetry failures</span><strong>0 / 0 / 0</strong></div><div class="metric"><span>Peer-ready → first apply</span><strong>6.721 s</strong></div><div class="metric"><span>Peer-ready → complete</span><strong>102.114 s</strong></div></div>
+            <div class="publication"><strong>Publication · published</strong>The sanitized publication set is public and immutable at https://github.com/djcdevelopment/comfy/blob/433f1cc33605561ae1287db9cd8f37125d795c5d/fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover/PUBLICATION.md — pushed 2026-07-16 after the A4 promotion drill passed (receipt: docs/roadmap/m0-a4-promotion-drill-receipt.json, evidence public at Comfy e6a1402). Published bytes re-verified against the recorded SHA-256 hashes after push.</div>
+          </article>
+          <article class="no-go-card">
+            <h3>Known no-go findings</h3>
+            <ul><li>The current p7-primary-v1 queue and ACK state are shared; two consumers can steal or close each other&#39;s peer-specific records.</li><li>Redirect readiness is not yet bound to the exact joining peer.</li><li>Native peer bookkeeping advances before durable Gateway acceptance, leaving a producer-side loss window.</li><li>Live enrollment does not yet exclusively gate Valheim admission.</li><li>Consumer authorization is broader than the least-privilege target.</li><li>The public volunteer client path is plain HTTP today.</li><li>The existing guest handoff is stale prose, not a verified immutable package.</li><li>Current dashboard proof is aggregate and resettable rather than per-run and per-recipient; the 2026-07-16 owner observation saw the empty-server reset erase 81,241 live receipt records two seconds after disconnect.</li><li>Acceptance telemetry defaults are too large for volunteers.</li></ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head"><div class="section-number">06 · AUTHORITY</div><div><h2>What Lumberjacks owns—and what it does not.</h2><p class="section-copy">The claim grows one authority plane at a time. Compatibility dependencies remain visible.</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Plane</th><th>Current state</th><th>Boundary</th></tr></thead><tbody><tr><th scope="row">Invite / Steam enrollment</th><td><span class="state-text partial">Partial</span></td><td>Implemented, but not yet the sole live admission roster.</td></tr><tr><th scope="row">Valheim admission</th><td><span class="state-text partial">Partial</span></td><td>Gateway responder exists; must bind actual SteamID, enrollment, release, readiness, and capacity.</td></tr><tr><th scope="row">Eligible server-to-client ZDO delivery</th><td><span class="state-text proved-for-one-client">Proved for one client</span></td><td>Validated, hash-recorded strict P7 window; concurrent queue isolation is not yet proved.</td></tr><tr><th scope="row">Candidate relevance / inference</th><td><span class="state-text native">Native</span></td><td>Valheim still creates the peer-specific candidate list.</td></tr><tr><th scope="row">ZDO application</th><td><span class="state-text lumberjacks-adapter">Lumberjacks adapter</span></td><td>Client poller applies and validates on Unity&#39;s main thread before ACK.</td></tr><tr><th scope="row">Ownership / simulation / non-ZDO RPC</th><td><span class="state-text native">Native</span></td><td>Later authority-plane work.</td></tr><tr><th scope="row">Steam login / base peer transport</th><td><span class="state-text native-by-design">Native by design</span></td><td>May remain bootstrap and compatibility unless replacement adds measured value.</td></tr></tbody></table></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
+        <div class="journal"><article class="journal-entry" id="note-20260721060423-the-release-gate-covers-one-of-five-services">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T06:04:23.018Z">2026-07-21T06:04:23.018Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>M4a · M3</span>
+      </div>
+      <h3>The release gate covers one of five services</h3>
+      <p><strong>Impact:</strong> A cross-repo audit found that the P7 stack pins only the gateway to a release image. eventlog, progression and operatorapi are built from source at whatever happens to sit in the VM Lumberjacks root, so they carry no release identity, no admission gate, and no hash in any manifest. The m5 manifest asserted a coherent release; it described one service out of five. That claim is now qualified in place rather than left standing. Neither repo had documented this, and no gate would surface it: a contract drift between the pinned gateway and an unpinned sibling produces no error and no reject, only wrong behaviour.</p>
+      <details><summary>Verification (2)</summary><ul><li>comfy infra/gcp/p7/docker-compose.yml pins gateway to the release image while eventlog, progression and operatorapi use build: context LUMBERJACKS_ROOT</li><li>Lumberjacks has no release tooling of its own: every cut, verify, promote and rollback script for the Gateway artifact lives in the comfy repo</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/m5-recipients-build-candidate.json</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721060152-release-m5-recipients-20260720-r1-recorded-inclu">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T06:01:52.506Z">2026-07-21T06:01:52.506Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M4a · M3</span>
+      </div>
+      <h3>Release m5-recipients-20260720-r1 recorded, including how it was deployed by hand</h3>
+      <p><strong>Impact:</strong> The cut that carried recipient-scoped delivery into production existed only as artifacts on one workstation and a hand-touched VM. The manifest now lives in git next to the M0 candidate, recording both source commits, the mod hash, the gateway image id, and the two runtime settings the image does not carry: ProducerEmitsRecipients, and the strict roster flag that is in-memory and dies on any container recreate. It also records the honest deployment method, which was manual image save/scp/load plus a copied compose file, and states plainly that rebuilding the VM from either repo would not reproduce the state this release was world-tested in. That gap is now written down rather than known only to whoever ran the window.</p>
+      <details><summary>Verification (3)</summary><ul><li>validate-release-bundle.ps1 returned status valid for the bundle at comfy fieldlab/runs/releases/m5-recipients-20260720-r1</li><li>Both repos clean and at the manifest commits when the bundle was built; the bundle step refuses otherwise</li><li>Manifest records the superseded mod hash so the unfreeze of the previously frozen 0.5.31 artifact is traceable rather than silent</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/m5-recipients-build-candidate.json</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721054432-recipient-scoped-delivery-is-live-a-real-player-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T05:44:32.340Z">2026-07-21T05:44:32.340Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M4a · M4b · M3</span>
+      </div>
+      <h3>Recipient-scoped delivery is live: a real player drained his own partition</h3>
+      <p><strong>Impact:</strong> Stage 3 and Stage 4 both landed in one window and legacy is no longer the only partition. The mod now stamps the destination peer Steam identity read off the socket at the per-peer sync-list boundary, and the Gateway translates that to its own opaque recipient on ingest, because the producer can only know a Steam identity and must not name a partition it cannot see. Cut m5-recipients-20260720-r1 both sides, deployed to P7, flipped ProducerEmitsRecipients. A real player session then produced real game ZDOs stamped with the joining player identity, and that enrolled client polled and received them under its own opaque recipient rather than legacy. Two consequences: M4a exit criteria finally have partitions to test against, and the correlated trace Stage 2 needed now exists, since correlation ids are populated on every submission where the frozen producer sent none.</p>
+      <details><summary>Verification (4)</summary><ul><li>Gateway log during live play now reads mod_release=m5-recipients-20260720-r1, window_id=p7-primary-v1, a per-peer recipient, and a populated correlations list. Before this cut the same line read recipients=legacy, mod_release=(null), and an empty correlations list.</li><li>Enrolled consumer poll returned its own opaque recipient id rather than legacy, carrying real envelopes: sequences in the 35xxx range with populated prefab ids, correlation ids, and importance_class structural_anchor</li><li>Flag confirmed inside the container via printenv rather than from the env file, because the env file is read by the compose process and reaches nothing without a compose reference</li><li>NOT PROVEN: cross-delivery isolation with two simultaneous consumers, and behaviour under player_critical traffic. All observed envelopes were structural_anchor and only one consumer existed. Untested, not blocked.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>comfy infra/gcp/p7/docker-compose.yml</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721050846-m4a-status-corrected-from-queued-to-active">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T05:08:46.123Z">2026-07-21T05:08:46.123Z</time>
+        <span class="pill note-kind">planning</span>
+        <span>Lumberjacks</span>
+        <span>M4a</span>
+      </div>
+      <h3>M4a status corrected from queued to active</h3>
+      <p><strong>Impact:</strong> The roadmap described recipient isolation as not started while its Gateway was cut, promoted, and serving live traffic on P7 with the F1 property proven against the public endpoint. Queued was misleading to anyone reading the board. M4a is not complete and cannot be: its exit criteria are the N=2 and N=10 isolation matrix and per-recipient conservation equations, and none of those can be exercised while ProducerEmitsRecipients stays false, because every envelope files under legacy and no per-recipient partition exists to isolate. Active with a stated Stage 3 dependency is the honest position.</p>
+      <details><summary>Verification (2)</summary><ul><li>Gateway image m4-clean-20260720-r1 running on P7, durable pin set, F1 proven live at Phase 5d</li><li>Isolation exit criteria remain unexercised: the flag is off by design and the frozen producer emits no recipient_id, so the enrollment partition is empty by construction</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/valheim-volunteer-roadmap.json</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721050806-promotion-drill-rollback-defaults-are-stale-and-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T05:08:06.768Z">2026-07-21T05:08:06.768Z</time>
+        <span class="pill note-kind">decision</span>
+        <span>Lumberjacks</span>
+        <span>M1 · M4a</span>
+      </div>
+      <h3>Promotion drill rollback defaults are stale and would overwrite the frozen mod</h3>
+      <p><strong>Impact:</strong> run-promotion-drill.ps1 hardcodes RollbackImageId to an M0-era image and RollbackModSha256 to the historical runtime mod b31697d2, and the runbook Phase 3 command overrides neither. RollbackModBackupPath is mandatory with -Execute and the rollback phase is unconditional, so running the documented command would have copied the historical mod over the deployed frozen artifact 94a3843e and restarted the Valheim server to verify it had. That is the same hazard New-GatewayReleaseCut.ps1 exists to prevent, reached through a different door: it invalidates the artifact every distributed guest package is pinned to. The promotion was therefore done directly, re-pin plus recreate with no build, which touches no mod at all. Decision: prefer direct promotion for Gateway-only cuts, and treat the drill as needing correct explicit rollback arguments before it is run again. The stale defaults remain in the repo and will catch the next operator.</p>
+      <details><summary>Verification (4)</summary><ul><li>Drill plan recorded rollback.image_id sha256:358f5e11 while the VM was actually running sha256:3576d8e0, the m1 image; 358f5e11 does not exist in the local Docker image store at all</li><li>Deployed server mod read live from the VM as 94a3843e while the drill RollbackModSha256 default is b31697d2</li><li>run-promotion-drill.ps1 line 241 fails without RollbackModBackupPath when -Execute is passed, so the mod rollback phase cannot be skipped</li><li>Direct promotion verified clean: running image equals manifest image_id, durable pin updated, mod hash unchanged, and a real player session joined and produced traffic afterwards</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>comfy infra/gcp/p7/scripts/run-promotion-drill.ps1</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721050754-stage-2-unification-is-gated-on-producer-instrum">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T05:07:54.285Z">2026-07-21T05:07:54.285Z</time>
+        <span class="pill note-kind">planning</span>
+        <span>Lumberjacks</span>
+        <span>M4a · M4b · M3</span>
+      </div>
+      <h3>Stage 2 unification is gated on producer instrumentation, not harness engineering</h3>
+      <p><strong>Impact:</strong> plan-m4-unification.md models Stage 2 as a distinct engineering stage needing a harness change, because Invoke-ComfyLumberjacksIntegration.ps1 assumes it owns the server. This window showed the Stage 2 topology arising on its own out of ordinary play: the P7 server produced real ZDOs over loopback into p7-primary-v1 while a real enrolled principal authenticated from the public internet. The asymmetry that made Stage 2 look expensive, namely that the producer must be on loopback and the consumer must be public, is already satisfied by the P7 deployment shape rather than by anything the harness would build. What Stage 2 still cannot assert is the single correlated trace, and that is missing because the frozen 0.5.31 producer emits no correlation ids at all. The dependency therefore moves from harness work onto Stage 3 producer emission, and Stage 2 should be re-costed downward and re-sequenced behind Stage 3 instead of ahead of it.</p>
+      <details><summary>Verification (4)</summary><ul><li>Gateway logs during a real player session, repeated continuously while the player was in world: ZDO submission accepted caller_identity=private-plane mod_release=(null) window_id=p7-primary-v1 recipients=legacy</li><li>Enrolled principal reaching the Gateway from the public internet proven separately at Phase 5c: /api/v0/valheim/enrollment/me returned the enrollment instead of 401 credentials_required, so the caller resolved as enrollment and not private-plane</li><li>mod_release=(null) on every real submission confirms the frozen producer sends no release identity, which is the designed absence-is-the-signal behaviour and not a fault</li><li>NOT PROVEN and still owed for Stage 2: that the player own client was the consumer draining p7-primary-v1 during play. That was inferred from an empty poll, not observed. The correlated eight-step trace remains unproven because correlations was empty on every real submission.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/plan-m4-unification.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721050741-m4a-recipient-isolation-gateway-deployed-to-p7-a">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T05:07:41.693Z">2026-07-21T05:07:41.693Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M4a · M1</span>
+      </div>
+      <h3>M4a recipient-isolation Gateway deployed to P7 and F1 closed live</h3>
+      <p><strong>Impact:</strong> The recipient work stopped being theoretical. Gateway image m4-clean-20260720-r1 was cut, transferred, and promoted on the P7 VM, and the F1 property was proven against the live public endpoint for the first time: an enrolled consumer on the public internet drained the frozen 0.5.31 producer recipient-less envelopes from the legacy partition and acknowledged them. Before the recipient fix this returned empty and the lane was dead. The frozen mod artifact was never touched.</p>
+      <details><summary>Verification (5)</summary><ul><li>Cut identity verified from the shipped image rather than bin/Release: Test-GatewayImageRelease.ps1 read /app/Game.Gateway.dll out of the built image and confirmed admitted mod release m1-clean-20260717-r1</li><li>validate-release-bundle.ps1 returned status valid; OCI archive sha256 2ec2503b matched byte-for-byte after transfer to the VM</li><li>Phase 4 both halves: running container image sha256:0d99e547 equals the manifest gateway.image_id, and the durable pin in /etc/comfy-p7/environment names m4-clean-20260720-r1</li><li>Phase 5d live: pending/m4a-live-test-v1 returned recipient_id legacy with seq 900001 and 900002; ack returned acknowledged 2 unknown 0; re-poll empty</li><li>Deployed server mod hash unchanged at 94a3843e before and after the promotion</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>comfy fieldlab/runs/releases/m4-clean-20260720-r1</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721034934-m2-status-corrected-from-queued-to-active">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T03:49:34.527Z">2026-07-21T03:49:34.527Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M2</span>
+      </div>
+      <h3>M2 status corrected from queued to active</h3>
+      <p><strong>Impact:</strong> The roadmap still described the guest package as not started while the artifact was built, committed, and review-closed. Comfy fe812c4 shipped the immutable self-verifying guest package and c101d4c closed the review follow-up; the generated pack exists at fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1/ with a guide, manifest, and index. Three of the four tracked build steps are done. The status is now active rather than complete because the gate that matters is unchanged and still open: a non-developer completing enrollment in ten minutes without editing config or sending a secret. That gate needs a real human, and no synthetic fixture can close it.</p>
+      <details><summary>Verification (1)</summary><ul><li>Guest pack artifacts present on disk (GUEST-GUIDE.md, manifest.json, guest-index.json, guest-package-inputs.json); roadmap check passes with the corrected status.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/valheim-volunteer-roadmap.json</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721034857-joined-the-local-runtime-proof-and-the-remote-de">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T03:48:57.042Z">2026-07-21T03:48:57.042Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M1 · M4a · M4b</span>
+      </div>
+      <h3>Joined the local runtime proof and the remote deployment into one sequenced path</h3>
+      <p><strong>Impact:</strong> The program held two halves that had never met: a local Docker slice that closed the full correlated ZDO runtime but resolved every actor to private-plane, and an unexecuted runbook that can test enrollment identity but exercises no game runtime. The asymmetry is structural - ValheimClientAccessMiddleware.Resolve() checks source IP first, so loopback and RFC1918 short-circuit before enrollment headers are read - and no re-run of either harness closes it. The new plan also inverts the obvious unification: POST /receipts requires the Producer capability that public callers never get, so the producer must stay on the Gateway loopback and it is the CONSUMER that moves remote. M4a stage 1 is recorded as landed and correctly disabled: ProducerEmitsRecipients defaults false, which keeps delivery working under the frozen 0.5.31 mod, so two simultaneous players remain gated on the stage-3 producer emitter in Comfy rather than on M4a.</p>
+      <details><summary>Verification (3)</summary><ul><li>Read the deployed admission path: ValheimZdoRedirectAdmissionPolicy.Evaluate returns allowed for schema 1 unconditionally, and ValheimZdoRedirectEndpoints validates only seq on the schema-1 branch, so the runbook Phase 5a seed still works verbatim after the schema-2 work.</li><li>Confirmed ProducerEmitsRecipients defaults false at both production call sites (ValheimZdoRedirectEndpoints.cs:258, ValheimZdoInjectionEndpoints.cs:62).</li><li>gcloud reports comfy-lumberjacks-p7 TERMINATED; the 07-19 integration evidence contains zero references to the P7 address, DuckDNS name, or project id, corroborating the local-only scope claim.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/plan-m4-unification.md</code> <code>docs/runbook-m4a-stage1-live-test.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260720034725-mapped-the-accepted-comfy-to-lumberjacks-archite">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-20T03:47:25.227Z">2026-07-20T03:47:25.227Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Comfy</span>
+        <span>M1 · M3 · M4a</span>
+      </div>
+      <h3>Mapped the accepted Comfy-to-Lumberjacks architecture.</h3>
+      <p><strong>Impact:</strong> Three source-derived public-safe SVGs make the runtime seam, local-versus-P7 topology, contracts, recurring jobs, operator pipeline, and proof harnesses reviewable without changing runtime state.</p>
+      <details><summary>Verification (1)</summary><ul><li>Three SVGs parsed as XML and passed full-size headless render inspection; 13 Comfy repository tests and public-safety scans passed.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Comfy fieldlab/integration/diagrams/README.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260720030941-preserved-the-audited-comfy-to-lumberjacks-accep">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-20T03:09:41.825Z">2026-07-20T03:09:41.825Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Comfy</span>
+        <span>M1 · M3 · M4a</span>
+      </div>
+      <h3>Preserved the audited Comfy-to-Lumberjacks acceptance evidence.</h3>
+      <p><strong>Impact:</strong> A committed hash-inventoried packet now makes the local correlated runtime proof, partial receipt and acknowledgement snapshot, rollback state, readiness limits, and remaining risks durable without changing runtime code.</p>
+      <details><summary>Verification (2)</summary><ul><li>Acceptance reran 15 Comfy contract tests, 13 Comfy repository tests, 159 Gateway tests, and the compact positive/negative correlation verifier.</li><li>Artifact metadata, source and curated hashes, rollback inputs, repository state, and temporary-container cleanup reconciled.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Comfy fieldlab/integration/COMFY-LUMBERJACKS-ACCEPTANCE.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719153626-proved-one-real-comfy-server-originated-zdo-acro">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T15:36:26.229Z">2026-07-19T15:36:26.229Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Comfy</span>
+        <span>M1 · M3 · M4a</span>
+      </div>
+      <h3>Proved one real Comfy server-originated ZDO across the existing Lumberjacks boundary.</h3>
+      <p><strong>Impact:</strong> Importance-approved work now carries explicit schema, release, recipient, and correlation metadata through the Gateway to the real authoritative consumer; Importance-rejected work stays on Valheim&#39;s native path. This was local only; no GCP start or deployment occurred.</p>
+      <details><summary>Verification (2)</summary><ul><li>15 Comfy contract tests and 13 repository tests passed.</li><li>The real dedicated-server and headless-client harness observed the correlated positive sequence and proved a rejected correlation absent from Gateway and consumer logs.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Comfy fieldlab/integration/comfy-lumberjacks-seam.md</code> <code>Comfy fieldlab/scripts/Invoke-ComfyLumberjacksIntegration.ps1</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719153222-admitted-correlated-importance-approved-zdo-work">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T15:32:22.005Z">2026-07-19T15:32:22.005Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1 · M3 · M4a</span>
+      </div>
+      <h3>Admitted correlated Importance-approved ZDO work on the existing Gateway path.</h3>
+      <p><strong>Impact:</strong> The Gateway now authenticates producer identity, enforces the baked mod release for schema 2, honors the intended recipient, and exposes correlated consumer outcomes while retaining the frozen schema-1 rollback path.</p>
+      <details><summary>Verification (2)</summary><ul><li>159 Gateway tests passed in the Linux SDK container.</li><li>A real local dedicated-server slice authenticated private-plane, admitted release m4-integration-20260719-r1, routed legacy, and recorded an applied correlated result.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Comfy fieldlab/scripts/Invoke-ComfyLumberjacksIntegration.ps1</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719071756-risk-12-decided-the-docker-image-payload-is-the-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T07:17:56.421Z">2026-07-19T07:17:56.421Z</time>
+        <span class="pill note-kind">decision</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Risk 12 decided: the Docker image payload is the reproducibility unit</h3>
+      <p><strong>Impact:</strong> Three independent no-cache builds show the shipped Game.Gateway.dll and pdb are byte-identical across two different HEADs, and all 48 published files identical for equivalent source. The image is declared the authoritative release artifact and local bin/Release non-authoritative. Image ids and the final layer digest remain nondeterministic even with identical payload; that boundary is documented rather than treated as a failure.</p>
+      <details><summary>Verification (1)</summary><ul><li>A vs B (different HEADs): 47/48 identical, sole difference the regenerated Community/roadmap.html, a Content item that cannot reach the assembly. B vs C (identical source): 48/48 identical. Baked release id m9-repro-20260719-r1 read from all three images, verifier exit 0. Runtime config inputs identical across all three.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/decision-release-reproducibility-risk-12.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719071304-risk-12-documented-the-shipped-gateway-image-bui">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T07:13:04.066Z">2026-07-19T07:13:04.066Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Risk 12 documented: the shipped Gateway image build cannot see git</h3>
+      <p><strong>Impact:</strong> The image build context excludes .git, so no HEAD sha reaches the shipped DLL and the build-then-commit ordering defect applies only to the advisory bin/Release path. Proposes declaring the image the reproducibility unit; decides nothing until the acceptance test passes.</p>
+      <details><summary>Verification (1)</summary><ul><li>Deduced from .dockerignore and the Dockerfile COPY set; the two-build acceptance test is specified in the document and has not yet been run.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/decision-release-reproducibility-risk-12.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719070930-release-identity-is-verified-from-the-shipped-im">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T07:09:30.538Z">2026-07-19T07:09:30.538Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Release identity is verified from the shipped image, not a DLL that never ships</h3>
+      <p><strong>Impact:</strong> The baked release gate was inert on every deployed Gateway: the Dockerfile predated the mechanism and never passed the MSBuild property, so images carried the dev sentinel that ValheimReleaseIdentity maps to null. Arming StrictReleaseEnabled would have done nothing. The image now carries the value and a promotable build fails closed without it.</p>
+      <details><summary>Verification (1)</summary><ul><li>Three regression cases green: a promotable build&#39;s id reaches the image, an uncut image is rejected by name, and a promotable build refuses both the sentinel and a malformed id. Confirmed against the live P7 container that the shipped DLL carried no attribute at all.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/evidence/p7-session-20260719-release-gate-defect/deployment-identifiers.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719062638-recipient-scope-resolution-requires-an-explicit-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T06:26:38.007Z">2026-07-19T06:26:38.007Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M4a</span>
+      </div>
+      <h3>Recipient scope resolution requires an explicit producer-emission argument</h3>
+      <p><strong>Impact:</strong> The unsafe recipient branch can no longer be selected by omitting an argument; both Gateway call sites already passed the configured value, so deployed behavior is unchanged and the frozen producer&#39;s delivery lane is unaffected.</p>
+      <details><summary>Verification (1)</summary><ul><li>sdk:9.0 container 520/520 passing; both production call sites unchanged; test call sites now state producerEmitsRecipients explicitly.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/runbook-m4a-stage1-live-test.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719053835-immutable-self-verifying-guest-package-shipped">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T05:38:35.405Z">2026-07-19T05:38:35.405Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Comfy</span>
+        <span>M2</span>
+      </div>
+      <h3>Immutable self-verifying guest package shipped</h3>
+      <p><strong>Impact:</strong> Replaces the prose guest handoff with a deterministic, reversible package, installer, preflight, diagnostics, and receipt-driven uninstall; human enrollment through READY TO JOIN remains open.</p>
+      <details><summary>Verification (1)</summary><ul><li>13 Comfy unittest tests passed; both promoted release bundles validated; eight injected fault verdicts each named a check and remedy; live plugin LastWriteTime unchanged.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/evidence/m2-guest-package/README.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719052514-fix-frozen-producer-delivery-compatibility-and-c">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T05:25:14.274Z">2026-07-19T05:25:14.274Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>M4a</span>
+      </div>
+      <h3>Fix frozen producer delivery compatibility and conservation proof</h3>
+      <p><strong>Impact:</strong> Default-off producer recipient emission keeps enrolled consumers draining the legacy bucket until the stage-3 producer cut; opt-in recipient partitioning remains available. Removed tautological Eligible/Durable proof and disclosed the deployment coupling.</p>
+      <details><summary>Verification (3)</summary><ul><li>dotnet9 Gateway 154 total, 152 passing, 2 pre-existing Windows path failures</li><li>sdk:9.0 container 520/520 passing</li><li>FrozenProducerEnvelope_IsStillDrainedByAnEnrolledConsumer passed in frozen and recipient-emitting modes</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/handoffs/AGENT-QUESTIONS.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719043353-gateway-recipient-scoped-durable-delivery-stage-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T04:33:53.367Z">2026-07-19T04:33:53.367Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M4a</span>
+      </div>
+      <h3>Gateway recipient-scoped durable delivery stage 1</h3>
+      <p><strong>Impact:</strong> Adds server-derived recipient isolation, named legacy compatibility, recipient-keyed leases, additive WAL replay, and synthetic N=2/N=10 proof; remains undeployed with producer outbox open.</p>
+      <details><summary>Verification (3)</summary><ul><li>dotnet9 Gateway 153 total, 151 passing, 2 pre-existing Windows path failures</li><li>sdk:9.0 container 519/519 passing</li><li>Mutation proof: scope 4 failures, lease 2 failures, WAL version 1 failure</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/plan-m4a-recipient-isolation.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719012338-lockfile-sheds-13-extraneous-entries-left-over-f">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T01:23:38.843Z">2026-07-19T01:23:38.843Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Lockfile sheds 13 extraneous entries left over from the deleted npm workspaces</h3>
+      <p><strong>Impact:</strong> package-lock.json carried 13 entries marked extraneous for packages/* and services/* workspaces that were deleted when package.json narrowed its workspaces to clients/*, plus the orphaned optional-peer @types/node and undici-types records nothing depended on. npm install regenerated the lockfile as 151 pure deletions: no real dependency changed version, and the manifest again matches the two clients/* workspaces that actually exist.</p>
+      <details><summary>Verification (1)</summary><ul><li>npm install reported up to date and rewrote only the stale records; npm ls exits 0 with no extraneous or missing packages; git diff on package-lock.json shows 151 deletions, 0 additions, and no version movement on any surviving entry.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>package-lock.json</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719004205-m1-stage-4-gap-closed-self-serve-bootstrap-re-is">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T00:42:05.484Z">2026-07-19T00:42:05.484Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>M1 stage 4 gap closed: self-serve bootstrap re-issue via Steam re-sign-in</h3>
+      <p><strong>Impact:</strong> An expired setup code no longer strands its volunteer behind an admin revoke plus re-invite. GET /join/reissue redoes the Steam OpenID sign-in - the identity root that created the enrollment - and a SteamID whose Active enrollment is still credential-less gets a fresh single-use code for the same enrollment. Designed with Derek before building, four decisions: Steam re-sign-in authenticates (not the expired code itself, which would have turned the browser artifact stage 4 neutralized into a long-lived re-issue credential, and not an operator-signed link, which is not self-serve); pending-only scope, so once the installer has minted a credential re-issue answers already_installed and recovery stays admin revoke + re-invite; the public join IP limiter plus a per-enrollment cooldown (LUMBERJACKS_REISSUE_COOLDOWN_MINUTES, default 15) and a lifetime chain cap (LUMBERJACKS_REISSUE_MAX_BOOTSTRAPS, default 10); and the enrollment is reused, not rotated - same EnrollmentId and RecipientId, so nothing downstream churns. The prior unused code is deleted from the store rather than flagged: a deleted record answers bootstrap_invalid under every past and future binary, so a rollback cannot resurrect a superseded code, and at most one bootstrap is live per enrollment. The chain is counted in a new BootstrapIssueCount enrollment field, additive on schema v3 - pre-existing records read 0 and get one spare re-issue, fine because the cap is an abuse bound, not a security invariant. The OpenID verification is extracted into one helper shared by both callbacks rather than duplicated, and the handoff text now points the volunteer at the re-issue URL instead of ask-the-operator. Gateway-only and undeployed, like the rest of stage 4; StrictRoster and stage-3 deploy state untouched.</p>
+      <details><summary>Verification (1)</summary><ul><li>504 of 504 solution tests pass in the .NET 9 SDK container (Gateway 138 = 132 baseline + 6 new; Contracts 120; Simulation 246). All four re-issue guards are mutation-verified rather than merely green: disabling supersede-deletion fails exactly Reissue_MintsAFreshCodeAndKillsThePriorOne, the chain cap exactly Reissue_ChainCapExhausts, the cooldown exactly Reissue_CooldownBlocksAnImmediateRepeat, and the pending-only check exactly Reissue_RefusesOnceInstalled - one guard, one test, no overlap. Coverage also proves an expired bootstrap recovers across a service restart (two service instances on one store), that unknown and revoked SteamIDs refuse with distinct reasons, that exhaustion refuses new codes without damaging the pending one, and that the re-issued token never appears in the store file. The two RoadmapViewEndpointsTests failures on the Windows host are pre-existing path-separator issues, absent in the container, unrelated. Not exercised against a real Steam callback - the OpenID verify is the same code the enrollment callback has always used.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>src/Game.Gateway/Valheim/SteamEnrollmentService.cs</code> <code>src/Game.Gateway/Valheim/SteamEnrollmentEndpoints.cs</code> <code>tests/Game.Gateway.Tests/SteamEnrollmentServiceTests.cs</code> <code>docs/plan-m1-strict-admission.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719003847-current-focus-text-caught-up-roster-gate-verifie">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T00:38:47.481Z">2026-07-19T00:38:47.481Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Current-focus text caught up: roster gate verified live, DNS name exists.</h3>
+      <p><strong>Impact:</strong> The roadmap no longer claims TLS is blocked on DNS or that the roster gate awaits real-join verification - gate 3 closed live 2026-07-17 and comfy-p7.duckdns.org points at the reserved static address; what remains is the ACME contact on the VM and the stage-3 cut, plus fail-closed admission in the next mod release.</p>
+      <details><summary>Verification (1)</summary><ul><li>LJ 4c0897e records the live strict-window accept and the in-memory flag reverting on restart; comfy 29326eb records the DNS name and resolver verification.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/valheim-volunteer-roadmap.json</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260719003232-corrected-stage-3-s-blocker-list-dns-and-firewal">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-19T00:32:32.438Z">2026-07-19T00:32:32.438Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Corrected stage 3&#39;s blocker list: DNS and firewall are done, only the ACME contact remains.</h3>
+      <p><strong>Impact:</strong> The plan no longer claims a DNS A record blocks stage 3 - comfy-p7.duckdns.org has pointed at the reserved static address since 2026-07-17; the sole remaining human input is the ACME contact address, set on the VM at next boot.</p>
+      <details><summary>Verification (1)</summary><ul><li>comfy 29326eb records the name and public-resolver verification; comfy 2765ff9 opened 80/443.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/plan-m1-strict-admission.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260718233632-proved-the-release-cut-s-pass-verdict-and-solved">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-18T23:36:32.404Z">2026-07-18T23:36:32.404Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Proved the release cut&#39;s pass verdict and solved risk 12&#39;s clone-vs-worktree mystery.</h3>
+      <p><strong>Impact:</strong> The release identity gate is now demonstrated in both directions (refuse and pass), and rebuild-to-verify&#39;s blocker is a named, reproducible decision: the SDK embeds git HEAD in the PDB, so the artifact hash moves with every commit and a cut built pre-commit can never be rebuilt from its release commit.</p>
+      <details><summary>Verification (1)</summary><ul><li>Rehearsal cut m1-rehearsal-20260718-r1 (full non-WhatIf run, then reverted) returned OK with both DLLs agreeing; EnableSourceControlManagerQueries=false made a local clone and the working tree build byte-identical DLLs.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/plan-m1-strict-admission.md</code> <code>comfy commits 877ff11 + 554488d</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260717114710-m1-stage-4-a-one-use-bootstrap-replaces-the-plai">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-17T11:47:10.960Z">2026-07-17T11:47:10.960Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>M1 stage 4: a one-use bootstrap replaces the plaintext credential echo</h3>
+      <p><strong>Impact:</strong> Redeeming an invite no longer hands the browser a reusable secret. The Steam callback returned the config snippet with lumberjacksClientAccessKey in it, so the volunteer&#39;s long-lived credential landed in browser history, screenshots, and anything watching a plaintext response. It now returns a single-use setup code, and POST /join/bootstrap exchanges that code for the config exactly once. The access token is minted at consumption rather than parked in the store waiting to be collected, so it never exists at rest in any form, and an enrollment carries no credential at all until the installer acts - Verify answers bootstrap_pending and authenticates nothing, so a pending enrollment fails closed. POST rather than GET means the code cannot be spent by pasting a URL into a browser and stays out of history, referers, and access logs. The endpoint is public and rate-limited under the join limiter, deliberately outside the capability gate, because an installer has no credential to present yet. The store goes v2 to v3 in place on first save; v2 enrollments keep their token hash and keep verifying, so the deployed roster is unaffected. It does not close M1 gate 4 alone: the access token still crosses a plaintext link at consumption until stage 3 brings TLS. An expired bootstrap strands its volunteer, since one-active-per-SteamID refuses a second enrollment and re-issuing needs an admin revoke plus a fresh invite; the 24h TTL makes that unlikely rather than impossible, and self-serve re-issue is not built.</p>
+      <details><summary>Verification (1)</summary><ul><li>480 of 480 solution tests pass, 114 of them Gateway (109 baseline + 5 new), built and run in a .NET 9 SDK container. The single-use claim is mutation-verified rather than merely green: disabling the bootstrap.Used gate fails exactly Bootstrap_IsSingleUse and no other test. Coverage also asserts that the browser&#39;s code authenticates nothing (bootstrap_pending), that a revoke between invite and install beats a volunteer still holding the code, that expiry rejects, that a revoke-and-re-invite cycle mints a different token rather than resurrecting the old one, that neither the bootstrap nor the access token ever appears in the store file, and that a migrated v2 store still verifies its frozen-mod credential and rewrites as v3. Not deployed and not exercised against a real Steam callback.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>src/Game.Gateway/Valheim/SteamEnrollmentService.cs</code> <code>src/Game.Gateway/Valheim/SteamEnrollmentEndpoints.cs</code> <code>tests/Game.Gateway.Tests/SteamEnrollmentServiceTests.cs</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260717112950-pin-the-roadmap-artifact-and-its-sources-to-lf-s">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-17T11:29:50.925Z">2026-07-17T11:29:50.925Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M0</span>
+      </div>
+      <h3>Pin the roadmap artifact and its sources to LF so a fresh clone cannot break byte verification</h3>
+      <p><strong>Impact:</strong> The repository had no .gitattributes, so roadmap.html&#39;s bytes depended on the accident of how a given checkout was made. scripts/roadmap.mjs writes LF; with core.autocrlf=true, the Windows default, a fresh clone checks the artifact out as CRLF, which changes the bytes. Three things then break at once: roadmap:check compares a CRLF file against a fresh LF render and fails with a spurious stale, telling the operator to regenerate a page that was never wrong; X-Roadmap-Sha256 stops matching the committed artifact, so the served page can no longer be verified byte-for-byte against the tree, which is the whole point of reporting it; and every render rewrites the files back to LF as permanent working-tree churn. This machine only avoided it because the generator wrote the files and git had not yet touched them. The two JSON sources are pinned for the same reason: the script writes them LF and would fight the checkout on every note. Comfy already pins its evidence folder this way.</p>
+      <details><summary>Verification (1)</summary><ul><li>git check-attr reports text unset for all three paths, the LF-to-CRLF warnings they previously emitted are gone, and the artifact&#39;s SHA-256 is unchanged at cd808269, so the pin renormalizes nothing that was already committed. Roadmap check still passes.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>.gitattributes</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260717105654-cut-the-readiness-lease-from-m1-s-exit-gate-its-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-17T10:56:54.213Z">2026-07-17T10:56:54.213Z</time>
+        <span class="pill note-kind">planning</span>
+        <span>Lumberjacks</span>
+        <span>M1 · M4a</span>
+      </div>
+      <h3>Cut the readiness lease from M1&#39;s exit gate; its only consumer is M4a, which already owns and defines it</h3>
+      <p><strong>Impact:</strong> M1&#39;s exit gate now requires an invited, enrolled, compatible account, and no longer requires a fresh readiness lease or a stale-lease reject. lease_stale was blocked rather than deferred: nothing issues a readiness lease - no endpoint, no record, no field - because M1 named it as a deliverable without ever saying who mints one, what it attests, or how long it lives. It was undefined in M1 because M1 has no consumer for it: M4a already owns exact per-peer readiness and reconnect/takeover rules, already requires an exact per-peer readiness lease in its work, and already tests lease takeover at its exit. M1 was holding a contract on M4a&#39;s behalf, so M4a&#39;s inputs stop claiming a readiness lease among the contracts M1 delivers, and M1&#39;s does_not_own gains volunteer readiness scheduling. Building it inside M1 would have hard-coded an identity model the stage-3 mod cut then inherits, to satisfy a gate whose only reader specifies the lease differently and per peer.</p>
+      <details><summary>Verification (1)</summary><ul><li>Every edit was applied against exact-match source text, so a criterion that had drifted would have failed the amendment rather than being silently rewritten; roadmap check passes with the amended gate rendered. The destination was corrected before commit: an earlier revision moved the lease to M5, which the roadmap&#39;s own graph refutes - M4a depends on M1 alone, so a lease owned by M5 would make M4a wait on a milestone it does not depend on. Every surviving readiness-lease reference was re-read: M4a work and inputs, current_focus, and the concurrent-volunteers readiness requirement, which gates on M4a and M4b rather than on M1.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/valheim-volunteer-roadmap.json</code> <code>docs/plan-m1-strict-admission.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260717054110-make-the-drill-finalize-the-durable-pin-or-say-l">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-17T05:41:10.000Z">2026-07-17T05:41:10.000Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Comfy</span>
+        <span>M0</span>
+      </div>
+      <h3>Make the drill finalize the durable pin, or say loudly that it did not</h3>
+      <p><strong>Impact:</strong> Drill phases 2-4 pin the Gateway through docker-compose.promotion.yml, which compose does not auto-load, while LUMBERJACKS_GATEWAY_IMAGE in the host environment is never touched. A drill therefore ended with the candidate running, every receipt green, and the reboot path still resolving the previous release: the systemd unit runs plain docker compose up -d, which would revert the Gateway with nothing to indicate it happened. Hit for real promoting m1-clean-20260717-r1 - the container was on the candidate while the env still pinned the drill&#39;s M0 image - and caught only by checking the durable pin rather than the running container, which is exactly the check nobody performs when four receipts say ok. An earlier commit retired the override once, but the drill silently re-creates it every run, so the trap resets after each promotion. The new -Finalize switch executes the runbook&#39;s step 3 instead of leaving it a manual footnote: back up environment and override, point the pin at the promoted tag, delete the override, then prove the reboot path resolves the candidate and answers health. It stays a switch rather than an automatic step because drill-only runs prove rollback without promoting. Either way the restore receipt now records durable_pin, durable_pin_matches_candidate and override_retired, and a mismatch prints a warning naming the stale pin and what will happen on reboot.</p>
+      <details><summary>Verification (1)</summary><ul><li>The script parses and both switches are declared, but -Finalize was not exercised end to end: P7 had already been finalized by hand, and re-running the drill would have stopped a server with a player about to connect. The shell it emits is the same sequence proven by hand minutes earlier.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>infra/gcp/p7/scripts/run-promotion-drill.ps1</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260717053410-promote-m1-clean-20260717-r1-to-p7-m1-s-gateway-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-17T05:34:10.000Z">2026-07-17T05:34:10.000Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Promote m1-clean-20260717-r1 to P7: M1&#39;s Gateway work is live, roster gate still off</h3>
+      <p><strong>Impact:</strong> P7 now runs the M1 Gateway cut rather than m0-clean-20260716-r2. It is Gateway-only - the mod stays frozen at ComfyNetworkSense 0.5.31 - so the hashed-at-rest enrollment store, the capability split, per-surface rate limits, the one-seat reservation, the strict-admission roster gate, and the credential-derived consumer recipient are all live without a mod release. This retires the standing risk that stage 1&#39;s enrollment-store migration had never executed against real data: it has now run against the real store. StrictRosterEnabled ships default off, so strict roster admission is deployed but not enforcing; a roster miss refuses a join, so it stays opt-in per window until it is verified against real joins and can be flipped with a way back. The drill proved cold-start, rollback to the historical release, and restore, each health-checked and identity-verified; the durable environment pin was finalized by hand afterwards, because the drill at that time left the pin stale while the container ran the candidate.</p>
+      <details><summary>Verification (1)</summary><ul><li>Verified from the release tag on db45cf2, the bundle manifest, and the drill&#39;s restore receipt dated 2026-07-17T05:34:10Z recording gateway_health=ok, gateway_image=sha256:3576d8e0, mod_runtime_hash=match and mod_fallback_hash=match. Not re-verified live: the P7 VM is currently TERMINATED, so the running image, the durable pin, and the migration&#39;s collapse outcome are asserted from receipts rather than observed.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/plan-m1-strict-admission.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260717051815-stop-the-promotion-drill-snapshotting-backups-of">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-17T05:18:15.000Z">2026-07-17T05:18:15.000Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Comfy</span>
+        <span>M0</span>
+      </div>
+      <h3>Stop the promotion drill snapshotting backups of backups</h3>
+      <p><strong>Impact:</strong> Phase 1 archived all of the Valheim config directory, including the server&#39;s own hourly world zips under config/backups, so the snapshot scaled with backup history rather than world size: 44 GB across 75 files by 2026-07-17, against 8.6 GB of live worlds. Caught executing the drill for m1-clean-20260717-r1 with the server stopped for the whole gzip - 12 minutes in, 20.8 GB written and nowhere near done - and the archive heading for a volume with 58 GB free that also holds postgres, the ZDO WAL and the enrollment store. Filling it would have traded a stopped game server for a downed Gateway and a corrupted queue, so the drill was aborted, the partial archive removed and valheim-server restarted; nothing had been promoted, because phase 1 only reads and it never reached cold-start. It worked for M0/A4 only because config/backups was small then, and would have failed worse on every future release. Excluding them is safe precisely because they are backups: this drill snapshots the state a rollback needs, the live worlds plus the BepInEx runtime and config, and restoring one of the server&#39;s own zips has never been part of it. Not fixed: the drill still has no pre-flight disk check, so an oversized snapshot fails by filling the disk rather than by refusing.</p>
+      <details><summary>Verification (1)</summary><ul><li>Verified on the VM that the archive scope goes 54 GB to 9.3 GB, and that a real tar with the exclude pattern emits zero members under config/backups/.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>infra/gcp/p7/scripts/run-promotion-drill.ps1</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716211727-derive-the-consumer-s-recipient-from-its-credent">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T21:17:27.000Z">2026-07-16T21:17:27.000Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1 · M4a</span>
+      </div>
+      <h3>Derive the consumer&#39;s recipient from its credential, not its own claim</h3>
+      <p><strong>Impact:</strong> A client can no longer select which recipient it is recorded as. The consumer_id on the /consumer heartbeat is a GUID the client picks for itself, so every consumer telemetry key was a value the caller chose; where the caller presents an enrollment, the server-derived RecipientId now replaces it. It overrides rather than rejects on mismatch, because the frozen 0.5.31 mod never reads the value back and always sends its own GUID, so a mismatch is the normal case and rejecting it would refuse every real heartbeat. Callers with no enrollment keep the value they sent, since there is nothing to derive from. This was written off as needing the stage-3 mod cut and turned out Gateway-only. It is a precondition for M4a: when the queue becomes recipient-scoped, the recipient it is scoped by must already be server-derived, or isolation is enforced against a name the client chose.</p>
+      <details><summary>Verification (1)</summary><ul><li>469 of 469 solution tests pass.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>src/Game.Gateway/Valheim/ValheimZdoRedirectEndpoints.cs</code> <code>docs/plan-m1-strict-admission.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716201543-gateway-roadmap-re-reads-its-generated-asset-per">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T20:15:43.650Z">2026-07-16T20:15:43.650Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M0</span>
+      </div>
+      <h3>Gateway /roadmap re-reads its generated asset per request and reports the served bytes&#39; SHA-256</h3>
+      <p><strong>Impact:</strong> The public roadmap no longer announces stale milestone state between releases. Republishing is one file copy into a mounted directory with no image rebuild and no restart, and X-Roadmap-Sha256 lets the served page be verified byte-for-byte against the committed artifact. The page itself stays deterministic, self-contained, and script-free: the drift was in how the Gateway read the asset, not in the asset.</p>
+      <details><summary>Verification (1)</summary><ul><li>109 of 109 Game.Gateway.Tests pass, including six new RoadmapViewEndpointsTests covering per-request refresh, an identical-length rewrite, BOM stripping, the fallback page, and mount resolution preferring a mounted asset only once present.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>src/Game.Gateway/Endpoints/RoadmapViewEndpoints.cs</code> <code>tests/Game.Gateway.Tests/RoadmapViewEndpointsTests.cs</code> <code>docs/roadmap/README.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716191252-m1-stage-2-landed-a-one-seat-reservation-and-a-s">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T19:12:52.149Z">2026-07-16T19:12:52.149Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>M1 stage 2 landed: a one-seat reservation, and a strict-admission roster gate keyed on the actual joining Steam account. Both are Gateway-only and ship disabled or defaulted safe; neither is deployed yet.</h3>
+      <p><strong>Impact:</strong> Admission can consult the enrollment roster on the Gateway alone, without waiting for a mod release. An earlier plan revision had deferred this to the mod cut after concluding that no Steam identity reached the Gateway; the live handshake capture disproved that, because the dedicated server forwards the account identity it authenticates itself. The seat lease is refreshed by the authoritative consumer&#39;s own poll traffic rather than a fixed timer, so a holder who crashed or was overturned after admission cannot keep the single seat, and a volunteer reconnecting keeps their own.</p>
+      <details><summary>Verification (1)</summary><ul><li>469 solution tests pass, 13 of them new admission tests. Each gate was mutation-verified: stubbing it out fails only the intended cases, and forcing liveness never to expire fails only the expiry cases.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/plan-m1-strict-admission.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716164336-m1-stage-1-landed-hashed-at-rest-enrollment-stor">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T16:43:36.981Z">2026-07-16T16:43:36.981Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>M1 stage 1 landed: hashed-at-rest enrollment store with unique-active-SteamID, revoke/expiry/last-used/audit and server-derived recipient_id; capability split (admin/producer/consumer/telemetry) replacing the global shared-key grant; per-surface rate limits; admin list/revoke and /enrollment/me endpoints.</h3>
+      <p><strong>Impact:</strong> A public consumer credential can no longer reach producer, admin, reset, or compaction operations; secrets no longer exist in plaintext at rest; a v1 store migrates in place so the frozen 0.5.31 mod keeps working unchanged.</p>
+      <details><summary>Verification (1)</summary><ul><li>79/79 Gateway tests pass including 16 new store/capability-matrix tests; live container smoke booted the Gateway and exercised invite, list, revoke, and consumer surfaces with the store confirmed hash-only on disk; two pre-existing Game.Simulation TelemetryV0 failures reproduced at clean HEAD and are tracked separately.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>tests/Game.Gateway.Tests/ValheimClientAccessMiddlewareTests.cs</code> <code>docs/plan-m1-strict-admission.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716153421-m1-kickoff-plan-committed-at-docs-plan-m1-strict">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T15:34:21.912Z">2026-07-16T15:34:21.912Z</time>
+        <span class="pill note-kind">planning</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>M1 kickoff plan committed at docs/plan-m1-strict-admission.md: current-state map of enrollment/admission/transport, gap table against the M1 gate, four implementation stages grouped into two Gateway release cuts plus one mod cut, and the admission acceptance matrix skeleton.</h3>
+      <p><strong>Impact:</strong> M1 work can start with a fixed order and a declared release-cut budget; the fail-open handshake, plaintext credential echo, and client-chosen consumer id are now named defects with stages that remove them.</p>
+      <details><summary>Verification (1)</summary><ul><li>Survey drafted via a HEARTH-routed large-context pass over Gateway and mod sources; fail-open PassThrough, http-only transport guard, client-side consumer id, and the hardcoded capacity were each re-verified by hand at exact source lines.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/plan-m1-strict-admission.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716152816-finalized-the-r2-promotion-and-opened-m1-the-p7-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T15:28:16.206Z">2026-07-16T15:28:16.206Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M0 · M1</span>
+      </div>
+      <h3>Finalized the r2 promotion and opened M1: the P7 compose override is retired in favor of a durable environment image pin, current_release now records m0-clean-20260716-r2, M0 is complete, and M1 strict admission is active.</h3>
+      <p><strong>Impact:</strong> The frozen release survives VM reboots under an exact image pin, VM-side gateway rebuilds fail closed, and platform work moves to authoritative identity and admission.</p>
+      <details><summary>Verification (1)</summary><ul><li>Base-compose-only up left the running gateway untouched at image sha256:141bd9e5a2ce with health ok; the systemd reboot path resolved the promoted pin from the host environment; the retired override is backed up on the VM.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/m0-a4-promotion-drill-receipt.json</code> <code>comfy infra/gcp/p7/PROMOTION-DRILL.md section 7 (retirement procedure and receipt)</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716142337-m0-closed-golden-proof-publication-flipped-to-pu">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T14:23:37.263Z">2026-07-16T14:23:37.263Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M0</span>
+      </div>
+      <h3>M0 CLOSED: golden-proof publication flipped to published; evidence public and immutable on GitHub</h3>
+      <p><strong>Impact:</strong> The full M0 ladder A1-A5 is complete: frozen source, reproducible clean candidate, validated release bundle, passed promotion drill, and published hash-bound evidence. The volunteer-platform work (M1 strict admission) is unblocked.</p>
+      <details><summary>Verification (1)</summary><ul><li>Comfy main and Lumberjacks master pushed; A5 PUBLICATION.md permalink at 433f1cc and A4 README permalink at e6a1402 both resolve on GitHub, and the published raw bytes re-hash to the recorded SHA-256 values.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>https://github.com/djcdevelopment/comfy/blob/433f1cc33605561ae1287db9cd8f37125d795c5d/fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover/PUBLICATION.md</code> <code>docs/roadmap/m0-a4-promotion-drill-receipt.json</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716141715-m0-a4-promotion-drill-passed-cold-start-from-pre">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T14:17:15.576Z">2026-07-16T14:17:15.576Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>M0</span>
+      </div>
+      <h3>M0/A4 promotion drill passed: cold start from prebuilt artifacts, artifact-only rollback, restore — all receipts green</h3>
+      <p><strong>Impact:</strong> A4, the last active M0 checkpoint, is complete; M0 closure now needs only the owner pushes and the golden_proof.publication flip per the A5 receipt.</p>
+      <details><summary>Verification (1)</summary><ul><li>Four drill receipts green (snapshot 51GB archive hashed, cold start 14:02:43Z, rollback 14:04:51Z, restore 14:07:06Z), exact image IDs and mod SHA-256 verified at both paths each transition, gateway health ok, owner live-validated the promoted server post-restore.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/m0-a4-promotion-drill-receipt.json</code> <code>Comfy fieldlab/evidence/m0-a4-promotion-drill-20260716 @ e6a1402</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716114430-stage-m0-a5-publication-set-and-fix-byte-stabili">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T11:44:30.100Z">2026-07-16T11:44:30.100Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks + Comfy</span>
+        <span>M0</span>
+      </div>
+      <h3>Stage M0/A5 publication set and fix byte-stability defect</h3>
+      <p><strong>Impact:</strong> Staged the sanitized gold FieldLab run packet in the Comfy repository and committed the A5 publication receipt. Fixed a latent A3 byte-stability defect where line-ending normalization caused checkout hash mismatches by explicitly marking the hash-bound evidence set with -text. A5 closure remains pending until the A4 drill passes, the owner pushes the Comfy revision to the remote, and the roadmap publication status flips.</p>
+      <details><summary>Verification (3)</summary><ul><li>The staged publication set hashes match the M0/A5 receipt, including the byte-identical acceptance snapshot.</li><li>A two-pass secret scan (deterministic regex and independent semantic LLM review) confirmed the publication set is clean, with the deployment IPv4 redacted as &lt;gcp-public-ip&gt;.</li><li>The .gitattributes fix makes Git blob bytes, working-tree bytes, and recorded SHA-256 hashes identical for all six hash-bound files regardless of checkout configuration.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/m0-a5-publication-receipt.json</code> <code>Comfy fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover/ (PUBLICATION.md + report.md + acceptance-snapshot.json)</code> <code>Comfy fieldlab/.gitattributes</code> <code>Comfy commits e9f9fe3 + 433f1cc</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716032000-publish-m0-a3-bundle-receipt-and-fieldlab-catalo">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T03:20:00-07:00">2026-07-16T03:20:00-07:00</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks + Comfy</span>
+        <span>M0</span>
+      </div>
+      <h3>Publish M0/A3 bundle receipt and FieldLab catalog</h3>
+      <p><strong>Impact:</strong> Closed the A3 checkpoint: the sanitized release-bundle receipt is committed, the FieldLab run catalog classifies every run folder with the fixed evidence vocabulary, and the A4 no-build snapshot/rollback drill is prepared as a plan-only script and runbook awaiting the scheduled GCP window.</p>
+      <details><summary>Verification (3)</summary><ul><li>Bundle m0-clean-20260716-r2 re-validated valid at 2026-07-16T10:15:55Z; the receipt records the manifest hash, all seven per-file bundle hashes, and catalog hashes.</li><li>The FieldLab catalog classifies all 125 run folders (1 gold, 17 negative, 37 superseded, 70 historical); every supersession reference resolves to a newer run of the same scenario.</li><li>Secret scan over the manifest, receipt, and catalog found no SteamID or credential-shaped values; the A4 drill ran plan-only and produced drill-plan.json without any GCP mutation.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/m0-a3-release-bundle-receipt.json</code> <code>Comfy fieldlab/runs/index.json + CATALOG.md</code> <code>Comfy infra/gcp/p7/PROMOTION-DRILL.md + scripts/run-promotion-drill.ps1</code> <code>Comfy commit 582a0e0</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716T020000-m0-a3-release-bundle">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T02:00:00-07:00">2026-07-16T02:00:00-07:00</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Comfy</span>
+        <span>M0</span>
+      </div>
+      <h3>Build and validate the local M0 release bundle</h3>
+      <p><strong>Impact:</strong> Added fail-closed bundle tooling and produced the r2 candidate bundle with an immutable manifest reference, mod DLL, OCI Gateway archive, source inputs, and per-file SHA-256 inventory.</p>
+      <details><summary>Verification (3)</summary><ul><li>Bundle validator passed for release m0-clean-20260716-r2 and the standalone manifest passed schema, source, hash, and no-secret checks.</li><li>Bundle includes the 94a3843e...0ba3a8 mod, Gateway OCI image 141bd9e5...e86fb, Docker/build inputs, and a 96 MB image archive.</li><li>Builder refused dirty/mismatched sources by contract; no GCP mutation or live artifact replacement occurred.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Comfy commit 0cd40f4</code> <code>local bundle label m0-clean-20260716-r2</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716T014500-m0-reproducible-candidate-r2">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T01:45:00-07:00">2026-07-16T01:45:00-07:00</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks + Comfy</span>
+        <span>M0</span>
+      </div>
+      <h3>Record reproducible M0 candidate r2</h3>
+      <p><strong>Impact:</strong> Clean tagged checkouts now produce a repeatable mod candidate and Gateway image under pinned deterministic build flags; the candidate is deliberately not promoted over the historical runtime until the release package and rollback drill pass.</p>
+      <details><summary>Verification (3)</summary><ul><li>Two clean Comfy builds produced identical SHA-256 94a3843e...0ba3a8; Gateway candidate image is 141bd9e5...e86fb.</li><li>Clean Gateway tests passed 46/46 and the candidate image passed a local dependency-backed /health smoke.</li><li>Candidate r2 records all eleven Valheim/BepInEx assembly hashes and both repository commits; no GCP mutation occurred.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/m0-clean-build-candidate-r2.json</code> <code>Comfy commit b32bb5e</code> <code>Lumberjacks commit a7c47b5</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716T013000-reproducible-build-flags">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T01:30:00-07:00">2026-07-16T01:30:00-07:00</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Comfy + Lumberjacks</span>
+        <span>M0</span>
+      </div>
+      <h3>Make clean artifact builds byte-reproducible</h3>
+      <p><strong>Impact:</strong> Pinned CI/deterministic compiler identity and a stable source map for the mod and Gateway builds; this creates a reproducible candidate path without promoting the historical runtime artifact.</p>
+      <details><summary>Verification (3)</summary><ul><li>Two consecutive mod Release builds now produce identical SHA-256 f725e252...c667c.</li><li>The build flags do not change the 0.5.31 IL; they stabilize PE timestamp/MVID/debug identity.</li><li>Gateway source build properties are committed for the next clean Docker candidate; no GCP mutation occurred.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Comfy commit b32bb5e</code> <code>Directory.Build.props staged below</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716T011500-m0-clean-candidate-build">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T01:15:00-07:00">2026-07-16T01:15:00-07:00</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks + Comfy</span>
+        <span>M0</span>
+      </div>
+      <h3>Build and record clean M0 candidate artifacts</h3>
+      <p><strong>Impact:</strong> Produced a clean-checkout Gateway image and mod candidate manifest without touching GCP or the proven runtime; M0/A2 remains open because the clean mod PE identity differs from the historical DLL.</p>
+      <details><summary>Verification (3)</summary><ul><li>Detached clean commits built successfully: ComfyNetworkSense 0.5.31 and Gateway image 8444c761...caf39.</li><li>Clean Gateway test suite passed 46/46 in the .NET 9 SDK container; an isolated container returned /health 200 with local PostgreSQL.</li><li>Clean mod IL is equal to the historical runtime, but its 72-byte PE timestamp/MVID/debug identity differs; no promotion or redeploy occurred.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/m0-clean-build-candidate.json</code> <code>Comfy commit 408018f</code> <code>Lumberjacks commit 1eaadd8</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716T001500-comfy-p7-ops-freeze">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T00:15:00-07:00">2026-07-16T00:15:00-07:00</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Comfy</span>
+        <span>M0</span>
+      </div>
+      <h3>Record P7 evidence and operator deployment surfaces</h3>
+      <p><strong>Impact:</strong> Captured the audited FieldLab evidence, MCP visibility, GCP topology, tunnel lifecycle, deployment, rollback, and invite scripts while preserving the generated identity-bearing historical dashboard outside the release.</p>
+      <details><summary>Verification (3)</summary><ul><li>PowerShell scripts parse; Terraform formatting, MCP JSON parsing, and Python compilation pass.</li><li>No credential-shaped values were found in the staged ops/evidence candidates.</li><li>The existing manifest and rollback rebuild gaps remain explicit M0/A2 work; no GCP mutation was performed.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Comfy commit 408018f</code> <code>infra/gcp/p7/README.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260716T000000-docs-and-operator-surfaces">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-16T00:00:00-07:00">2026-07-16T00:00:00-07:00</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M0 · M3</span>
+      </div>
+      <h3>Freeze cutover topology, evidence, and operator surfaces</h3>
+      <p><strong>Impact:</strong> Captured the P7 network overview, volunteer execution plan, evidence boundaries, interest-management boundary, dashboard viewing instructions, and local OMEN roadmap serving contract without widening any proof claim.</p>
+      <details><summary>Verification (3)</summary><ul><li>Documentation candidates contain no Steam identities or credential-shaped values.</li><li>The plan records the 81,241 live-complete but formally INCONCLUSIVE owner observation and the M0/A1-to-M0/A5 execution sequence.</li><li>Roadmap HTML and OMEN dashboard configuration remain self-contained and local-only.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/network/valheim-volunteer-platform-plan.md</code> <code>tools/omen-dashboard/nginx.conf</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260715T235000-gateway-runtime-freeze">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-15T23:50:00-07:00">2026-07-15T23:50:00-07:00</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M0</span>
+      </div>
+      <h3>Freeze Gateway authoritative runtime and pilot enrollment</h3>
+      <p><strong>Impact:</strong> Captured the tested Gateway queue, priority ordering, retained telemetry, enrollment, client-access middleware, and dashboard liveness lineage as one-owner release code; volunteer admission and durable per-run proof remain gated by M1 and M3.</p>
+      <details><summary>Verification (3)</summary><ul><li>Docker .NET 9 SDK test run passed all 46 Game.Gateway.Tests tests; host .NET 8 is retained and does not claim a net9 build.</li><li>Sanitized the enrollment test to use a synthetic Steam identity and found no Steam identity in the staged diff.</li><li>Current relaxed completion and broad pilot access are recorded as known M3/M1 boundaries, not volunteer readiness.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks Gateway runtime commit staged below</code> <code>Comfy runtime commit 26bb55b</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260715T234000-comfy-runtime-freeze">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-15T23:40:00-07:00">2026-07-15T23:40:00-07:00</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Comfy</span>
+        <span>M0</span>
+      </div>
+      <h3>Freeze ComfyNetworkSense 0.5.31 runtime</h3>
+      <p><strong>Impact:</strong> Captured the tested mod source lineage that produced the aligned 0.5.31 artifact; the image and DLL remain rollback/runtime references until clean release packaging is complete.</p>
+      <details><summary>Verification (3)</summary><ul><li>Clean isolated Release build passed with zero warnings and zero errors.</li><li>Output DLL version is 0.5.31 and SHA-256 matches the aligned runtime artifact b31697d2...d7b.</li><li>No Steam identity or credential was added to the public journal.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Comfy commit 26bb55b</code> <code>network/mod/ComfyNetworkSense/manifest.json</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260715T233500-roadmap-and-owner-observation">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-15T23:35:00-07:00">2026-07-15T23:35:00-07:00</time>
+        <span class="pill note-kind">planning</span>
+        <span>Lumberjacks + Comfy FieldLab</span>
+        <span>M0 · M1 · M2 · M3 · M4a · M4b · M5 · M6 · M7</span>
+      </div>
+      <h3>Established the evidence-first volunteer roadmap and recorded the latest owner session.</h3>
+      <p><strong>Impact:</strong> Separates live delivery from sealed proof, records the reset-erased receipt defect, and makes M0/A1 source freeze the active checkpoint.</p>
+      <details><summary>Verification (4)</summary><ul><li>Historical P7 baseline remains 83,220 of 83,220 with zero eligible native ZDO sends.</li><li>Owner session closed 81,241 of 81,241 eligible revisions with zero pending or eligible native sends; Gateway reset erased the live denominator, so the formal verdict is INCONCLUSIVE.</li><li>OMEN, GCP, and runtime 0.5.31 identities align, but the image was built outside a clean Git checkout and remains rollback-only until M0 creates a reproducible release.</li><li>Roadmap rendering, dependency, no-secret, staged-policy, HTTP, and served-byte checks pass.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/network/valheim-volunteer-platform-plan.md</code> <code>src/Game.Gateway/Community/roadmap.html</code> <code>fieldlab/evidence/p7-primary-v1-authoritative-priority-zdo-20260716-v0531.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <div class="footer-links"><a href="https://github.com/djcdevelopment/Lumberjacks/blob/master/docs/network/valheim-volunteer-platform-plan.md" target="_blank" rel="noreferrer">Full volunteer platform plan</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/Lumberjacks/blob/master/docs/network/valheim-lumberjacks-p7-overview.md" target="_blank" rel="noreferrer">P7 network overview</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/Lumberjacks/blob/master/docs/network/evidence-index.md" target="_blank" rel="noreferrer">Network evidence index</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/tree/main/fieldlab" target="_blank" rel="noreferrer">FieldLab</a></div>
+    <div>Update milestone truth and add a journal entry in the same commit as the work it describes.</div>
+    <div class="generated">Generated deterministically from docs/roadmap/valheim-volunteer-roadmap.json + docs/roadmap/commit-notes.jsonl · do not hand-edit this file.</div>
+  </footer>
+</body>
+</html>

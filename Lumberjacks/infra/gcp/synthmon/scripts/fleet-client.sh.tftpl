@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+
+# Install the Google Cloud Ops Agent with the SAME OTLP-receiver config as the SUT
+# (otlp on 0.0.0.0:4317, metrics_mode: googlecloudmonitoring) so the synthclient's
+# OTLP gauges are forwarded into Cloud Monitoring as workload.googleapis.com/*.
+if ! dpkg-query --show google-cloud-ops-agent >/dev/null 2>&1; then
+  curl -fsSL https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh \
+    -o /tmp/add-google-cloud-ops-agent-repo.sh
+  bash /tmp/add-google-cloud-ops-agent-repo.sh --also-install
+fi
+
+install -d -m 0755 /etc/google-cloud-ops-agent
+cat > /etc/google-cloud-ops-agent/config.yaml <<'OPS_AGENT_CONFIG'
+${ops_agent_config}
+OPS_AGENT_CONFIG
+
+systemctl enable --now google-cloud-ops-agent
+systemctl restart google-cloud-ops-agent
+
+# Give the OTLP receiver time to bind :4317 before the (short-lived) probe exports.
+for i in $(seq 1 30); do
+  if (exec 3<>/dev/tcp/localhost/4317) 2>/dev/null; then exec 3>&- 3<&-; break; fi
+  sleep 1
+done
+sleep 15
+
+cd /tmp
+for i in $(seq 1 30); do curl -sf -o synthclient "${synthclient_url}" && break; sleep 5; done
+chmod +x synthclient
+for M in json binary udp; do
+  OUT=$(SYNTH_TARGET="${sut_ws_url}" SYNTH_REGION_LABEL="${region_label}" SYNTH_MODE=$M SYNTH_REGION_ID=region-spawn SYNTH_RATE_HZ=10 SYNTH_DURATION_S=20 SYNTH_CLIENTS=1 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 OTEL_EXPORTER_OTLP_PROTOCOL=grpc ./synthclient 2>/dev/null | sed -n '/^{/,/^}/p' | tr -d '\n')
+  echo "SYNTHJSON $OUT"
+done
+echo "SYNTHDONE ${region_label}"

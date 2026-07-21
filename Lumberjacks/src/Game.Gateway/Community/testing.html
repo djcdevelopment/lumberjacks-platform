@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+<title>Lumberjacks — Local Testing Tools</title>
+<style>
+    :root {
+        --bg-color: #121212;
+        --card-bg: #1e1e1e;
+        --text-main: #e0e0e0;
+        --text-muted: #888888;
+        --border-color: #333333;
+        --accent-blue: #3a7bd5;
+        --accent-hover: #4a8be5;
+        --accent-warn: #d97706;
+        --accent-warn-hover: #f59e0b;
+        --status-up: #10b981;
+        --status-down: #ef4444;
+        --console-bg: #0a0a0a;
+        --font-stack: system-ui, -apple-system, sans-serif;
+        --mono-stack: 'Courier New', Courier, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        font-family: var(--font-stack);
+        margin: 0;
+        padding: 20px;
+        line-height: 1.5;
+    }
+
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 16px;
+        margin-bottom: 24px;
+    }
+
+    h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .indicator-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border-color);
+        font-size: 0.875rem;
+    }
+
+    .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: var(--text-muted);
+    }
+    .dot.up { background-color: var(--status-up); box-shadow: 0 0 8px var(--status-up); }
+    .dot.down { background-color: var(--status-down); box-shadow: 0 0 8px var(--status-down); }
+
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .card h2 {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    .card-benchmark {
+        border-color: rgba(217, 119, 6, 0.4);
+        box-shadow: 0 4px 12px rgba(217, 119, 6, 0.05);
+    }
+
+    .card-benchmark h2 {
+        color: var(--accent-warn);
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    label {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    input[type="number"] {
+        background: #2a2a2a;
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-family: inherit;
+    }
+    input[type="number"]:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+    }
+
+    .card-subtext {
+        font-size: 0.75rem;
+        color: #a0aec0;
+        background: rgba(217, 119, 6, 0.1);
+        padding: 6px;
+        border-radius: 4px;
+        border-left: 3px solid var(--accent-warn);
+        margin-top: auto;
+    }
+
+    .btn {
+        background: var(--accent-blue);
+        color: #fff;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        font-family: inherit;
+        transition: background 0.2s;
+        text-align: center;
+        margin-top: auto;
+    }
+    .btn:hover { background: var(--accent-hover); }
+
+    .btn-warn {
+        background: var(--accent-warn);
+        color: #000;
+        font-weight: 600;
+    }
+    .btn-warn:hover { background: var(--accent-warn-hover); }
+
+    .btn-toggle {
+        background: transparent;
+        border: 1px solid var(--accent-blue);
+        color: var(--accent-blue);
+    }
+    .btn-toggle:hover { background: rgba(58, 123, 213, 0.1); }
+    .btn-toggle.active {
+        background: var(--accent-blue);
+        color: #fff;
+    }
+
+    .log-section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .log-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .log-header h3 {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .btn-clear {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        padding: 4px 10px;
+        font-size: 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .btn-clear:hover {
+        color: var(--text-main);
+        border-color: var(--text-main);
+    }
+
+    .log-container {
+        background: var(--console-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        height: 250px;
+        overflow-y: auto;
+        padding: 12px;
+        font-family: var(--mono-stack);
+        font-size: 0.85rem;
+    }
+
+    .log-entry { margin-bottom: 4px; word-wrap: break-word; }
+    .log-time { color: var(--text-muted); margin-right: 8px; }
+    .log-msg { color: #a3e635; }
+    .log-warn { color: var(--accent-warn); }
+    .log-sys { color: var(--accent-blue); }
+</style>
+</head>
+<body>
+<!-- DESIGN NOTE: This local testing tools page provides scenario cards to make repeatable multiplayer testing self-documenting and accessible via a GUI, replacing tribal knowledge of ad-hoc console commands. To ensure safety and observability, every potentially heavy or destructive action requires explicit confirmation and logs its simulated intent to a live on-page status strip rather than silently failing while backends are pending. The benchmark card intentionally wraps the singular blessed load harness (scripts/load-test-dual-channel.js) rather than introducing a second load generation path, ensuring that GUI testing and CLI automation remain completely aligned without drift. -->
+
+<header>
+    <h1>Lumberjacks — Local Testing Tools</h1>
+    <div id="deployment-status" style="font-size:.78rem;color:#94a3b8;margin-top:4px">Deployment: loading...</div>
+    <div class="indicator-badge" id="gatewayIndicator">
+        <div class="dot" id="gatewayDot"></div>
+        <span id="gatewayText">Checking gateway...</span>
+    </div>
+</header>
+
+<div class="card-grid">
+    <!-- Card 1: Spawn enemy group -->
+    <div class="card">
+        <h2>Spawn enemy group</h2>
+        <div class="form-group">
+            <label for="spawnCount">Enemy count (1-50)</label>
+            <input type="number" id="spawnCount" value="5" min="1" max="50">
+        </div>
+        <button class="btn" id="btnSpawn">Spawn</button>
+    </div>
+
+    <!-- Card 2: Benchmark -->
+    <div class="card card-benchmark">
+        <h2>Run benchmark scenario</h2>
+        <div class="form-group">
+            <label for="benchPlayers">Player/Bot Count</label>
+            <input type="number" id="benchPlayers" value="20" min="1">
+        </div>
+        <div class="form-group">
+            <label for="benchDuration">Duration (Seconds)</label>
+            <input type="number" id="benchDuration" value="30" min="1">
+        </div>
+        <div class="card-subtext">
+            Wraps scripts/load-test-dual-channel.js — no second load path.
+        </div>
+        <button class="btn btn-warn" id="btnBenchmark">Run Load Test</button>
+    </div>
+
+    <!-- Card 3: Telemetry Capture -->
+    <div class="card">
+        <h2>Telemetry Capture</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 auto 0;">
+            Manually trace runtime metrics and network stability over a defined window.
+        </p>
+        <button class="btn btn-toggle" id="btnCapture">Start capture</button>
+    </div>
+
+    <!-- Card 4: Replay Route -->
+    <div class="card">
+        <h2>Replay Route</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 auto 0;">
+            Invoke a deterministic replay of recorded inputs to verify state resolution.
+        </p>
+        <button class="btn btn-toggle" id="btnReplay">Begin replay</button>
+    </div>
+</div>
+
+<div class="log-section">
+    <div class="log-header">
+        <h3>Live Status Strip</h3>
+        <button class="btn-clear" id="btnClearLog">Clear log</button>
+    </div>
+    <div class="log-container" id="logArea"></div>
+</div>
+
+<script>
+    const logArea = document.getElementById('logArea');
+    
+    // Core safe-logging utility that prevents XSS by using Text Nodes
+    function addLog(msg, type = 'log-msg') {
+        const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+        const line = document.createElement('div');
+        line.className = 'log-entry';
+        
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'log-time';
+        timeSpan.textContent = `[${time}]`;
+        
+        const msgSpan = document.createElement('span');
+        msgSpan.className = type;
+        msgSpan.textContent = ` ${msg}`;
+        
+        line.appendChild(timeSpan);
+        line.appendChild(msgSpan);
+        
+        logArea.appendChild(line);
+        logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    document.getElementById('btnClearLog').addEventListener('click', () => {
+        logArea.innerHTML = '';
+    });
+
+    // 1. Spawn enemy group
+    document.getElementById('btnSpawn').addEventListener('click', () => {
+        const count = document.getElementById('spawnCount').value;
+        if (confirm(`Spawn ${count} enemies into the active instance?`)) {
+            addLog(`Would POST to /api/v0/testing/spawn-enemies {"count": ${count}} (backend pending)`);
+        }
+    });
+
+    // 2. Run benchmark scenario
+    document.getElementById('btnBenchmark').addEventListener('click', () => {
+        const players = document.getElementById('benchPlayers').value;
+        const duration = document.getElementById('benchDuration').value;
+        if (confirm(`Initialize load-test simulation with ${players} players for ${duration} seconds? (This simulates real load)`)) {
+            addLog(`Would POST to /api/v0/testing/benchmark {"players": ${players}, "duration_s": ${duration}} (backend pending) — server-side this would shell out to scripts/load-test-dual-channel.js`, 'log-warn');
+        }
+    });
+
+    // 3. Telemetry Capture Toggle
+    let captureActive = false;
+    document.getElementById('btnCapture').addEventListener('click', (e) => {
+        const action = captureActive ? 'stop' : 'start';
+        const actionLabel = captureActive ? 'Stop' : 'Start';
+        
+        if (confirm(`${actionLabel} telemetry capture?`)) {
+            captureActive = !captureActive;
+            e.target.textContent = captureActive ? 'Stop capture' : 'Start capture';
+            e.target.className = captureActive ? 'btn btn-toggle active' : 'btn btn-toggle';
+            addLog(`Would POST to /api/v0/testing/capture/${action} (backend pending)`);
+        }
+    });
+
+    // 4. Replay Route Toggle
+    let replayActive = false;
+    document.getElementById('btnReplay').addEventListener('click', (e) => {
+        const action = replayActive ? 'end' : 'start';
+        const actionLabel = replayActive ? 'End' : 'Begin';
+        
+        if (confirm(`${actionLabel} replay route?`)) {
+            replayActive = !replayActive;
+            e.target.textContent = replayActive ? 'End replay' : 'Begin replay';
+            e.target.className = replayActive ? 'btn btn-toggle active' : 'btn btn-toggle';
+            addLog(`Would POST to /api/v0/testing/replay/${action} (backend pending)`);
+        }
+    });
+
+    // Read-only Polling for Gateway Reachability
+    const dot = document.getElementById('gatewayDot');
+    const txt = document.getElementById('gatewayText');
+    let isReachable = null;
+
+    async function pollGateway() {
+        try {
+            const res = await fetch('/api/v0/telemetry/server');
+            if (res.ok) {
+                const data = await res.json();
+                if (isReachable !== true) {
+                    isReachable = true;
+                    dot.className = 'dot up';
+                    txt.textContent = 'Gateway reachable';
+                    addLog(`Gateway state changed: Reachable (API: ${data.api_version || 'unknown'}, Stability: ${data.stability || 'unknown'})`, 'log-sys');
+                }
+            } else {
+                throw new Error('Non-OK status');
+            }
+        } catch (err) {
+            if (isReachable !== false) {
+                isReachable = false;
+                dot.className = 'dot down';
+                txt.textContent = 'Gateway unreachable';
+                addLog('Gateway state changed: Unreachable', 'log-warn');
+            }
+        }
+    }
+
+    addLog('G5 Local Testing Tools initialized. All mutating actions are currently running in simulation mode.', 'log-sys');
+    
+    // Initial poll and setup interval
+    pollGateway();
+    async function pollDeployment() {
+        const el = document.getElementById('deployment-status');
+        try {
+            const d = await fetch('/api/v0/telemetry/deployment').then(r => r.ok ? r.json() : Promise.reject(r.status));
+            el.textContent = `Deployment: ${d.environment} - ${d.lumberjacks_version}`;
+        } catch (_) { el.textContent = 'Deployment: unavailable'; }
+    }
+    pollDeployment();
+    setInterval(pollDeployment, 5000);
+    setInterval(pollGateway, 5000);
+</script>
+</body>
+</html>

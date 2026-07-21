@@ -1,0 +1,52 @@
+[gd_scene load_steps=11 format=3 uid="uid://breplaymain00"]
+
+[ext_resource type="PackedScene" path="res://scenes/world.tscn" id="1_world"]
+[ext_resource type="Script" path="res://scripts/Replay/ReplayLoader.cs" id="2_loader"]
+[ext_resource type="Script" path="res://scripts/Replay/DebugHud.cs" id="3_hud"]
+[ext_resource type="Script" path="res://scripts/Replay/FreeCamController.cs" id="4_cam"]
+[ext_resource type="Script" path="res://scripts/Replay/HighlightRing.cs" id="5_ring"]
+[ext_resource type="Script" path="res://scripts/Replay/SelectionInput.cs" id="6_selinput"]
+[ext_resource type="Script" path="res://scripts/Replay/ScrubberHud.cs" id="7_scrub"]
+[ext_resource type="Script" path="res://scripts/Replay/HoverTooltip.cs" id="8_tip"]
+[ext_resource type="Script" path="res://scripts/Replay/ProfileCard.cs" id="9_card"]
+
+[sub_resource type="StandardMaterial3D" id="ReplayFloor"]
+albedo_color = Color(0.08, 0.10, 0.14, 1)
+metallic = 0.0
+roughness = 0.85
+
+[node name="ReplayMain" type="Node3D"]
+
+[node name="World" parent="." instance=ExtResource("1_world")]
+
+[node name="Ground" parent="World" index="0"]
+material_override = SubResource("ReplayFloor")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 50, 30)
+fov = 50.0
+current = true
+script = ExtResource("4_cam")
+
+[node name="ReplayLoader" type="Node" parent="."]
+script = ExtResource("2_loader")
+ReplayPath = "D:/work/RaidUI/.claude/worktrees/silly-bouman-0d0c0f/out/pulls/728a8368-d572-5818-9ecd-e7b0391e6404.replay.json"
+YardToMeter = 1.0
+
+[node name="HighlightRing" type="Node3D" parent="."]
+script = ExtResource("5_ring")
+
+[node name="SelectionInput" type="Node" parent="."]
+script = ExtResource("6_selinput")
+
+[node name="DebugHud" type="CanvasLayer" parent="."]
+script = ExtResource("3_hud")
+
+[node name="ScrubberHud" type="CanvasLayer" parent="."]
+script = ExtResource("7_scrub")
+
+[node name="HoverTooltip" type="CanvasLayer" parent="."]
+script = ExtResource("8_tip")
+
+[node name="ProfileCard" type="CanvasLayer" parent="."]
+script = ExtResource("9_card")

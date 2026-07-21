@@ -1,0 +1,116 @@
+[gd_scene load_steps=6 format=3 uid="uid://world_scene"]
+
+[ext_resource type="Script" path="res://scripts/Core/World.cs" id="1_world"]
+[ext_resource type="Script" path="res://scripts/Player/StructurePlacer.cs" id="2_placer"]
+[ext_resource type="Script" path="res://scripts/UI/HUD.cs" id="3_hud"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_1"]
+size = Vector2(1000, 1000)
+
+[sub_resource type="StandardMaterial3D" id="GroundMat"]
+albedo_color = Color(0.25, 0.4, 0.15, 1)
+
+[node name="World" type="Node3D"]
+script = ExtResource("1_world")
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_1")
+surface_material_override/0 = SubResource("GroundMat")
+
+[node name="GridLines" type="Node3D" parent="."]
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 20, 0)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = null
+
+[node name="StructurePlacer" type="Node3D" parent="."]
+script = ExtResource("2_placer")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("3_hud")
+
+[node name="TopLeft" type="VBoxContainer" parent="HUD"]
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 300.0
+offset_bottom = 60.0
+
+[node name="StatusDot" type="ColorRect" parent="HUD/TopLeft"]
+custom_minimum_size = Vector2(12, 12)
+layout_mode = 2
+color = Color(1, 0, 0, 1)
+
+[node name="InfoLabel" type="Label" parent="HUD/TopLeft"]
+layout_mode = 2
+text = "Players: 0 | Tick: 0"
+
+[node name="BottomLeft" type="VBoxContainer" parent="HUD"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -40.0
+offset_right = 300.0
+offset_bottom = -10.0
+grow_vertical = 0
+
+[node name="PositionLabel" type="Label" parent="HUD/BottomLeft"]
+layout_mode = 2
+text = "Pos: 0.0, 0.0, 0.0"
+
+[node name="TopRight" type="VBoxContainer" parent="HUD"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 40.0
+grow_horizontal = 0
+
+[node name="PingLabel" type="Label" parent="HUD/TopRight"]
+layout_mode = 2
+text = "Ping: -- ms"
+horizontal_alignment = 2
+
+[node name="Center" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.3
+anchor_right = 0.5
+anchor_bottom = 0.3
+offset_left = -200.0
+offset_right = 200.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ErrorLabel" type="Label" parent="HUD/Center"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+
+[node name="BottomCenter" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -40.0
+offset_right = 200.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="BuildLabel" type="Label" parent="HUD/BottomCenter"]
+layout_mode = 2
+text = "[B] Build Mode"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)

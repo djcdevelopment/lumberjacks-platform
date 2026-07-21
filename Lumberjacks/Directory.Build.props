@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <PathMap Condition="'$(PathMap)' == ''">$(MSBuildThisFileDirectory)=C:\src\Lumberjacks\</PathMap>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,56 @@
+# Development compose — uses host Postgres (already running on 5433)
+# Usage: docker compose -f infra/docker/docker-compose.dev.yml up --build
+
+services:
+  gateway:
+    build:
+      context: ../..
+      target: gateway
+    ports:
+      - "4000:4000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      Urls: "http://+:4000"
+      ConnectionStrings__GameDb: "Host=host.docker.internal;Port=5433;Database=game;Username=game;Password=game"
+      ServiceUrls__EventLog: "http://eventlog:4002"
+      ServiceUrls__Progression: "http://progression:4003"
+
+  eventlog:
+    build:
+      context: ../..
+      target: eventlog
+    ports:
+      - "4002:4002"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      Urls: "http://+:4002"
+      ConnectionStrings__GameDb: "Host=host.docker.internal;Port=5433;Database=game;Username=game;Password=game"
+
+  progression:
+    build:
+      context: ../..
+      target: progression
+    ports:
+      - "4003:4003"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      Urls: "http://+:4003"
+      ConnectionStrings__GameDb: "Host=host.docker.internal;Port=5433;Database=game;Username=game;Password=game"
+
+  operatorapi:
+    build:
+      context: ../..
+      target: operatorapi
+    ports:
+      - "4004:4004"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      Urls: "http://+:4004"
+      ConnectionStrings__GameDb: "Host=host.docker.internal;Port=5433;Database=game;Username=game;Password=game"
+      ServiceUrls__Gateway: "http://gateway:4000"
+      ServiceUrls__EventLog: "http://eventlog:4002"
+      ServiceUrls__Progression: "http://progression:4003"

@@ -1,0 +1,68 @@
+# Gate 1 override for the single-VM Google Cloud parity experiment.
+# Requires Docker Compose 2.24.4 or later for !override and !reset.
+x-telemetry: &telemetry
+  GOOGLE_CLOUD_PROJECT: "${GOOGLE_CLOUD_PROJECT:?GOOGLE_CLOUD_PROJECT must be set}"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://host.docker.internal:4317"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+  OTEL_METRIC_EXPORT_INTERVAL: "10000"
+  OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=gcp-stage1,service.namespace=lumberjacks"
+  OTEL_SERVICE_VERSION: "${LUMBERJACKS_VERSION:-dev}"
+  OTEL_TRACES_SAMPLER: "parentbased_traceidratio"
+  OTEL_TRACES_SAMPLER_ARG: "1.0"
+
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:5433:5432"
+    volumes: !override
+      - /mnt/lumberjacks/postgres:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+
+  gateway:
+    ports: !override
+      - "4000:4000"
+      - "4005:4005/udp"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Republishes /roadmap by copying the generated asset into the host directory — no image
+    # rebuild, no restart. Mount the directory, not the file: a bind-mounted file pins an
+    # inode, so a replacing copy would never be seen. An empty mount falls back to the
+    # copy baked into the image.
+    volumes:
+      - /mnt/lumberjacks/roadmap:/srv/roadmap:ro
+    environment:
+      <<: *telemetry
+      OTEL_SERVICE_NAME: lumberjacks-gateway
+      LUMBERJACKS_ROADMAP_HTML: /srv/roadmap/roadmap.html
+
+  eventlog:
+    ports: !override
+      - "127.0.0.1:4002:4002"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      <<: *telemetry
+      OTEL_SERVICE_NAME: lumberjacks-eventlog
+
+  progression:
+    ports: !override
+      - "127.0.0.1:4003:4003"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      <<: *telemetry
+      OTEL_SERVICE_NAME: lumberjacks-progression
+
+  operatorapi:
+    ports: !override
+      - "127.0.0.1:4004:4004"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      <<: *telemetry
+      OTEL_SERVICE_NAME: lumberjacks-operatorapi

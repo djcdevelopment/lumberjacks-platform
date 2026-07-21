@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- The mod release this image admits (M1 risk 9). Baked into the assembly at build so the
+       expected value travels WITH the artifact, rather than being typed at an operator by an
+       environment file or, worse, a runtime /config POST - both of which are second sources of
+       truth that can disagree with what actually shipped, and whose failure mode is the gate
+       calling an incompatible release compatible.
+
+       Set by the release cut, from the same id the manifest records:
+         dotnet build -p:LumberjacksExpectedModRelease=m1-clean-20260717-r2
+       "dev" is an uncut local build and disables the gate, because a build with nothing to
+       compare against must not reject every join and teach people to leave the flag off. -->
+  <PropertyGroup>
+    <LumberjacksExpectedModRelease Condition="'$(LumberjacksExpectedModRelease)' == ''">dev</LumberjacksExpectedModRelease>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="LumberjacksExpectedModRelease" Value="$(LumberjacksExpectedModRelease)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Game.Contracts\Game.Contracts.csproj" />
+    <ProjectReference Include="..\Game.Simulation\Game.Simulation.csproj" />
+    <ProjectReference Include="..\Game.ServiceDefaults\Game.ServiceDefaults.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Community view (GET /community), living roadmap (GET /roadmap), and G3/G4/G5 siblings
+       (GET /networksense, /events, /testing): self-contained HTML files, served verbatim from
+       disk at startup — not under wwwroot (no static-file middleware needed for a handful of
+       files) so each needs an explicit Content item to travel through `dotnet publish`. -->
+  <ItemGroup>
+    <Content Include="Community/community.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Community/roadmap.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Community/networksense.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Community/events.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Community/testing.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

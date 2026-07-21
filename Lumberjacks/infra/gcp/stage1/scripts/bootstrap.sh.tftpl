@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec > >(tee -a /var/log/lumberjacks-bootstrap.log) 2>&1
+
+DATA_DEVICE="/dev/disk/by-id/google-lumberjacks-data"
+MOUNT_POINT="/mnt/lumberjacks"
+
+for attempt in $(seq 1 60); do
+  if [[ -b "$DATA_DEVICE" ]]; then
+    break
+  fi
+  sleep 1
+done
+
+if [[ ! -b "$DATA_DEVICE" ]]; then
+  echo "Persistent data disk did not appear at $DATA_DEVICE" >&2
+  exit 1
+fi
+
+if ! blkid "$DATA_DEVICE" >/dev/null 2>&1; then
+  mkfs.ext4 -m 0 -F "$DATA_DEVICE"
+fi
+
+mkdir -p "$MOUNT_POINT"
+DATA_UUID="$(blkid -s UUID -o value "$DATA_DEVICE")"
+if ! grep -q "UUID=$DATA_UUID" /etc/fstab; then
+  echo "UUID=$DATA_UUID $MOUNT_POINT ext4 defaults,nofail 0 2" >> /etc/fstab
+fi
+mount -a
+mkdir -p "$MOUNT_POINT/postgres"
+
+if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git jq
+
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
+
+  . /etc/os-release
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" > /etc/apt/sources.list.d/docker.list
+
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+fi
+
+systemctl enable --now docker
+mkdir -p /opt/lumberjacks
+
+if ! dpkg-query --show google-cloud-ops-agent >/dev/null 2>&1; then
+  curl -fsSL https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh \
+    -o /tmp/add-google-cloud-ops-agent-repo.sh
+  bash /tmp/add-google-cloud-ops-agent-repo.sh --also-install
+fi
+
+install -d -m 0755 /etc/google-cloud-ops-agent
+cat > /etc/google-cloud-ops-agent/config.yaml <<'OPS_AGENT_CONFIG'
+${ops_agent_config}
+OPS_AGENT_CONFIG
+
+systemctl enable google-cloud-ops-agent
+systemctl restart google-cloud-ops-agent
+
+echo "Lumberjacks Stage 1 bootstrap complete"

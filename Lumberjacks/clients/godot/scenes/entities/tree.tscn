@@ -1,0 +1,58 @@
+[gd_scene format=3 uid="uid://c6y7v8xax0y1"]
+
+[ext_resource type="Script" path="res://scripts/Entities/TreeEntity.cs" id="1_script"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_trunk"]
+top_radius = 0.2
+bottom_radius = 0.3
+height = 4.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_trunk"]
+albedo_color = Color(0.4, 0.26, 0.13, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_canopy"]
+radius = 1.5
+height = 3.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_canopy"]
+albedo_color = Color(0.13, 0.4, 0.13, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_stump"]
+top_radius = 0.3
+bottom_radius = 0.35
+height = 0.4
+
+[node name="TreeEntity" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Trunk" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+mesh = SubResource("CylinderMesh_trunk")
+surface_material_override/0 = SubResource("StandardMaterial3D_trunk")
+
+[node name="Canopy" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.2, 0)
+mesh = SubResource("SphereMesh_canopy")
+surface_material_override/0 = SubResource("StandardMaterial3D_canopy")
+
+[node name="Canopy2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0.6, 3.8, 0.4)
+mesh = SubResource("SphereMesh_canopy")
+surface_material_override/0 = SubResource("StandardMaterial3D_canopy")
+
+[node name="Canopy3" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, -0.5, 4.8, -0.3)
+mesh = SubResource("SphereMesh_canopy")
+surface_material_override/0 = SubResource("StandardMaterial3D_canopy")
+
+[node name="Stump" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+visible = false
+mesh = SubResource("CylinderMesh_stump")
+surface_material_override/0 = SubResource("StandardMaterial3D_trunk")
+
+[node name="Sapling" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0.4, 0)
+visible = false
+mesh = SubResource("CylinderMesh_trunk")
+surface_material_override/0 = SubResource("StandardMaterial3D_canopy")

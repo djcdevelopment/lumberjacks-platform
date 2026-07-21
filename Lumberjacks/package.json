@@ -1,0 +1,40 @@
+{
+  "name": "community-survival-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Monorepo scaffold for the community-operated survival platform.",
+  "workspaces": [
+    "clients/*"
+  ],
+  "scripts": {
+    "dev": "concurrently --names gateway,events,progress,op-api,admin -c blue,yellow,magenta,cyan,white \"dotnet run --project src/Game.Gateway\" \"dotnet run --project src/Game.EventLog\" \"dotnet run --project src/Game.Progression\" \"dotnet run --project src/Game.OperatorApi\" \"npm run dev -w @game/admin-web\"",
+    "dev:admin": "npm run dev -w @game/admin-web",
+    "dev:infra": "docker compose -f infra/docker/docker-compose.yml up -d postgres",
+    "dev:stop-infra": "docker compose -f infra/docker/docker-compose.yml down",
+    "dev:docker": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "dev:stop-docker": "docker compose -f infra/docker/docker-compose.yml down",
+    "build:dotnet": "dotnet build",
+    "test:dotnet": "dotnet test",
+    "lint": "eslint . --ext .ts,.tsx --ignore-path .gitignore",
+    "format": "prettier --write \"clients/**/*.{ts,tsx,json,md}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"clients/**/*.{ts,tsx,json,md}\" --ignore-path .gitignore",
+    "roadmap:note": "node scripts/roadmap.mjs note",
+    "roadmap:render": "node scripts/roadmap.mjs render",
+    "roadmap:check": "node scripts/roadmap.mjs check",
+    "test:load": "node scripts/load-test-dual-channel.js",
+    "test:load:50": "node scripts/load-test-dual-channel.js ws://localhost:4000 50 30",
+    "test:load:100": "node scripts/load-test-dual-channel.js ws://localhost:4000 100 60"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "concurrently": "^8.2.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0",
+    "ws": "^8.20.0"
+  }
+}

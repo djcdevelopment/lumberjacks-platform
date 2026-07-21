@@ -1,0 +1,53 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/Entities/TreeEntity.cs" id="1"]
+
+[sub_resource type="CylinderMesh" id="trunk_mesh"]
+top_radius = 0.2
+bottom_radius = 0.3
+height = 4.0
+
+[sub_resource type="StandardMaterial3D" id="trunk_mat"]
+albedo_color = Color(0.4, 0.26, 0.13, 1)
+
+[sub_resource type="SphereMesh" id="canopy_mesh"]
+radius = 1.5
+height = 3.0
+
+[sub_resource type="StandardMaterial3D" id="canopy_mat"]
+albedo_color = Color(0.13, 0.4, 0.13, 1)
+
+[node name="Tree" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Trunk" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+mesh = SubResource("trunk_mesh")
+surface_material_override/0 = SubResource("trunk_mat")
+
+[node name="Canopy" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.2, 0)
+mesh = SubResource("canopy_mesh")
+surface_material_override/0 = SubResource("canopy_mat")
+
+[node name="Canopy2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0.6, 3.8, 0.4)
+mesh = SubResource("canopy_mesh")
+surface_material_override/0 = SubResource("canopy_mat")
+
+[node name="Canopy3" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, -0.5, 4.8, -0.3)
+mesh = SubResource("canopy_mesh")
+surface_material_override/0 = SubResource("canopy_mat")
+
+[node name="Stump" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+visible = false
+mesh = SubResource("trunk_mesh")
+surface_material_override/0 = SubResource("trunk_mat")
+
+[node name="Sapling" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0.4, 0)
+visible = false
+mesh = SubResource("trunk_mesh")
+surface_material_override/0 = SubResource("canopy_mat")

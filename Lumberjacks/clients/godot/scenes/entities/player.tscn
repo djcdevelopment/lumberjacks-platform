@@ -1,0 +1,58 @@
+[gd_scene load_steps=8 format=3 uid="uid://player_entity"]
+
+[ext_resource type="Script" path="res://scripts/Entities/RemoteEntity.cs" id="1_remote"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_1"]
+radius = 0.35
+height = 1.8
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_axe_handle"]
+top_radius = 0.03
+bottom_radius = 0.03
+height = 0.8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wood"]
+albedo_color = Color(0.39, 0.26, 0.13, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_axe_blade"]
+size = Vector3(0.05, 0.3, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_metal"]
+albedo_color = Color(0.6, 0.6, 0.6, 1)
+metallic = 1.0
+roughness = 0.3
+
+[node name="Player" type="Node3D"]
+script = ExtResource("1_remote")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("CapsuleMesh_1")
+
+[node name="Nametag" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+pixel_size = 0.01
+text = "Player"
+font_size = 32
+outline_size = 8
+modulate = Color(1, 1, 1, 0.9)
+
+[node name="CameraPivot" type="Node3D" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot"]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 8, 12)
+current = false
+fov = 50.0
+
+[node name="Axe" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1, -0.5)
+
+[node name="Handle" type="MeshInstance3D" parent="Axe"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
+mesh = SubResource("CylinderMesh_axe_handle")
+surface_material_override/0 = SubResource("StandardMaterial3D_wood")
+
+[node name="Blade" type="MeshInstance3D" parent="Axe"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, -0.15)
+mesh = SubResource("BoxMesh_axe_blade")
+surface_material_override/0 = SubResource("StandardMaterial3D_metal")

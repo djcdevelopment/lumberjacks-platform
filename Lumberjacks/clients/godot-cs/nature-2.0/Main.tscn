@@ -1,0 +1,91 @@
+[gd_scene load_steps=3 format=3 uid="uid://c51qsd381cvjh"]
+
+[ext_resource type="Script" path="res://Main.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/UI/ConnectScreen.cs" id="2"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1")
+
+[node name="ConnectScreen" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("2")
+
+[node name="BG" type="ColorRect" parent="ConnectScreen"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.12, 0.18, 1)
+
+[node name="VBox" type="VBoxContainer" parent="ConnectScreen"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -100.0
+offset_right = 200.0
+offset_bottom = 100.0
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="ConnectScreen/VBox"]
+layout_mode = 2
+text = "Nature 2.0"
+horizontal_alignment = 1
+
+[node name="URLInput" type="LineEdit" parent="ConnectScreen/VBox"]
+layout_mode = 2
+placeholder_text = "ws://localhost:4000"
+alignment = 1
+
+[node name="ConnectButton" type="Button" parent="ConnectScreen/VBox"]
+layout_mode = 2
+text = "Connect"
+
+[node name="StatusLabel" type="Label" parent="ConnectScreen/VBox"]
+layout_mode = 2
+text = "Enter server address"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ReconnectOverlay" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="BG" type="ColorRect" parent="ReconnectOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.7)
+
+[node name="VBox" type="VBoxContainer" parent="ReconnectOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -50.0
+offset_right = 150.0
+offset_bottom = 50.0
+theme_override_constants/separation = 12
+
+[node name="Label" type="Label" parent="ReconnectOverlay/VBox"]
+layout_mode = 2
+text = "Connection lost"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+
+[node name="BackButton" type="Button" parent="ReconnectOverlay/VBox"]
+layout_mode = 2
+text = "Back to Menu"

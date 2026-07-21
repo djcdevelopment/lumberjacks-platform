@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+<title>Lumberjacks — Gameplay Event Telemetry</title>
+<style>
+  :root {
+    --bg-base: rgba(15,20,25,0.85);
+    --bg-panel: rgba(255,255,255,0.05);
+    --bg-panel-hover: rgba(255,255,255,0.08);
+    --border: rgba(255,255,255,0.1);
+    --text-main: #f3f4f6;
+    --text-muted: #9ca3af;
+    --text-dark: #1f2937;
+    --color-green: #4ade80;
+    --color-yellow: #facc15;
+    --color-red: #f87171;
+    --color-blue: #60a5fa;
+    --color-purple: #c084fc;
+    --color-orange: #fb923c;
+    --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --border-radius: 8px;
+
+    /* Category specific colors for subtle accents */
+    --cat-build: #2dd4bf;
+    --cat-inventory: #facc15;
+    --cat-world: #4ade80;
+    --cat-progression: #c084fc;
+    --cat-operational: #9ca3af;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: transparent;
+    color: var(--text-main);
+    font-family: var(--font-family);
+    font-size: 13px;
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .dashboard-container {
+    width: 100%;
+    max-width: 1200px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-base);
+    border: 1px solid var(--border);
+    /* Inside dashboard shell, borders might be redundant, but good for self-containment */
+  }
+
+  /* Header */
+  header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-panel);
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+  }
+
+  /* Delay indicator — the feed is delayed + anonymized, deliberately NOT a raw "LIVE" claim. */
+  .delay-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--color-blue);
+    background: rgba(96, 165, 250, 0.1);
+    padding: 4px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    white-space: nowrap;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--color-blue);
+    border-radius: 50%;
+    animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.4); }
+  }
+
+  /* Stats Strip */
+  .stats-strip {
+    display: flex;
+    gap: 20px;
+    padding: 12px 20px;
+    background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .stat-value {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-value.warn { color: var(--color-yellow); }
+
+  /* Controls / Filters */
+  .controls {
+    padding: 12px 20px;
+    display: flex;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .filter-group label {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  select {
+    background-color: var(--bg-panel);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 14px;
+    padding-right: 28px;
+  }
+
+  select:focus { border-color: var(--text-muted); }
+  select option { background-color: #1f2937; color: #fff; }
+
+  /* Error Banner */
+  .error-banner {
+    display: none; /* hidden by default */
+    background-color: rgba(248, 113, 113, 0.1);
+    color: var(--color-red);
+    padding: 10px 20px;
+    text-align: center;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(248, 113, 113, 0.3);
+    flex-shrink: 0;
+  }
+  .error-banner.active { display: block; }
+
+  /* Feed Area */
+  .feed-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    position: relative;
+    background: rgba(0,0,0,0.1);
+  }
+
+  /* Custom Scrollbar */
+  .feed-container::-webkit-scrollbar { width: 8px; }
+  .feed-container::-webkit-scrollbar-track { background: transparent; }
+  .feed-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+  .feed-container::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+  .event-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .event-row {
+    display: grid;
+    grid-template-columns: 28px minmax(150px, 1.5fr) minmax(100px, 1fr) minmax(100px, 1fr) 80px auto;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background-color: transparent;
+    transition: background-color 0.15s;
+  }
+
+  .event-row:hover { background-color: var(--bg-panel-hover); }
+
+  .ev-icon {
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 28px;
+    height: 28px;
+    background: var(--bg-panel);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .ev-primary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+  }
+
+  .ev-label {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ev-detail {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ev-region {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ev-time {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    cursor: help;
+  }
+
+  /* Provenance Pills */
+  .prov-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .prov-observed { background: rgba(74, 222, 128, 0.15); color: var(--color-green); border: 1px solid rgba(74, 222, 128, 0.2); }
+  .prov-reconstructed { background: rgba(96, 165, 250, 0.15); color: var(--color-blue); border: 1px solid rgba(96, 165, 250, 0.2); }
+  .prov-verified { background: rgba(192, 132, 252, 0.15); color: var(--color-purple); border: 1px solid rgba(192, 132, 252, 0.2); }
+  .prov-community_awarded { background: rgba(251, 146, 60, 0.15); color: var(--color-orange); border: 1px solid rgba(251, 146, 60, 0.2); }
+
+  /* Empty State */
+  .empty-state {
+    display: none;
+    height: 100%;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-muted);
+    padding: 40px 20px;
+    text-align: center;
+  }
+  .empty-state.active { display: flex; }
+
+  .empty-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.5; }
+
+  /* Footer */
+  footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: var(--text-muted);
+    font-size: 11px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 800px) {
+    .event-row {
+      grid-template-columns: 28px 1fr 80px auto;
+      gap: 12px;
+    }
+    .ev-region { display: none; } /* Hide region on smaller screens to save space */
+  }
+
+  @media (max-width: 500px) {
+    .stats-strip { flex-wrap: wrap; }
+    .event-row {
+      grid-template-columns: 28px 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 8px;
+    }
+    .ev-time { grid-column: 2 / 4; grid-row: 2; text-align: left; }
+    .ev-prov-container { grid-column: 3; grid-row: 1; }
+  }
+</style>
+</head>
+<body>
+
+<!--
+  Gameplay Event Telemetry (G4). This page is a THIN CLIENT of the real, DB-less endpoint
+  GET /api/v0/telemetry/events (in-process ring buffer). There is NO sample/fallback data:
+  if the fetch fails the page shows the error banner and whatever real rows it last held —
+  it never fabricates events. The feed is delayed (server-side exposure delay) and anonymized
+  (no player id / name / position ever leaves the server), so the header badge reflects the
+  delay rather than claiming "LIVE". Only 4 of the 18 vocabulary types have live producers
+  today (structure_placed, item_picked_up, item_stored, interest_subscription_changed); the
+  dictionary carries all 18 for forward-compat, so a sparse feed is correct, not a bug.
+-->
+
+<div class="dashboard-container">
+  <header>
+    <h1>Gameplay Event Telemetry</h1>
+    <div id="deployment-status" style="font-size:.78rem;color:var(--text-muted);margin-top:4px">Deployment: loading...</div>
+    <div class="delay-indicator" id="delay-indicator" title="This feed is delayed and anonymized — not a raw real-time stream.">
+      <div class="live-dot"></div>
+      <span id="delay-label">DELAYED</span>
+    </div>
+  </header>
+
+  <div class="stats-strip">
+    <div class="stat-item">
+      <span class="stat-label">In Buffer</span>
+      <span class="stat-value" id="stat-count">-</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Buffer Capacity</span>
+      <span class="stat-value" id="stat-capacity">-</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Dropped (Since Start)</span>
+      <span class="stat-value" id="stat-dropped">-</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Last Updated</span>
+      <span class="stat-value" id="stat-updated">-</span>
+    </div>
+  </div>
+
+  <div class="error-banner" id="error-banner">
+    ⚠️ Telemetry endpoint unreachable. Retrying...
+  </div>
+
+  <div class="controls">
+    <div class="filter-group">
+      <label for="filter-category">Category</label>
+      <select id="filter-category">
+        <option value="all">All Categories</option>
+        <option value="Build">Build</option>
+        <option value="Inventory">Inventory</option>
+        <option value="World">World</option>
+        <option value="Progression">Progression</option>
+        <option value="Operational">Operational</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filter-provenance">Provenance</label>
+      <select id="filter-provenance">
+        <option value="all">All Tiers</option>
+        <option value="observed">Observed</option>
+        <option value="reconstructed">Reconstructed</option>
+        <option value="verified">Verified</option>
+        <option value="community_awarded">Community Awarded</option>
+      </select>
+    </div>
+  </div>
+
+  <main class="feed-container" aria-live="polite" aria-atomic="false">
+    <ul class="event-list" id="event-list"></ul>
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">📡</div>
+      <div id="empty-text">No gameplay events captured yet.</div>
+    </div>
+  </main>
+
+  <footer id="footer-note">
+    API v0 (Unstable) · Feed is anonymized — no player identities or positions are ever exposed.
+  </footer>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // --- Configuration & Mappings ---
+  const POLL_INTERVAL = 2000;
+  const ENDPOINT = '/api/v0/telemetry/events';
+
+  const EVENT_DICT = {
+    // Build
+    'structure_placed': { label: 'Structure Placed', icon: '🔨', cat: 'Build', color: 'var(--cat-build)' },
+    'structure_removed': { label: 'Structure Removed', icon: '🧨', cat: 'Build', color: 'var(--cat-build)' },
+    // Inventory
+    'item_picked_up': { label: 'Item Picked Up', icon: '🎒', cat: 'Inventory', color: 'var(--cat-inventory)' },
+    'item_stored': { label: 'Item Stored', icon: '📦', cat: 'Inventory', color: 'var(--cat-inventory)' },
+    'container_opened': { label: 'Container Opened', icon: '🔓', cat: 'Inventory', color: 'var(--cat-inventory)' },
+    // World
+    'road_segment_maintained': { label: 'Road Maintained', icon: '🚧', cat: 'World', color: 'var(--cat-world)' },
+    'settlement_signature_updated': { label: 'Settlement Updated', icon: '🏘️', cat: 'World', color: 'var(--cat-world)' },
+    'player_discovered_landmark': { label: 'Landmark Discovered', icon: '🗺️', cat: 'World', color: 'var(--cat-world)' },
+    'player_followed_road_segment': { label: 'Road Followed', icon: '🥾', cat: 'World', color: 'var(--cat-world)' },
+    'player_entered_region': { label: 'Region Entered', icon: '📍', cat: 'World', color: 'var(--cat-world)' },
+    // Progression
+    'challenge_started': { label: 'Challenge Started', icon: '🎯', cat: 'Progression', color: 'var(--cat-progression)' },
+    'challenge_completed': { label: 'Challenge Completed', icon: '🏆', cat: 'Progression', color: 'var(--cat-progression)' },
+    'guild_objective_progressed': { label: 'Guild Objective Progress', icon: '📈', cat: 'Progression', color: 'var(--cat-progression)' },
+    'guild_objective_completed': { label: 'Guild Objective Completed', icon: '✨', cat: 'Progression', color: 'var(--cat-progression)' },
+    'reward_granted': { label: 'Reward Granted', icon: '🎁', cat: 'Progression', color: 'var(--cat-progression)' },
+    // Operational
+    'region_activated': { label: 'Region Activated', icon: '🟢', cat: 'Operational', color: 'var(--cat-operational)' },
+    'region_deactivated': { label: 'Region Deactivated', icon: '🔴', cat: 'Operational', color: 'var(--cat-operational)' },
+    'interest_subscription_changed': { label: 'Subscription Changed', icon: '📡', cat: 'Operational', color: 'var(--cat-operational)' }
+  };
+
+  const PROV_DICT = {
+    'observed': 'Observed',
+    'reconstructed': 'Reconstructed',
+    'verified': 'Verified',
+    'community_awarded': 'Awarded'
+  };
+
+  // --- State ---
+  let rawEvents = [];
+  let filterCat = 'all';
+  let filterProv = 'all';
+  let hasLoadedOnce = false;   // distinguishes "no data yet" from a genuine empty feed
+
+  // --- DOM Elements ---
+  const elList = document.getElementById('event-list');
+  const elEmpty = document.getElementById('empty-state');
+  const elEmptyText = document.getElementById('empty-text');
+  const elError = document.getElementById('error-banner');
+
+  const elStatCount = document.getElementById('stat-count');
+  const elStatCap = document.getElementById('stat-capacity');
+  const elStatDrop = document.getElementById('stat-dropped');
+  const elStatUpdate = document.getElementById('stat-updated');
+
+  const elDelayLabel = document.getElementById('delay-label');
+  const elFooter = document.getElementById('footer-note');
+
+  const selCat = document.getElementById('filter-category');
+  const selProv = document.getElementById('filter-provenance');
+
+  // --- Utilities ---
+  function escapeHTML(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/[&<>'"]/g, tag => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag] || tag));
+  }
+
+  function getRelativeTime(isoString) {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return 'unknown';
+    const seconds = Math.floor((new Date() - d) / 1000);
+
+    if (seconds < 0) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }
+
+  function formatAbsoluteTime(isoString) {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString();
+  }
+
+  // Reflect the server-side exposure delay in the badge + footer honesty note. The feed is
+  // never claimed as raw "LIVE" while a delay is in effect; delay===0 (delay disabled, e.g.
+  // local testing) legitimately reads LIVE; an absent value falls back to a neutral "DELAYED".
+  function updateDelayUI(delaySeconds) {
+    if (typeof delaySeconds === 'number' && delaySeconds > 0) {
+      elDelayLabel.textContent = `RECENT · ${delaySeconds}s DELAY`;
+      elFooter.textContent = `API v0 (Unstable) · Feed is delayed ~${delaySeconds}s and anonymized — no player identities or positions are ever exposed.`;
+    } else if (delaySeconds === 0) {
+      elDelayLabel.textContent = 'LIVE · NO DELAY';
+      elFooter.textContent = 'API v0 (Unstable) · Feed is anonymized — no player identities or positions are ever exposed.';
+    } else {
+      elDelayLabel.textContent = 'DELAYED';
+      elFooter.textContent = 'API v0 (Unstable) · Feed is delayed and anonymized — no player identities or positions are ever exposed.';
+    }
+  }
+
+  // --- Core Logic ---
+  async function fetchTelemetry() {
+    try {
+      const res = await fetch(ENDPOINT);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const data = await res.json();
+
+      // Update data state (real events only — there is no fallback dataset).
+      rawEvents = Array.isArray(data.events) ? data.events : [];
+      hasLoadedOnce = true;
+
+      // Update stats
+      elStatCount.textContent = typeof data.count === 'number' ? data.count : rawEvents.length;
+      elStatCap.textContent = typeof data.capacity === 'number' ? data.capacity : '-';
+
+      const dropped = typeof data.dropped_since_start === 'number' ? data.dropped_since_start : 0;
+      elStatDrop.textContent = dropped;
+      if (dropped > 0) elStatDrop.classList.add('warn');
+      else elStatDrop.classList.remove('warn');
+
+      updateDelayUI(data.delay_seconds);
+
+      const now = new Date();
+      elStatUpdate.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+
+      elError.classList.remove('active');
+      render();
+    } catch (err) {
+      console.error('Telemetry fetch failed:', err);
+      elError.classList.add('active');
+      // Do NOT fabricate data on error: keep whatever real rows we last held (may be none).
+      // The banner communicates the failure; the feed never shows invented events.
+    }
+  }
+
+  function render() {
+    // Apply filters
+    const filtered = rawEvents.filter(ev => {
+      const meta = EVENT_DICT[ev.event_type] || {};
+      const catMatch = filterCat === 'all' || meta.cat === filterCat;
+      const provMatch = filterProv === 'all' || ev.provenance === filterProv;
+      return catMatch && provMatch;
+    });
+
+    // Handle Empty State — distinguish a genuinely empty feed from a filtered-empty view.
+    if (filtered.length === 0) {
+      elList.innerHTML = '';
+      if (rawEvents.length > 0) {
+        elEmptyText.textContent = 'No events match the current filters.';
+      } else if (hasLoadedOnce) {
+        elEmptyText.textContent = 'No gameplay events captured yet.';
+      } else {
+        elEmptyText.textContent = 'Loading gameplay events…';
+      }
+      elEmpty.classList.add('active');
+      return;
+    }
+    elEmpty.classList.remove('active');
+
+    // Build DOM (using strings mapped safely)
+    let html = '';
+    for (let i = 0; i < filtered.length; i++) {
+      const ev = filtered[i];
+      const typeStr = ev.event_type || 'unknown';
+      const meta = EVENT_DICT[typeStr] || { label: typeStr, icon: '❔', cat: 'Unknown', color: 'var(--text-muted)' };
+
+      const safeLabel = escapeHTML(meta.label);
+      const safeDetail = ev.detail ? escapeHTML(ev.detail) : '';
+      const safeRegion = ev.region_id ? escapeHTML(ev.region_id) : '-';
+      const safeTimeRel = getRelativeTime(ev.occurred_at);
+      const safeTimeAbs = formatAbsoluteTime(ev.occurred_at);
+
+      const provRaw = ev.provenance || 'unknown';
+      const provLabel = PROV_DICT[provRaw] || provRaw;
+      const provClass = `prov-${provRaw.replace(/[^a-z_]/g, '')}`;
+
+      html += `
+        <li class="event-row">
+          <div class="ev-icon" style="color: ${meta.color}" aria-hidden="true" title="Category: ${meta.cat}">${meta.icon}</div>
+          <div class="ev-primary">
+            <span class="ev-label">${safeLabel}</span>
+            ${safeDetail ? `<span class="ev-detail">${safeDetail}</span>` : ''}
+          </div>
+          <div class="ev-region" title="Region ID">${safeRegion}</div>
+          <div class="ev-time" title="${safeTimeAbs}">${safeTimeRel}</div>
+          <div class="ev-prov-container">
+            <span class="prov-pill ${provClass}">${escapeHTML(provLabel)}</span>
+          </div>
+        </li>
+      `;
+    }
+
+    elList.innerHTML = html;
+  }
+
+  // --- Event Listeners ---
+  selCat.addEventListener('change', (e) => {
+    filterCat = e.target.value;
+    render();
+  });
+
+  selProv.addEventListener('change', (e) => {
+    filterProv = e.target.value;
+    render();
+  });
+
+  // Keep relative times updated even if no new data arrives
+  setInterval(() => {
+    if (rawEvents.length > 0 && !elError.classList.contains('active')) {
+      render();
+    }
+  }, 10000);
+
+  // --- Init ---
+  // Initial (pre-fetch) render shows the calm loading/empty state — never sample rows.
+  render();
+  // Start polling
+  fetchTelemetry();
+  async function fetchDeployment() {
+    const el = document.getElementById('deployment-status');
+    try {
+      const d = await fetch('/api/v0/telemetry/deployment').then(r => r.ok ? r.json() : Promise.reject(r.status));
+      el.textContent = `Deployment: ${d.environment} - ${d.lumberjacks_version}`;
+    } catch (_) { el.textContent = 'Deployment: unavailable'; }
+  }
+  fetchDeployment();
+  setInterval(fetchDeployment, POLL_INTERVAL);
+  setInterval(fetchTelemetry, POLL_INTERVAL);
+
+})();
+</script>
+</body>
+</html>

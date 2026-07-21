@@ -1,0 +1,124 @@
+[gd_scene load_steps=4 format=3 uid="uid://main_scene"]
+
+[ext_resource type="Script" path="res://scripts/Core/Main.cs" id="1_main"]
+[ext_resource type="Script" path="res://scripts/UI/ConnectScreen.cs" id="2_connect"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="ConnectScreen" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_connect")
+
+[node name="Background" type="ColorRect" parent="ConnectScreen"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.15, 0.2, 1)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ConnectScreen"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -120.0
+offset_right = 200.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="ConnectScreen/VBoxContainer"]
+layout_mode = 2
+text = "Community Survival"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="ConnectScreen/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 8)
+
+[node name="URLInput" type="LineEdit" parent="ConnectScreen/VBoxContainer"]
+layout_mode = 2
+placeholder_text = "ws://localhost:4000"
+alignment = 1
+
+[node name="ConnectButton" type="Button" parent="ConnectScreen/VBoxContainer"]
+layout_mode = 2
+text = "Connect"
+
+[node name="StatusLabel" type="Label" parent="ConnectScreen/VBoxContainer"]
+layout_mode = 2
+text = "Enter server address and click Connect"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="HintLabel" type="Label" parent="ConnectScreen/VBoxContainer"]
+layout_mode = 2
+text = "Azure: wss://gateway.<env>.azurecontainerapps.io"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="ReconnectOverlay" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Background" type="ColorRect" parent="ReconnectOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0, 0.0, 0.0, 0.7)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ReconnectOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -60.0
+offset_right = 200.0
+offset_bottom = 60.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="ReconnectLabel" type="Label" parent="ReconnectOverlay/VBoxContainer"]
+layout_mode = 2
+text = "Connection lost"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="CountdownLabel" type="Label" parent="ReconnectOverlay/VBoxContainer"]
+layout_mode = 2
+text = "Reconnecting..."
+horizontal_alignment = 1
+
+[node name="BackButton" type="Button" parent="ReconnectOverlay/VBoxContainer"]
+layout_mode = 2
+text = "Back to Menu"
+
+[connection signal="connect_requested" from="ConnectScreen" to="." method="_on_connect_pressed"]

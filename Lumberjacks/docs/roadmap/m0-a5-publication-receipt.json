@@ -1,0 +1,55 @@
+{
+  "schema": "comfy-p7-publication-receipt/v1",
+  "release_id": "m0-clean-20260716-r2",
+  "status": "staged",
+  "staged_utc": "2026-07-16T10:40:06Z",
+  "closes_when": [
+    "A4 promotion-drill receipts pass (owner-scheduled GCP window)",
+    "Comfy revision below is pushed so the permalink resolves publicly (owner action)",
+    "roadmap golden_proof.publication flips from local_pending_m0 to published with the permalink"
+  ],
+  "publication": {
+    "repository": "Comfy",
+    "folder": "fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover",
+    "revision": "433f1cc33605561ae1287db9cd8f37125d795c5d",
+    "revision_note": "Local main commit; immutable once pushed. Adds byte-stability pinning on top of evidence commit e9f9fe3f787a013780aa54953df92a8952a467a4.",
+    "permalink_after_push": "https://github.com/djcdevelopment/comfy/blob/433f1cc33605561ae1287db9cd8f37125d795c5d/fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover/PUBLICATION.md",
+    "files": [
+      { "path": "PUBLICATION.md", "sha256": "ea7ddf95ec7a31057aaee3aed4753e89639995dcb0ab52655724f2068e152198", "role": "landing document binding evidence to the frozen release" },
+      { "path": "report.md", "sha256": "328196cf7c1bdf38fd2bdc9ece735a1dd0f551c261150fc65c22f1f11e7b0659", "role": "sanitized publication copy of the gold run report" },
+      { "path": "acceptance-snapshot.json", "sha256": "51cf67d3533b97c5eb26f7cf767c93aa061218ef5007dca1773e595e87070e26", "role": "byte-identical copy of the run acceptance snapshot" }
+    ]
+  },
+  "provenance": {
+    "gold_run": "20260716-011112-valheim-lumberjacks-authoritative-priority-cutover",
+    "raw_report_sha256": "cc9fa1ff3930d95108ac4df19bf699f33b176ad5e6e0fa1dcfbb43b4b7e3cbd9",
+    "redaction": "Deployment public IPv4 replaced with <gcp-public-ip> in report.md (5 occurrences); no other content changed.",
+    "acceptance_snapshot": "byte-identical to the raw original (same sha256)"
+  },
+  "byte_stability": {
+    "mechanism": "Comfy fieldlab/.gitattributes marks the hash-bound evidence set -text and the catalog was renormalized",
+    "reason": "autocrlf had normalized the committed catalog blobs to LF, so a fresh checkout or the GitHub raw view would not reproduce the A3-recorded hashes.",
+    "verified": "blob bytes == working-tree bytes == recorded sha256 for all six hash-bound files at the publication revision",
+    "affected_a3_hashes_now_blob_accurate": {
+      "fieldlab/runs/index.json": "3c22d6e049cab1ea1a1b3e75bf9050e1b7672dbe970ad19d3a367ba0e711dfae",
+      "fieldlab/runs/CATALOG.md": "1bbbcf284bca6ffe76d349f4e33d534abc9f497e3ebf4fb623ca1783cb54118e"
+    }
+  },
+  "secret_scan": {
+    "passes": [
+      "deterministic regex: SteamID64 (7656119 + 10 digits), credential-shaped key/token/password/bearer assignments, IPv4 literals, emails",
+      "independent semantic review (HEARTH-routed LLM) for Steam identity, credentials, network/personal identity, cloud resource identifiers"
+    ],
+    "scope": "published files at the publication revision",
+    "result": "clean"
+  },
+  "binding": {
+    "manifest": { "path": "docs/roadmap/m0-clean-build-candidate-r2.json", "sha256": "59835b0b0b7658b22cd2f07c37aa4c7ba4923e424953b228d886e1f7242a6520" },
+    "bundle_receipt": "docs/roadmap/m0-a3-release-bundle-receipt.json",
+    "catalog_gold_entry": "fieldlab/runs/index.json lists exactly one gold run: the run published here"
+  },
+  "limitations": [
+    "The revision is immutable only after it is pushed; if Comfy history is rewritten before push, this receipt must be re-recorded.",
+    "This receipt stages A5; it is not closing evidence until the A4 drill receipts pass and the permalink resolves publicly."
+  ]
+}

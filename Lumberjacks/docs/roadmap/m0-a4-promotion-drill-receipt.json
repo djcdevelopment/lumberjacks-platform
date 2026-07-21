@@ -1,0 +1,49 @@
+{
+  "schema": "comfy-p7-promotion-drill-receipt/v1",
+  "release_id": "m0-clean-20260716-r2",
+  "status": "passed",
+  "drill_utc": {
+    "window": "2026-07-16, owner-scheduled GCP mutation window, server confirmed empty",
+    "snapshot_archive_captured": "2026-07-16T12:11:00Z to 2026-07-16T12:38:00Z (valheim-server stopped)",
+    "snapshot_hashed": "2026-07-16T13:59:16Z",
+    "cold_start": "2026-07-16T14:02:43Z",
+    "rollback": "2026-07-16T14:04:51Z",
+    "restore": "2026-07-16T14:07:06Z"
+  },
+  "proves": [
+    "The manifest-tied release cold-starts on the P7 VM from prebuilt bundle artifacts with no VM-side source rebuild (docker load + compose image pin, --no-build).",
+    "Rollback to the historical validated runtime is artifact-only and verified by exact image ID and mod DLL SHA-256 at both runtime and fallback paths.",
+    "The candidate restores after rollback and is left running; every transition is health-checked and identity-verified fail-closed."
+  ],
+  "identities": {
+    "candidate_gateway_image": "sha256:141bd9e5a2ce8bd95f1bd93a9f123637cbc1cffcb0795594fae94e28d7fe86fb",
+    "candidate_mod_sha256": "94a3843ef8042adceaca6bc4d5c0c38c7c8dc5a1aa05b5f2a3019879840ba3a8",
+    "rollback_gateway_image": "sha256:358f5e11e35b54367a83d4e52ea3d47c0346e62a82ed357c2ff403eafafcd0a2",
+    "rollback_mod_sha256": "b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b"
+  },
+  "evidence": {
+    "repository": "Comfy",
+    "folder": "fieldlab/evidence/m0-a4-promotion-drill-20260716",
+    "revision": "e6a1402873c0ff221fa708e687d429b750b3d3b2",
+    "revision_note": "Local main commit; immutable once pushed. Sits above the staged A5 publication set (433f1cc) plus the drill-transport hardening and host-image commits (733eb3b, ecfaa04).",
+    "permalink_after_push": "https://github.com/djcdevelopment/comfy/blob/e6a1402873c0ff221fa708e687d429b750b3d3b2/fieldlab/evidence/m0-a4-promotion-drill-20260716/README.md",
+    "byte_stability": "folder pinned -text in fieldlab/.gitattributes; blob bytes == working-tree bytes == recorded sha256 for all six files at the evidence revision",
+    "files": [
+      { "path": "README.md", "sha256": "54f28e6ea3511556a75e4ff10ff3c4e321da4fee97b0b26fb66d0426e8155144", "role": "binding document: identities, execution record, live validation, receipt inventory" },
+      { "path": "drill-plan.json", "sha256": "00919582b022867abe62df4fdf3b38d2b051d087c5db52b9f85afdec1ed79a10", "role": "pre-flight plan: resolved identities, target, phases, preconditions" },
+      { "path": "snapshot-manifest.json", "sha256": "278ef1c873a3495df0b9a048311c88b28dc2241132dc2c85e2c9ecc6f8a81c34", "role": "pre-mutation world/config archive hashes (archives stay on the VM)" },
+      { "path": "cold-start-receipt.json", "sha256": "d850053cd7cd16e25de356395feef69aa0c1f0dbc62a656e6a9d04986e75b550", "role": "candidate cold start: image identity, health, mod hashes, no rebuild" },
+      { "path": "rollback-receipt.json", "sha256": "ab0bc51248af9ab72c31afbf68916be63305dfcca2b667dd9e237e01947d62b5", "role": "artifact-only rollback to historical runtime, verified" },
+      { "path": "restored-state-receipt.json", "sha256": "35cc57ad593b1fc717983e610d02b58e95d8f02cda463060b803fdba9941a060", "role": "candidate restored and left running, verified" }
+    ]
+  },
+  "execution_notes": [
+    "The drill resumed from a validated interrupted-run snapshot via -ResumeSnapshotRoot; the archive was captured with the server stopped and only the hash pass re-ran (details in the evidence README).",
+    "The drill script's remote transport was hardened mid-window after the driving workstation's IAP-tunneled ssh sessions failed to return output from completed remote transactions; remote state was verified untouched before each retry."
+  ],
+  "live_validation": "Owner joined the promoted server with a real Valheim client immediately post-restore: notably fast world load, no desync or errors; server logs showed the 9,155,582-ZDO world load cleanly with ComfyNetworkSense active.",
+  "closes": "A4 was the last active M0 checkpoint. Per the A5 receipt (docs/roadmap/m0-a5-publication-receipt.json), remaining closure is owner action: push Comfy main, push Lumberjacks master, flip roadmap golden_proof.publication to published with the resolvable permalink.",
+  "limitations": [
+    "The evidence revision is immutable only after it is pushed; if Comfy history is rewritten before push, this receipt must be re-recorded."
+  ]
+}

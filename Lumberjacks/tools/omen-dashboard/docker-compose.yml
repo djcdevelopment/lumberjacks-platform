@@ -1,0 +1,9 @@
+services:
+  dashboard:
+    image: nginx:1.27-alpine
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../../src/Game.Gateway/Community/roadmap.html:/usr/share/nginx/html/roadmap.html:ro
+    restart: unless-stopped

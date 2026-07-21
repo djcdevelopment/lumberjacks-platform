@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\Game.Contracts\Game.Contracts.csproj" />
+    <ProjectReference Include="..\Game.Persistence\Game.Persistence.csproj" />
+    <ProjectReference Include="..\Game.ServiceDefaults\Game.ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>
