@@ -77,10 +77,11 @@ Phase walkthrough:
    Gateway is pinned in `docker-compose.promotion.yml`; `eventlog`, `progression`
    and `operatorapi` are pinned in `docker-compose.release.yml`. Both files join the
    `-f` chain, everything starts with `--no-build`, and the exact running image ID of
-   all four is verified against the manifest (`/health` is checked for the Gateway
-   only — the other three expose no such endpoint). Deploys the candidate mod DLL to
-   the runtime and fallback paths and verifies its SHA-256 at both. Writes
-   `cold-start-receipt.json`.
+   all four is verified against the manifest. `/health` is gated for the Gateway only;
+   the other three do serve `/health` on 4002/4003/4004 (verified 2026-07-21) but the
+   drill treats their identity, not their liveness, as the promotion criterion. Deploys
+   the candidate mod DLL to the runtime and fallback paths and verifies its SHA-256 at
+   both. Writes `cold-start-receipt.json`.
 
    The two override files have deliberately different lifetimes. The release pins are
    fixed for the release, so phases 3 and 4 inherit `docker-compose.release.yml`
