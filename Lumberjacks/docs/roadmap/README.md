@@ -13,6 +13,11 @@ The detailed design remains in
 `../network/valheim-volunteer-platform-plan.md`. The roadmap is the scannable
 operational view, not a second source of architecture prose.
 
+This is the one live status surface for the whole program (comfy + Lumberjacks).
+The I0-I7 ladder that precedes the M-series milestones here is historical, not
+folded into this schema — see `fieldlab/VALHEIM-NETCODE-REPLACEMENT-WORKLOG.md`
+and the retired `fieldlab/status/program-status.json`.
+
 ## Add a commit note
 
 Before committing, update milestone state when necessary, then append a note:

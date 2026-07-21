@@ -19,7 +19,7 @@ OUT = ROOT / "status" / "dashboard.html"
 # Nordic Glass — dark. Matches the in-game house theme (network/mod/ComfyNetworkSense/UI-DESIGN.md)
 # Deliberately single-theme dark: this is the game program's ops console.
 TEMPLATE = r"""
-<title>Netcode Replacement — Live Program Dashboard</title>
+<title>Netcode Replacement — Historical Program Dashboard (retired)</title>
 <style>
   :root{
     --bg:#0a0e13; --bg2:#070a0e;
@@ -120,7 +120,9 @@ const totSteps  = phases.reduce((a,p)=>a+p.steps.length,0);
 const totDone   = phases.reduce((a,p)=>a+doneSteps(p),0);
 const active    = phases.find(p=>p.status==='active') || phases.find(p=>p.status!=='done') || phases[0];
 
-$('sub').innerHTML = `Updated <code>${esc(S.updated)}</code> · state: <code>${esc(S.canonical_docs.state)}</code> · plan: <code>${esc(S.canonical_docs.plan)}</code>`;
+$('sub').innerHTML = S.status
+  ? `<b style="color:var(--amber)">${esc(S.status)}</b>`
+  : `Updated <code>${esc(S.updated)}</code> · state: <code>${esc(S.canonical_docs.state)}</code> · plan: <code>${esc(S.canonical_docs.plan)}</code>`;
 
 $('cards').innerHTML = `
   <div class="card derek"><div class="lbl">Needs Derek right now</div>

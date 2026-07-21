@@ -216,6 +216,11 @@ Write-Host "  gate status: $gateStatus" -ForegroundColor Gray
 # --- Stage 7: STATUS + DASHBOARD  (safe, idempotent, non-destructive JSON edit) -------
 Show-Banner "7/7 STATUS + DASHBOARD"
 
+# program-status.json was retired 2026-07-21 (fieldlab/plan-baseline-cutover.md cutover step 4)
+# - it's a frozen P0-P6 historical record now, not the program's live status surface (that's the
+# Lumberjacks living roadmap). This stamp still runs because P1 step 12 tracking a probe cycle is
+# harmless and doesn't misrepresent anything, but don't extend this pattern to new work.
+#
 # Non-destructive update: ConvertFrom-Json yields a PSCustomObject that preserves the
 # original property order; we mutate ONLY the P1 step-12 status in place and APPEND a
 # top-level `last_probe_cycle` note via Add-Member (append never reorders/drops keys).
