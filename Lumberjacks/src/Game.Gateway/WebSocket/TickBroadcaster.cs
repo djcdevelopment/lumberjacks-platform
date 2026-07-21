@@ -214,6 +214,10 @@ public class TickBroadcaster : ITickBroadcaster
         // broadcasts are out of policy scope (region-wide, always sent) and excluded here.
         long entitiesSent = 0, entitiesCulled = 0;
 
+        // Band population: near/mid/far changed-entity counts summed across observers this tick,
+        // independent of the send throttle — the "which band" signal for the AoI knee sweep.
+        long bandNear = 0, bandMid = 0, bandFar = 0;
+
         // Deadline shedding: off (the default) means no CTS at all, so every send below runs
         // with CancellationToken.None — zero behavior change from before this feature. UDP
         // sends are sync (TrySendUdpEntityUpdate) and unaffected either way.
@@ -274,6 +278,9 @@ public class TickBroadcaster : ITickBroadcaster
                 sendElapsed += acc.SendTicks;
                 entitiesSent += acc.Sent;
                 entitiesCulled += acc.Culled;
+                bandNear += acc.NearPop;
+                bandMid += acc.MidPop;
+                bandFar += acc.FarPop;
                 deadlineAborts += acc.Aborts;
             }
             else
@@ -322,6 +329,9 @@ public class TickBroadcaster : ITickBroadcaster
                     sendElapsed += acc.SendTicks;
                     entitiesSent += acc.Sent;
                     entitiesCulled += acc.Culled;
+                    bandNear += acc.NearPop;
+                    bandMid += acc.MidPop;
+                    bandFar += acc.FarPop;
                     deadlineAborts += acc.Aborts;
                 }
             }
@@ -340,6 +350,7 @@ public class TickBroadcaster : ITickBroadcaster
             Stopwatch.GetElapsedTime(0, interestElapsed).TotalMilliseconds,
             Stopwatch.GetElapsedTime(0, sendElapsed).TotalMilliseconds);
         _metrics?.RecordReplication(entitiesSent, entitiesCulled);
+        _metrics?.RecordBandPopulation(bandNear, bandMid, bandFar);
         _metrics?.RecordDeadlineAborts(deadlineAborts);
         _metrics?.RecordDegraded(degraded);
 
@@ -477,6 +488,9 @@ public class TickBroadcaster : ITickBroadcaster
         public long SendTicks;
         public long Sent;
         public long Culled;
+        public long NearPop;
+        public long MidPop;
+        public long FarPop;
         public int Aborts;
     }
 
@@ -526,11 +540,14 @@ public class TickBroadcaster : ITickBroadcaster
 
             // --- Player Updates ---
             var tInterest = Stopwatch.GetTimestamp();
-            var visiblePlayers = _interest.FilterForObserver(session.PlayerId, regionPlayerChanges, players, tick, suppressMidBand);
+            var visiblePlayers = _interest.FilterForObserver(session.PlayerId, regionPlayerChanges, players, tick, out var bands, suppressMidBand);
             acc.InterestTicks += Stopwatch.GetTimestamp() - tInterest;
 
             acc.Sent += visiblePlayers.Count;
             acc.Culled += regionPlayerChanges.Count - visiblePlayers.Count;
+            acc.NearPop += bands.Near;
+            acc.MidPop += bands.Mid;
+            acc.FarPop += bands.Far;
 
             var tSend = Stopwatch.GetTimestamp();
             var aborted = false;

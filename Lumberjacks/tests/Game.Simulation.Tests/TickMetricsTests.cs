@@ -126,6 +126,7 @@ public class TickMetricsTests
         for (var t = 1; t <= TickMetrics.WindowTicks; t++)
         {
             metrics.RecordReplication(sent: 3, culled: 1);
+            metrics.RecordBandPopulation(near: 4, mid: 2, far: 1);
             RecordUniformTick(metrics, t, totalMs: 5);
         }
 
@@ -133,14 +134,20 @@ public class TickMetricsTests
         Assert.Equal("radius", snapshot.Replication.Policy);
         Assert.Equal(3 * TickMetrics.WindowTicks, snapshot.Replication.Sent);
         Assert.Equal(1 * TickMetrics.WindowTicks, snapshot.Replication.Culled);
+        Assert.Equal(4 * TickMetrics.WindowTicks, snapshot.Replication.NearPop);
+        Assert.Equal(2 * TickMetrics.WindowTicks, snapshot.Replication.MidPop);
+        Assert.Equal(1 * TickMetrics.WindowTicks, snapshot.Replication.FarPop);
 
-        // Second window: no RecordReplication calls — totals must reset to 0, not carry over.
+        // Second window: no RecordReplication/RecordBandPopulation calls — totals must reset to 0.
         for (var t = TickMetrics.WindowTicks + 1; t <= 2 * TickMetrics.WindowTicks; t++)
             RecordUniformTick(metrics, t, totalMs: 5);
 
         var snapshot2 = metrics.LastWindow!;
         Assert.Equal(0, snapshot2.Replication.Sent);
         Assert.Equal(0, snapshot2.Replication.Culled);
+        Assert.Equal(0, snapshot2.Replication.NearPop);
+        Assert.Equal(0, snapshot2.Replication.MidPop);
+        Assert.Equal(0, snapshot2.Replication.FarPop);
     }
 
     [Fact]

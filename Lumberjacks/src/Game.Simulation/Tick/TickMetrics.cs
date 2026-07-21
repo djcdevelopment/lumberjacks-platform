@@ -57,6 +57,13 @@ public sealed class TickMetrics : IDisposable
     private long _pendingSent;
     private long _pendingCulled;
 
+    // Band-population counters for the in-flight tick — near/mid/far changed-entity counts summed
+    // across observers by InterestManager, independent of the send throttle. Folded into the next
+    // RecordTick. 0 on ticks with no broadcast, and for Full policy (no distance bands).
+    private long _pendingNearPop;
+    private long _pendingMidPop;
+    private long _pendingFarPop;
+
     // Send-loop rework (phase 2) counters for the in-flight tick; folded into the next
     // RecordTick. Deadline aborts and degrade are both 0/false whenever their respective
     // Replication:BroadcastDeadlineMs / Replication:AdaptiveDegrade knobs are off.
@@ -67,6 +74,13 @@ public sealed class TickMetrics : IDisposable
     // active InterestManager policy. Reset when the window closes.
     private long _windowSent;
     private long _windowCulled;
+
+    // Window totals for band population — near/mid/far changed-entity counts summed across every
+    // observer/tick in the window. Tells the AoI knee sweep WHICH band carried the load, not just
+    // that load rose. Reset when the window closes.
+    private long _windowNearPop;
+    private long _windowMidPop;
+    private long _windowFarPop;
 
     // Window totals for the send-loop rework knobs. DeadlineAborts sums sessions aborted
     // across the window; DegradedTicks counts how many of the window's ticks ran with
@@ -157,6 +171,18 @@ public sealed class TickMetrics : IDisposable
         _pendingCulled = culled;
     }
 
+    /// <summary>
+    /// Called by the tick broadcaster (on ticks where it runs) with the near/mid/far changed-entity
+    /// counts summed across every observer this tick — the physical band population around observers,
+    /// independent of the send throttle. Ticks with no broadcast, and Full policy, report 0/0/0.
+    /// </summary>
+    public void RecordBandPopulation(long near, long mid, long far)
+    {
+        _pendingNearPop = near;
+        _pendingMidPop = mid;
+        _pendingFarPop = far;
+    }
+
     /// <summary>Called by TickLoop once per tick after all phases complete.</summary>
     public void RecordTick(
         long tick, double totalMs, double intervalMs,
@@ -173,6 +199,13 @@ public sealed class TickMetrics : IDisposable
         _pendingCulled = 0;
         _windowSent += sent;
         _windowCulled += culled;
+
+        _windowNearPop += _pendingNearPop;
+        _windowMidPop += _pendingMidPop;
+        _windowFarPop += _pendingFarPop;
+        _pendingNearPop = 0;
+        _pendingMidPop = 0;
+        _pendingFarPop = 0;
 
         var deadlineAborts = _pendingDeadlineAborts;
         _pendingDeadlineAborts = 0;
@@ -229,7 +262,8 @@ public sealed class TickMetrics : IDisposable
 
         var replication = new ReplicationWindowStats(
             _replicationPolicy, _windowSent, _windowCulled,
-            _effectiveSendWorkers, _effectiveUdpSockets, _windowDeadlineAborts, _windowDegradedTicks);
+            _effectiveSendWorkers, _effectiveUdpSockets, _windowDeadlineAborts, _windowDegradedTicks,
+            _windowNearPop, _windowMidPop, _windowFarPop);
 
         _lastWindow = new TickTimingSnapshot(
             WindowEndTick: tick,
@@ -244,7 +278,7 @@ public sealed class TickMetrics : IDisposable
         if (_logger.IsEnabled(LogLevel.Information))
         {
             _logger.LogInformation(
-                "Tick timing (last {Count} ticks): total p50={TotalP50:F2}ms p99={TotalP99:F2}ms max={TotalMax:F2}ms overruns={Overruns} (budget {BudgetMs}ms) | interval p99={IntervalP99:F1}ms | sim p99={SimP99:F2}ms hash p99={HashP99:F2}ms broadcast p99={BroadcastP99:F2}ms (interest p99={InterestP99:F2}ms send p99={SendP99:F2}ms) housekeeping p99={HousekeepingP99:F2}ms | repl policy={Policy} sent={Sent} culled={Culled} sendWorkers={SendWorkers} udpSockets={UdpSockets} deadlineAborts={DeadlineAborts} degradedTicks={DegradedTicks}",
+                "Tick timing (last {Count} ticks): total p50={TotalP50:F2}ms p99={TotalP99:F2}ms max={TotalMax:F2}ms overruns={Overruns} (budget {BudgetMs}ms) | interval p99={IntervalP99:F1}ms | sim p99={SimP99:F2}ms hash p99={HashP99:F2}ms broadcast p99={BroadcastP99:F2}ms (interest p99={InterestP99:F2}ms send p99={SendP99:F2}ms) housekeeping p99={HousekeepingP99:F2}ms | repl policy={Policy} sent={Sent} culled={Culled} bandPop near={NearPop} mid={MidPop} far={FarPop} sendWorkers={SendWorkers} udpSockets={UdpSockets} deadlineAborts={DeadlineAborts} degradedTicks={DegradedTicks}",
                 n,
                 phases["total"].P50Ms, phases["total"].P99Ms, phases["total"].MaxMs,
                 _windowOverruns, TickBudgetMs,
@@ -253,6 +287,7 @@ public sealed class TickMetrics : IDisposable
                 phases["broadcast"].P99Ms, phases["interest"].P99Ms, phases["send"].P99Ms,
                 phases["housekeeping"].P99Ms,
                 replication.Policy, replication.Sent, replication.Culled,
+                replication.NearPop, replication.MidPop, replication.FarPop,
                 replication.SendWorkers, replication.UdpSockets, replication.DeadlineAborts, replication.DegradedTicks);
         }
 
@@ -260,6 +295,9 @@ public sealed class TickMetrics : IDisposable
         _windowOverruns = 0;
         _windowSent = 0;
         _windowCulled = 0;
+        _windowNearPop = 0;
+        _windowMidPop = 0;
+        _windowFarPop = 0;
         _windowDeadlineAborts = 0;
         _windowDegradedTicks = 0;
     }
@@ -297,10 +335,17 @@ public sealed record PhaseStats(double P50Ms, double P99Ms, double MaxMs);
 /// parallelism-efficiency signal: a wide gap means the workers meaningfully overlapped; a
 /// near-zero gap means little real concurrency was achieved (the phase-3a UdpSockets
 /// experiment exists to test whether a shared UdpClient explains a near-zero gap).
+///
+/// NearPop/MidPop/FarPop are the band POPULATION totals — how many changed entities sat in each
+/// distance band (0–NearRadius / NearRadius–MidRadius / beyond MidRadius) summed across every
+/// observer/tick in the window, independent of the send throttle. Sent/Culled say load rose;
+/// these say WHICH band caused it, which is what the AoI knee sweep needs. 0 for Full policy
+/// (no distance bands).
 /// </summary>
 public sealed record ReplicationWindowStats(
     string Policy, long Sent, long Culled,
-    int SendWorkers, int UdpSockets, long DeadlineAborts, int DegradedTicks);
+    int SendWorkers, int UdpSockets, long DeadlineAborts, int DegradedTicks,
+    long NearPop, long MidPop, long FarPop);
 
 /// <summary>Per-phase tick timing stats for the most recent completed window (~5s).</summary>
 public sealed record TickTimingSnapshot(

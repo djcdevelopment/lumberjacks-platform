@@ -77,7 +77,26 @@ public class InterestManager
         IReadOnlyDictionary<string, Player> players,
         long tick,
         bool suppressMidBand = false)
+        => FilterForObserver(observerId, changedEntityIds, players, tick, out _, suppressMidBand);
+
+    /// <summary>
+    /// As the other overload, additionally reporting this observer's band POPULATION in
+    /// <paramref name="bands"/> — how many changed entities fall in the near / mid / far distance
+    /// bands around it, independent of the mid-band send throttle and of the active policy's send
+    /// decision. This is the "which band" signal the AoI knee sweep needs: it measures where
+    /// entities ARE, not whether they were sent this tick. Full policy, and an observer missing from
+    /// the grid, report <see cref="BandPopulation.Empty"/> — there is no distance to bucket by.
+    /// </summary>
+    public HashSet<string> FilterForObserver(
+        string observerId,
+        HashSet<string> changedEntityIds,
+        IReadOnlyDictionary<string, Player> players,
+        long tick,
+        out BandPopulation bands,
+        bool suppressMidBand = false)
     {
+        bands = BandPopulation.Empty;
+
         // Full replication: no interest filtering at all — short-circuit before any
         // grid lookup or distance math.
         if (_options.Policy == ReplicationPolicy.Full)
@@ -93,11 +112,13 @@ public class InterestManager
         var useMidBand = _options.Policy == ReplicationPolicy.Tiered;
         var isMidTick = !suppressMidBand && useMidBand && _options.MidTickInterval > 0 && tick % _options.MidTickInterval == 0;
 
+        long near = 0, mid = 0, far = 0;
         foreach (var entityId in changedEntityIds)
         {
             if (entityId == observerId)
             {
-                // Always send self-updates (for input seq echo / correction)
+                // Always send self-updates (for input seq echo / correction). Self is the
+                // observer, not an object around it, so it never counts toward a band.
                 result.Add(entityId);
                 continue;
             }
@@ -105,10 +126,19 @@ public class InterestManager
             var distSq = _grid.DistanceSq(observerId, entityId);
             if (distSq == null)
             {
-                // Entity not in grid — include it (safety fallback)
+                // Entity not in grid — include it (safety fallback). With no distance it cannot
+                // be bucketed, so it does not count toward any band population either.
                 result.Add(entityId);
                 continue;
             }
+
+            // Band POPULATION — pure geometry, counted before and independent of the throttled
+            // send decision below. Every in-grid, non-self changed entity lands in exactly one
+            // band, so near+mid+far equals the count of such entities no matter what the policy
+            // actually sends this tick.
+            if (distSq.Value <= nearRadiusSq) near++;
+            else if (distSq.Value <= midRadiusSq) mid++;
+            else far++;
 
             if (distSq.Value <= nearRadiusSq)
             {
@@ -123,6 +153,24 @@ public class InterestManager
             // Far band (tiered), or anything beyond NearRadius (radius policy) — skip
         }
 
+        bands = new BandPopulation(near, mid, far);
         return result;
     }
+}
+
+/// <summary>
+/// How many changed entities populate each of an observer's distance bands on a tick, split by
+/// <see cref="ReplicationOptions.NearRadius"/> / <see cref="ReplicationOptions.MidRadius"/>:
+/// Near = 0–NearRadius, Mid = NearRadius–MidRadius, Far = beyond MidRadius. This is the physical
+/// distribution of load around an observer, independent of the mid-band send throttle — the
+/// missing "which band" signal for the AoI knee sweep. Summed across observers and ticks it
+/// becomes the window's band population totals on <see cref="Game.Simulation.Tick.ReplicationWindowStats"/>.
+/// </summary>
+public readonly record struct BandPopulation(long Near, long Mid, long Far)
+{
+    /// <summary>All-zero — used for Full policy and observers absent from the grid.</summary>
+    public static readonly BandPopulation Empty = default;
+
+    /// <summary>Near + Mid + Far — every in-grid, non-self changed entity counted once.</summary>
+    public long Total => Near + Mid + Far;
 }

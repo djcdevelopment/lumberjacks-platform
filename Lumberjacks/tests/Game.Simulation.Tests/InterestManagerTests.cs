@@ -100,6 +100,67 @@ public class InterestManagerTests
         Assert.DoesNotContain("far", visibleTick4);
     }
 
+    // ── Band population (the AoI-knee "which band" signal) — counts where changed entities ARE,
+    //    independent of the mid-band send throttle. NearRadius=100, MidRadius=300 (defaults). ──
+
+    [Fact]
+    public void BandPopulationBucketsByDistanceAndSumsToChangedCount()
+    {
+        var (manager, grid) = CreateManager(); // tiered/100/300/4
+        grid.Update("observer", new Vec3(0, 0, 0));
+        grid.Update("n1", new Vec3(50, 0, 0));   // near (<=100)
+        grid.Update("n2", new Vec3(99, 0, 0));   // near
+        grid.Update("m1", new Vec3(200, 0, 0));  // mid (100-300)
+        grid.Update("f1", new Vec3(400, 0, 0));  // far (>300)
+        grid.Update("f2", new Vec3(1000, 0, 0)); // far
+
+        var players = new Dictionary<string, Player>();
+        var changed = new HashSet<string> { "n1", "n2", "m1", "f1", "f2" };
+
+        // Population is independent of the send throttle: an off-peak tick and a burst tick agree.
+        manager.FilterForObserver("observer", changed, players, tick: 1, out var offPeak);
+        manager.FilterForObserver("observer", changed, players, tick: 4, out var burst);
+
+        Assert.Equal(2, offPeak.Near);
+        Assert.Equal(1, offPeak.Mid);
+        Assert.Equal(2, offPeak.Far);
+        Assert.Equal(changed.Count, offPeak.Total);
+        Assert.Equal(offPeak, burst); // the throttle changes send rate, not band population
+    }
+
+    [Fact]
+    public void MovingAnEntityAcrossTheNearBoundaryMovesItBetweenBuckets()
+    {
+        var (manager, grid) = CreateManager(); // NearRadius = 100
+        grid.Update("observer", new Vec3(0, 0, 0));
+        var players = new Dictionary<string, Player>();
+        var changed = new HashSet<string> { "mover" };
+
+        grid.Update("mover", new Vec3(99, 0, 0)); // inside near
+        manager.FilterForObserver("observer", changed, players, tick: 1, out var inside);
+
+        grid.Update("mover", new Vec3(101, 0, 0)); // crossed 100.0 into mid
+        manager.FilterForObserver("observer", changed, players, tick: 1, out var outside);
+
+        Assert.Equal((1L, 0L), (inside.Near, inside.Mid));
+        Assert.Equal((0L, 1L), (outside.Near, outside.Mid));
+    }
+
+    [Fact]
+    public void FullPolicyReportsEmptyBandPopulation()
+    {
+        var (manager, grid) = CreateManager(new ReplicationOptions { Policy = ReplicationPolicy.Full });
+        grid.Update("observer", new Vec3(0, 0, 0));
+        grid.Update("near", new Vec3(10, 0, 0));
+
+        var players = new Dictionary<string, Player>();
+        var changed = new HashSet<string> { "near" };
+
+        // Full short-circuits before any distance math — there are no bands to populate.
+        manager.FilterForObserver("observer", changed, players, tick: 1, out var bands);
+        Assert.Equal(BandPopulation.Empty, bands);
+    }
+
     [Fact]
     public void SelfAlwaysIncluded()
     {
