@@ -1,0 +1,47 @@
+{
+  "schema": "comfy-p7-acceptance/v1",
+  "release_id": "m5-recipients-20260720-r1",
+  "manifest": "Lumberjacks/docs/roadmap/m5-recipients-build-candidate-v3.json",
+  "supersedes_open_item": "m5-v3-reprovision-receipt.json listed world_test as NOT DONE; this receipt closes it.",
+  "captured_utc": "2026-07-21T08:29:46Z",
+  "what_this_proves": "A VM re-provisioned from baseline reproduces the behaviour that was world-tested in the pre-cutover v2 cut. All five P7 services ran from digest pins resolved out of a validated release bundle at baseline commit 807769a, the deployment source was a baseline checkout rather than the retired comfy repo, and the pins survived a systemd restart before this session began.",
+  "route": {
+    "reference": "infra/gcp/p7/README.md sections 7-9",
+    "exercised": "Spawn, teleport-route portals, dense construction (castle, most of it loaded), forced portal-out, then stationary in woods while the queue drained.",
+    "notes": "The window auto-resets whenever the server empties ('ZDO primary delivery window reset while server is empty'), so this sample is from a single unbroken session and cannot be reconstructed from later totals."
+  },
+  "acceptance_criteria": {
+    "same_primary_window_100pct_coverage": {"required": true, "observed": "100% (148892/148892)", "pass": true},
+    "zero_native_only": {"required": 0, "observed": 0, "pass": true},
+    "zero_native_fallbacks": {"required": 0, "observed": 0, "pass": true},
+    "receipts_equal_acknowledgements": {"required": "equal", "observed": "75112 == 75112", "pass": true},
+    "zero_pending": {"required": 0, "observed": 0, "pass": true},
+    "complete_true": {"required": true, "observed": true, "pass": true},
+    "persistence_healthy": {"required": true, "observed": true, "pass": true},
+    "zero_reject_duplicate_retry": {"required": 0, "observed": "rejected=0 duplicates=0 retried=0", "pass": true}
+  },
+  "workload": {
+    "applied": 61096,
+    "superseded": 14016,
+    "zdo_probe_recv_rows": 7175,
+    "wal_bytes": 510344023
+  },
+  "runtime_identity": {
+    "mode": "lumberjacks-primary",
+    "window_id": "p7-primary-v1",
+    "enrollment_manifest_id": "p7-primary-v1",
+    "mod_version": "0.5.31",
+    "instance_id": "20260721-080908-2c40711c",
+    "gateway_image": "sha256:69e025e8c13bc7ce01a21a054c9dcb42478415531d727e8b55b4b2d37ca7b38b",
+    "eventlog_image": "sha256:501537285f89052991a62201969117557005c03ddfd280086bde81ce8e8593e4",
+    "progression_image": "sha256:1700513587ae259d7447caba267c90213c5249ce7da50408f65648a2bf4872bc",
+    "operatorapi_image": "sha256:cec85d9272530a13b9c1e5217ef8864f0bffd4dc8fc89a18d2236d75482761a7",
+    "mod_sha256": "035faa8793114c75ccb4295e219a6c10a91250a3a4f3764e70aed499a32a0dfd"
+  },
+  "raw_sample": {"state":"lumberjacks-primary","stale":false,"heartbeat_stale":false,"consumer_active":true,"consumer_draining":false,"mode":"lumberjacks-primary","enrollment_manifest_id":"p7-primary-v1","coverage_total":148892,"coverage_lumberjacks":148892,"coverage_native_only":0,"coverage_percent":100,"native_fallbacks":0,"zdo_probe_running":false,"zdo_probe_recv_rows":7175,"zdo_probe_send_rows":0,"zdo_authoritative_enabled":false,"zdo_authoritative_applied":0,"zdo_authoritative_rejected":0,"zdo_authoritative_duplicates":0,"zdo_authoritative_retried":0,"zdo_authoritative_pending":0,"authoritative_window":{"window_id":"p7-primary-v1","durable_queue":true,"persistence_healthy":true,"wal_bytes":510344023,"receipts":75112,"acknowledged":75112,"pending":0,"active_consumers":1,"applied":61096,"superseded":14016,"consumer_acknowledged":75112,"rejected":0,"duplicates":0,"retried":0,"consumer_pending":0,"complete":true,"last_seen":"2026-07-21T08:29:46.3589411+00:00"},"last_seen":"2026-07-21T08:29:44.0718938+00:00","mod_version":"0.5.31","instance_id":"20260721-080908-2c40711c"},
+  "known_open_issues": [
+    "The mod logs 'Lumberjacks telemetry heartbeat failed: HTTP/1.1 409 Conflict' roughly every 25s while heartbeats simultaneously succeed (heartbeat_stale stayed false and coverage kept climbing). The gateway logged no warnings or errors across the same period. Unexplained; leading hypothesis is an instance-registration conflict left by the systemd restart. Did not affect any acceptance criterion.",
+    "Strict roster remains DISARMED. It is in-memory only and the systemd restart disarmed it; it was deliberately left off so it could not block the join. This acceptance run therefore does not exercise strict-roster admission.",
+    "Two-consumer isolation remains UNTESTED, as in the v2 cut. This run had a single consumer."
+  ]
+}
