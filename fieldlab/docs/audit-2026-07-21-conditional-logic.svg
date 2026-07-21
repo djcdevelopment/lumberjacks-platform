@@ -1,0 +1,254 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1180" width="1440" height="1180" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <linearGradient id="bandgrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1f2937"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1440" height="1180" fill="#0d1117"/>
+
+  <!-- ================= HEADER ================= -->
+  <text x="50" y="62" fill="#e6edf3" font-size="34" font-weight="700">The state of the conditional logic</text>
+  <text x="50" y="92" fill="#8b949e" font-size="15">baseline monorepo · audit of 2026-07-21 · six gemini-pro threads over mod, gateway, deploy, release and infra</text>
+  <line x1="50" y1="112" x2="1390" y2="112" stroke="#30363d" stroke-width="1"/>
+
+  <!-- ================= MODE BAND ================= -->
+  <rect x="50" y="136" width="1340" height="92" rx="8" fill="url(#bandgrad)" stroke="#30363d"/>
+  <text x="74" y="166" fill="#8b949e" font-size="11" letter-spacing="1.4">BUILT FOR</text>
+  <text x="74" y="196" fill="#ffa94d" font-size="21" font-weight="600">Independent agent</text>
+  <text x="74" y="216" fill="#6e7681" font-size="12">unattended for hours · heavy guardrails, gates, audit tape</text>
+
+  <text x="700" y="192" fill="#484f58" font-size="26">&#8594;</text>
+
+  <text x="800" y="166" fill="#8b949e" font-size="11" letter-spacing="1.4">NOW OPERATING AS</text>
+  <text x="800" y="196" fill="#51cf66" font-size="21" font-weight="600">Operator in the seat</text>
+  <text x="800" y="216" fill="#6e7681" font-size="12">driving and testing personally · owns every participating account</text>
+
+  <text x="1155" y="180" fill="#e6edf3" font-size="13" font-weight="600">The mess is the delta.</text>
+  <text x="1155" y="202" fill="#6e7681" font-size="12">Nothing removed itself when</text>
+  <text x="1155" y="218" fill="#6e7681" font-size="12">the mode changed.</text>
+
+  <!-- ================= COLUMN HEADERS ================= -->
+  <g font-size="13" font-weight="700" letter-spacing="0.6">
+    <text x="50"   y="278" fill="#e6edf3">THE MOD</text>
+    <text x="391"  y="278" fill="#e6edf3">THE GATEWAY</text>
+    <text x="732"  y="278" fill="#e6edf3">DEPLOY &amp; RELEASE</text>
+    <text x="1073" y="278" fill="#e6edf3">INFRA &amp; LOCAL TOOLING</text>
+  </g>
+  <g font-size="11" fill="#6e7681">
+    <text x="50"   y="296">network/mod/ComfyNetworkSense</text>
+    <text x="391"  y="296">Lumberjacks/src/Game.Gateway</text>
+    <text x="732"  y="296">infra/gcp/p7</text>
+    <text x="1073" y="296">Lumberjacks/infra · tools</text>
+  </g>
+  <g stroke="#30363d" stroke-width="1">
+    <line x1="50" y1="308" x2="366" y2="308"/>
+    <line x1="391" y1="308" x2="707" y2="308"/>
+    <line x1="732" y1="308" x2="1048" y2="308"/>
+    <line x1="1073" y1="308" x2="1389" y2="308"/>
+  </g>
+
+  <!-- ================= COLUMN 1 : MOD ================= -->
+  <g>
+    <rect x="50" y="326" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="50" y="326" width="3" height="72" rx="1.5" fill="#ffa94d"/>
+    <text x="66" y="348" fill="#e6edf3" font-size="13" font-weight="600">AutoJoin* — 7 config keys</text>
+    <text x="66" y="368" fill="#8b949e" font-size="11">Derives character index from hostname</text>
+    <text x="66" y="385" fill="#8b949e" font-size="11">&#8220;so a swarm sharing one config spreads&#8221;</text>
+    <text x="352" y="345" fill="#ffa94d" font-size="9" font-weight="700" text-anchor="end">DECIDE</text>
+  </g>
+  <g>
+    <rect x="50" y="410" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="50" y="410" width="3" height="72" rx="1.5" fill="#ffa94d"/>
+    <text x="66" y="432" fill="#e6edf3" font-size="13" font-weight="600">AutoRehearsal* — 6 config keys</text>
+    <text x="66" y="452" fill="#8b949e" font-size="11">Walks teleport routes unattended,</text>
+    <text x="66" y="469" fill="#8b949e" font-size="11">&#8220;without a human hand-walking the route&#8221;</text>
+    <text x="352" y="429" fill="#ffa94d" font-size="9" font-weight="700" text-anchor="end">DECIDE</text>
+  </g>
+  <g>
+    <rect x="50" y="494" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="50" y="494" width="3" height="72" rx="1.5" fill="#ffa94d"/>
+    <text x="66" y="516" fill="#e6edf3" font-size="13" font-weight="600">MatrixCheckinRunner — 23 KB</text>
+    <text x="66" y="536" fill="#8b949e" font-size="11">Bots teleport to benchmark cells and</text>
+    <text x="66" y="553" fill="#8b949e" font-size="11">post results. Pure swarm automation.</text>
+    <text x="352" y="513" fill="#ffa94d" font-size="9" font-weight="700" text-anchor="end">DECIDE</text>
+  </g>
+  <g>
+    <rect x="50" y="578" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="50" y="578" width="3" height="72" rx="1.5" fill="#ffa94d"/>
+    <text x="66" y="600" fill="#e6edf3" font-size="13" font-weight="600">6 evidence-only runners</text>
+    <text x="66" y="620" fill="#8b949e" font-size="11">Their only output is a measurement file,</text>
+    <text x="66" y="637" fill="#8b949e" font-size="11">not a change in what the game does.</text>
+    <text x="352" y="597" fill="#ffa94d" font-size="9" font-weight="700" text-anchor="end">DECIDE</text>
+  </g>
+  <text x="50" y="682" fill="#484f58" font-size="11" font-style="italic">The config file names the regime itself:</text>
+  <text x="50" y="700" fill="#6e7681" font-size="11" font-style="italic">&#8220;Intended for private lab/swarm clients only.&#8221;</text>
+
+  <!-- ================= COLUMN 2 : GATEWAY ================= -->
+  <g>
+    <rect x="391" y="326" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="391" y="326" width="3" height="72" rx="1.5" fill="#ff6b6b"/>
+    <text x="407" y="348" fill="#e6edf3" font-size="13" font-weight="600">Dev builds are split-brain</text>
+    <text x="407" y="368" fill="#8b949e" font-size="11">No baked release id: handshake fails OPEN,</text>
+    <text x="407" y="385" fill="#8b949e" font-size="11">ZDO admission 503s. Connects, then dead.</text>
+    <text x="693" y="345" fill="#ff6b6b" font-size="9" font-weight="700" text-anchor="end">DECIDE</text>
+  </g>
+  <g>
+    <rect x="391" y="410" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="391" y="410" width="3" height="72" rx="1.5" fill="#51cf66"/>
+    <text x="407" y="432" fill="#e6edf3" font-size="13" font-weight="600">Rate limiter trusted a header</text>
+    <text x="407" y="452" fill="#8b949e" font-size="11">Keyed on X-Enrollment-Id before anything</text>
+    <text x="407" y="469" fill="#8b949e" font-size="11">verified it. Fresh id = fresh bucket.</text>
+    <text x="693" y="429" fill="#51cf66" font-size="9" font-weight="700" text-anchor="end">FIXED</text>
+  </g>
+  <g>
+    <rect x="391" y="494" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="391" y="494" width="3" height="72" rx="1.5" fill="#ffa94d"/>
+    <text x="407" y="516" fill="#e6edf3" font-size="13" font-weight="600">Seat gate: capacity 1, 60s lease</text>
+    <text x="407" y="536" fill="#8b949e" font-size="11">Protects a shared queue from strangers.</text>
+    <text x="407" y="553" fill="#8b949e" font-size="11">Can lock you out of your own server.</text>
+    <text x="693" y="513" fill="#ffa94d" font-size="9" font-weight="700" text-anchor="end">DECIDE</text>
+  </g>
+  <g>
+    <rect x="391" y="578" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="391" y="578" width="3" height="72" rx="1.5" fill="#ffa94d"/>
+    <text x="407" y="600" fill="#e6edf3" font-size="13" font-weight="600">Strict roster · strict release</text>
+    <text x="407" y="620" fill="#8b949e" font-size="11">Both in-memory only, both disarmed by</text>
+    <text x="407" y="637" fill="#8b949e" font-size="11">every container recreate.</text>
+    <text x="693" y="597" fill="#ffa94d" font-size="9" font-weight="700" text-anchor="end">DECIDE</text>
+  </g>
+  <g>
+    <rect x="391" y="662" width="316" height="56" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="391" y="662" width="3" height="56" rx="1.5" fill="#74c0fc"/>
+    <text x="407" y="684" fill="#e6edf3" font-size="13" font-weight="600">Private-IP math, written twice</text>
+    <text x="407" y="704" fill="#8b949e" font-size="11">Same 10 lines in Program + middleware.</text>
+    <text x="693" y="681" fill="#74c0fc" font-size="9" font-weight="700" text-anchor="end">TIDY</text>
+  </g>
+
+  <!-- ================= COLUMN 3 : DEPLOY ================= -->
+  <g>
+    <rect x="732" y="326" width="316" height="88" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="732" y="326" width="3" height="88" rx="1.5" fill="#51cf66"/>
+    <text x="748" y="348" fill="#e6edf3" font-size="13" font-weight="600">rollback-gateway.ps1</text>
+    <text x="748" y="368" fill="#8b949e" font-size="11">Ran a build the compose file structurally</text>
+    <text x="748" y="385" fill="#8b949e" font-size="11">forbids — after already copying onto /opt.</text>
+    <text x="748" y="402" fill="#8b949e" font-size="11">Rolled back to a frozen 2026 commit path.</text>
+    <text x="1034" y="345" fill="#51cf66" font-size="9" font-weight="700" text-anchor="end">DELETED</text>
+  </g>
+  <g>
+    <rect x="732" y="426" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="732" y="426" width="3" height="72" rx="1.5" fill="#51cf66"/>
+    <text x="748" y="448" fill="#e6edf3" font-size="13" font-weight="600">configure-player-gateway.sh</text>
+    <text x="748" y="468" fill="#8b949e" font-size="11">Same forbidden build, plus a hardcoded</text>
+    <text x="748" y="485" fill="#8b949e" font-size="11">public IP. Provisioning-era, long dead.</text>
+    <text x="1034" y="445" fill="#51cf66" font-size="9" font-weight="700" text-anchor="end">DELETED</text>
+  </g>
+  <g>
+    <rect x="732" y="510" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="732" y="510" width="3" height="72" rx="1.5" fill="#51cf66"/>
+    <text x="748" y="532" fill="#e6edf3" font-size="13" font-weight="600">deploy-gateway.ps1</text>
+    <text x="748" y="552" fill="#8b949e" font-size="11">Shipped source from the RETIRED repo and</text>
+    <text x="748" y="569" fill="#8b949e" font-size="11">its hash check passed. Caught earlier today.</text>
+    <text x="1034" y="529" fill="#51cf66" font-size="9" font-weight="700" text-anchor="end">FIXED</text>
+  </g>
+  <g>
+    <rect x="732" y="594" width="316" height="56" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="732" y="594" width="3" height="56" rx="1.5" fill="#ffa94d"/>
+    <text x="748" y="616" fill="#e6edf3" font-size="13" font-weight="600">5 drill receipts per run</text>
+    <text x="748" y="636" fill="#8b949e" font-size="11">Nothing reads them programmatically.</text>
+    <text x="1034" y="613" fill="#ffa94d" font-size="9" font-weight="700" text-anchor="end">DECIDE</text>
+  </g>
+  <g>
+    <rect x="732" y="662" width="316" height="56" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="732" y="662" width="3" height="56" rx="1.5" fill="#ffa94d"/>
+    <text x="748" y="684" fill="#e6edf3" font-size="13" font-weight="600">Detached setsid + PID polling</text>
+    <text x="748" y="704" fill="#8b949e" font-size="11">Survives a disconnect nobody is there for.</text>
+    <text x="1034" y="681" fill="#ffa94d" font-size="9" font-weight="700" text-anchor="end">DECIDE</text>
+  </g>
+
+  <!-- ================= COLUMN 4 : INFRA ================= -->
+  <g>
+    <rect x="1073" y="326" width="316" height="88" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="1073" y="326" width="3" height="88" rx="1.5" fill="#51cf66"/>
+    <text x="1089" y="348" fill="#e6edf3" font-size="13" font-weight="600">omen-dashboard</text>
+    <text x="1089" y="368" fill="#8b949e" font-size="11">Pointed at the PUBLIC port, so admin and</text>
+    <text x="1089" y="385" fill="#8b949e" font-size="11">dev surfaces were unreachable by design.</text>
+    <text x="1089" y="402" fill="#51cf66" font-size="11">Now follows the IAP tunnel instead.</text>
+    <text x="1375" y="345" fill="#51cf66" font-size="9" font-weight="700" text-anchor="end">FIXED</text>
+  </g>
+  <g>
+    <rect x="1073" y="426" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="1073" y="426" width="3" height="72" rx="1.5" fill="#74c0fc"/>
+    <text x="1089" y="448" fill="#e6edf3" font-size="13" font-weight="600">The VM still believes in 2 repos</text>
+    <text x="1089" y="468" fill="#8b949e" font-size="11">systemd runs from /opt/comfy while compose</text>
+    <text x="1089" y="485" fill="#8b949e" font-size="11">mounts from /opt/lumberjacks.</text>
+    <text x="1375" y="445" fill="#74c0fc" font-size="9" font-weight="700" text-anchor="end">NEEDS WINDOW</text>
+  </g>
+  <g>
+    <rect x="1073" y="510" width="316" height="72" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="1073" y="510" width="3" height="72" rx="1.5" fill="#74c0fc"/>
+    <text x="1089" y="532" fill="#e6edf3" font-size="13" font-weight="600">stage1 + gcp-stage1.yml</text>
+    <text x="1089" y="552" fill="#8b949e" font-size="11">A second GCP stack that builds from source,</text>
+    <text x="1089" y="569" fill="#8b949e" font-size="11">contradicting the M0 no-build freeze.</text>
+    <text x="1375" y="529" fill="#74c0fc" font-size="9" font-weight="700" text-anchor="end">RETIRE</text>
+  </g>
+  <g>
+    <rect x="1073" y="594" width="316" height="56" rx="6" fill="#161b22" stroke="#21262d"/>
+    <rect x="1073" y="594" width="3" height="56" rx="1.5" fill="#51cf66"/>
+    <text x="1089" y="616" fill="#e6edf3" font-size="13" font-weight="600">synthmon</text>
+    <text x="1089" y="636" fill="#8b949e" font-size="11">A parked load-test tool, not debris. Keep.</text>
+    <text x="1375" y="613" fill="#51cf66" font-size="9" font-weight="700" text-anchor="end">KEEP</text>
+  </g>
+
+  <!-- ================= CORRECTIONS ================= -->
+  <rect x="50" y="742" width="1340" height="150" rx="8" fill="#12181f" stroke="#30363d"/>
+  <text x="74" y="772" fill="#e6edf3" font-size="14" font-weight="700">What the machines got wrong</text>
+  <text x="74" y="792" fill="#6e7681" font-size="11">Every finding above was re-checked against the code. Three of the six threads reported something that did not survive that check.</text>
+
+  <g>
+    <rect x="74" y="808" width="3" height="62" rx="1.5" fill="#ff6b6b"/>
+    <text x="90" y="826" fill="#e6edf3" font-size="12" font-weight="600">&#8220;Release-cut scripts hold stale split-repo paths&#8221;</text>
+    <text x="90" y="845" fill="#8b949e" font-size="11">They resolve to C:\work\baseline correctly. The model</text>
+    <text x="90" y="861" fill="#8b949e" font-size="11">pattern-matched the variable NAME $ComfyRoot.</text>
+  </g>
+  <g>
+    <rect x="520" y="808" width="3" height="62" rx="1.5" fill="#ff6b6b"/>
+    <text x="536" y="826" fill="#e6edf3" font-size="12" font-weight="600">&#8220;The dashboard IP is stale after re-provision&#8221;</text>
+    <text x="536" y="845" fill="#8b949e" font-size="11">It is a reserved static address and answers TCP right</text>
+    <text x="536" y="861" fill="#8b949e" font-size="11">now. This one was my own hunch, and also wrong.</text>
+  </g>
+  <g>
+    <rect x="966" y="808" width="3" height="62" rx="1.5" fill="#ff6b6b"/>
+    <text x="982" y="826" fill="#e6edf3" font-size="12" font-weight="600">Zone A never finished</text>
+    <text x="982" y="845" fill="#8b949e" font-size="11">It spent its whole budget on a table and stopped</text>
+    <text x="982" y="861" fill="#8b949e" font-size="11">mid-file. The mod config picture is still partial.</text>
+  </g>
+
+  <!-- ================= LEGEND / FOOTER ================= -->
+  <line x1="50" y1="922" x2="1390" y2="922" stroke="#30363d" stroke-width="1"/>
+
+  <g font-size="11">
+    <rect x="50" y="946" width="3" height="14" rx="1.5" fill="#51cf66"/>
+    <text x="64" y="957" fill="#8b949e">fixed or deleted today</text>
+
+    <rect x="230" y="946" width="3" height="14" rx="1.5" fill="#ff6b6b"/>
+    <text x="244" y="957" fill="#8b949e">broken, still open</text>
+
+    <rect x="390" y="946" width="3" height="14" rx="1.5" fill="#ffa94d"/>
+    <text x="404" y="957" fill="#8b949e">built for the old mode — your call</text>
+
+    <rect x="640" y="946" width="3" height="14" rx="1.5" fill="#74c0fc"/>
+    <text x="654" y="957" fill="#8b949e">one-repo debris</text>
+  </g>
+
+  <text x="50" y="1000" fill="#e6edf3" font-size="13" font-weight="600">Landed in this pass</text>
+  <text x="50" y="1022" fill="#8b949e" font-size="12">2 broken scripts deleted · rate limiter no longer trusts an unverified header · local dashboard now reaches admin and dev</text>
+  <text x="50" y="1042" fill="#8b949e" font-size="12">telemetry over the IAP tunnel, with the allowlist wider and the attack surface unchanged. Tests 528/528.</text>
+
+  <text x="50" y="1082" fill="#e6edf3" font-size="13" font-weight="600">Left deliberately alone</text>
+  <text x="50" y="1104" fill="#8b949e" font-size="12">The dev-build split-brain is two <tspan font-style="italic">considered</tspan> decisions disagreeing — one argues null must open the gate, the other</text>
+  <text x="50" y="1124" fill="#8b949e" font-size="12">asserts the 503 in a test. Changing either deletes someone&#8217;s reasoning, so it went to the decisions register instead.</text>
+
+  <text x="1390" y="1124" fill="#484f58" font-size="11" text-anchor="end">fieldlab/docs/audit-2026-07-21-conditional-logic.svg</text>
+</svg>

@@ -48,10 +48,16 @@ builder.Services.AddRateLimiter(options =>
             cancellationToken);
     };
 
+    // Remote address only, deliberately. This used to prefer the caller's
+    // X-Lumberjacks-Enrollment-Id header, which is attacker-controlled at this point in
+    // the pipeline: UseRateLimiter runs BEFORE ValheimClientAccessMiddleware, so nothing
+    // has verified that header yet. A caller could send a fresh id per request and mint a
+    // fresh bucket every time, which defeats the only thing these limits exist to do —
+    // bound abuse from callers who have not authenticated. Partitioning by verified
+    // enrollment would require the limiter to run after the middleware; until then the
+    // connection address is the only key that cannot be forged over the wire.
     static string ClientKey(HttpContext context) =>
-        context.Request.Headers["X-Lumberjacks-Enrollment-Id"].ToString() is { Length: > 0 } id
-            ? id
-            : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
     static bool IsPrivate(HttpContext context)
     {

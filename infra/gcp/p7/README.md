@@ -289,13 +289,31 @@ Then start `admin-web` with `API_TARGET=http://127.0.0.1:14004`.
 
 ## Rollback and recovery
 
+The mod rolls back by restoring its backed-up DLL pair:
+
 ```powershell
 & C:\work\baseline\infra\gcp\p7\scripts\rollback-network-sense.ps1 `
   -BackupPath /mnt/comfy-p7/backups/comfynetworksense/<timestamp>
-
-& C:\work\baseline\infra\gcp\p7\scripts\rollback-gateway.ps1 `
-  -BackupPath /mnt/comfy-p7/backups/gateway/<timestamp>
 ```
+
+**The gateway rolls back by re-pinning its image, never by rebuilding.** Use phase 3
+of the promotion drill, which re-pins the historical image already on the VM, brings
+it up with `--no-build`, and verifies both `/health` and the exact image id:
+
+```powershell
+& C:\work\baseline\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
+  -BundleRoot <bundle> -Execute `
+  -RollbackImageId <sha256:...> -RollbackModSha256 <sha256> `
+  -RollbackModBackupPath /mnt/comfy-p7/backups/comfynetworksense/<timestamp>
+```
+
+There used to be a standalone `rollback-gateway.ps1` here. It was deleted rather than
+repaired: it copied source onto the VM and ran `docker compose build gateway`, which
+this stack structurally forbids — the compose file pins every service by image and
+carries no `build:` stanza — so it could only fail, and it failed *after* the copy had
+already mutated `/opt`. Its `-SourceRoot` also defaulted to `/opt/lumberjacks-ed83bd8`,
+a frozen historical commit. `configure-player-gateway.sh` was deleted for the same
+reason and a hardcoded public IP besides.
 
 After rollback, do not resume primary traffic until Gateway health, mod/server
 readiness, runtime/cold-start hashes, WAL health, and empty-window state all pass.

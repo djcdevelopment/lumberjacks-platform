@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T10:17:52.113Z</span>
+        <span>Updated 2026-07-21T10:48:03.344Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721101752-separated-heartbeat-liveness-from-primary-admiss">
+        <div class="journal"><article class="journal-entry" id="note-20260721104803-audited-the-accreted-conditional-logic-deleted-t">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T10:48:03.344Z">2026-07-21T10:48:03.344Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Audited the accreted conditional logic; deleted two broken deploy scripts and repointed the local dashboard at the tunnel</h3>
+      <p><strong>Impact:</strong> Six gemini-pro threads over the mod, gateway, P7 deploy, release scripting and the parallel infra stacks, looking for conditional logic that only ever served the unattended-agent regime. Every finding was re-checked against the code before acting, and three did not survive: the release-cut scripts were reported as holding stale split-repo paths but resolve correctly to the merged root, the dashboard IP was reported stale but is a reserved static that answers TCP, and zone A never finished its analysis. Deleted rollback-gateway.ps1, which ran a docker compose build the P7 stack structurally forbids, after already copying source onto /opt, with a SourceRoot default pointing at a frozen historical commit; the P7 README now sends gateway rollback to the drill&#39;s phase 3, which re-pins the image and verifies both health and the exact image id. Deleted configure-player-gateway.sh for the same forbidden build plus a hardcoded public IP. The gateway rate limiter keyed its partitions on the caller&#39;s own X-Lumberjacks-Enrollment-Id header, which UseRateLimiter reads before ValheimClientAccessMiddleware has verified anything, so a caller could mint a fresh bucket per request and defeat the only limits bounding unauthenticated abuse; it now keys on the connection address, the only value that cannot be forged over the wire at that point. The omen-dashboard proxy pointed at the VM&#39;s public player port, which capped what it could ever show, because admin and dev surfaces are bound to the VM&#39;s loopback deliberately and are not published there at all; it now follows the SSH/IAP tunnel that start-gateway-tunnel.ps1 already opened, so the allowlist could widen to the live stats surfaces without the VM publishing anything new. Enrollment listing, handshake config and the join flow stay unforwarded. The audit is drawn up as an SVG for posterity.</p>
+      <details><summary>Verification (3)</summary><ul><li>dotnet test Game.sln: 528/528 pass, unchanged by the limiter change</li><li>nginx -t against the real nginx:1.27-alpine image: configuration syntax is ok</li><li>Every widened proxy route was checked to exist in the gateway&#39;s endpoint map first; each carries limit_except GET because the same prefixes also hold reset, compact and stage</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/docs/audit-2026-07-21-conditional-logic.svg</code> <code>Lumberjacks/tools/omen-dashboard/nginx.conf</code> <code>fieldlab/DECISIONS-PENDING.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721101752-separated-heartbeat-liveness-from-primary-admiss">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

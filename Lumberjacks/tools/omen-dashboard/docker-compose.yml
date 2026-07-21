@@ -6,4 +6,10 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ../../src/Game.Gateway/Community/roadmap.html:/usr/share/nginx/html/roadmap.html:ro
+    # nginx.conf reaches the gateway through the SSH tunnel on the HOST's loopback
+    # (127.0.0.1:14000), which the container cannot see as its own. Docker Desktop
+    # resolves host.docker.internal natively; this mapping makes it work on plain
+    # Linux Docker too, where it is otherwise undefined.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
