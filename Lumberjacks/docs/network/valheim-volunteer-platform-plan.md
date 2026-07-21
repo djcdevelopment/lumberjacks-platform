@@ -25,8 +25,8 @@ remaining game data plane.
 
 ## Sixty-second orientation
 
-Valheim represents persistent replicated world objectsâ€”buildings, trees, creatures,
-terrain changes, and similar stateâ€”as **ZDOs**. In the proven P7 experiment, Valheim
+Valheim represents persistent replicated world objects—buildings, trees, creatures,
+terrain changes, and similar state—as **ZDOs**. In the proven P7 experiment, Valheim
 still chose which ZDO revisions were relevant to the connected player; the server mod
 redirected those selected revisions into the Lumberjacks Gateway, the enrolled client
 mod applied them on Unity's main thread, and the client durably acknowledged the

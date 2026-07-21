@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T11:52:23.487Z</span>
+        <span>Updated 2026-07-21T12:03:02.762Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721115223-recorded-the-player-facing-goals-behind-the-aoi-">
+        <div class="journal"><article class="journal-entry" id="note-20260721120302-captured-the-landmark-reach-design-repaired-the-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T12:03:02.762Z">2026-07-21T12:03:02.762Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Captured the landmark-reach design; repaired the mojibake, including a fresh instance I caused</h3>
+      <p><strong>Impact:</strong> Derek&#39;s design inverts the obvious approach to long-range visibility. Rather than making area-of-interest clever enough to show more at distance - unbounded, and worst exactly when the world is busiest - long-range presence becomes a scarce property that must be granted: a reward a master builder earns and places, pieces that are invisible up close but read as structure at great distance. The cost ceiling becomes a design parameter instead of an emergent property of how much people built, and the limitation becomes something the community can see and work toward rather than something the engine hides. It is also an inverted level of detail, since the proxy exists only at range where the real build is not loaded. The scoping primitive is mark-a-thing-and-define-its-reach, and Derek&#39;s intuition that the same mechanism serves itemid or ZDOid is correct for a concrete reason: ValheimPriorityObject already carries StableKey, which is already the planner&#39;s dedup and ordering key, plus an absolute Position, and the mod already filters by prefab stable hash in three places. The manifest even has a delivery wire already - a broadcast endpoint on the gateway and a listener in the mod. What is missing is one field, reach, since DistanceMeters currently means observation distance rather than visibility range; plus enforcement, since the delivery plan is advisory while the RANK is enforced at ZdoRedirectRunner.cs:337, which suggests a landmark exemption is a change to that predicate rather than a new subsystem; plus the proxy asset and swap rule, which is content work with no existing machinery; plus the earning mechanic. Separately, repaired 6 mojibake lines: 2 singly-encoded em-dashes in the volunteer platform plan and 4 doubly-encoded in ComfyNetworkSense.cs, left by earlier PowerShell round-trips - and one fresh instance I caused in this same session by doing exactly what lesson L-2026-07-21-9 forbids, an hour after grading that lesson as held.</p>
+      <details><summary>Verification (3)</summary><ul><li>Mod builds clean after the comment repair; repo-wide grep for mojibake byte sequences now returns nothing across all .md and .cs</li><li>The corrupted README was reverted via git checkout and re-edited with the Edit tool; em-dash count verified at 8 with 0 mojibake sequences before proceeding</li><li>The repair targeted two codepoint-exact sequences measured from the actual files after a character-class heuristic silently matched nothing</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/docs/network/landmark-reach-design.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721115223-recorded-the-player-facing-goals-behind-the-aoi-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
