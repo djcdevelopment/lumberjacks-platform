@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T07:13:50.830Z</span>
+        <span>Updated 2026-07-21T07:44:51.429Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721071350-retired-program-status-json-this-roadmap-is-the-">
+        <div class="journal"><article class="journal-entry" id="note-20260721074451-promotion-drill-now-transports-all-four-gated-im">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T07:44:51.429Z">2026-07-21T07:44:51.429Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Promotion drill now transports all four gated images, not just the gateway</h3>
+      <p><strong>Impact:</strong> build-release-bundle.ps1 has always saved four OCI archives but run-promotion-drill.ps1 only scp+docker-loaded the gateway one. Harmless while eventlog/progression/operatorapi still built from VM-local source; a hard &#39;docker compose up&#39; failure since the m5 cutover pinned them by digest with no build: stanza. Cold start now loads and tags all four and pins the three siblings in docker-compose.release.yml, whose lifetime is the release (phases 3-4 inherit it untouched, since only the gateway has a rollback identity). -Finalize retires both overrides and pins all four env vars, closing a silent-revert on the systemd reboot path. Also fixed roadmap.mjs checkStaged(), which compared repoRoot-relative paths against git&#39;s repo-root-relative output and so rejected correctly-staged commits under the monorepo layout.</p>
+      <details><summary>Verification (4)</summary><ul><li>Plan-only drill run against a synthetic v3 fixture bundle records all four identities in drill-plan.json</li><li>A bundle carrying only the gateway archive fails closed: &#39;bundle is missing eventlog/eventlog.oci.tar&#39;</li><li>Generated remote bash/YAML payloads rendered and inspected via AST extraction; no VM contact</li><li>roadmap:check passes; git rev-parse --show-prefix confirms the Lumberjacks/ prefix that broke --staged</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>infra/gcp/p7/scripts/run-promotion-drill.ps1</code> <code>infra/gcp/p7/PROMOTION-DRILL.md</code> <code>Lumberjacks/scripts/roadmap.mjs</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721071350-retired-program-status-json-this-roadmap-is-the-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

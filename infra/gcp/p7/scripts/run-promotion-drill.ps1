@@ -12,9 +12,11 @@
 
     1 SNAPSHOT    stop valheim-server, hash+archive world/config state,
                   restart valheim-server, fetch the snapshot manifest.
-    2 COLD-START  scp + docker load the bundle Gateway OCI archive, pin the
-                  image in a compose override, up -d --no-build, verify
-                  /health and the exact image ID; deploy the candidate mod
+    2 COLD-START  scp + docker load all four gated OCI archives (gateway,
+                  eventlog, progression, operatorapi), pin the gateway in
+                  docker-compose.promotion.yml and its three siblings in
+                  docker-compose.release.yml, up -d --no-build, verify
+                  /health and every exact image ID; deploy the candidate mod
                   DLL and verify its SHA-256 at both runtime paths.
     3 ROLLBACK    re-pin the historical rollback image (already on the VM),
                   up -d --no-build, verify health + exact image ID; restore
@@ -155,6 +157,15 @@ grep -E '^LUMBERJACKS_GATEWAY_IMAGE=' '$EnvironmentFile' | cut -d= -f2-
 function Set-DurablePin([string] $ImageReference, [string] $ExpectedImageId) {
   $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd')
   $backup = "/mnt/comfy-p7/backups/retire-promotion-override-$stamp"
+  # Finalize retires BOTH overrides, so every gated service has to be pinned durably in the env
+  # file, not just the gateway. Retiring the release override while leaving the three sibling vars
+  # at their pre-cutover values would resolve the reboot path to whatever those still name -- the
+  # exact silent-revert this step exists to prevent, just three services wider.
+  $siblingSed = ($siblingServices.Keys | ForEach-Object {
+    $var = "LUMBERJACKS_$($_.ToUpperInvariant())_IMAGE"
+    "sudo sed -i 's|^$var=.*|$var=$($siblingServices[$_].tag)|' '$EnvironmentFile'"
+  }) -join "`n"
+  $svcList = ($siblingServices.Keys -join ' ')
   $script = @"
 set -eu
 cd '$ComposeRoot'
@@ -163,27 +174,45 @@ sudo cp -a '$EnvironmentFile' '$backup/environment'
 if test -f docker-compose.promotion.yml; then
   sudo cp -a docker-compose.promotion.yml '$backup/docker-compose.promotion.yml'
 fi
+if test -f '$siblingOverride'; then
+  sudo cp -a '$siblingOverride' '$backup/$siblingOverride'
+fi
 sudo sed -i 's|^LUMBERJACKS_GATEWAY_IMAGE=.*|LUMBERJACKS_GATEWAY_IMAGE=$ImageReference|' '$EnvironmentFile'
-sudo rm -f docker-compose.promotion.yml
-sudo docker compose --env-file '$EnvironmentFile' up -d --no-build --no-deps gateway
+$siblingSed
+sudo rm -f docker-compose.promotion.yml '$siblingOverride'
+sudo docker compose --env-file '$EnvironmentFile' up -d --no-build --no-deps gateway $svcList
 actual=`$(sudo docker inspect '$GatewayContainer' --format '{{.Image}}')
 if test "`$actual" != '$ExpectedImageId'; then
   echo "durable pin resolves to `$actual, expected $ExpectedImageId" >&2
   exit 1
 fi
+for svc in $svcList; do
+  cid=`$(sudo docker compose --env-file '$EnvironmentFile' ps -q "`$svc")
+  test -n "`$cid"
+  printf '%s=%s\n' "`$svc" "`$(sudo docker inspect "`$cid" --format '{{.Image}}')"
+done
 curl --fail --silent http://127.0.0.1:4000/health | grep -q '"status":"ok"'
 printf 'durable_pin=%s\n' '$ImageReference'
 "@
-  Invoke-Remote $script 'finalize' | Out-Null
+  $output = Invoke-Remote $script 'finalize'
+  foreach ($svc in $siblingServices.Keys) {
+    $expected = $siblingServices[$svc].image_id
+    $m = [regex]::Match($output, "(?m)^$svc=(sha256:[0-9a-fA-F]{64})$")
+    if (!$m.Success) { Fail "durable pin did not report a running image id for $svc" }
+    if ($m.Groups[1].Value -ne $expected) { Fail "durable pin for $svc resolves to $($m.Groups[1].Value), expected $expected" }
+  }
 }
 
 function Set-GatewayImage([string] $ImageReference, [string] $ExpectedImageId, [string] $Label) {
   $overridePath = "$ComposeRoot/docker-compose.promotion.yml"
+  # The sibling override joins the -f chain here too: compose resolves the whole file set before
+  # acting, so without it this call dies on ${LUMBERJACKS_EVENTLOG_IMAGE:?} even though --no-deps
+  # means only the gateway container is touched.
   $script = @"
 set -eu
 cd '$ComposeRoot'
 printf 'services:\n  gateway:\n    image: %s\n' '$ImageReference' | sudo tee '$overridePath' > /dev/null
-sudo docker compose --env-file '$EnvironmentFile' -f docker-compose.yml -f docker-compose.promotion.yml up -d --no-build --no-deps gateway
+sudo docker compose --env-file '$EnvironmentFile' -f docker-compose.yml -f '$siblingOverride' -f docker-compose.promotion.yml up -d --no-build --no-deps gateway
 attempt=0
 until curl --fail --silent http://127.0.0.1:4000/health | grep -q '"status":"ok"'; do
   attempt=`$((attempt + 1))
@@ -205,6 +234,57 @@ printf 'health=%s\n' "`$(curl --fail --silent http://127.0.0.1:4000/health)"
   return $actual
 }
 
+# Transport and pin the three non-gateway release images. Runs once, inside cold start. These are
+# part of the release identity, not the rollback identity -- there is no RollbackEventlogImageId and
+# never was -- so the override this writes is inherited untouched by the rollback and restore
+# phases, which re-pin only the gateway.
+function Deploy-SiblingImages {
+  foreach ($svc in $siblingServices.Keys) {
+    $entry = $siblingServices[$svc]
+    $remoteSvcTar = "/tmp/$svc-$releaseId.oci.tar"
+    $svcUpload = Invoke-NativeJob 'scp' @('-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=8', $entry.tar, "${SshTarget}:$remoteSvcTar") 1800 2
+    if ($null -eq $svcUpload -or $svcUpload.Code -ne 0) { Fail "$svc OCI archive upload failed" }
+    Start-Sleep -Seconds 3
+    $svcLoadScript = @"
+set -eu
+sudo docker load --input '$remoteSvcTar' > /dev/null
+found=`$(sudo docker images --no-trunc --quiet | grep -F '$($entry.image_id)' | head -n 1)
+test -n "`$found"
+sudo docker tag '$($entry.image_id)' '$($entry.tag)'
+rm -f '$remoteSvcTar'
+printf 'tagged=%s\n' '$($entry.tag)'
+"@
+    Invoke-Remote $svcLoadScript "$svc image load" | Write-Verbose
+  }
+
+  $pinYaml = "services:`n" + (($siblingServices.Keys | ForEach-Object {
+    "  ${_}:`n    image: $($siblingServices[$_].tag)"
+  }) -join "`n")
+  $svcList = ($siblingServices.Keys -join ' ')
+  $composeArgs = "--env-file '$EnvironmentFile' -f docker-compose.yml -f '$siblingOverride'"
+  $pinScript = @"
+set -eu
+cd '$ComposeRoot'
+sudo tee '$siblingOverride' > /dev/null <<'RELEASE_PINS'
+$pinYaml
+RELEASE_PINS
+sudo docker compose $composeArgs up -d --no-build --no-deps $svcList
+for svc in $svcList; do
+  cid=`$(sudo docker compose $composeArgs ps -q "`$svc")
+  test -n "`$cid"
+  printf '%s=%s\n' "`$svc" "`$(sudo docker inspect "`$cid" --format '{{.Image}}')"
+done
+"@
+  $pinOutput = Invoke-Remote $pinScript 'release image pins'
+  foreach ($svc in $siblingServices.Keys) {
+    $expected = $siblingServices[$svc].image_id
+    $m = [regex]::Match($pinOutput, "(?m)^$svc=(sha256:[0-9a-fA-F]{64})$")
+    if (!$m.Success) { Fail "$svc did not report a running image id" }
+    if ($m.Groups[1].Value -ne $expected) { Fail "$svc image mismatch: running $($m.Groups[1].Value), expected $expected" }
+  }
+  return $pinOutput
+}
+
 # ---------------------------------------------------------------- phase 0: plan
 $startedUtc = NowUtc
 if (!(Test-Path -LiteralPath $BundleRoot -PathType Container)) { Fail "bundle root missing: $BundleRoot" }
@@ -220,13 +300,36 @@ if ((Hash $modDll) -ne $candidateModSha) { Fail 'bundle mod DLL does not match m
 if ($candidateImageId -eq $RollbackImageId) { Fail 'candidate and rollback image ids are identical; drill would prove nothing' }
 $candidateTag = "lumberjacks-gateway:drill-$releaseId"
 
+# eventlog/progression/operatorapi joined the release gate in the m5 cutover: compose now pins them
+# by digest with no build: stanza, so unlike before they cannot materialise on the VM by being
+# rebuilt from /opt/lumberjacks. build-release-bundle.ps1 has always saved all four OCI archives;
+# only the gateway one was ever transported, which was invisible while the other three still built
+# from VM-local source and is a hard `up` failure on a re-provisioned VM. These pins are constant
+# for the release, so they live in their own override that the phase transitions never rewrite --
+# a rollback re-pins the gateway image, not the whole stack.
+$siblingServices = [ordered]@{}
+foreach ($svc in @('eventlog', 'progression', 'operatorapi')) {
+  $svcImageId = [string]$manifest.$svc.image_id
+  if ([string]::IsNullOrWhiteSpace($svcImageId)) { Fail "manifest is missing $svc.image_id; cut a v3 manifest before drilling" }
+  $svcTar = Join-Path $BundleRoot "$svc/$svc.oci.tar"
+  if (!(Test-Path -LiteralPath $svcTar -PathType Leaf)) { Fail "bundle is missing $svc/$svc.oci.tar" }
+  $siblingServices[$svc] = [ordered]@{
+    tar      = $svcTar
+    image_id = $svcImageId
+    tag      = "lumberjacks-${svc}:drill-$releaseId"
+  }
+}
+$siblingOverride = 'docker-compose.release.yml'
+$siblingImageIds = [ordered]@{}
+foreach ($svc in $siblingServices.Keys) { $siblingImageIds[$svc] = $siblingServices[$svc].image_id }
+
 $plan = [ordered]@{
   schema = 'comfy-p7-promotion-drill-plan/v1'
   release_id = $releaseId
   planned_utc = $startedUtc
   bundle_root = $BundleRoot
   bundle_validation = 'valid'
-  candidate = [ordered]@{ image_id = $candidateImageId; image_tag = $candidateTag; mod_sha256 = $candidateModSha }
+  candidate = [ordered]@{ image_id = $candidateImageId; image_tag = $candidateTag; mod_sha256 = $candidateModSha; sibling_image_ids = $siblingImageIds }
   rollback = [ordered]@{ image_id = $RollbackImageId; mod_sha256 = $RollbackModSha256; mod_backup_path = $RollbackModBackupPath }
   target = [ordered]@{ ssh = $SshTarget; compose_root = $ComposeRoot; gateway = $GatewayContainer; valheim = $ValheimContainer }
   phases = @('snapshot', 'cold_start', 'rollback', 'restore')
@@ -313,6 +416,7 @@ rm -f '$remoteTar'
 printf 'tagged=%s\n' '$candidateTag'
 "@
 Invoke-Remote $loadScript 'image load' | Write-Verbose
+Deploy-SiblingImages | Write-Verbose
 $coldImage = Set-GatewayImage $candidateTag $candidateImageId 'cold start'
 
 # Candidate mod deploy + hash verification at both runtime paths.
@@ -343,8 +447,12 @@ Write-Receipt 'cold-start-receipt.json' ([ordered]@{
   completed_utc = NowUtc
   gateway_image_id = $coldImage
   gateway_started_via = 'docker load + compose image pin, --no-build'
+  sibling_image_ids = $siblingImageIds
+  sibling_started_via = "docker load + $siblingOverride image pins, --no-build"
   mod_sha256 = $candidateModSha
-  checks = @('bundle_validation=valid', 'gateway_health=ok', "gateway_image=$coldImage", 'mod_runtime_hash=match', 'mod_fallback_hash=match')
+  checks = @('bundle_validation=valid', 'gateway_health=ok', "gateway_image=$coldImage") +
+    ($siblingServices.Keys | ForEach-Object { "$($_)_image=match" }) +
+    @('mod_runtime_hash=match', 'mod_fallback_hash=match')
 })
 
 # ------------------------------------------------------------- phase 3: rollback

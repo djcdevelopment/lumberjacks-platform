@@ -1104,22 +1104,40 @@ function git(args, options = {}) {
   return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...options });
 }
 
+// Git reports and addresses paths from the top of the enclosing repository, but every
+// *Relative constant above is relative to repoRoot (this package). Those were the same
+// string while Lumberjacks was its own repo; under the baseline monorepo this package
+// sits at a prefix ('Lumberjacks/'), so the two must be bridged or --staged rejects a
+// correctly-staged commit. --show-prefix returns '' when repoRoot IS the repo root, so
+// this stays correct for a standalone checkout too.
+function gitPathPrefix() {
+  return git(['rev-parse', '--show-prefix']).trim().replaceAll('\\', '/');
+}
+
 function checkStaged() {
+  const prefix = gitPathPrefix();
+  const notesTracked = `${prefix}${notesRelative}`;
+  const outputTracked = `${prefix}${outputRelative}`;
   const staged = git(['diff', '--cached', '--name-only', '--diff-filter=ACMR'])
     .split(/\r?\n/)
     .filter(Boolean)
     .map((item) => item.replaceAll('\\', '/'));
   if (staged.length === 0) fail('no staged files; stage the intended commit before using --staged');
-  if (!staged.includes(notesRelative)) fail(`every non-merge commit must stage an appended ${notesRelative} record`);
-  if (!staged.includes(outputRelative)) fail(`every roadmap note must stage regenerated ${outputRelative}`);
+  if (!staged.includes(notesTracked)) fail(`every non-merge commit must stage an appended ${notesRelative} record`);
+  if (!staged.includes(outputTracked)) fail(`every roadmap note must stage regenerated ${outputRelative}`);
 
+  // Deliberately NOT notesTracked: git is asymmetric here. Reported paths (--name-only) and
+  // index addressing (git show :path) are relative to the top of the tree, but a pathspec
+  // argument is relative to the current directory -- which is already repoRoot. Prefixing this
+  // one too makes it look for Lumberjacks/Lumberjacks/..., matching nothing, so the diff comes
+  // back empty and the append check silently sees zero records instead of one.
   const diff = git(['diff', '--cached', '--no-color', '--unified=0', '--', notesRelative]);
   const additions = diff.split(/\r?\n/).filter((line) => line.startsWith('+{'));
   const removals = diff.split(/\r?\n/).filter((line) => line.startsWith('-{'));
   if (additions.length !== 1) fail(`staged commit must append exactly one journal record; found ${additions.length}`);
   if (removals.length !== 0) fail('historic roadmap journal records are append-only and may not be removed or modified');
 
-  const stagedHtml = git(['show', `:${outputRelative}`]);
+  const stagedHtml = git(['show', `:${outputTracked}`]);
   const workingHtml = fs.readFileSync(outputPath, 'utf8');
   if (stagedHtml !== workingHtml) fail(`${outputRelative} has staged/working-tree drift; regenerate and stage it again`);
 }

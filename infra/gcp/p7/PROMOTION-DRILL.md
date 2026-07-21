@@ -37,9 +37,9 @@ Run without `-Execute` to validate the bundle, resolve every identity, and write
 drill plan. This never opens an SSH connection:
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
+& C:\work\baseline\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
   -ManifestPath Lumberjacks\docs\roadmap\m0-clean-build-candidate-r2.json `
-  -BundleRoot C:\work\comfy\fieldlab\runs\releases\m0-clean-20260716-r2 `
+  -BundleRoot C:\work\baseline\fieldlab\runs\releases\m0-clean-20260716-r2 `
   -RollbackImageId sha256:358f5e11e35b54367a83d4e52ea3d47c0346e62a82ed357c2ff403eafafcd0a2 `
   -RollbackModSha256 b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b
 ```
@@ -57,9 +57,9 @@ match section 3, rollback identities are present, and `execute` is `false`.
 Inside the scheduled window:
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
+& C:\work\baseline\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
   -ManifestPath Lumberjacks\docs\roadmap\m0-clean-build-candidate-r2.json `
-  -BundleRoot C:\work\comfy\fieldlab\runs\releases\m0-clean-20260716-r2 `
+  -BundleRoot C:\work\baseline\fieldlab\runs\releases\m0-clean-20260716-r2 `
   -RollbackImageId sha256:358f5e11e35b54367a83d4e52ea3d47c0346e62a82ed357c2ff403eafafcd0a2 `
   -RollbackModSha256 b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b `
   -RollbackModBackupPath /mnt/comfy-p7/backups/comfynetworksense/20260716T004955Z `
@@ -73,11 +73,20 @@ Phase walkthrough:
    `/mnt/comfy-p7/backups/promotion-drill/<stamp>` with a SHA-256 manifest, restarts
    `valheim-server`. Verifies the rollback DLL pair exists before mutating anything.
    Writes `snapshot-manifest.json` (hashes only; archives stay on the VM).
-2. **COLD START** — uploads and `docker load`s the bundle Gateway OCI archive, pins
-   the image in `docker-compose.promotion.yml`, starts with `--no-build`, and
-   verifies `/health` plus the exact running image ID against the manifest. Deploys
-   the candidate mod DLL to the runtime and fallback paths and verifies its SHA-256
-   at both. Writes `cold-start-receipt.json`.
+2. **COLD START** — uploads and `docker load`s all four gated OCI archives. The
+   Gateway is pinned in `docker-compose.promotion.yml`; `eventlog`, `progression`
+   and `operatorapi` are pinned in `docker-compose.release.yml`. Both files join the
+   `-f` chain, everything starts with `--no-build`, and the exact running image ID of
+   all four is verified against the manifest (`/health` is checked for the Gateway
+   only — the other three expose no such endpoint). Deploys the candidate mod DLL to
+   the runtime and fallback paths and verifies its SHA-256 at both. Writes
+   `cold-start-receipt.json`.
+
+   The two override files have deliberately different lifetimes. The release pins are
+   fixed for the release, so phases 3 and 4 inherit `docker-compose.release.yml`
+   untouched; only the Gateway pin moves, because only the Gateway has a rollback
+   identity (there is no `-RollbackEventlogImageId`, by design). Rolling the Gateway
+   back does not roll the stack back.
 3. **ROLLBACK** — re-pins the Gateway to the historical rollback image (already on
    the VM; nothing is rebuilt), verifies health plus exact image ID, restores the
    historical mod DLL pair, restarts `valheim-server`, and verifies the historical
@@ -113,11 +122,20 @@ recover to the pre-drill baseline manually:
       append the closing roadmap note (`node scripts/roadmap.mjs note ...`).
    Do not rewrite Comfy history before pushing, or the staged revision and the
    receipt must be re-recorded.
-3. When the promotion decision is final, retire the override: set
-   `LUMBERJACKS_GATEWAY_IMAGE=<promoted tag>` in `/etc/comfy-p7/environment`, install
-   the base `docker-compose.yml` that pins `gateway.image` from that variable (no
-   `build:` fallback), verify `up -d --no-build --no-deps gateway` leaves the container
-   untouched, then delete `docker-compose.promotion.yml`.
+3. When the promotion decision is final, retire the overrides: set all four gated
+   image variables in `/etc/comfy-p7/environment` — `LUMBERJACKS_GATEWAY_IMAGE`,
+   `LUMBERJACKS_EVENTLOG_IMAGE`, `LUMBERJACKS_PROGRESSION_IMAGE`,
+   `LUMBERJACKS_OPERATORAPI_IMAGE` — to their promoted tags, install the base
+   `docker-compose.yml` that pins each `image` from its variable (no `build:`
+   fallback), verify `up -d --no-build --no-deps gateway eventlog progression
+   operatorapi` leaves the containers untouched, then delete both
+   `docker-compose.promotion.yml` and `docker-compose.release.yml`. `-Finalize` does
+   all of this and verifies every running image ID afterwards.
+
+   Retiring the overrides while leaving the three sibling variables at their
+   pre-cutover values would silently resolve the reboot path back to whatever those
+   still name — the same silent-revert this step exists to prevent, three services
+   wider.
 
    Done for `m0-clean-20260716-r2` on 2026-07-16: the systemd reboot path
    (`docker compose up -d`, base file only) now resolves the promoted pin, and VM-side
