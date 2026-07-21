@@ -59,6 +59,11 @@ services:
       ServiceUrls__EventLog: "http://eventlog:4002"
       ServiceUrls__Progression: "http://progression:4003"
       VALHEIM_ZDO_QUEUE_PATH: "/var/lib/lumberjacks/zdo-queue/redirect.wal"
+      # The recipient cutover. /etc/comfy-p7/environment is read by the compose PROCESS, not the
+      # container, so without this reference the env file alone reaches nothing and the flag looks
+      # set while the Gateway never sees it. Defaults false: flipping it before the mod that stamps
+      # recipients is deployed halts delivery silently.
+      ValheimQueue__ProducerEmitsRecipients: "${VALHEIM_QUEUE_PRODUCER_EMITS_RECIPIENTS:-false}"
     volumes:
       - /mnt/comfy-p7/lumberjacks/zdo-queue:/var/lib/lumberjacks/zdo-queue
       - /mnt/comfy-p7/lumberjacks/enrollment:/var/lib/lumberjacks/enrollment
