@@ -38,16 +38,14 @@ foreach ($pattern in @(
 }
 
 $manifest = $raw | ConvertFrom-Json
-if ((Require-Property $manifest 'schema') -notmatch '^comfy-p7-release/v2(?:-candidate)?$') { Fail 'unsupported schema' }
+if ((Require-Property $manifest 'schema') -notmatch '^comfy-p7-release/v3(?:-candidate)?$') { Fail 'unsupported schema' }
 $releaseId = Require-Property $manifest 'release_id'
 if ($releaseId -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$') { Fail 'invalid release_id' }
 
 $source = Require-Property $manifest 'source'
-foreach ($name in @('lumberjacks_commit', 'comfy_commit')) {
-  $commit = Require-Property $source $name
-  if ($commit -notmatch '^[0-9a-fA-F]{40}$') { Fail "$name is not a full commit id" }
-}
-if ($source.lumberjacks_clean -ne $true -or $source.comfy_clean -ne $true) { Fail 'source checkouts were not clean' }
+$sourceCommit = Require-Property $source 'baseline_commit'
+if ($sourceCommit -notmatch '^[0-9a-fA-F]{40}$') { Fail 'baseline_commit is not a full commit id' }
+if ($source.baseline_clean -ne $true) { Fail 'baseline checkout was not clean' }
 
 $mod = Require-Property $manifest 'mod'
 Require-Hash (Require-Property $mod 'clean_build_sha256') 'mod.clean_build_sha256' | Out-Null

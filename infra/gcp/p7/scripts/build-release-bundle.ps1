@@ -5,9 +5,7 @@ param(
   [Parameter(Mandatory = $true)]
   [string] $OutputRoot,
   [Parameter(Mandatory = $true)]
-  [string] $ComfyRepo,
-  [Parameter(Mandatory = $true)]
-  [string] $LumberjacksRepo,
+  [string] $BaselineRepo,
   [Parameter(Mandatory = $true)]
   [string] $ModDllPath,
   [Parameter(Mandatory = $true)]
@@ -30,15 +28,12 @@ $releaseId = [string]$manifest.release_id
 if ([string]::IsNullOrWhiteSpace($releaseId)) { Fail 'manifest release_id missing' }
 $target = (Resolve-Path -LiteralPath $OutputRoot -ErrorAction SilentlyContinue)
 if ($target) { Fail "refusing to overwrite existing bundle: $OutputRoot" }
-$comfyFull = (Resolve-Path -LiteralPath $ComfyRepo).Path
-$lumberjacksFull = (Resolve-Path -LiteralPath $LumberjacksRepo).Path
+$baselineFull = (Resolve-Path -LiteralPath $BaselineRepo).Path
 $manifestFull = (Resolve-Path -LiteralPath $ManifestPath).Path
 
-foreach ($repo in @(@{ Root = $comfyFull; Commit = $manifest.source.comfy_commit; Name = 'Comfy' }, @{ Root = $lumberjacksFull; Commit = $manifest.source.lumberjacks_commit; Name = 'Lumberjacks' })) {
-  $dirty = Invoke-Git $repo.Root @('status', '--porcelain', '--untracked-files=all')
-  if ($dirty) { Fail "$($repo.Name) checkout is dirty" }
-  if ((Invoke-Git $repo.Root @('rev-parse', 'HEAD')) -ne $repo.Commit) { Fail "$($repo.Name) HEAD does not match the manifest" }
-}
+$dirty = Invoke-Git $baselineFull @('status', '--porcelain', '--untracked-files=all')
+if ($dirty) { Fail 'baseline checkout is dirty' }
+if ((Invoke-Git $baselineFull @('rev-parse', 'HEAD')) -ne $manifest.source.baseline_commit) { Fail 'baseline HEAD does not match the manifest' }
 
 $expectedMod = ([string]$manifest.mod.clean_build_sha256).ToLowerInvariant()
 if ((Hash $ModDllPath) -ne $expectedMod) { Fail 'mod DLL does not match manifest' }
@@ -52,10 +47,10 @@ $bundleFull = (Resolve-Path -LiteralPath $OutputRoot).Path
 New-Item -ItemType Directory -Path (Join-Path $bundleFull 'mod'), (Join-Path $bundleFull 'gateway'), (Join-Path $bundleFull 'source') | Out-Null
 Copy-Item -LiteralPath $ManifestPath -Destination (Join-Path $bundleFull 'manifest.json')
 Copy-Item -LiteralPath $ModDllPath -Destination (Join-Path $bundleFull 'mod/ComfyNetworkSense.dll')
-Copy-Item -LiteralPath (Join-Path $lumberjacksFull 'Dockerfile') -Destination (Join-Path $bundleFull 'source/Dockerfile')
-Copy-Item -LiteralPath (Join-Path $lumberjacksFull 'Directory.Build.props') -Destination (Join-Path $bundleFull 'source/Directory.Build.props')
-Copy-Item -LiteralPath (Join-Path $lumberjacksFull 'Directory.Packages.props') -Destination (Join-Path $bundleFull 'source/Directory.Packages.props')
-Copy-Item -LiteralPath (Join-Path $comfyFull 'network/mod/ComfyNetworkSense/ComfyNetworkSense.csproj') -Destination (Join-Path $bundleFull 'source/ComfyNetworkSense.csproj')
+Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Dockerfile') -Destination (Join-Path $bundleFull 'source/Dockerfile')
+Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Directory.Build.props') -Destination (Join-Path $bundleFull 'source/Directory.Build.props')
+Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Directory.Packages.props') -Destination (Join-Path $bundleFull 'source/Directory.Packages.props')
+Copy-Item -LiteralPath (Join-Path $baselineFull 'network/mod/ComfyNetworkSense/ComfyNetworkSense.csproj') -Destination (Join-Path $bundleFull 'source/ComfyNetworkSense.csproj')
 docker save --output (Join-Path $bundleFull 'gateway/gateway.oci.tar') $GatewayImage
 if ($LASTEXITCODE -ne 0) { Fail 'docker save failed' }
 

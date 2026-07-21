@@ -39,8 +39,15 @@ drill plan. This never opens an SSH connection:
 ```powershell
 & C:\work\comfy\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
   -ManifestPath Lumberjacks\docs\roadmap\m0-clean-build-candidate-r2.json `
-  -BundleRoot C:\work\comfy\fieldlab\runs\releases\m0-clean-20260716-r2
+  -BundleRoot C:\work\comfy\fieldlab\runs\releases\m0-clean-20260716-r2 `
+  -RollbackImageId sha256:358f5e11e35b54367a83d4e52ea3d47c0346e62a82ed357c2ff403eafafcd0a2 `
+  -RollbackModSha256 b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b
 ```
+
+`-RollbackImageId`/`-RollbackModSha256` have no script default (fixed 2026-07-21: they used to
+default to these exact M0 values, which silently kept applying to every later drill). Section 3's
+table is the source for THIS drill; a later drill must pull the equivalent pair from the release
+being superseded, never copy these forward unchanged.
 
 Verify `drill-plan.json` under `<BundleRoot>\drill\`: candidate image and mod hashes
 match section 3, rollback identities are present, and `execute` is `false`.
@@ -53,6 +60,8 @@ Inside the scheduled window:
 & C:\work\comfy\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
   -ManifestPath Lumberjacks\docs\roadmap\m0-clean-build-candidate-r2.json `
   -BundleRoot C:\work\comfy\fieldlab\runs\releases\m0-clean-20260716-r2 `
+  -RollbackImageId sha256:358f5e11e35b54367a83d4e52ea3d47c0346e62a82ed357c2ff403eafafcd0a2 `
+  -RollbackModSha256 b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b `
   -RollbackModBackupPath /mnt/comfy-p7/backups/comfynetworksense/20260716T004955Z `
   -Execute
 ```

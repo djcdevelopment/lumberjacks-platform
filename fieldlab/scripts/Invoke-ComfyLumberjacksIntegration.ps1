@@ -197,13 +197,12 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Gateway payload hash failed' }
   $gatewayPayloadHash = ($payloadHashLine -split '\s+')[0]
   $artifactView = [ordered]@{
-    comfy_commit = (& git -C $ComfyRoot rev-parse HEAD).Trim()
-    lumberjacks_commit = (& git -c safe.directory=C:/work/Lumberjacks -C $LumberjacksRoot rev-parse HEAD).Trim()
+    baseline_commit = (& git -C $ComfyRoot rev-parse HEAD).Trim()
     dll_sha256 = $dllHash
     gateway_image_id = $imageId
     gateway_payload_sha256 = $gatewayPayloadHash
     effective_release = $ReleaseId
-    submission_schema_version = 2
+    submission_schema_version = 3
   }
   Write-NoBom (Join-Path $runRoot 'artifacts.json') (($artifactView | ConvertTo-Json) + "`n")
   $artifactView | Format-List | Out-Host

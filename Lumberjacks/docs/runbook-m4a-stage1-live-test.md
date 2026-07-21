@@ -145,8 +145,7 @@ Then write the manifest JSON under `Lumberjacks\docs\roadmap\`, modelled on
 & infra\gcp\p7\scripts\build-release-bundle.ps1 `
     -ManifestPath   Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
     -OutputRoot     fieldlab\runs\releases\m4-clean-20260718-r1 `
-    -ComfyRepo      . `
-    -LumberjacksRepo Lumberjacks `
+    -BaselineRepo   . `
     -ModDllPath     <path to frozen 0.5.31 mod dll> `
     -GatewayImage   lumberjacks-gateway:m4-clean-20260718-r1
 
@@ -167,8 +166,16 @@ Rehearse first (no VM contact):
 ```powershell
 & infra\gcp\p7\scripts\run-promotion-drill.ps1 `
     -ManifestPath Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
-    -BundleRoot   fieldlab\runs\releases\m4-clean-20260718-r1
+    -BundleRoot   fieldlab\runs\releases\m4-clean-20260718-r1 `
+    -RollbackImageId <Gateway image live immediately before this promotion> `
+    -RollbackModSha256 b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b
 ```
+
+`-RollbackImageId`/`-RollbackModSha256` have no script default (fixed 2026-07-21) - fill them in
+from the live deployment record at execution time, not from an old command in this file. The mod
+hash above is the 0.5.31 backup this runbook already targets
+(`/mnt/comfy-p7/backups/comfynetworksense/20260716T004955Z`); the Gateway image has no fixed value
+here because it depends on whatever was actually live right before this specific promotion.
 
 Then promote — **foreground shell, never backgrounded**:
 
@@ -176,6 +183,8 @@ Then promote — **foreground shell, never backgrounded**:
 & infra\gcp\p7\scripts\run-promotion-drill.ps1 `
     -ManifestPath Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
     -BundleRoot   fieldlab\runs\releases\m4-clean-20260718-r1 `
+    -RollbackImageId <Gateway image live immediately before this promotion> `
+    -RollbackModSha256 b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b `
     -RollbackModBackupPath /mnt/comfy-p7/backups/comfynetworksense/20260716T004955Z `
     -Execute -Finalize
 ```

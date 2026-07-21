@@ -37,9 +37,14 @@ param(
   [string] $EnvironmentFile = '/etc/comfy-p7/environment',
   [string] $GatewayContainer = 'comfy-lumberjacks-p7-gateway-1',
   [string] $ValheimContainer = 'comfy-lumberjacks-p7-valheim-server-1',
-  # Historical validated runtime identities (rollback artifacts).
-  [string] $RollbackImageId = 'sha256:358f5e11e35b54367a83d4e52ea3d47c0346e62a82ed357c2ff403eafafcd0a2',
-  [string] $RollbackModSha256 = 'b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b',
+  # The runtime identities to roll back TO if the candidate fails - i.e. the release
+  # that was live immediately before this drill's candidate. No default: a hardcoded
+  # default here goes stale the moment another release is cut (it did once already -
+  # this held M0-era identities long after M0 was superseded), and a stale rollback
+  # identity is worse than none, since the drill would silently "succeed" at rolling
+  # back to the wrong artifact. Required with -Execute; see the check below.
+  [string] $RollbackImageId = '',
+  [string] $RollbackModSha256 = '',
   # VM path holding the historical mod runtime.dll/fallback.dll backup pair.
   [string] $RollbackModBackupPath = '',
   # Existing snapshot root on the VM (from an interrupted run) to reuse: skips the
@@ -239,6 +244,8 @@ if (-not $Execute) {
   return
 }
 if ([string]::IsNullOrWhiteSpace($RollbackModBackupPath)) { Fail 'RollbackModBackupPath is required with -Execute' }
+if ([string]::IsNullOrWhiteSpace($RollbackImageId)) { Fail 'RollbackImageId is required with -Execute' }
+if ([string]::IsNullOrWhiteSpace($RollbackModSha256)) { Fail 'RollbackModSha256 is required with -Execute' }
 
 # ------------------------------------------------------------- phase 1: snapshot
 if (-not [string]::IsNullOrWhiteSpace($ResumeSnapshotRoot)) {
