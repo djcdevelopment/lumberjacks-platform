@@ -99,6 +99,24 @@ services:
       - --providers
       - comfy_gateway.toolsurface.valheim,comfy_gateway.toolsurface.matrix,comfy_gateway.toolsurface.inference
 
+  # ---------------------------------------------------------------------------
+  # THE valheim-client-NN SERVICES BELOW NO LONGER SELF-DRIVE (2026-07-21).
+  #
+  # Their COMFY_AUTOJOIN / COMFY_MATRIX_CHECKIN env vars are still set in the
+  # x-steam-client anchor above, but the mod-side code that read them was removed
+  # with the swarm harness — see network/mod/ComfyNetworkSense/SWARM-HARNESS-REMOVED.md
+  # (recoverable at commit 1887626). A client started now will boot Steam, launch
+  # Valheim, load the mod, and then sit at the character-select screen forever,
+  # logging rtt_ms = 0 / bytes_in = 0. That is exactly the condition auto-join was
+  # written to prevent.
+  #
+  # They are gated behind `profiles: ["clients"]`, so a plain `docker compose up`
+  # does NOT start them — it brings up only valheim-server and comfy-gateway, both
+  # of which are live and unaffected. Only `--profile clients` reaches this.
+  #
+  # Either drive character select by hand over the noVNC console, or restore the
+  # harness from the commit above. Do not assume these collect telemetry.
+  # ---------------------------------------------------------------------------
   valheim-client-01:
     <<: *steam-client
     hostname: valheim-client-01

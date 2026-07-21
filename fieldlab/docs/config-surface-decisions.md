@@ -58,7 +58,26 @@ Close that gate first, then delete.
 
 ---
 
-## D2 — Evidence-only Lumberjacks scaffolding · **DELETE**
+> ## ⚠ Revision 2026-07-21 (later the same day) — D2 and D3 were re-examined before execution and
+> **both were withdrawn.** Read this before acting on anything below.
+>
+> These decisions were written from audit output. Audit output describes *files*; it does not
+> describe *couplings*. Every one of the deletions turned out to be entangled with something the
+> audit had no reason to mention, and two of them were invalidated by the landmark design written
+> hours later:
+>
+> | Was | Now | Why |
+> |---|---|---|
+> | D2 delete `LumberjacksPriorityProbe*` | **keep** | It writes the priority manifest the [landmark reach design](../../Lumberjacks/docs/network/landmark-reach-design.md) depends on. |
+> | D2 delete `LumberjacksShadow*` | **keep** | Entangled with `RunTeleportRoute` via `shadow_route` — the *manual* route walk deliberately kept when the swarm harness went. |
+> | D2 delete `LumberjacksProjection*` | **keep** | It renders "local-only Unity primitives without ZNetView or ZDO ownership", already branching `structure` → Cube. That is precisely the far-field proxy mechanism the landmark design needs, and the only prior art for it in the repo. |
+> | D3 delete `NetcodeProbeAutoStart*` | **defer with D4** | `TryDriveNetcodeProbeAuto` is the *arming path* for the ownership observe and pin runners, which D4 defers. D3 and D4 are not independent. |
+>
+> D5 and D7 **were** executed — see their sections. The lesson is recorded as `L-2026-07-21-19`:
+> a recommendation is a snapshot of what was known; executing it later without re-reading is how a
+> considered decision becomes a mistake.
+
+## D2 — ~~Evidence-only Lumberjacks scaffolding~~ · **WITHDRAWN, keep all 17**
 
 **Keys (17):** `LumberjacksProjection*` (6), `LumberjacksShadow*` (5),
 `LumberjacksPriorityProbe*` (3), `LumberjacksProbeInputCount`, `LumberjacksRegionId`,
@@ -118,6 +137,17 @@ is referenced by ADR 0001 and the I2 evidence; retiring it deserves its own deci
 
 ---
 
+## D5 — The `ActiveSeconds` auto-disarm timers · **DONE 2026-07-21**
+
+`zdoRedirectActiveSeconds` and `handshakeResponderActiveSeconds` now default to **0** (no cap),
+matching the production posture the P7 runbook pins. The finite lab window is opt-in. This removes
+the real risk: a VM configured from defaults would previously have auto-disarmed the redirect 90 s
+into a session and resumed native sync, with the safe value existing only in a runbook paragraph.
+`zdoInjectionActiveSeconds` was left at 90 — it belongs to D4, which is deferred, and is not on the
+serving path.
+
+Original reasoning follows.
+
 ## D5 — The `ActiveSeconds` auto-disarm timers · **KEEP the mechanism, FLIP the default**
 
 **Keys (4):** `ZdoRedirectActiveSeconds`, `HandshakeResponderActiveSeconds`,
@@ -175,6 +205,17 @@ state plus a runbook paragraph. That addresses the real risk — the posture bei
 
 ---
 
+## D7 — Description rot on the serving path · **DONE 2026-07-21**
+
+`zdoRedirectEnabled`'s description now states plainly that it is the live serving path in
+`lumberjacks-primary` mode, and why it still defaults OFF (off *is* the standing rollback). Checked
+the two neighbours while there: `zdoAuthoritativeConsumerEnabled` and `handshakeResponderEnabled`
+read accurately and were left alone, and the `ownershipObserve`/`ownershipPin` "private lab runs"
+wording is still **correct** — those genuinely remain lab experiments under the deferred D4. Only
+one key was actually rotten, not the several first assumed.
+
+Original reasoning follows.
+
 ## D7 — Description rot on the serving path · **FIX, regardless of everything above**
 
 `zdoRedirectEnabled` still describes itself as *"Intended for private lab runs on the
@@ -214,12 +255,12 @@ spawner connection caches (4), the core sampling knobs, and the Lumberjacks iden
 | Decision | Keys | Call |
 |---|---|---|
 | D1 swarm harness | 19 | **done 2026-07-21** — 107 → 88 keys |
-| D2 evidence scaffolding | 17 | delete |
-| D3 probe automation | 3 | delete |
+| D2 evidence scaffolding | 17 | **withdrawn** - all three groups load-bearing |
+| D3 probe automation | 3 | **deferred with D4** - it arms D4's runners |
 | D4 P3/P5 experiments | 12 | defer |
-| D5 auto-disarm timers | 4 | keep, flip default to 0 |
+| D5 auto-disarm timers | 4 | **done 2026-07-21** - redirect + handshake defaults now 0 |
 | D6 serving-path flags | 4 | no change; track a reference .cfg |
-| D7 description rot | — | fix now |
+| D7 description rot | — | **done 2026-07-21** |
 | D8 credentials | 2 | promote, low priority |
 
-Acting on D1+D2+D3 removes **40 of 107 keys** without touching the serving path.
+D1 removed 19 keys (107 to 88). D2 and D3 were withdrawn on re-examination, so the remaining removable surface is far smaller than first estimated - which is the honest outcome, not a failure.

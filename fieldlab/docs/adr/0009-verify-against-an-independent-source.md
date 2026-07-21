@@ -15,9 +15,18 @@ collector, a game capture, and the build-farm's own grading lane — but they sh
    would have shipped stale source and reported a clean deploy.
 2. **`rollback-gateway.ps1`** copied source onto `/opt` and *then* ran `docker compose build gateway`,
    which this stack structurally forbids. It could only fail — after mutating the VM.
-3. **`valheim-lab.compose.yml`** still set `COMFY_AUTOJOIN` after the code reading it was deleted.
-   `docker compose up` would succeed and every client would idle at the character-select screen logging
-   `rtt_ms = 0` — exactly the condition auto-join existed to prevent.
+3. **`valheim-lab.compose.yml`** still set `COMFY_AUTOJOIN` after the code reading it was deleted. A
+   client started from it boots Steam, launches Valheim, loads the mod, and then idles at the
+   character-select screen logging `rtt_ms = 0` — exactly the condition auto-join existed to prevent.
+
+   > **Corrected 2026-07-21, same day.** An earlier revision of this ADR said `docker compose up`
+   > would do this. It would not: the `valheim-client-NN` services are gated behind
+   > `profiles: ["clients"]`, so a plain `up` starts only `valheim-server` and `comfy-gateway`. Only
+   > `--profile clients` reaches them. The example is real but narrower than stated, and an ADR
+   > arguing for verification against an independent source should not itself carry an unverified
+   > claim. The file was also nearly *deleted* as dead swarm scaffolding during the follow-up
+   > cleanup — it is not: it is the live definition of the running `comfy-gateway` on `:8720` and a
+   > running Valheim server. Checking `docker ps` before the delete is what caught it.
 4. **The 2026-07-04 AoI campaign** wrote 998 result rows whose `avg_fps` was constant at `60.0` and
    whose `bytes_out_per_sec` varied 0.2% across the full range from empty control to extreme density.
    Its single real capture reported `rtt_ms`, `bytes_in/out` and `packets_in/out` all `0`, because the
