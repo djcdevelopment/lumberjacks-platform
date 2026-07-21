@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T12:55:47.805Z</span>
+        <span>Updated 2026-07-21T12:59:39.107Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721125547-redefined-the-aoi-knee-by-variance-onset-rather-">
+        <div class="journal"><article class="journal-entry" id="note-20260721125939-adr-0010-consistency-means-predictable-not-invar">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T12:59:39.107Z">2026-07-21T12:59:39.107Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>ADR 0010: consistency means predictable, not invariant</h3>
+      <p><strong>Impact:</strong> Derek&#39;s design principle, and a correction to how I first recorded it. He said consistent fidelity - even ugly or choppy - preserves immersion so long as it is consistent. I read that as hold everything constant and drafted a decision condemning adaptive degrade for changing behaviour under load. He corrected it: adaptive design is still consistent, it is predictive falloff. That distinction is the whole decision. Adaptive degradation is a deterministic function of an observable condition, so when it gets crowded it thins out is a rule a player learns immediately and then predicts correctly - the world having physics, not a break in immersion. It also beats holding full fidelity until collapse, because the collapse is the discontinuity. So the protected property is predictability rather than sameness. The mechanism is endorsed; what is defective is the missing damping at the threshold, since AdaptiveDegrade lifts the instant a broadcast fits again with no cooldown and no hysteresis, meaning at exactly budget it can answer differently tick to tick from a cause no player can perceive. That is indistinguishable from randomness at the player&#39;s end. The spatial boundary has the identical flaw with plain &lt;= comparisons in InterestManager, so an entity at exactly 100.0 units flips bands every tick. Hysteresis is therefore reclassified as a fidelity requirement rather than a performance optimisation. The knee measurement is refined again: spread is only a defect when uncorrelated, so p99 divergence must be recorded against the density axis rather than as a scalar, because variance that tracks load is the system telling the truth while variance with no visible cause is the immersion killer. Also sets the tuning procedure - find the knee, back off to what holds under the worst band, run that everywhere - and accepts that this will lose throughput benchmarks on purpose.</p>
+      <details><summary>Verification (1)</summary><ul><li>AdaptiveDegrade.cs:22-23 confirmed to state no cooldown and no hysteresis; its default is false; InterestManager.cs:113 and :118 confirmed to use plain &lt;= against nearRadiusSq and midRadiusSq with no dead-band</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/docs/adr/0010-consistency-is-predictability.md</code> <code>Lumberjacks/docs/network/aoi-knee-experiment-brief.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721125547-redefined-the-aoi-knee-by-variance-onset-rather-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

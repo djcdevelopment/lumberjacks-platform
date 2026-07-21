@@ -60,6 +60,16 @@ Expect the first to arrive meaningfully before the second. If it does not, that 
 knowing. `TickMetrics` already keeps p50/p99/max per phase over a rolling ~100-tick window, so both
 come out of the same `/tick` read at no extra cost.
 
+**One critical refinement — spread is not automatically a defect.** Per
+[ADR 0010](../../../fieldlab/docs/adr/0010-consistency-is-predictability.md), consistency means
+*predictable*, not *invariant*. If p99 divergence **correlates with density**, that is the system
+telling the truth about load, and a player reads it as the world getting busy — legible, learnable,
+immersion-preserving. The failure mode is spread that correlates with **nothing the player can see**.
+
+So record the divergence *against* the density axis, not as a scalar. The question is not "how much
+variance" but "is the variance caused by anything". Uncorrelated jitter at low density is a worse
+result than larger, well-correlated spread at high density.
+
 This is not a stylistic preference. The whole telemetry schema in `network/telemetry-and-scores.md`
 is variance-oriented — `jitter_ms` beside `rtt_ms`, `p95_frame_time_ms` beside `avg_fps`,
 `correction_count_recent`, `correction_magnitude_avg`, `time_since_last_authoritative_update_ms`.
