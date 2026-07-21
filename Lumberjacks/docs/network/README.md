@@ -37,6 +37,7 @@ The architecture separates four concerns that are easy to blur together:
 | Who owns physics and state? | [Deterministic simulation](deterministic-simulation.md) |
 | How do UDP and WebSocket cooperate? | [Transport and degradation](transport-and-degradation.md) |
 | How is per-client traffic bounded? | [Interest management](interest-management.md) |
+| What did the AoI testing actually learn, and why is none of it in the code? | [Area of interest findings](area-of-interest-findings.md) |
 | What did the live Valheim P7 cutover prove, and how does it flow? | [Valheim + Lumberjacks P7 victory and overview](valheim-lumberjacks-p7-overview.md) |
 | How does P7 become a safe volunteer and multiplayer test platform? | [Valheim volunteer cutover platform plan](valheim-volunteer-platform-plan.md) |
 | Where can I scan current gates and implementation notes? | [Living Valheim roadmap](../../src/Game.Gateway/Community/roadmap.html) (also served at `/roadmap`) |
