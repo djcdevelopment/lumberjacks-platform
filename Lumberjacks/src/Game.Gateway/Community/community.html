@@ -415,6 +415,18 @@
             </div>
         </div>
 
+        <!-- Gameplay Events Panel -->
+        <div class="panel" id="panel-gameplay" style="grid-column: 1 / -1;">
+            <h2>Gameplay Feed <span class="stale-warning">API Unreachable</span></h2>
+            <div class="data-item" style="margin-bottom: 12px;">
+                <span class="data-label">Recent events</span>
+                <span class="data-value" id="gameplayCount">--</span>
+            </div>
+            <div id="gameplayList" style="max-height: 260px; overflow-y: auto; padding-right: 8px;">
+                <span class="data-value" style="font-size: 0.85rem;">Awaiting data...</span>
+            </div>
+        </div>
+
     </div>
 
     <footer>
@@ -707,6 +719,37 @@
             }
         }
 
+        async function updateGameplayData() {
+            try {
+                const data = await fetchEndpoint('/api/v0/telemetry/events');
+                updateBadge(data.api_version, data.stability);
+
+                document.getElementById('gameplayCount').textContent =
+                    `${data.count} (cap ${data.capacity}, ${data.dropped_since_start} dropped)`;
+
+                const list = document.getElementById('gameplayList');
+                if (!data.events || data.events.length === 0) {
+                    list.innerHTML = '<span class="data-value" style="font-size: 0.85rem;">No recent gameplay events</span>';
+                } else {
+                    list.innerHTML = data.events.map(e => `
+                        <div class="list-row" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+                            <div style="display:flex; justify-content:space-between; width:100%;">
+                                <strong>${escapeHtml(e.event_type)}</strong>
+                                <span style="font-size:0.75rem; color:var(--text-dim);">${new Date(e.occurred_at).toLocaleTimeString()}</span>
+                            </div>
+                            <span style="font-size:0.85rem; color:var(--text-dim);">${escapeHtml(e.detail || '')}</span>
+                        </div>
+                    `).join('');
+                }
+
+                setPanelStale('panel-gameplay', false);
+                return true;
+            } catch (e) {
+                setPanelStale('panel-gameplay', true);
+                return false;
+            }
+        }
+
         // Main Loop
         async function pollAll() {
             // Run all fetches concurrently, don't let one failure block others
@@ -715,7 +758,8 @@
                 updateTickData(),
                 updateSessionsData(),
                 updateDeliveryData(),
-                updateRegionsData()
+                updateRegionsData(),
+                updateGameplayData()
             ]);
             
             const allSuccess = results.every(res => res === true);
