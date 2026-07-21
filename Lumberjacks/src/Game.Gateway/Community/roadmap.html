@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T09:31:15.358Z</span>
+        <span>Updated 2026-07-21T10:07:33.502Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721093115-closed-out-the-session-retro-three-adrs-plan-out">
+        <div class="journal"><article class="journal-entry" id="note-20260721100733-repointed-every-retired-checkout-root-reference-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T10:07:33.502Z">2026-07-21T10:07:33.502Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Repointed every retired-checkout-root reference at the merged repo</h3>
+      <p><strong>Impact:</strong> The cutover left 30 copy-pasteable commands across seven docs, plus four executable scripts, still aimed at C:\work\comfy and C:\work\lumberjacks. Those roots still exist on disk holding pre-cutover content, so the commands do not fail - they succeed quietly against stale code. The sharpest case was deploy-gateway.ps1, whose LocalRoot defaulted to C:\work\lumberjacks: it tars, hashes and ships two gateway source files, and both of them differ between that root and baseline, so running the documented deploy would have reverted the telemetry-heartbeat fix while its own hash check passed, because it hashes what it shipped. All four scripts (deploy-gateway.ps1, capture-release-manifest.ps1, fieldlab/scripts/start-comfy-gateway.ps1, network/mcp/etc/start-comfy-gateway.cmd) now derive their roots from their own location. The P7 runbook had warned at the top that both roots were retired while hardcoding them in eleven command blocks below; that contradiction is gone. Root AGENTS.md still described the retired two-repo roadmap ceremony and now defers to Lumberjacks/AGENTS.md. Separately, RoadmapViewEndpoints resolved its asset through a single string with an embedded forward slash, which Path.Combine preserves - green on Linux, two failures on Windows; it now combines two segments and the suite is 525/525.</p>
+      <details><summary>Verification (3)</summary><ul><li>dotnet test Game.sln: 525/525 pass, up from 523/525</li><li>All four repointed scripts parse clean and resolve to C:\work\baseline roots</li><li>Repo-wide grep leaves only intentional prose, new explanatory comments, and frozen evidence archives</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>infra/gcp/p7/scripts/deploy-gateway.ps1</code> <code>AGENTS.md</code> <code>fieldlab/DECISIONS-PENDING.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721093115-closed-out-the-session-retro-three-adrs-plan-out">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

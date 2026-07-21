@@ -137,9 +137,9 @@ Copy `terraform.tfvars.example` to ignored `terraform.tfvars`, set the project,
 operator, OMEN CIDR, and pilot port, then review before applying:
 
 ```powershell
-terraform -chdir=C:\work\comfy\infra\gcp\p7 init
-terraform -chdir=C:\work\comfy\infra\gcp\p7 plan
-terraform -chdir=C:\work\comfy\infra\gcp\p7 apply
+terraform -chdir=C:\work\baseline\infra\gcp\p7 init
+terraform -chdir=C:\work\baseline\infra\gcp\p7 plan
+terraform -chdir=C:\work\baseline\infra\gcp\p7 apply
 ```
 
 Secrets belong only in `/etc/comfy-p7/environment` with mode `0600`, never Terraform
@@ -161,12 +161,12 @@ print it wholesale.
 ### 3. Test the code
 
 ```powershell
-Set-Location C:\work\lumberjacks
+Set-Location C:\work\baseline\Lumberjacks
 & C:\work\dotnet9\dotnet.exe test `
   tests\Game.Gateway.Tests\Game.Gateway.Tests.csproj
 
 dotnet build `
-  C:\work\comfy\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj `
+  C:\work\baseline\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj `
   -c Release
 ```
 
@@ -180,9 +180,9 @@ Close local Valheim before copying the OMEN DLL. Deploy the server DLL with guar
 backup, restart, readiness, runtime hash, and cold-start hash checks:
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\deploy-network-sense.ps1 `
+& C:\work\baseline\infra\gcp\p7\scripts\deploy-network-sense.ps1 `
   -ManifestPath `
-    C:\work\comfy\fieldlab\runs\releases\p7-primary-v1-0.5.31-clean.json
+    C:\work\baseline\fieldlab\runs\releases\p7-primary-v1-0.5.31-clean.json
 ```
 
 Server paths:
@@ -222,7 +222,7 @@ container image, health, source hashes, and empty queue manually after it return
 ### 6. Enroll the player
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\new-player-invite.ps1
+& C:\work\baseline\infra\gcp\p7\scripts\new-player-invite.ps1
 ```
 
 The script authenticates locally on GCP over SSH and returns a one-use, 24-hour URL.
@@ -246,7 +246,7 @@ test. Also verify disk space and both server DLL hashes.
 ### 8. Launch without a tunnel
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\start-direct-session.ps1
+& C:\work\baseline\infra\gcp\p7\scripts\start-direct-session.ps1
 ```
 
 This health-checks the direct Gateway and launches Valheim with
@@ -290,10 +290,10 @@ Then start `admin-web` with `API_TARGET=http://127.0.0.1:14004`.
 ## Rollback and recovery
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\rollback-network-sense.ps1 `
+& C:\work\baseline\infra\gcp\p7\scripts\rollback-network-sense.ps1 `
   -BackupPath /mnt/comfy-p7/backups/comfynetworksense/<timestamp>
 
-& C:\work\comfy\infra\gcp\p7\scripts\rollback-gateway.ps1 `
+& C:\work\baseline\infra\gcp\p7\scripts\rollback-gateway.ps1 `
   -BackupPath /mnt/comfy-p7/backups/gateway/<timestamp>
 ```
 

@@ -77,10 +77,10 @@ dedicated server (the ZDOMan funnel methods are shared networking core — prove
 
 ```powershell
 # 1. Build 0.5.6+ locally (auto-copies to OMEN's local plugins too)
-dotnet build -c Release  C:\work\comfy\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj
+dotnet build -c Release  C:\work\baseline\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj
 
 # 2. Ship the DLL to am4
-scp C:\work\comfy\network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll `
+scp C:\work\baseline\network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll `
     derek@am4:'~/comfy-valheim-lab/server-state/config/bepinex/plugins/ComfyNetworkSense.dll'
 ```
 

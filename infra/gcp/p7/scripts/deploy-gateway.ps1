@@ -1,7 +1,11 @@
 [CmdletBinding()]
 param(
   [string] $SshTarget = 'comfy-p7',
-  [string] $LocalRoot = 'C:\work\lumberjacks',
+  # Derived from this script's own location, never a fixed checkout root. The
+  # retired C:\work\lumberjacks still exists on disk holding pre-cutover source,
+  # so an absolute default would tar and ship stale files without ever failing —
+  # and the hash check below would pass, because it hashes what it shipped.
+  [string] $LocalRoot = (Join-Path ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))) 'Lumberjacks'),
   [string] $SourceRoot = '/opt/lumberjacks-ed83bd8',
   [string] $ComposeRoot = '/opt/comfy/infra/gcp/p7',
   [string] $EnvironmentFile = '/etc/comfy-p7/environment',

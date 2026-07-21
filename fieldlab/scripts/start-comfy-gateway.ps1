@@ -10,7 +10,8 @@
 
 $ErrorActionPreference = "Stop"
 $py  = "C:\Users\derek\AppData\Local\Programs\Python\Python312\python.exe"  # PATH python is a broken Store stub
-$mcp = "C:\work\comfy\network\mcp"
+$repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))  # the baseline repo root
+$mcp = Join-Path $repo "network\mcp"
 
 $env:PYTHONPATH = $mcp
 $env:PYTHONUTF8 = "1"

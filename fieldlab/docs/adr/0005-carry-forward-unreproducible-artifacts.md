@@ -63,6 +63,25 @@ binary is still verifiable by hash at every hop.
   original build plus the bundle's integrity, not on independent rebuild. That is weaker. It is
   accepted here because the alternative — shipping untested bytes to close a test — is worse.
 
+## Amendment (2026-07-21) — the gap is mode-scoped, not permanent
+
+Derek resolved the open choice above by scoping it rather than closing it. Rebuild-auditable
+artifacts are an **independent-agent guardrail**, not a standing requirement of
+**operator dev / testing in the seat**:
+
+> "Accept unreproducibility when I'm in the seat driving and testing — that heavy read tape was
+> for when I left Codex to build for 12 hours by itself."
+
+So: while a human is driving the cut and world-testing the result, hash continuity plus bundle
+integrity is sufficient, and neither remedy is adopted. The moment builds are handed to an
+unattended agent — no operator watching the artifact it produced — the assumption underneath that
+acceptance is gone, and one of the two remedies should be switched on *before* that run, not after.
+
+Neither remedy is discarded; both stay on the shelf against that mode. Note the interaction with
+[ADR 0006](0006-git-bundle-transport-no-vm-credentials.md): keeping the VM credential-free was
+likewise resolved with "unattended for now", so today no unattended path exists to need this
+guardrail. These two decisions should be revisited together, not separately.
+
 ## Related
 
 `Lumberjacks/docs/roadmap/m5-recipients-build-candidate-v3.json` (the `artifact_provenance` and

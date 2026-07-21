@@ -24,7 +24,7 @@ under `/mnt/comfy-p7/lumberjacks/enrollment/`.
 ## Administrator: generate one invite
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\new-player-invite.ps1
+& C:\work\baseline\infra\gcp\p7\scripts\new-player-invite.ps1
 ```
 
 Send only the newly returned `invite_url` to the intended player. It expires after 24
@@ -60,7 +60,7 @@ remove/revoke the old record before using that account again.
 $gateway = 'http://8.231.129.249:42317'
 Invoke-RestMethod "$gateway/health"
 
-& C:\work\comfy\infra\gcp\p7\scripts\start-direct-session.ps1
+& C:\work\baseline\infra\gcp\p7\scripts\start-direct-session.ps1
 ```
 
 The launch helper verifies Gateway health and starts Valheim with

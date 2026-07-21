@@ -19,7 +19,11 @@ namespace Game.Gateway.Endpoints;
 /// </summary>
 public static class RoadmapViewEndpoints
 {
-    private const string RelativePath = "Community/roadmap.html";
+    // Two segments, not "Community/roadmap.html": Path.Combine keeps an embedded
+    // forward slash verbatim, so the one-string form resolved to a path that only
+    // matched a Path.Combine-built expectation on Linux.
+    private const string AssetDirectory = "Community";
+    private const string AssetFile = "roadmap.html";
     private const string PathVariable = "LUMBERJACKS_ROADMAP_HTML";
     private const string ShaHeader = "X-Roadmap-Sha256";
 
@@ -60,7 +64,7 @@ public static class RoadmapViewEndpoints
     public static string ResolvePath(string contentRoot) =>
         Environment.GetEnvironmentVariable(PathVariable) is { Length: > 0 } configured && File.Exists(configured)
             ? configured
-            : Path.Combine(contentRoot, RelativePath);
+            : Path.Combine(contentRoot, AssetDirectory, AssetFile);
 
     private static Document Load(string contentRoot, ILogger logger)
     {

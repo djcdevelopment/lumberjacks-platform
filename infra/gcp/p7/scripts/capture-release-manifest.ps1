@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [string] $SshTarget = 'comfy-p7',
-  [string] $ManifestPath = 'C:\work\comfy\fieldlab\runs\releases\p7-primary-v1-20260715.json',
+  [string] $ManifestPath = (Join-Path ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))) 'fieldlab\runs\releases\p7-primary-v1-20260715.json'),
   [string] $LocalDll = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim\BepInEx\plugins\ComfyNetworkSense.dll',
   [string] $LocalConfig = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim\BepInEx\config\djcdevelopment.valheim.comfynetworksense.cfg'
 )
@@ -12,7 +12,10 @@ function Hash-File([string] $Path) {
   return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
-$sourceRoot = 'C:\work\comfy\network\mod\ComfyNetworkSense'
+# Repo-relative, so the recorded source revision is this checkout's, not a
+# retired pre-cutover one that still happens to exist on disk.
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
+$sourceRoot = Join-Path $repoRoot 'network\mod\ComfyNetworkSense'
 $sourceRevision = (& git -C $sourceRoot rev-parse HEAD 2>$null | Out-String).Trim()
 $localAssembly = [Reflection.AssemblyName]::GetAssemblyName($LocalDll)
 $remoteHashes = ssh $SshTarget @"
