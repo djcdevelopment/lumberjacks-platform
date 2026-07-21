@@ -12,6 +12,24 @@ using Xunit;
 namespace Game.Simulation.Tests;
 
 /// <summary>
+/// Groups every test class that touches the process-wide static <see cref="GameplayEventFeed"/>
+/// ring so xUnit never runs them in parallel with each other. xUnit parallelizes across test
+/// classes (collections) by default, but never within a single collection — sharing this name
+/// is the whole mechanism. Without it, PlayerHandlerTests' Join calls (which never Reset the
+/// feed — they don't care about telemetry) can land inside TelemetryV0EndpointsTests' own
+/// Reset-act-Snapshot window on another thread, corrupting the snapshot it asserts on. This was
+/// the source of an intermittent CI failure: Assert.Single seeing 2 matching events instead of
+/// 1 because a concurrent PlayerHandler.Join captured its own PlayerEnteredRegion event into the
+/// same static ring mid-test. Reproduced locally ~1 run in 6-10 under a TRX-logged loop.
+/// </summary>
+[CollectionDefinition("GameplayEventFeed")]
+public class GameplayEventFeedCollection
+{
+    // Intentionally empty — a pure grouping marker, no shared fixture instance is needed since
+    // the shared state (GameplayEventFeed) is already a static singleton in production code.
+}
+
+/// <summary>
 /// Public Telemetry API v0 (community-telemetry-strategy.md Phase 3, G1) — response-shape
 /// coverage for the four endpoints hosted in Game.Simulation.Endpoints, plus the hard privacy
 /// rule from the strategy doc: no player ids, names, or positions may EVER appear in a v0
@@ -22,6 +40,7 @@ namespace Game.Simulation.Tests;
 /// Each Build*Info method is a plain static function of its dependencies (no HttpContext), so
 /// it's tested directly here the same way the endpoints call it — no host required.
 /// </summary>
+[Collection("GameplayEventFeed")]
 public class TelemetryV0EndpointsTests
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
