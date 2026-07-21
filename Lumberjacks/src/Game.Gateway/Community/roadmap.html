@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T10:58:13.345Z</span>
+        <span>Updated 2026-07-21T11:11:01.958Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721105813-completed-the-mod-config-inventory-and-turned-it">
+        <div class="journal"><article class="journal-entry" id="note-20260721111101-removed-the-swarm-unattended-client-harness-from">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T11:11:01.958Z">2026-07-21T11:11:01.958Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Removed the swarm/unattended-client harness from the mod; 107 config keys down to 88</h3>
+      <p><strong>Impact:</strong> The harness existed to run fleets of headless Valheim clients unattended during the independent-agent regime. Deleted rather than commented out, because git is the better archive - commented-out code rots silently, a commit SHA does not. Removed AutoCharacterSelectPatches.cs, which drove the character-select screen so a spawned container connected instead of idling at the menu, MatrixCheckinRunner.cs, which polled a gateway for benchmark cells and posted results back, the two auto-rehearsal wrappers in ComfyNetworkSense.cs, and 19 config keys across AutoJoin, Automation and Matrix. Two corrections surfaced while cutting, both against the audit&#39;s own grouping: RouteGodFlySafeguard was classified as swarm machinery but actually guards the MANUAL route walk from killing the character on a post-teleport fall, so it stayed; and the manual network_sense_rehearsal console command shares TryStartRehearsal and RunTeleportRoute with the auto path, so only the automatic wrappers went and the now-dead initiatedByAuto and autoRehearsal parameters were collapsed out of both signatures. The operator command is untouched. SWARM-HARNESS-REMOVED.md carries the recovery pointer, what stayed and why, the consumers left orphaned elsewhere - the autonomous compose files and the comfy-gateway matrix toolsurface, which is a registered MCP provider and must not be deleted casually - and the honest counter-argument that this was the only ready-made multi-client harness in the repo.</p>
+      <details><summary>Verification (3)</summary><ul><li>Mod builds 0 warnings 0 errors after removal; Game.sln still 528/528</li><li>git grep for MatrixCheckinRunner, AutoCharacterSelectPatches, TryStartAutoRehearsal and TryCoupleAutoRehearsal across all .cs returns nothing</li><li>ConfigEntry declarations and config.Bind calls both counted at 88, down from 107, and RouteGodFlySafeguard confirmed retained</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>network/mod/ComfyNetworkSense/SWARM-HARNESS-REMOVED.md</code> <code>fieldlab/docs/config-surface-decisions.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721105813-completed-the-mod-config-inventory-and-turned-it">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

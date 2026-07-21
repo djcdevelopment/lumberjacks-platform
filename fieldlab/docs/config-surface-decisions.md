@@ -16,10 +16,27 @@ itself information; where it is strong, the decision is marked to defer.
 
 ---
 
-## D1 — The swarm / unattended-client harness · **DELETE**
+## D1 — The swarm / unattended-client harness · **DONE 2026-07-21**
 
-**Keys (20):** `AutoJoin*` (9), `AutoRehearsal*` (6), `RouteGodFlySafeguard`,
-`CoupleAutoRehearsalToNetcodeProbe`, `Matrix*` (4)
+Removed: 19 keys, `AutoCharacterSelectPatches.cs`, `MatrixCheckinRunner.cs`, and the two
+auto-rehearsal wrappers. Config surface went 107 → 88 keys; mod builds 0 warnings. Recovery
+pointer and the full counter-argument are in
+`network/mod/ComfyNetworkSense/SWARM-HARNESS-REMOVED.md`.
+
+**Two corrections found while cutting**, both to this document's own grouping:
+
+- `RouteGodFlySafeguard` was listed here as swarm machinery. It is not — it guards the
+  **manual** `network_sense_rehearsal` route walk from killing the character on a
+  post-teleport fall. Kept.
+- The manual rehearsal command shares `TryStartRehearsal` / `RunTeleportRoute` with the auto
+  path. Only the automatic wrappers were removed; the operator command stays, and the
+  now-dead `initiatedByAuto` / `autoRehearsal` parameters were collapsed out of both
+  signatures.
+
+So the group was 19 keys, not 20, and the deletion was narrower than "delete AutoRehearsal".
+
+**Keys (19):** `AutoJoin*` (9), `AutoRehearsal*` (5), `CoupleAutoRehearsalToNetcodeProbe`,
+`Matrix*` (4)
 
 **Reason.** This group names its own purpose. `AutoJoinEnabled` and `MatrixCheckinEnabled`
 both read *"Intended for private lab/swarm clients only"*; `AutoJoinDeriveFromHostname`
@@ -196,7 +213,7 @@ spawner connection caches (4), the core sampling knobs, and the Lumberjacks iden
 
 | Decision | Keys | Call |
 |---|---|---|
-| D1 swarm harness | 20 | delete after M4b |
+| D1 swarm harness | 19 | **done 2026-07-21** — 107 → 88 keys |
 | D2 evidence scaffolding | 17 | delete |
 | D3 probe automation | 3 | delete |
 | D4 P3/P5 experiments | 12 | defer |
