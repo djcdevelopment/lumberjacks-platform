@@ -1,0 +1,15 @@
+# P7/I7 compose-all-flags auto-route: exercises pin + redirect + injection + handshake in ONE window.
+# Schema (ComfyNetworkSense.cs:1204 TryLoadRouteStops): id / world_x / world_z / settle_seconds /
+#   benchmark_seconds / [y]. Tab-delimited; the header row (first cell 'id') and '#' lines are skipped.
+#   y is optional per-line at column 6 and used verbatim; omit it and the mod floats the player at ground+3.
+# TIMING IS LOAD-BEARING. The redirect + injection ACTIVE windows start at ARM time (~connect+25s, coupled
+#   to the netcode-probe auto-start), each 90s, closing ~connect+115s (ZdoRedirectRunner.cs:146). The
+#   auto-walk starts ~spawn+20s. Stop 1 is deliberately SHORT so the client reaches the conifer stand while
+#   the 90s windows are still open -- a long stop 1 reproduces the I3-w1 "0 suppressed" miss. Stop 1 (base
+#   zone, ~1 sector from spawn) churns owned ZDOs for the pin; stop 2 loads the conifer stand for the redirect
+#   and gives the 1Hz injection poll a long dwell, staying present through the active-window auto-disarm
+#   (rollback rehearsal) and the end of the 150s probe. Conifer stand (9376,544)@Y=105 (terrain y79, canopy
+#   y94) is ground-truthed from the ComfyEra16 world-save; species there are exactly the 3 redirected conifers.
+id	world_x	world_z	settle_seconds	benchmark_seconds	y
+churn_spawn_base	3250	2250	10	15
+p7_conifer_stand	9376	544	20	110	105

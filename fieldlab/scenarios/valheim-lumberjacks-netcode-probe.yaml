@@ -1,0 +1,69 @@
+id: valheim-lumberjacks-netcode-probe
+title: Valheim Lumberjacks Netcode Interception Reachability (I1)
+goal: >
+  Prove that a ComfyNetworkSense Harmony patch fires on the live ZDO send and receive
+  funnels and can read the ZDO payload passing through, observing only and changing nothing.
+hypothesis: >
+  If the I0-mapped hook points (ZDOMan.RPC_ZDOData receive funnel and the ZDOMan.SendZDOs /
+  CreateSyncList send funnel) are reachable at runtime and the ZDO uid/owner fields are
+  legible through them, then the interception seams every later rung depends on are real and
+  not defeated by JIT inlining.
+inputs:
+  network_sense_log_dir:
+    default: C:/Program Files (x86)/Steam/steamapps/common/Valheim/BepInEx/config/comfy-network-sense
+    override_env: FIELDLAB_NETWORKSENSE_LOG_DIR
+  valheim_dir:
+    default: C:/Program Files (x86)/Steam/steamapps/common/Valheim
+    override_env: FIELDLAB_VALHEIM_DIR
+requires:
+  connected_peer: >
+    The ZDO funnels only fire with a connected peer. In singleplayer, SendZDOs / CreateSyncList
+    / RPC_ZDOData are never invoked (empty peer list). Run against a client<->dedicated-server
+    session, not a singleplayer world.
+execution:
+  # Primary: autonomous Docker lab. The probe auto-starts via the [Netcode] config once a peer
+  # connects (headless-safe on server and client), so no console typing is needed.
+  autonomous:
+    command: .\fieldlab\scripts\run-autonomous-valheim-lab.ps1 -Clients 1 -Start
+    probe_config: "[Netcode] netcodeProbeAutoStartEnabled=true (server + client)"
+    output: runs/<id>-valheim-autonomous-lab/telemetry/netcode-probe-summary.json
+  # Manual fallback: a live client connected to a real server.
+  mod_commands:
+    - network_sense_lumberjacks_netcode_probe start
+    - "# move ~60s across dense terrain / cross zone edges"
+    - network_sense_lumberjacks_netcode_probe stop
+  verifier: fieldlab/scripts/verify-netcode-probe.ps1
+  completion_signal:
+    - netcode-probe.jsonl start event
+    - zdo rows with dir=recv and dir=send
+    - netcode-probe.jsonl stop (or auto_stop) event with lifecycle counters
+outputs:
+  - netcode-probe.jsonl (BepInEx/config/comfy-network-sense)
+  - fieldlab/runs/i1/netcode-probe-summary.json
+pass_fail_gates:
+  - id: mod_deployed
+    requirement: Installed ComfyNetworkSense assembly version is 0.5.5 or newer.
+  - id: probe_window
+    requirement: netcode-probe.jsonl contains a start event (and ideally a matching stop).
+  - id: receive_funnel_reachable
+    requirement: RPC_ZDOData postfix fired and produced ZDO rows with legible uid/owner.
+  - id: send_funnel_reachable
+    requirement: CreateSyncList postfix produced outbound ZDO rows with legible uid/owner.
+  - id: sendzdos_not_inlined
+    requirement: >
+      SendZDOs postfix fired (residual inlining risk retired). If it did not while
+      CreateSyncList did, that is a discovery, not a kill - the fallback seam carried the
+      observation and later rungs attach one frame up.
+  - id: both_directions
+    requirement: Nonzero observed sends AND receives in the same play window.
+  - id: no_vanilla_mutation
+    requirement: Packet states no ZDOs, owners, revisions, or transforms were changed.
+phases:
+  - build_and_install_probe
+  - run_in_game_probe_window
+  - verify_reachability
+  - gate_i1_and_unlock_i2_i3_i4
+stop_and_reassess:
+  - RPC_ZDOData postfix never fires (receive funnel unreachable - should not happen; it is delegate-registered).
+  - Both SendZDOs and CreateSyncList postfixes stay at zero across a play window with confirmed traffic (both send helpers inlined - escalate to a transpiler or a caller-frame hook).
+  - uid/owner fields are unreadable/garbage (wire-format re-parse is wrong - revisit NETCODE-MAP.md funnel-1 layout).

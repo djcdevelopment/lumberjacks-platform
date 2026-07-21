@@ -1,0 +1,202 @@
+name: comfy-lumberjacks-p7
+
+x-lumberjacks-telemetry: &lumberjacks-telemetry
+  GOOGLE_CLOUD_PROJECT: "${GOOGLE_CLOUD_PROJECT:?GOOGLE_CLOUD_PROJECT must be set}"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://host.docker.internal:4317"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+  OTEL_METRIC_EXPORT_INTERVAL: "10000"
+  OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=gcp-p7,service.namespace=lumberjacks"
+  OTEL_SERVICE_VERSION: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
+  COMFY_NETWORKSENSE_VERSION: "${COMFY_NETWORKSENSE_VERSION:-unknown}"
+  VALHEIM_TELEMETRY_KEY: "${VALHEIM_TELEMETRY_KEY:-}"
+  LUMBERJACKS_CLIENT_ACCESS_KEY: "${LUMBERJACKS_CLIENT_ACCESS_KEY:-}"
+  LUMBERJACKS_ENROLLMENT_PATH: "/var/lib/lumberjacks/enrollment/invites.json"
+  LUMBERJACKS_ADMIN_KEY: "${LUMBERJACKS_ADMIN_KEY:-}"
+  LUMBERJACKS_PLAYER_GATEWAY_URL: "${LUMBERJACKS_PLAYER_GATEWAY_URL:-http://127.0.0.1:14000}"
+  LUMBERJACKS_ENROLLMENT_PUBLIC_URL: "${LUMBERJACKS_ENROLLMENT_PUBLIC_URL:-http://127.0.0.1:14000}"
+  LUMBERJACKS_AUTHORITATIVE_WINDOW_ID: "${LUMBERJACKS_AUTHORITATIVE_WINDOW_ID:-p7-primary-v1}"
+
+x-lumberjacks-service: &lumberjacks-service
+  restart: unless-stopped
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: game
+      POSTGRES_USER: game
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - /mnt/comfy-p7/lumberjacks/postgres:/var/lib/postgresql/data
+      - "${LUMBERJACKS_ROOT:-/opt/lumberjacks}/infra/docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U game"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  gateway:
+    <<: *lumberjacks-service
+    # M0 freeze: the gateway runs only promoted, prebuilt release images.
+    # LUMBERJACKS_GATEWAY_IMAGE lives in /etc/comfy-p7/environment and is set
+    # by the promotion flow (PROMOTION-DRILL.md). There is deliberately no
+    # build: fallback on the VM; rollback is an image re-pin, never a rebuild.
+    image: "${LUMBERJACKS_GATEWAY_IMAGE:?LUMBERJACKS_GATEWAY_IMAGE must be set to the promoted release image}"
+    ports:
+      - "127.0.0.1:4000:4000"
+      - "${LUMBERJACKS_PLAYER_PORT:-42317}:4000"
+      - "127.0.0.1:4005:4005/udp"
+    environment:
+      <<: *lumberjacks-telemetry
+      OTEL_SERVICE_NAME: lumberjacks-gateway
+      Urls: "http://+:4000"
+      ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
+      ServiceUrls__EventLog: "http://eventlog:4002"
+      ServiceUrls__Progression: "http://progression:4003"
+      VALHEIM_ZDO_QUEUE_PATH: "/var/lib/lumberjacks/zdo-queue/redirect.wal"
+      # The recipient cutover. /etc/comfy-p7/environment is read by the compose PROCESS, not the
+      # container, so without this reference the env file alone reaches nothing and the flag looks
+      # set while the Gateway never sees it. Defaults false: flipping it before the mod that stamps
+      # recipients is deployed halts delivery silently.
+      ValheimQueue__ProducerEmitsRecipients: "${VALHEIM_QUEUE_PRODUCER_EMITS_RECIPIENTS:-false}"
+    volumes:
+      - /mnt/comfy-p7/lumberjacks/zdo-queue:/var/lib/lumberjacks/zdo-queue
+      - /mnt/comfy-p7/lumberjacks/enrollment:/var/lib/lumberjacks/enrollment
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # TLS termination for the public volunteer endpoint (M1 gate). INERT BY DEFAULT: the `tls` profile
+  # means this service does not exist for any plain `docker compose up` - it starts only under
+  # COMPOSE_PROFILES=tls. A profile rather than an override file on purpose: M0 retired the
+  # promotion override precisely because a second file that must be remembered is a footgun, and an
+  # in-file switch that must be named cannot be forgotten into the default path.
+  #
+  # PREREQUISITES, none of which this file can satisfy on its own:
+  #   1. LUMBERJACKS_PUBLIC_DNS_NAME - a real DNS A record pointing at this VM. ACME will not issue
+  #      for a bare IP, so there is no TLS without a name. Operator decision, still open.
+  #   2. LUMBERJACKS_ACME_EMAIL - where Let's Encrypt sends expiry warnings.
+  #   3. Firewall: 80 and 443 open. 80 is not optional - HTTP-01 issuance needs it - and neither is
+  #      in the current terraform, which opens only the player port.
+  # Enabling the profile without these fails fast at startup rather than half-serving, which is the
+  # behaviour we want from a switch that only ever gets thrown once.
+  caddy:
+    <<: *lumberjacks-service
+    profiles: ["tls"]
+    # Digest-pinned like valheim-server: a floating tag on a TLS terminator means the thing holding
+    # your certificates can change under a drill without anyone choosing it.
+    image: caddy@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17
+    ports:
+      # 80 carries the ACME HTTP-01 challenge and the redirect to 443, nothing else.
+      # No udp/443: HTTP/3 is not opened in the firewall, and publishing a port nothing can reach
+      # only invites someone to debug why it does not work. The mod speaks SslStream over TCP and
+      # has no HTTP/3 at all; a browser falls back silently.
+      - "80:80"
+      - "443:443"
+    environment:
+      # `:-` and NOT `:?`, and this is load-bearing: compose interpolates EVERY service's variables
+      # before it filters by profile, so a required-marker here fails `docker compose up` for the
+      # whole stack - including the default, caddy-less path P7 actually boots with. Caught by
+      # `docker compose config --services` on the default profile, which errored on a service that
+      # was never going to start. The requirement is enforced where it can be without breaking
+      # unrelated boots: an empty name is not a site address, so Caddy refuses to start (Caddyfile).
+      LUMBERJACKS_PUBLIC_DNS_NAME: "${LUMBERJACKS_PUBLIC_DNS_NAME:-}"
+      LUMBERJACKS_ACME_EMAIL: "${LUMBERJACKS_ACME_EMAIL:-}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # /data holds the issued certificates AND the ACME account key. It MUST be persistent: the
+      # promotion drill rebuilds this stack routinely, and a fresh /data re-issues every time until
+      # Let's Encrypt's duplicate-certificate limit (5/week for the same name set) locks the endpoint
+      # out of TLS for days. This mount is the difference between a drill and an outage.
+      - /mnt/comfy-p7/caddy/data:/data
+      - /mnt/comfy-p7/caddy/config:/config
+    depends_on:
+      gateway:
+        condition: service_started
+
+  eventlog:
+    <<: *lumberjacks-service
+    build:
+      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
+      target: eventlog
+    ports:
+      - "127.0.0.1:4002:4002"
+    environment:
+      <<: *lumberjacks-telemetry
+      OTEL_SERVICE_NAME: lumberjacks-eventlog
+      Urls: "http://+:4002"
+      ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  progression:
+    <<: *lumberjacks-service
+    build:
+      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
+      target: progression
+    ports:
+      - "127.0.0.1:4003:4003"
+    environment:
+      <<: *lumberjacks-telemetry
+      OTEL_SERVICE_NAME: lumberjacks-progression
+      Urls: "http://+:4003"
+      ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  operatorapi:
+    <<: *lumberjacks-service
+    build:
+      context: "${LUMBERJACKS_ROOT:-/opt/lumberjacks}"
+      target: operatorapi
+    ports:
+      - "127.0.0.1:4004:4004"
+    environment:
+      <<: *lumberjacks-telemetry
+      OTEL_SERVICE_NAME: lumberjacks-operatorapi
+      Urls: "http://+:4004"
+      ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
+      ServiceUrls__Gateway: "http://gateway:4000"
+      ServiceUrls__EventLog: "http://eventlog:4002"
+      ServiceUrls__Progression: "http://progression:4003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  valheim-server:
+    image: ghcr.io/community-valheim-tools/valheim-server@sha256:e8b13da3c44f54a38511c8ac224f2959a437c0b2626cf916683ca7acc8dfb146
+    restart: unless-stopped
+    cap_add:
+      - sys_nice
+    stop_grace_period: 2m
+    ports:
+      - "2456-2457:2456-2457/udp"
+    environment:
+      TZ: America/Los_Angeles
+      SERVER_NAME: "Comfy Era16 Lab"
+      WORLD_NAME: "ComfyEra16"
+      SERVER_PASS: "${VALHEIM_SERVER_PASSWORD:-}"
+      SERVER_PUBLIC: "false"
+      SERVER_PORT: "2456"
+      CROSSPLAY: "false"
+      BEPINEX: "true"
+      BACKUPS: "true"
+      UPDATE_IF_IDLE: "true"
+      RESTART_IF_IDLE: "false"
+      PUID: "1000"
+      PGID: "1000"
+      COMFY_LUMBERJACKS_CUTOVER_MODE: "${COMFY_LUMBERJACKS_CUTOVER_MODE:-native}"
+      COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID: "${COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID:-}"
+    volumes:
+      - /mnt/comfy-p7/valheim/config:/config
+      - /mnt/comfy-p7/valheim/data:/opt/valheim
+    depends_on:
+      gateway:
+        condition: service_started

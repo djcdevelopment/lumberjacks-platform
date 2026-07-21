@@ -1,0 +1,12 @@
+{
+  "schema": "comfy-guest-package-inputs/v1",
+  "release_id": "m1-clean-20260717-r1",
+  "gateway_base_url": "http://8.231.129.249:42317",
+  "gateway_health_path": "/health",
+  "gateway_bootstrap_path": "/join/bootstrap",
+  "enrollment_path": "/api/v0/valheim/enrollment/me",
+  "join_address": "8.231.129.249:2456",
+  "bepinex_version": "5.4.2202",
+  "valheim_build": "0.221.12",
+  "reissue_note": "TODO(stage-4-deploy): document GET /join/reissue after deployment."
+}

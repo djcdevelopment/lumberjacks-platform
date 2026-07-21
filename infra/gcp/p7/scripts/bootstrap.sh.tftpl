@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec > >(tee -a /var/log/comfy-p7-bootstrap.log) 2>&1
+
+DATA_DEVICE="/dev/disk/by-id/google-comfy-p7-state"
+MOUNT_POINT="/mnt/comfy-p7"
+
+for attempt in $(seq 1 60); do
+  [[ -b "$DATA_DEVICE" ]] && break
+  sleep 1
+done
+[[ -b "$DATA_DEVICE" ]] || { echo "State disk missing: $DATA_DEVICE" >&2; exit 1; }
+
+if ! blkid "$DATA_DEVICE" >/dev/null 2>&1; then
+  mkfs.ext4 -m 0 -F "$DATA_DEVICE"
+fi
+
+mkdir -p "$MOUNT_POINT"
+DATA_UUID="$(blkid -s UUID -o value "$DATA_DEVICE")"
+grep -q "UUID=$DATA_UUID" /etc/fstab || echo "UUID=$DATA_UUID $MOUNT_POINT ext4 defaults,nofail 0 2" >> /etc/fstab
+mount -a
+install -d -m 0755 "$MOUNT_POINT"/{valheim/config,valheim/data,lumberjacks/postgres,evidence,backups}
+
+# Swap is a safety net and an alert signal, not a substitute for the 64 GiB VM.
+if ! swapon --show=NAME --noheadings | grep -qx '/swapfile'; then
+  fallocate -l 16G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+sysctl -w vm.swappiness=10
+printf 'vm.swappiness=10\n' > /etc/sysctl.d/90-comfy-p7.conf
+
+if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git jq rsync
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
+  . /etc/os-release
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" > /etc/apt/sources.list.d/docker.list
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+fi
+systemctl enable --now docker
+
+install -d -m 0755 /opt/comfy /opt/lumberjacks
+install -d -m 0700 /etc/comfy-p7
+
+if ! dpkg-query --show google-cloud-ops-agent >/dev/null 2>&1; then
+  curl -fsSL https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh -o /tmp/install-ops-agent.sh
+  bash /tmp/install-ops-agent.sh --also-install
+fi
+install -d -m 0755 /etc/google-cloud-ops-agent
+cat > /etc/google-cloud-ops-agent/config.yaml <<'OPS_AGENT_CONFIG'
+${ops_agent_config}
+OPS_AGENT_CONFIG
+systemctl enable google-cloud-ops-agent
+systemctl restart google-cloud-ops-agent
+
+echo "Comfy/Lumberjacks P7 bootstrap complete"

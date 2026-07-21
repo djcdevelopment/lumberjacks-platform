@@ -1,0 +1,82 @@
+id: thesis-gold-progressive-enhancement
+title: Thesis Gold Progressive Enhancement Baseline
+goal: >
+  Prove Lumberjacks networking can expose a no-mod fallback path and an enhanced progressive path
+  while making traffic categorization and prioritization visible.
+hypothesis: >
+  If traffic is classified into reliable core and datagram/fidelity lanes, then game-critical
+  actions remain consistent under pressure while enhanced clients receive better freshness when
+  resources allow.
+audience:
+  - comfy_insiders
+  - technical_peers
+  - potential_collaborators
+thesis_gold_criteria:
+  - server_authoritative_input_driven_simulation
+  - reliable_core_lane
+  - datagram_fidelity_lane
+  - compact_binary_hot_path
+  - graceful_fallback
+  - visible_priority_policy
+  - reproducible_run_packet
+datasets:
+  - id: comfy_era12_density
+    path: erasave/ComfyEra12.db
+    role: density_baseline
+  - id: comfy_era16_density
+    path: erasave/ComfyEra16.db
+    role: density_baseline
+  - id: waypoints
+    path: waypoints.json
+    role: anchor_fixture
+privacy:
+  public_alias_mode: viking_aliases
+  local_manifest: fieldlab/private/player-alias-manifest.json
+services:
+  - lumberjacks_gateway
+  - lumberjacks_eventlog
+  - lumberjacks_progression
+  - lumberjacks_operatorapi
+clients:
+  fallback:
+    description: Conservative reliable/core client path.
+    count: 1
+  enhanced:
+    description: Binary/datagram/progressive enhancement client path.
+    count: 1
+bots:
+  local_counts:
+    - 10
+    - 50
+    - 100
+metrics:
+  - critical_event_loss_count
+  - reliable_lane_bytes_per_sec
+  - datagram_lane_bytes_per_sec
+  - fallback_bytes_per_sec
+  - dropped_low_priority_count
+  - deferred_low_priority_count
+  - p95_update_freshness_ms
+  - p95_server_tick_ms
+  - client_correction_count
+  - packet_class_breakdown
+pass_fail_gates:
+  - id: unit_tests
+    requirement: Existing Lumberjacks unit tests pass.
+  - id: e2e_tests
+    requirement: Existing Lumberjacks E2E scripts pass.
+  - id: no_critical_event_loss
+    requirement: Game-critical reliable events are not lost.
+  - id: visible_traffic_policy
+    requirement: Report includes reliable, datagram, fallback, deferred, and dropped traffic classes.
+  - id: reproducible_packet
+    requirement: Run folder includes environment, commands, raw logs, telemetry, results, report, publish output, quick start, and signature.
+publish_outputs:
+  - field_notes
+  - technical_overview
+  - quick_start
+stop_and_reassess:
+  - Missing run artifact required by the packet standard.
+  - Failing pass gate without a documented cause.
+  - Scenario expands before producing a tangible output.
+  - Traffic categorization cannot be explained to a non-networking creator.

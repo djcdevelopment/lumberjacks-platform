@@ -1,0 +1,37 @@
+id: valheim-lumberjacks-priority-live-mirror
+title: Valheim Lumberjacks Priority Live Mirror
+goal: >
+  Verify that a live in-game priority route mirror posted the same sample and
+  object manifest counts to Lumberjacks EventLog that ComfyNetworkSense wrote
+  locally.
+hypothesis: >
+  If the live BepInEx mirror can round-trip all route samples, object batches,
+  and completion metadata through EventLog with no failed posts, then the
+  priority side channel is ready to move from EventLog replay into Gateway
+  delivery/load-shaping work.
+inputs:
+  network_sense_log_dir:
+    default: C:/Program Files (x86)/Steam/steamapps/common/Valheim/BepInEx/config/comfy-network-sense
+    override_env: FIELDLAB_NETWORKSENSE_LOG_DIR
+  eventlog_url:
+    default: http://localhost:4002
+    override_env: FIELDLAB_LUMBERJACKS_EVENTLOG_URL
+execution:
+  in_game_command: network_sense_lumberjacks_priority_route_mirror teleport-route.tsv 256 5 192 http://127.0.0.1:4002
+  verifier: .\fieldlab\scripts\run-experiment.ps1 .\fieldlab\scenarios\valheim-lumberjacks-priority-live-mirror.yaml
+outputs:
+  - telemetry/priority-live-mirror-summary.json
+  - raw/operator-runbook.md
+pass_fail_gates:
+  - id: live_mirror_status
+    requirement: Latest priority-mirror.jsonl stop row has zero failed posts.
+  - id: eventlog_roundtrip
+    requirement: EventLog has sample, object-batch, and completion rows for the latest manifest.
+  - id: local_remote_counts_match
+    requirement: EventLog object record counts match local priority-load.jsonl for the same session.
+  - id: route_completion
+    requirement: Event timeline contains a completion marker for the same session.
+phases:
+  - live_in_game_route_mirror
+  - verify_eventlog_roundtrip
+  - ready_for_gateway_priority_delivery

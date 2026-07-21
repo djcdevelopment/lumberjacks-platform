@@ -1,0 +1,14 @@
+project_id = "comfy-p7-experiment"
+region     = "us-west1"
+zone       = "us-west1-b"
+
+# Valheim is password-protected and unlisted. Narrow this if player egress CIDRs are stable.
+valheim_source_ranges = ["0.0.0.0/0"]
+lumberjacks_player_port = 42317
+lumberjacks_player_source_ranges = ["0.0.0.0/0"]
+
+alert_email = "operator@example.com"
+
+# Optional project-scoped budget.
+# billing_account_id = "000000-000000-000000"
+# monthly_budget_usd = 250

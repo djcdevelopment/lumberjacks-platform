@@ -1,0 +1,102 @@
+id: valheim-era16-volunteer-readiness-baseline
+title: Valheim Era16 Volunteer Readiness Baseline
+goal: >
+  Establish baseline client, server, telemetry, and uptime signals before inviting
+  volunteer players, so live test sessions spend time on known high-value cases
+  instead of setup discovery.
+hypothesis: >
+  If a local Era16 baseline already has fresh NetworkSense telemetry, benchmark
+  evidence, density targets, WSL/server availability checks, and explicit readiness
+  gates, then volunteer sessions can focus on validating multiplayer immersion,
+  packet priority behavior, and uptime under real player pressure.
+audience:
+  - comfy_insiders
+  - volunteer_testers
+  - technical_peers
+source_data:
+  network_sense_log_dir:
+    default: C:/Program Files (x86)/Steam/steamapps/common/Valheim/BepInEx/config/comfy-network-sense
+    override_env: FIELDLAB_NETWORKSENSE_LOG_DIR
+  density_matrix:
+    scenario: era16-density-pressure-matrix
+    output: telemetry/matrix-summary.json
+  wsl:
+    command: wsl.exe -l -v
+baseline_metrics:
+  client:
+    - sample_count
+    - continuous_window_minutes
+    - latest_sample_age_minutes
+    - avg_fps
+    - p95_frame_time_ms
+    - p95_rtt_ms
+    - p95_jitter_ms
+    - max_nearby_players
+    - max_nearby_entities
+    - max_nearby_build_pieces
+  benchmark:
+    - benchmark_count
+    - latest_headroom_tier
+    - p95_frame_time_ms
+  server:
+    - pulse_count
+    - p95_heartbeat_gap_ms
+    - max_region_pressure_score
+    - max_region_players
+    - max_region_builds
+scripted_route:
+  source: latest Era16 density matrix fixtures
+  method: teleport one instrumented client through each density band
+  per_stop_actions:
+    - mark route start
+    - teleport to fixture coordinate
+    - wait for settle window
+    - run NetworkSense benchmark
+    - mark route end
+resource_profiles:
+  principle: Record the requested resource envelope per run; apply host limits only when explicitly requested.
+  apply_controls:
+    dry_run_tool: fieldlab/scripts/set-wsl-resource-profile.ps1
+    apply_env: FIELDLAB_APPLY_WSL_LIMITS
+    shutdown_env: FIELDLAB_WSL_SHUTDOWN
+    clear_env: FIELDLAB_CLEAR_WSL_LIMITS
+  examples:
+    - host_full
+    - server_8c_32gb
+    - server_4c_16gb
+    - server_2c_8gb
+    - client_low_priority
+readiness_gates:
+  - id: networksense_log_dir
+    requirement: NetworkSense log directory exists.
+  - id: client_telemetry
+    requirement: Client telemetry has enough samples for a baseline.
+  - id: telemetry_freshness
+    requirement: Latest client sample is recent enough to trust for scheduling.
+  - id: continuous_client_window
+    requirement: At least 30 minutes of continuous client telemetry exists.
+  - id: benchmark_capture
+    requirement: At least one NetworkSense benchmark was captured.
+  - id: density_matrix
+    requirement: Era16 density pressure matrix packet exists and passed.
+  - id: teleport_route_contract
+    requirement: Teleport route contract can be generated from density fixtures.
+  - id: wsl_available
+    requirement: WSL is installed and has at least one distro.
+  - id: wsl_resource_profile
+    requirement: Requested WSL resource profile is observed, explicitly pending, or explicitly applied.
+  - id: client_headroom
+    requirement: Frame-time p95 is healthy enough to host useful volunteer testing.
+  - id: network_stability
+    requirement: RTT and jitter p95 are within the local baseline envelope.
+publish_outputs:
+  - volunteer_readiness_summary
+  - baseline_metrics
+  - setup_inventory
+  - invite_decision
+stop_and_reassess:
+  - NetworkSense telemetry cannot be found.
+  - Latest client telemetry is stale.
+  - Client frame-time or local network baseline is already unstable before volunteers join.
+  - Density matrix is missing, preventing targeted route selection.
+  - WSL/server setup is unavailable or cannot be inspected.

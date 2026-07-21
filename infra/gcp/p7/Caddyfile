@@ -1,0 +1,40 @@
+# TLS termination for the public volunteer endpoint (M1 gate: certificate-validating TLS on public
+# traffic). Caddy fronts the gateway; container-to-container traffic stays on the private Docker
+# network and is deliberately NOT re-encrypted - it never leaves the host.
+#
+# This file is inert until the `tls` compose profile is enabled AND LUMBERJACKS_PUBLIC_DNS_NAME is
+# set. Both are deliberate: see docker-compose.yml.
+
+{
+	# Fail loudly rather than silently issuing for something unintended. An operator email is where
+	# Let's Encrypt sends expiry warnings, and having none is how a silent renewal failure becomes an
+	# outage nobody was told about.
+	email {$LUMBERJACKS_ACME_EMAIL}
+}
+
+# An unset LUMBERJACKS_PUBLIC_DNS_NAME makes Caddy REFUSE TO START rather than serve this on a
+# wildcard, which is the correct failure: ACME cannot issue for a bare IP, so a nameless TLS endpoint
+# cannot exist, and pretending otherwise would leave the plaintext port as the only working path -
+# exactly what this exists to replace. Compose cannot enforce this (a `:?` marker there breaks the
+# whole stack's default boot, profile or not), so the enforcement is here.
+#
+# Verified against the real caddy:2.8-alpine binary. The errors are cryptic, so here they are:
+#   name empty, email set  -> "server block without any key is global configuration, and if used,
+#                             it must be first"   <- this is Caddy rejecting an empty site address
+#   both empty             -> "wrong argument count or unexpected line ending after 'email'"
+# Neither says "you forgot the DNS name". Both mean it.
+{$LUMBERJACKS_PUBLIC_DNS_NAME} {
+	encode zstd gzip
+
+	# Certificates and ACME account state live on /data, which is a persistent mount. If it is ever
+	# ephemeral, every container rebuild re-issues, and Let's Encrypt's duplicate-certificate limit
+	# (5 per week per exact name set) will lock the endpoint out of TLS for days. The promotion drill
+	# rebuilds this stack routinely, so this is a when, not an if.
+	reverse_proxy gateway:4000 {
+		# The gateway sees plaintext HTTP on the private network; without these it would mint
+		# redirects and links back to http:// and against the container name, which is unreachable
+		# from a volunteer's browser.
+		header_up X-Forwarded-Proto https
+		header_up X-Forwarded-Host {host}
+	}
+}

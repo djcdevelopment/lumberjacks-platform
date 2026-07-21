@@ -1,0 +1,86 @@
+id: era16-density-pressure-matrix
+title: Era16 Density Pressure Matrix
+goal: >
+  Convert the parsed Era16 world cache into a reproducible pressure matrix for testing
+  how Lumberjacks should prioritize player movement, reliable gameplay events, and
+  low-priority world detail across settlement density, player count, ping, range, and
+  server process-time budgets.
+hypothesis: >
+  If real save-density fixtures are used to seed synthetic load targets, then the
+  next runtime packets can test creator-relevant situations such as town-square
+  arrivals, sailing groups passing busy builds, and combat/build event surges without
+  requiring a live Valheim client for every run.
+audience:
+  - comfy_insiders
+  - technical_peers
+  - creative_producers
+source_data:
+  default_duckdb_cache: C:/work/ComfyStewardView/viewer/target/ComfyEra16.duckdb
+  override_env: FIELDLAB_ERA16_DUCKDB
+  derived_from:
+    - render_cell build-density heatmap
+    - zdo category and prefab extract
+    - container_item inventory extract
+matrix_axes:
+  density_bands:
+    - open_control
+    - sparse
+    - light
+    - mixed
+    - dense
+    - extreme
+  actor_players:
+    - 1
+    - 5
+    - 25
+    - 50
+    - 100
+  observer_ranges:
+    - self
+    - near
+    - mid
+    - far
+  rtt_ms:
+    - 0
+    - 50
+    - 100
+    - 200
+  server_process_ms:
+    - 2
+    - 8
+    - 16
+    - 33
+    - 55
+  event_profiles:
+    - movement_only
+    - build_social
+    - combat_build
+    - event_surge
+metrics:
+  - density_fixture_count
+  - matrix_row_count
+  - build_zdos_500m
+  - total_zdos_500m
+  - container_item_rows_500m
+  - modeled_movement_events_per_sec
+  - modeled_reliable_events_per_sec
+  - modeled_low_priority_events_per_sec
+  - estimated_datagram_updates_per_sec
+  - estimated_udp_kbps
+pass_fail_gates:
+  - id: source_cache
+    requirement: Era16 DuckDB cache is present and queryable.
+  - id: density_fixtures
+    requirement: At least one real 500m build-density fixture is selected from render_cell.
+  - id: pressure_matrix
+    requirement: Matrix CSV and summary JSON are written with non-zero row count.
+publish_outputs:
+  - era16_density_fixtures
+  - pressure_matrix_csv
+  - field_notes
+  - technical_overview
+stop_and_reassess:
+  - StewardView DuckDB cache is missing or locked.
+  - DuckDB JDBC jar or a Java compiler is unavailable.
+  - Density fixtures cannot be selected from render_cell.
+  - The generated matrix cannot distinguish near, mid, and far priority behavior.

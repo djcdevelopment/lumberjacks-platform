@@ -1,0 +1,62 @@
+id: valheim-lumberjacks-priority-load-order
+title: Valheim Lumberjacks Priority Load Order
+goal: >
+  Reuse the Era16 teleport route to collect a local priority/load-order manifest
+  for loaded Valheim objects at each density stop.
+hypothesis: >
+  If ComfyNetworkSense can classify loaded local objects into stable priority tiers
+  across open, sparse, light, mixed, dense, and extreme build stops without touching
+  vanilla replication, then Lumberjacks can become the ordered progressive-enhancement
+  side channel before any ZDO transport replacement is attempted.
+inputs:
+  route_contract:
+    source: latest valheim-era16-volunteer-readiness-baseline telemetry/teleport-route-contract.json
+    fallback: existing comfy-network-sense/teleport-route.tsv
+    override_env: FIELDLAB_ROUTE_CONTRACT
+  network_sense_log_dir:
+    default: C:/Program Files (x86)/Steam/steamapps/common/Valheim/BepInEx/config/comfy-network-sense
+    override_env: FIELDLAB_NETWORKSENSE_LOG_DIR
+  priority_radius_meters:
+    default: 96
+    override_env: FIELDLAB_PRIORITY_RADIUS
+  priority_scan_interval_seconds:
+    default: 5
+    override_env: FIELDLAB_PRIORITY_SCAN_INTERVAL
+  priority_max_objects_per_sample:
+    default: 96
+    override_env: FIELDLAB_PRIORITY_MAX_OBJECTS
+execution:
+  mod_command: network_sense_lumberjacks_priority_route teleport-route.tsv 96 5 96
+  completion_signal:
+    - lumberjacks_priority_route start
+    - priority-load.jsonl sample rows with run_label=priority_route
+    - lumberjacks_priority_route end
+outputs:
+  - telemetry/priority-load-summary.json
+  - telemetry/priority-load-density-comparison.csv
+  - telemetry/teleport-route.tsv
+  - raw/operator-runbook.md
+  - raw/valheim-console-commands.txt
+pass_fail_gates:
+  - id: route_file
+    requirement: teleport-route.tsv exists and was copied to the NetworkSense config folder.
+  - id: mod_deployed
+    requirement: Installed ComfyNetworkSense assembly version is 0.5.0 or newer.
+  - id: priority_route_rows
+    requirement: priority-load.jsonl contains route-tagged sample rows for every route stop.
+  - id: priority_tier_manifest
+    requirement: Every stop reports at least one player_critical row and at least one loaded object tier beyond the local player.
+  - id: scan_cost_bounded
+    requirement: Priority scans remain bounded and report whether the collider buffer was saturated.
+  - id: no_vanilla_mutation
+    requirement: Packet states no Valheim ZDOs, ZNetView ownership, transforms, or vanilla replication paths were changed.
+phases:
+  - stage_packet
+  - run_in_game_priority_route
+  - collect_priority_manifest
+  - mark_manifest_ready_for_lumberjacks_mirror
+stop_and_reassess:
+  - The priority route command is missing from the installed mod.
+  - Dense/extreme stops produce no priority sample rows.
+  - Scan duration or collider saturation suggests the scanner itself is becoming the bottleneck.
+  - The classifier collapses all loaded objects into one tier.

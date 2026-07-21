@@ -1,0 +1,36 @@
+id: valheim-lumberjacks-priority-gateway-plan
+title: Valheim Lumberjacks Priority Gateway Plan
+goal: >
+  Verify that Lumberjacks Gateway can consume the latest live Valheim priority
+  manifest from EventLog and shape it into reliable, datagram, and deferred
+  delivery buckets.
+hypothesis: >
+  If Gateway can query the live priority manifest from EventLog, produce a
+  bounded delivery plan, activate that plan, and account for every unique object
+  exactly once, then the path is ready for socket-level delivery testing.
+inputs:
+  gateway_url:
+    default: http://localhost:4000
+    override_env: FIELDLAB_LUMBERJACKS_GATEWAY_URL
+  network_sense_log_dir:
+    default: C:/Program Files (x86)/Steam/steamapps/common/Valheim/BepInEx/config/comfy-network-sense
+    override_env: FIELDLAB_NETWORKSENSE_LOG_DIR
+execution:
+  prerequisite: Gateway must include Lumberjacks commit 03619f3 or newer plus the priority activate/broadcast endpoints.
+  verifier: .\fieldlab\scripts\run-experiment.ps1 .\fieldlab\scenarios\valheim-lumberjacks-priority-gateway-plan.yaml
+outputs:
+  - telemetry/priority-gateway-plan-summary.json
+  - raw/operator-runbook.md
+pass_fail_gates:
+  - id: gateway_delivery_plan
+    requirement: Gateway returns a delivery plan for the latest live manifest.
+  - id: manifest_counts_match
+    requirement: Gateway manifest object count matches the local live mirror stop row.
+  - id: bucket_accounting
+    requirement: reliable + datagram + deferred counts equal Gateway unique object count.
+  - id: activation
+    requirement: Gateway activation endpoint accepts and caches the same manifest.
+phases:
+  - gateway_priority_plan
+  - gateway_priority_activation
+  - ready_for_socket_delivery

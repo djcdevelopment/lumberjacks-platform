@@ -1,0 +1,48 @@
+id: valheim-era16-teleport-rehearsal
+title: Valheim Era16 Teleport Rehearsal
+goal: >
+  Run or stage the internal rehearsal that moves one instrumented Valheim client
+  through Era16 density fixtures, records NetworkSense markers, and captures one
+  benchmark per stop before volunteer players are invited.
+hypothesis: >
+  If a single rendered client can repeatedly traverse open, sparse, light, mixed,
+  dense, and extreme Era16 fixtures under a named resource profile, then we can
+  identify baseline headroom and uptime gaps before spending volunteer time.
+inputs:
+  route_contract:
+    source: latest valheim-era16-volunteer-readiness-baseline telemetry/teleport-route-contract.json
+    override_env: FIELDLAB_ROUTE_CONTRACT
+  network_sense_log_dir:
+    default: C:/Program Files (x86)/Steam/steamapps/common/Valheim/BepInEx/config/comfy-network-sense
+    override_env: FIELDLAB_NETWORKSENSE_LOG_DIR
+  resource_profile:
+    default: host_full
+    override_env: FIELDLAB_RESOURCE_PROFILE
+execution:
+  mod_command: network_sense_rehearsal teleport-route.tsv <resource_profile>
+  setup_commands: []
+  completion_signal:
+    - route_rehearsal start
+    - route_run start
+    - route stop end markers for every density fixture
+    - route_rehearsal end
+    - benchmark results for the active session
+outputs:
+  - telemetry/teleport-rehearsal-summary.json
+  - telemetry/teleport-route.tsv
+  - raw/operator-runbook.md
+  - raw/valheim-console-commands.txt
+pass_fail_gates:
+  - id: route_contract
+    requirement: Teleport route contract exists and has route steps.
+  - id: mod_support
+    requirement: Local ComfyNetworkSense source and deployed DLL support network_sense_rehearsal.
+  - id: route_file
+    requirement: teleport-route.tsv was generated and copied to the NetworkSense config folder.
+  - id: internal_rehearsal
+    requirement: Route completion markers and benchmark results are present after execution.
+stop_and_reassess:
+  - ComfyNetworkSense rehearsal command is missing or not deployed.
+  - Valheim is not running when attempting execution.
+  - Route markers do not appear in event-timeline.jsonl.
+  - Benchmark results do not appear after route stops.
