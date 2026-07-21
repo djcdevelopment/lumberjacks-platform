@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-21T13:11:18.019Z",
+  "updated_at": "2026-07-21T18:30:00.000Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -189,6 +189,7 @@
     "COMPLETE · M0 RELEASE FREEZE — A1–A5 closed 2026-07-16: source frozen, candidate r2 reproducible from clean tagged checkouts, sanitized bundle and FieldLab catalog committed, promotion drill passed with artifact-only rollback, and the golden-proof evidence set published immutably with byte-verified hashes.",
     "COMPLETE · PROMOTION FINALIZED — P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.",
     "ACTIVE · M1 — Enrollment identity, the least-privilege capability split, the one-seat reservation, and a strict-admission roster gate keyed on the actual joining Steam account are deployed on P7 in m1-clean-20260717-r1, a Gateway-only cut that leaves the mod frozen at 0.5.31; the roster gate was verified against a real join on 2026-07-17 (gate 3 closed live: a strict window accepted the enrolled Steam account, Lumberjacks-decided on the frozen 0.5.31 mod, no cut needed), and it stays opt-in per window — the flag is in-memory and reverts to off on gateway restart, because a roster miss refuses a join. Remaining: certificate-validating TLS — the stable public DNS name now exists (comfy-p7.duckdns.org, a reserved static address), leaving only the ACME contact set on the VM at next boot plus the stage-3 cut and deploy; and fail-closed admission when the authority is unavailable, which needs that next mod release.",
+    "LIVE (normal play) · AoI BAND-SHAPING — distance-band area-of-interest is armed permanently on P7 as of 2026-07-21 (near <30m full rate · mid 30–64m thinned to 5Hz · far >64m dropped · landmarks by granted reach), mod-side on the redirect producer (ADR 0011). It reshapes the eligible ZDO set upstream: at the densest single-player build ~85% of candidates drop, losslessly. Open before it earns full trust: the far→approach re-sync of a dropped static object, and multi-player density.",
     "AFTER M1 · PARALLEL — Build M2's reversible guest package, M3's seal-before-reset per-run ledger and retained dashboards, and M4a's recipient isolation and producer loss safety.",
     "WIDEN ONLY AFTER · M4b + M5 — Require the real two-client correctness packet and one exact-release invited-volunteer SYSTEM PROVEN receipt before admitting a cohort."
   ],
@@ -696,33 +697,32 @@
     ]
   },
   "latest_observation": {
-    "id": "castle-port-session-20260716T054805Z",
+    "id": "aoi-band-shaping-p7-20260721T1749Z",
     "kind": "OWNER OBSERVATION",
-    "label": "Castle-port stationary-drain session",
-    "captured_at": "2026-07-16 05:48–06:00 UTC",
-    "scope": "One enrolled owner client · dense castle wait · automated port · stationary backlog drain",
+    "label": "AoI band-shaping live — densest single-player build",
+    "captured_at": "2026-07-21 ~16:00–17:49 UTC",
+    "scope": "One enrolled owner client · distance-band AoI armed (near <30m full · mid 30–64m 5Hz · far >64m dropped) · world's densest ZDO build, auto-ported",
     "delivery_result": "COMPLETE",
     "system_verdict": "INCONCLUSIVE",
     "conservation": {
-      "eligible": 81241,
-      "durable": 81241,
-      "applied": 71108,
-      "superseded": 10133,
-      "acknowledged": 81241,
+      "eligible": 46900,
+      "durable": 46900,
+      "applied": 46900,
+      "superseded": 0,
+      "acknowledged": 46900,
       "pending": 0,
       "native": 0
     },
-    "verdict_reason": "Exact delivery accounting was captured, but this was not a predeclared acceptance run and the empty-server reset erased live Gateway receipt state before a retained per-run receipt could be sealed.",
-    "milestone_effect": "No milestone advanced. This corroborates the existing one-client P7 baseline and confirms the M3 retained-ledger exit criterion.",
-    "operational_observation": "Two auxiliary consumer-telemetry POST attempts failed after the main drain and recovered; poll, application, and acknowledgement delivery were unaffected.",
+    "verdict_reason": "Delivery accounting was exact and lossless (46,900 applied, 0 superseded/rejected/native, 0 pending, 0 duplicates) at the heaviest single-player density with distance-band AoI armed. NOT a sealed acceptance run, and two behaviours remain unvalidated: the far→approach re-sync of a dropped static object (it is acked to Valheim, so native believes the peer has it), and multi-player density (cost is observers × changed-entities).",
+    "milestone_effect": "No milestone advanced, but the eligible ZDO set is now AoI-shaped upstream of redirect: far (>64m) objects are dropped before they are eligible, so the delivery denominator is distance-shaped in production and the near/mid bands carry it. The '100% through Lumberjacks' invariant still holds — the set it is 100% of is now smaller and shaped.",
+    "operational_observation": "~85% of redirect candidates dropped (far band), ~13% emitted-thinned to 5Hz (mid), ~3% full-rate (near); no duplicate storm, consumer fully caught up.",
     "informs": [
-      "M0",
-      "M3"
+      "M0"
     ],
     "evidence": {
       "status": "local_only",
-      "label": "FieldLab castle-port session packet",
-      "detail": "The local packet includes analysis, provenance, session summary, and captured samples; immutable publication remains M0 work."
+      "label": "AoI band-shaping P7 production baseline + ADR 0011",
+      "detail": "fieldlab/evidence/aoi-band-shaping-p7-baseline-20260721/ (re-capture commands + watch items) and fieldlab/docs/adr/0011-aoi-lives-on-the-producer.md, committed to main; a sealed immutable per-run receipt is not yet cut."
     }
   },
   "golden_proof": {
