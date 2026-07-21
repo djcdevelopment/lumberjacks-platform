@@ -16,6 +16,7 @@ Format follows the standard Status / Context / Decision / Consequences shape.
 | [0008](0008-liveness-is-not-admission.md) | Record heartbeat liveness before admission; keep the primary gate strict | Accepted | M1/telemetry |
 | [0009](0009-verify-against-an-independent-source.md) | A check that reads its own output is not a check | Accepted | cross-cutting |
 | [0010](0010-consistency-is-predictability.md) | Consistency means predictable, not invariant | Accepted | AoI / degradation |
+| [0011](0011-aoi-lives-on-the-producer.md) | AoI is enforced mod-side (producer); suppress/ack/emit are three separate operations | Accepted | Valheim netcode / ZDO redirect |
 
 Canon: `../../GROUND-TRUTH.md` (state) · `../../TEST-PROGRAM.md` (plan) ·
 `../../VALHEIM-NETCODE-REPLACEMENT-WORKLOG.md` (I-ladder). Retros: `../../retro/`.
