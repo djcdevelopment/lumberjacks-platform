@@ -29,18 +29,14 @@ public static class ValheimGameplayEventEndpoints
 
     public static void Map(WebApplication app)
     {
-        app.MapPost("/valheim/events", (HttpRequest request,
+        app.MapPost("/valheim/events", (
             ValheimGameplayEventRequest body,
             IHttpClientFactory httpFactory,
             IConfiguration config) =>
         {
-            var expected = Environment.GetEnvironmentVariable("VALHEIM_TELEMETRY_KEY");
-            if (!string.IsNullOrWhiteSpace(expected) &&
-                request.Headers["X-Lumberjacks-Telemetry-Key"] != expected)
-            {
-                return Results.Unauthorized();
-            }
-
+            // No endpoint-level key check: the route is Producer-gated in ValheimAccessPolicy, which
+            // only the server-side mod on the private plane can satisfy. The shared telemetry key the
+            // heartbeat uses is redundant here (and the producer posts none), so it is not required.
             if (string.IsNullOrWhiteSpace(body.EventType) || !AcceptedTypes.Contains(body.EventType))
             {
                 return Results.BadRequest(new
