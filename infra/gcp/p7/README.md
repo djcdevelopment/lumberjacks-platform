@@ -1,19 +1,29 @@
 # Combined Comfy + Lumberjacks P7 environment
 
-Status: **single-client authoritative-priority ZDO cutover passed**, 2026-07-16 UTC.
+Status: **re-provisioned from `baseline` and re-accepted**, 2026-07-21 UTC. All five
+gated services now run from digest pins resolved out of a validated release bundle,
+and the VM's deployment source is a `baseline` checkout rather than the retired
+`comfy` repo. A real player session then met every §9 acceptance criterion:
+75,112/75,112 receipts acknowledged with zero pending, `complete=true`, 100% coverage
+over 148,892 ZDOs, and zero native-only, fallback, reject, duplicate, or retry.
+
+The earlier single-client cutover (2026-07-16, 83,220/83,220) remains the origin of
+this line of work; it is superseded as the current state but not as history.
 
 P7 runs the real `ComfyEra16` Valheim world and Lumberjacks authority services on
-GCP. OMEN is the rendered client and operator workstation. The clean victory session
-closed 83,220/83,220 priority-tagged ZDO envelopes with zero pending, native-only,
-rejects, duplicates, retries, or client transport failures.
+GCP. OMEN is the rendered client and operator workstation.
 
-Canonical evidence:
+Canonical evidence (paths are relative to this repo, `C:\work\baseline`):
 
-- `C:\work\comfy\fieldlab\evidence\p7-primary-v1-authoritative-priority-zdo-20260716-v0531.md`
-- `C:\work\comfy\fieldlab\runs\20260716-011112-valheim-lumberjacks-authoritative-priority-cutover\report.md`
-- `C:\work\lumberjacks\docs\network\valheim-lumberjacks-p7-overview.md`
-- release manifest
-  `C:\work\comfy\fieldlab\runs\releases\p7-primary-v1-0.5.31-clean.json`
+- `Lumberjacks/docs/roadmap/m5-v3-acceptance-receipt.json` — current acceptance sample
+- `Lumberjacks/docs/roadmap/m5-v3-reprovision-receipt.json` — what changed on the VM
+- `Lumberjacks/docs/roadmap/m5-recipients-build-candidate-v3.json` — release manifest
+- `fieldlab/evidence/p7-primary-v1-authoritative-priority-zdo-20260716-v0531.md` — the
+  2026-07-16 victory session (historical)
+
+> Older revisions of this file cited these under `C:\work\comfy\…` and
+> `C:\work\lumberjacks\…`. Both are retired checkout roots; the content landed in this
+> repo unmodified during the July 2026 consolidation.
 
 ## Live deployment
 

@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T09:07:58.329Z</span>
+        <span>Updated 2026-07-21T09:17:43.731Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721090758-root-caused-the-telemetry-heartbeat-409-deferred">
+        <div class="journal"><article class="journal-entry" id="note-20260721091743-pruned-279-of-1045-tracked-files-after-a-gemini-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T09:17:43.731Z">2026-07-21T09:17:43.731Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Pruned 279 of 1045 tracked files after a Gemini-backed per-zone audit</h3>
+      <p><strong>Impact:</strong> The consolidation carried across everything both source repos held, including a large body of content with no consumer in the merged program. Seven zones were reviewed in parallel, each packed through HEARTH to gcp-gemini-pro, with every proposed deletion re-examined by a skeptic agent that grepped for inbound references; 62 verdicts were overturned that way. Removed: the handoff tree including a second Valheim mod (comfy-control-surface) and a camera-flythrough exploration, community and strategy essays under docs, a generated repo-map snapshot and its generator, a Discord/Sheets harvest side project, rank-ladder recipes, a community-systems kit, and finished fieldlab experiment plans, scenarios and evidence. Lumberjacks/src and network/mod were excluded from review entirely, being the code that builds the five images serving production. Two signals were rejected as misleading: git-history staleness (the subtree merges date every file to the consolidation) and basename-orphan detection (196 of 199 apparent orphans were live C# referenced by namespace). A second pass removed 11 further orphans left by cross-zone inconsistency, and tests/test_entrypoint_links.py now discovers entrypoints instead of hardcoding them, so it no longer goes red whenever a directory is removed for unrelated reasons. Everything remains recoverable from git history and from the still-existing C:/work/comfy and C:/work/lumberjacks.</p>
+      <details><summary>Verification (3)</summary><ul><li>Release pipeline intact after the prune: v3 bundle still validates, run-promotion-drill.ps1 plan-only still resolves all four gated identities, and docker compose config still resolves all five service images</li><li>roadmap:check passes; test_entrypoint_links passes with zero dangling links across every surviving README</li><li>The 5 test_guest_package failures are pre-existing and reproduce identically on main; confirmed by checking out main and re-running</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/docs/roadmap/prune-audit-20260721.json</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721090758-root-caused-the-telemetry-heartbeat-409-deferred">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

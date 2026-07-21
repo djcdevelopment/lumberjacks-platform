@@ -1,0 +1,1399 @@
+{
+  "schema": "baseline-prune-audit/v1",
+  "performed_utc": "2026-07-21T09:30:00Z",
+  "method": "Seven repo zones reviewed in parallel by a workflow; each zone packed its files through the HEARTH gateway to gcp-gemini-pro (Vertex gemini-3.1-pro-preview) for classification, then every PRUNE verdict was re-examined by a skeptic agent that grepped for inbound references and spot-read decision-record-shaped files. 14 agents, 0 errors, ~987k tokens.",
+  "premise": "Over-pruning was explicitly acceptable: both source repos still exist at C:/work/comfy and C:/work/lumberjacks, and everything here remains in git history.",
+  "excluded_from_review": "Lumberjacks/src and network/mod were never offered as prune surface. That code builds the five images serving production, so it is proven live.",
+  "signals_rejected": "Git-history staleness is meaningless in this repo: the subtree merges attribute all 1045 files to the consolidation date. Basename-orphan detection was also discarded for source, since C# is referenced by namespace rather than filename (196 of 199 apparent orphans were live Lumberjacks source).",
+  "counts": {
+    "zones": 7,
+    "keep": 109,
+    "prune": 268,
+    "uncertain": 1,
+    "overturned": 62,
+    "second_pass": 11,
+    "total_removed": 279,
+    "tracked_before": 1045,
+    "tracked_after": 766
+  },
+  "second_pass_rationale": "Per-zone agents left cross-zone incoherence: generated repo-map outputs survived while their generator was pruned, and index READMEs survived pointing only at deleted content. A second pass removed 11 such orphans.",
+  "zone_summaries": [
+    {
+      "zone": "handoffs",
+      "summary": "70 tracked files (~350 KiB), classified by gcp-gemini-pro in two HEARTH batches (both ok:true, no retry needed). The zone is entirely point-in-time handoff material and contains nothing load-bearing for the live purpose (infra/gcp/p7 release pipeline, network/mod ComfyNetworkSense, Lumberjacks/docs/roadmap). It splits into three clusters: (1) five top-level HANDOFF-*/REBOOT-* session docs plus ComfyMods inspection notes and a quest-log retrospective; (2) a finished \"camera flythrough\" exploration \u2014 segment-1..4 briefs, emit-waypoints/video_to_gallery scripts, sample JSON, and the valheim-camera-proof BepInEx PoC; (3) a complete second Valheim mod, comfy-control-surface (46 files: C# source, fixtures, bridge-consumer Python, build/diagnose PowerShell), which is NOT the live mod \u2014 the live one is ComfyNetworkSense under network/mod/. Verdict is PRUNE on all 70. A git grep confirms the only inbound references to handoffs/ are prose mentions in docs/, fieldlab/, and README files \u2014 no code or build script imports anything here \u2014 and everything is recoverable from C:\\work\\comfy and git history. Recommendation: delete handoffs/ wholesale.",
+      "skeptic_notes": "Method: grepped every basename from C:\\work\\baseline excluding .git, .pytest_cache, and the two generated-metrics surfaces (docs/repo-map/*, repo-activity.json) plus fieldlab/runs/prune-audit/* (the audit's own inventory, which lists every path by construction and is not a real consumer). Then spot-read the decision-record-shaped files.\n\nConfirmations that support the reviewer (why the bulk is upheld):\n- ComfyControlSurface really is inert. A case-insensitive grep for controlsurface/comfy-control across fieldlab/, infra/, tools/, and tests/ returns ZERO hits. The only live cross-reference is network/mod/ComfyNetworkSense/README.md line 307, which merely notes that NetworkSense leaves shortcuts unbound \"to avoid collisions with ComfyControlSurface\" -- a design footnote, not a dependency. The reviewer's distinction between the inactive handoff mod and the live ComfyNetworkSense holds.\n- The quest-view.json contract survives the prune on its own. recipes/quest-catalogs/render_quest_picker.py and data/processed/quest-picker.html still emit into BepInEx/config/comfy-control/quest-view.json, but recipes/quest-catalogs/quest-view-schema.md is self-contained by design (\"deliberately self-contained... the mod never needs the catalogs, the tracker, or the network\"), so deleting Core/QuestViewLoader.cs does not orphan the schema. I considered overturning QuestViewLoader.cs on this basis and decided against it.\n- HANDOFF-NETWORKSENSE-ERA16-MATRIX.md is a pointer, not a record: its own \"Read first\" block delegates to fieldlab/NETWORKSENSE-ERA16-MATRIX.md as \"the durable experiment spec.\" Safe to delete.\n- HANDOFF-CLAUDE.md and REBOOT-HANDOFF.md are genuinely superseded -- the former by fieldlab/GROUND-TRUTH.md, the latter (dated 2026-07-02) by the 2026-07-09 netcode program. Note that fieldlab/GROUND-TRUTH.md's supersession table tracks fieldlab/handoffs/*, a DIFFERENT directory from this zone, so it does not cover these.\n\nRequired follow-up if the prune lands (mechanical, not a reason to overturn):\n1. tests/test_entrypoint_links.py will fail on the dangling handoffs/README.md links in README.md:71 and docs/repo-map/HOTSPOTS.md:15. Fix by running `python tools/repo_activity.py --write` to regenerate both hotspot tables.\n2. Root README.md has ~12 hand-written references to deleted paths (lines 134-135, 171-172, 181-183, 195, 221-222, 235-236, 244) and still calls handoffs/comfy-control-surface \"the live control-surface mod,\" which this audit establishes is no longer true. Sessions 3, 4, and 5 in \"How the repo grew\" all point exclusively into this zone.\n3. docs/quest-vertical-slice-architecture.md expresses its entire dataflow diagram in deleted handoffs/comfy-control-surface/* paths (lines 42-47, 128-130, 148-149, 174-177, 204-205, 271). It is a README-headline doc and will need rewriting or a banner noting the referenced source moved to the archived comfy repo.\n\nOut of scope but observed: the proposed list covers all 70 tracked files in the zone, i.e. total directory removal, and I verified nothing was silently omitted."
+    },
+    {
+      "zone": "docs",
+      "summary": "The docs/ zone is entirely inherited from the old \"comfy\" repo and contains none of the live load-bearing material (that lives under infra/gcp/p7/, network/mod/, and Lumberjacks/docs/roadmap/). Its contents are strategy/positioning essays, community and persona narrative research, exploratory dataset notes, point-in-time architecture and tooling proposals, a 196 KB raw chat transcript plus its ledger and extracted \"playbook\", and a generated repo-map snapshot (HTML/JSON/SVG/HOTSPOTS) pinned to commit 9e37a1f of the pre-merge github.com/djcdevelopment/comfy repo. Classified via HEARTH gcp-gemini-pro (single 654 KB batch, ok:true); docs/repo-map/activity.json was too large to pack and was judged from a targeted header read. Recommendation: prune the entire zone \u2014 30/30 files PRUNE, recoverable from C:\\work\\comfy or git history.",
+      "skeptic_notes": "METHOD: grepped every basename across the repo (excluding .git and the three huge generated files that pollute results), then empirically replayed the logic of tests/test_entrypoint_links.py against the hypothetical post-deletion file set. The test suite currently passes for the two relevant files (tests/test_entrypoint_links.py + tests/test_repo_activity.py = 8 passed). Note: 5 pre-existing failures in tests/test_guest_package.py are unrelated to this prune.\n\nSCOPE OBSERVATION: the 30 proposed paths are every file in docs/ -- this is a whole-directory deletion, and the simulation confirms docs/, docs/method/, docs/perspectives/, docs/datasets/ and docs/repo-map/ would all be emptied.\n\nMANDATORY FOLLOW-UP IF THE 21 UPHELD DELETIONS PROCEED: docs/README.md survives (overturned) and is itself an entrypoint whose every markdown link is resolved by tests/test_entrypoint_links.py. Its \"Read by intent\" section links to 13 of the upheld files (kernel.md, community-insights.md, perspectives/README.md, method/the-lens-first-playbook.md, positioning.md, adoption-strategy.md, governance.md, comfy-base-layer-architecture-plan.md, thesis-gold-local-lab-plan.md, github-integration-strategy.md). Those links MUST be trimmed in the same commit or the test fails. Same for the retained repo-map links, which stay valid.\n\nREGENERATE AFTER PRUNING: run `python tools/repo_activity.py --write` -- the four docs/repo-map/ artifacts index the pre-prune file set, and `--check` compares them against HEAD.\n\nDANGLING PROSE REFERENCES (backticked paths, not markdown links, so not test-caught, but they will rot): README.md lines 109-112, 120-122, 149-151, 208-231, 242; framework/PHILOSOPHY.md:4 -> ../docs/positioning.md; fieldlab/README.md:382 -> docs/thesis-gold-local-lab-plan.md; handoffs/HANDOFF-CLAUDE.md:196 -> docs/thesis-gold-local-lab-plan.md.\n\nCLOSE CALLS I UPHELD ANYWAY:\n- docs/thesis-gold-local-lab-plan.md -- named as the strategy doc in handoffs/HANDOFF-CLAUDE.md:196 and fieldlab/README.md:382, both live areas. Upheld only because those are plain-text pointers, not test-enforced, and the fieldlab program has since produced its own GROUND-TRUTH.md / TEST-PROGRAM.md as the operative records. If the parent wants a wider safety margin, this is the single most defensible addition to the overturn list.\n- docs/github-integration-strategy.md -- it was edited today (commit 9c88146) to annotate the program-status.json retirement, which normally signals a living doc. Upheld because a near-identical 48 KB copy survives at Lumberjacks/docs/github-integration-strategy.md, and the Lumberjacks dashboard citations of \"docs/github-integration-strategy.md\" resolve to that copy, not this one. Content is not lost.\n- docs/comfy-base-layer-architecture-plan.md -- referenced only from docs/README.md and root README prose; no code, test, or infra consumer. Upheld."
+    },
+    {
+      "zone": "fieldlab-docs",
+      "summary": "165 tracked files under fieldlab/ (excluding fieldlab/scripts and fieldlab/command-plans) were classified in five batched gcp-gemini-pro offloads through HEARTH plus 13 self-classified files that were binary or exceeded the 256 KiB pack limit. Verdicts: 30 KEEP, 135 PRUNE, 0 UNCERTAIN. fieldlab is overwhelmingly a closed-out experiment workspace: the I0-I7 netcode-replacement ladder, era16 perf matrices, local-LAN/AM4/Docker lab topologies, session retros, finished handoffs, and per-run telemetry are all point-in-time artifacts whose authority has migrated to Lumberjacks/docs/roadmap/ and infra/gcp/p7/. What survives is the durable spine: the five ADRs plus their index, the netcode reverse-engineering maps (NETCODE-MAP, NETCODE-OWNERSHIP-MAP, the handshake contract .md/.json) that document how ComfyNetworkSense hooks Valheim, the three integration architecture SVGs and their README, the comfy-lumberjacks seam spec, the M0-A4 promotion-drill and P7 gold-run receipts that anchor the live release pipeline, and the M2 guest-package exit record. Two judgment calls worth the parent agent's eye: fieldlab/README.md is marked PRUNE as a stale entrypoint even though it is the zone's front door \u2014 if any fieldlab content survives, a short replacement README is cheaper than keeping the old one; and fieldlab/.gitattributes / .gitignore are marked KEEP but exist mainly to gate the runs/ and evidence/ trees that this audit prunes, so they become vestigial if the prune lands in full. Note also that the p7-efficiency audit scripts and the M1 guest-pack installer scripts live outside fieldlab/scripts, so they fell inside this zone and were pruned alongside the artifacts they serve.",
+      "skeptic_notes": "Method: grepped every basename from C:\\work\\baseline excluding .git, then filtered out two large noise sources that are the pruning audit's own scan output (fieldlab/runs/prune-audit/* and docs/repo-map/*) and discarded any referrer that is itself on the deletion list. That reduced ~130 files with apparent hits to 65 with real external references, which I then triaged by referrer type (live script/source/test/CI/receipt vs. prose).\n\nResult: 109 upheld, 25 overturned. The overturns cluster into four causes: (1) files hash-bound by release receipts that are still open \u2014 the M0-A5 publication receipt is status \"staged\", not closed; (2) fixtures and topology files read at runtime by fieldlab/scripts/*.ps1 that were not themselves included in the prune; (3) evidence cited by name from shipping C# in network/mod/ and Lumberjacks/src/Game.Gateway/; (4) evidence backing the four Accepted ADRs under fieldlab/docs/adr/ and the still-open fieldlab/DECISIONS-PENDING.md.\n\nNotable near-misses I upheld anyway, worth a second look by the owner:\n\n- fieldlab/GROUND-TRUTH.md and fieldlab/TEST-PROGRAM.md \u2014 the surviving fieldlab/docs/adr/README.md names both as \"Canon\" (state and plan), and fieldlab/NETCODE-OWNERSHIP-MAP.md links them. I upheld because each file's own header, written by the cutover in plan-baseline-cutover.md step 4, marks it historical with authority passed to the M-series roadmap. If they go, fieldlab/docs/adr/README.md line 14 needs its Canon line rewritten or it points at nothing.\n\n- fieldlab/handoffs/guest-client-pack/** (11 files) \u2014 upheld because it is a build output: tools/guest-package/build-guest-package.ps1 line 4 defaults $OutputRoot to exactly that path, the canonical scripts all live in tools/guest-package/, and tests/test_guest_package.py asserts a rebuild is byte-identical. Caveat: roadmap commit-note 20260721034934 marks M2 active (not complete) and its verification line asserts \"Guest pack artifacts present on disk (GUEST-GUIDE.md, manifest.json, guest-index.json, guest-package-inputs.json)\". Deleting them makes a live roadmap verification claim false until someone reruns the generator. One command restores it, so I did not overturn \u2014 but regenerate before anyone re-runs the roadmap check.\n\n- fieldlab/status/dashboard.html \u2014 upheld as deterministically regenerable from the surviving fieldlab/scripts/render-dashboard.py plus program-status.json, which I am overturning. Note status/README.md describes it as the retired-but-URL-preserved surface now carrying a retirement banner; the hosted artifact is unaffected by deleting the local copy.\n\n- fieldlab/handoffs/AGENT-QUESTIONS.md \u2014 looked referenced by roadmap tooling and plan-m4-unification.md, but those citations resolve to Lumberjacks/docs/handoffs/AGENT-QUESTIONS.md, a different file that exists. False positive; upheld.\n\n- fieldlab/README.md \u2014 root README.md line 69/226, erasave/README.md line 6, and docs/github-integration-strategy.md line 24 all link it. Upheld per the reviewer's own \"replace rather than retain\" note, but those three links need updating in the same change or they dangle.\n\n- fieldlab/scenarios/{valheim-lumberjacks-priority-load-order,shadow-authority,shadow-route}.yaml \u2014 referenced only from fieldlab/command-plans/*.ps1 (which are historical command-plan transcripts holding the paths as literal strings, not executing them) and root handoffs/*.md. Too weak to overturn.\n\n- The largest referrer by volume, docs/github-integration-strategy.md (49 hits across GROUND-TRUTH, TEST-PROGRAM, program-status, scenarios), is marked \"Status: proposed / Last reviewed: 2026-07-11\" and predates the cutover. I treated its citations as prose, not as live tooling, and did not overturn on its strength alone.\n"
+    },
+    {
+      "zone": "fieldlab-scripts",
+      "summary": "40 tracked files (12 command-plans, 28 scripts), ~545 KiB, classified via three mcp__hearth__local_generate calls on backend gcp-gemini-pro (all ok:true; one initial 28-file batch timed out and was re-split into 12+16). Verdict is near-uniform PRUNE: fieldlab/command-plans/ is entirely point-in-time experiment plans for finished eras (era16 density/teleport/volunteer-readiness, lumberjacks priority/shadow/bridge feasibility probes), and fieldlab/scripts/ is the matching harness \u2014 proof-gate orchestrators for retired gates (I1/I3/I4/I5/I7, P1/P4/P6), local docker-compose swarm/lab runners, WSL+Postgres bootstrappers, a self-described \"retired\" dashboard renderer, and a manual build-request receipt workflow that hardcodes the pre-merge C:\\work\\comfy path. None of it drives the live GCP p7 five-service release pipeline (that lives under infra/gcp/p7/), the ComfyNetworkSense mod, or the roadmap system. I overrode the model on one file: fieldlab/scripts/start-comfy-gateway.ps1 is the launcher for the comfy_gateway MCP door, whose tools are registered and live in this environment, so it is KEEP (note: it hardcodes C:\\work\\comfy\\network\\mcp and should be repointed at the merged repo's network/mcp/). One near-miss worth flagging: set-gcp-p7-target.ps1 carries live p7 VM coordinates (comfy-p7 SSH alias, comfy-lumberjacks-p7-valheim-server-1 container, world paths) but its only consumer is the pruned run-loopback-window.ps1 \u2014 confirm those coordinates exist under infra/gcp/p7/ before deleting. Roughly 20 files across the repo reference this zone by path (fieldlab/TEST-PROGRAM.md, fieldlab/status/*, handoffs, docs/repo-map/), so pruning here will leave dangling references in those docs \u2014 most of which are themselves prune candidates in other zones.",
+      "skeptic_notes": "METHOD: grepped every basename repo-wide from C:\\work\\baseline excluding .git, plus the two generated indices that produce pure noise (docs/repo-map/, repo-activity.json) and fieldlab/runs/prune-audit/ (this audit's own scratch inventory). Then spot-read the decision-record-shaped files and every reference that landed in live (non-fieldlab) code.\n\nKEY NEGATIVE RESULT -- the deletion set is closed under its own references. Every intra-set call edge stays inside the set: run-experiment.ps1 -> collect-environment.ps1 + validate-run-packet.ps1; run-autonomous-valheim-lab.ps1 -> verify-netcode-probe.ps1 + set-wsl-resource-profile.ps1; run-netcode-probe-cycle.ps1 -> verify-netcode-probe.ps1 + render-dashboard.py; run-omen-smoke.ps1 -> run-loopback-window.ps1 + omen-client-smoke.ps1; bootstrap-wsl-postgres.ps1 -> bootstrap-wsl-postgres.sh; run-valheim-yolo-swarm.ps1 -> run-autonomous-valheim-lab.ps1. No CI exists (.github/workflows/ is absent), no compose file references any of these, and the live roadmap tooling (Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json) contains ZERO matches for 'fieldlab/scripts/' or 'command-plans/'.\n\nCLAIMS I CHECKED AND CONFIRMED (each was a plausible overturn that did not survive):\n\n1. set-gcp-p7-target.ps1 -- the reviewer's own precondition ('confirm those coordinates are also recorded under infra/gcp/p7/'). CONFIRMED SATISFIED, uphold. The script carries no live IP at all: -PublicIp is a Mandatory param. Everything else it sets is independently recorded in retained infra: SSH target 'comfy-p7' (infra/gcp/p7/README.md:25, PROMOTION-DRILL.md:23), disk /mnt/comfy-p7 (README.md:26, docker-compose.yml, comfy-lumberjacks-p7.service:6), world ComfyEra16 (README.md:27, docker-compose.yml:185 WORLD_NAME), config/world paths (docker-compose.yml:199-200), and the env-file template (environment.example, /etc/comfy-p7/environment). The container name comfy-lumberjacks-p7-valheim-server-1 is just compose-project + the 'valheim-server' service, both in retained files. Its only consumers (run-loopback-window.ps1, omen-client-smoke.ps1, run-omen-smoke.ps1) are all in the deletion set.\n\n2. start-lumberjacks-gateway.ps1 -- the only deletion-set file referenced from LIVE production code: network/mcp/comfy_gateway/toolsurface/valheim.py:1400, inside valheim_lumberjacks_receipts()'s error hint. Uphold anyway: it is a parenthetical in a human-readable string, not an exec path, and the hint already carries the load-bearing fact inline ('Launch with --urls http://0.0.0.0:4000'), as does valheim.py:1596 without naming the script. Production runs the gateway from infra/gcp/p7/docker-compose.yml. ACTION FOR THE DOC/CODE ZONE: valheim.py:1400 becomes a stale path -- drop the '(fieldlab/scripts/start-lumberjacks-gateway.ps1)' clause in the same commit. Note fieldlab/scripts/start-comfy-gateway.ps1 is correctly NOT in the list (it launches the MCP door the Claude session reads through) -- do not let the name similarity sweep it up.\n\n3. run-experiment.ps1 / validate-run-packet.ps1 / analyze-networksense-perf.ps1 -- the strongest overturn candidate, and it fails on inspection. Lumberjacks/docs/network/valheim-volunteer-platform-plan.md IS live (status 'proposed execution plan', parent of the active plan-m1-strict-admission.md, linked from valheim-volunteer-roadmap.json:845 and served by the running Gateway at RoadmapViewEndpoints.cs:32), and its table names run-experiment.ps1 + validate-run-packet.ps1 as 'Basis of automatic session evidence' (line 214) and analyze-networksense-perf.ps1 as 'Post-run client performance report' (line 216). But those are the plan's only three mentions -- they sit in a backward-looking inventory titled 'What is already proved and should be reused', and NO milestone in the plan, in plan-m1-strict-admission.md, or in the roadmap JSON actually schedules invoking them. The live evidence lane is now infra/gcp/p7/scripts/ (New-ReleaseCut.ps1, run-promotion-drill.ps1, validate-release-bundle.ps1, capture-release-manifest.ps1), none of which touch fieldlab/scripts. The packet standard itself is specified in prose in fieldlab/README.md, so the spec survives the runner. Aspirational doc line, not a live consumer -> uphold per default.\n\n4. new-/close-build-request-receipt.ps1 -- fieldlab/BUILD-REQUEST-RECEIPTS.md reads as an active lane and is a receipt/audit workflow, so I read both scripts. Uphold: the doc has exactly one commit ever (56597b9 'Add build request receipt lane') and is linked from nowhere in the repo; the receipts it produces live under fieldlab/runs/build-requests/, which .gitignore:41 excludes, so no committed receipt or ledger.jsonl is orphaned by deleting the writers; and the lane is superseded by HEARTH's create/get/list/update/execute/close_build_request MCP tools. Minor correction to the reviewer's rationale: the scripts do not 'hardcode' C:\\work\\comfy -- it is an overridable -Repo/-OutDir default. Wrong reason, right verdict. ACTION FOR THE DOC ZONE: fieldlab/BUILD-REQUEST-RECEIPTS.md becomes a runbook for two nonexistent scripts and should be retired alongside them.\n\n5. Command-plans (all 12) -- read two in full (valheim-lumberjacks-shadow-authority.ps1, era16-density-pressure-matrix.ps1). Pure generators: they take -RunDir/-RepoRoot and WRITE summaries, gates, CSVs and operator runbooks into a run folder. They contain no findings or decisions themselves -- the records they produced are under fieldlab/runs/ and fieldlab/evidence/, which are retained. The whole directory goes, and only two handoff docs mention any of them (handoffs/HANDOFF-LUMBERJACKS-PRIORITY-PATH.md:327,379 and handoffs/HANDOFF-CLAUDE.md:23), both as historical narrative.\n\n6. install-dotnet9.ps1 -- 25 lines wrapping Microsoft's own https://dot.net/v1/dotnet-install.ps1 into C:\\work\\dotnet9. Trivially reconstructible, documents nothing unique. Uphold.\n\nCONSEQUENTIAL DANGLING REFERENCES FOR OTHER ZONES (not reasons to overturn, but they should not be left behind): fieldlab/scenarios/*.yaml declare the deleted scripts as their runners -- valheim-lumberjacks-netcode-probe.yaml:35 'verifier: fieldlab/scripts/verify-netcode-probe.ps1' and :27 run-autonomous-valheim-lab.ps1, valheim-autonomous-lab.yaml:29-30, valheim-era16-volunteer-readiness-baseline.yaml:59 'dry_run_tool: fieldlab/scripts/set-wsl-resource-profile.ps1'. With run-experiment.ps1 (their only interpreter) gone, fieldlab/scenarios/ is inert and should be evaluated in the same pass rather than left as YAML pointing at nothing. Same for the command blocks in fieldlab/README.md (lines 93-94, 128, 139, 282-289, 330, 338-372), fieldlab/OMEN-CLIENT-SMOKE.md (which is entirely a runbook for three deleted scripts), and docs/github-integration-strategy.md (status 'proposed', last reviewed 2026-07-11, already annotated 'Retired 2026-07-21' at line 31 -- its entire \u00a7279-282 capability table indexes the deleted scripts)."
+    },
+    {
+      "zone": "data",
+      "summary": "The entire \"data\" zone is a self-contained artifact of a dead side-project: a Discord/Google-Sheets harvest pipeline for two Valheim community guilds (Slayers and Rangers), plus the browser extension that scraped Discord for it. Nothing in it touches the live load-bearing surfaces \u2014 no reference to infra/gcp/p7, the five-service release pipeline, the ComfyNetworkSense mod, or the Lumberjacks roadmap system. data/raw/ holds untouched exports of Google Docs/Sheets (SOURCES.md records the live source URLs and retrieval date 2026-07-01, so the inputs are re-fetchable), data/processed/ holds the generated quest catalogs, anomaly reports and a standalone quest-picker.html, and discord-search-export/ is a one-off Chrome content script for scraping Discord search results. Verdict is uniform PRUNE across all 24 files. The two .xlsx trackers were not packed (5.4 MB and 5.9 MB, both over the 256 KiB pack limit and binary), but SOURCES.md identifies them precisely as the guilds' Google Sheets exports feeding this same pruned pipeline \u2014 deleting them alone reclaims ~11.3 MB, by far the largest single win in the zone. Classification was done via mcp__hearth__local_generate on backend gcp-gemini-pro in two batches (336 KB and 113 KB packed), both ok:true; the .xlsx pair I judged myself from SOURCES.md.",
+      "skeptic_notes": "Verification method: repo-wide grep excluding .git and the generated docs/repo-map/ blob (index.html embeds a 3.9MB JSON that swamps results), plus a scripted simulation resolving every markdown link in the ENTRYPOINTS list of tests/test_entrypoint_links.py against the proposed deletion set, including directories that would be emptied. Baseline confirmed: `python -m pytest tests/test_entrypoint_links.py tests/test_repo_activity.py -q` = 8 passed. The 5 failures in tests/test_guest_package.py are pre-existing and unrelated (missing fieldlab/runs/releases/m1-clean-20260717-r1.json).\n\nThe reviewer's framing premise -- that the harvest pipeline \"has no live consumer\" / is \"dead\" -- is contradicted by the repo itself. Root README.md:133 calls recipes/quest-catalogs/ live, recipes/README.md publishes its commands as runnable, and .claude/launch.json ships a launch target for its output. recipes/ was not in this deletion zone, so pruning its declared inputs leaves a live config pointing at missing files.\n\nTwo caveats on the upheld list worth passing to the pruner:\n\n1. Upholding the four quest-catalog outputs (2 JSON + 2 anomalies) is only safe BECAUSE the two .xlsx inputs are overturned -- harvest.py can regenerate them. If a later pass deletes the .xlsx after all, those four become unregenerable and should be re-examined. Note the anomaly reports are open questions for the guild to rule on, not settled records.\n\n2. The reviewer's \"regenerable\" rationale is factually wrong for weapon-choices-joined.json and weapons-economy-balance.json: there is NO committed generator anywhere in the repo (recipes/ contains only quest-catalogs and rank-ladders). Deleting those two plus their two raw CSVs destroys the weapons dataset outright rather than regenerating it. I still uphold all four -- no live consumer and no test breakage, and the brief says over-pruning is acceptable -- but the decision should be made knowing it is one-way, and docs/datasets/weapon-choices.md and docs/datasets/weapons-economy-balance.md will be left describing files that no longer exist.\n\nOn discord-search-export: I uphold content.js and manifest.json because nothing references them and the work is finished, but flag an incoherence. The README must survive (link test), and its entire argument is \"trust ~150 lines you can read in two minutes -- open manifest.json and content.js and verify there is no network call.\" Keeping the verification guide while deleting the auditable code inverts its meaning. Cleanest outcomes are all three kept, or all three dropped with root README.md:77 and the HOTSPOTS row edited to remove the link. Do not delete just the code.\n\nIf the pruner wants the ~11MB the two .xlsx represent, the honest path is a separate decision to retire recipes/quest-catalogs/ as a whole (inputs, outputs, sources.json, harvest.py, the launch.json target, and the README claims that call it live) -- not a silent input deletion from the data zone."
+    },
+    {
+      "zone": "misc",
+      "summary": "Classified all 40 tracked files under recipes/, quest_select_design/, erasave/, framework/, tools/, tests/ via two mcp__hearth__local_generate calls on gcp-gemini-pro (both ok:true, 233 KiB + 95 KiB packed). Only one cluster survives: the guest-package PowerShell distribution tooling under tools/guest-package/ plus tools/render_guest_guide.py and its test tests/test_guest_package.py, which build and install the live ComfyNetworkSense BepInEx mod for clients. Everything else is off-purpose: framework/ + recipes/ are a self-contained \"community systems kit\" for MMO guild rank ladders and quest catalogs with no connection to the Valheim server, the p7 release pipeline, the mod, or the roadmap system \u2014 the model marked these KEEP as \"active tooling\", but I read framework/README.md and recipes/README.md directly and overrode all 16 to PRUNE, since they are load-bearing only for a program that is not this one (recover from C:\\work\\comfy if the guild tooling is ever revived). Also pruned: erasave/ (one-off classification output), quest_select_design/ (self-described historical design snapshot, including its .thumbnail and pasted screenshot), tools/repo_activity.py + its README + test (git-history activity mapper, meaningless after a subtree merge flattened all dates), tools/verify_comfy_lumberjacks_integration.py (verifies the obsolete two-repo split), and tests/test_entrypoint_links.py (link-checks the pruned repo-map docs).",
+      "skeptic_notes": "Systemic issue worth raising before this prune lands. The reviewer's framing -- that community-systems/quest material is 'unrelated to the Valheim server, release pipeline, mod, or roadmap' -- does not match the repo as it currently documents itself. Root README.md says outright \"This repo is not one tidy product\", and its Session 5 section calls the quest vertical slice \"the most interesting build\", listing recipes/quest-catalogs/schema.md, quest-view-schema.md, and data/processed/quest-picker.html as entry points. More concretely, the quest chain terminates in shipped mod code: handoffs/comfy-control-surface/Core/Commands/ControlSurfaceCommands.cs:17 loads quest-view.json at runtime. So the quest recipe is not off-purpose at all.\n\nNone of docs/, data/, handoffs/, or README.md appear in this zone's deletion list. If the intent really is to remove the whole community-systems subsystem, docs/quest-vertical-slice-architecture.md, data/processed/quest-*, data/README.md's main-flow section, and the README's Session 5 block have to go in the same commit. Pruning only the generators leaves the repo internally inconsistent -- which is also exactly why I overturned tests/test_entrypoint_links.py.\n\nDangling references the parent must fix even for the deletions I UPHELD:\n- tools/repo_activity.py + tools/README.md: root README.md lines 60-83 are a generated block (<!-- repo-activity:end -->) containing the repo-map links, the hotspot table (which links erasave/, framework/, quest_select_design/, recipes/, tools/ READMEs), and the line \"Regenerate with `python tools/repo_activity.py --write`\". That block must be removed by hand in the same change, since the tool that maintains it is going away. I upheld these on your stated premise that docs/repo-map is pruned in another zone -- if it is not, reverse this one.\n- recipes/rank-ladders/example-output.json (upheld): data/raw/SOURCES.md:51 cites it as the era-16 rank transcription baseline for a documented known-drift note. data/raw/ survives, so update that line.\n- recipes/rank-ladders/ generally: docs/perspectives/mikers.md:34 has a live markdown link to ../../recipes/rank-ladders/, and docs/kernel.md:136 marks the recipe \"done\" with that path as evidence.\n- framework/AGENTS.md (upheld): docs/tool-proposal.md:85 calls it \"the keystone\", and docs/method/conversation-extract.md links it four times. Those are historical/proposal prose rather than executable consumers, which is why I let it go -- but the links will break.\n- quest_select_design/ (upheld): its own README says \"Keep this directory intact when revisiting the interface\", and recipes/quest-catalogs/render_quest_picker.py:9 credits the design to \"the quest_select_design pass\". Both are soft signals; recoverable from C:\\work\\comfy, so I did not overturn. Note quest_select_design/support.js is a separate copy from network/design_mocks/support.js -- deleting it does not affect the Network Ward mock."
+    },
+    {
+      "zone": "root",
+      "summary": "The root zone holds repo-wide config, orientation docs, and a handful of point-in-time JSON data/config files. KEEP covers the load-bearing plumbing: .gitignore, .mcp.json (live comfy-gateway wiring), LICENSE, README.md (the merged-monorepo orientation doc), and AGENTS.md (drives the live roadmap/journal system). PRUNE covers artifacts tied to finished or offline side-projects: repo-activity.json (activity-script config describing pre-merge eras), steward-config.json (offline Valheim World Viewer, unconnected to the GCP p7 stack or ComfyNetworkSense), waypoints.json (one-off building-cluster data dump from an old world era), and .claude/launch.json (static server for the finished \"quest picker\" vertical slice). Classification was produced by gcp-gemini-pro over the packed file contents (21.7 KiB, single batch, ok:true); no binaries or oversized files in this zone.",
+      "skeptic_notes": "Method: ran a repo-wide grep for each basename excluding .git, then spot-read the four candidate files plus tools/repo_activity.py, tests/test_entrypoint_links.py, the fieldlab command-plan/scenario pair, and the handoffs segment docs. No .github/ CI directory exists in this repo, so no pipeline gate was available to check. steward-config.json upheld because its owning app (ComfyStewardView) is a separate repo at C:\\work\\ComfyStewardView and every fieldlab reference points at that external path, never at this config; only hits in-repo are self-referential rows in generated docs/repo-map/ artifacts. Mild caveat: its threshold values (sector_size_m, build_risk_zdo_count, hotspot_sigma_multiplier) appear nowhere else in this repo, so a small amount of tuning provenance is lost, but the owning repo retains its own copy. .claude/launch.json upheld because nothing references it (port 8630 appears nowhere else), it only feeds the Claude Code preview tool, and it is 11 lines with a machine-specific hardcoded Python path \u2014 trivially recreated; the artifact it served (data/processed/quest-picker.html) stays committed and README-linked."
+    }
+  ],
+  "removed": [
+    {
+      "path": ".claude/launch.json",
+      "zone": "root",
+      "reason": "Launches a static server for the finished 'quest picker' vertical slice, superseded by the live service work."
+    },
+    {
+      "path": "data/processed/quest-catalog-rangers-anomalies.md",
+      "zone": "data",
+      "reason": "Point-in-time anomaly report emitted by the harvester; no ongoing consumer."
+    },
+    {
+      "path": "data/processed/quest-catalog-rangers.json",
+      "zone": "data",
+      "reason": "Generated quest catalog, regenerable from raw sources and unused by the live stack."
+    },
+    {
+      "path": "data/processed/quest-catalog-slayers-anomalies.md",
+      "zone": "data",
+      "reason": "Point-in-time anomaly report emitted by the harvester; no ongoing consumer."
+    },
+    {
+      "path": "data/processed/quest-catalog-slayers.json",
+      "zone": "data",
+      "reason": "Generated quest catalog, regenerable from raw sources and unused by the live stack."
+    },
+    {
+      "path": "data/processed/weapon-choices-joined.json",
+      "zone": "data",
+      "reason": "Generated join of weapon datasets with no active consumer."
+    },
+    {
+      "path": "data/processed/weapons-economy-balance.json",
+      "zone": "data",
+      "reason": "Generated economy dataset with no active consumer in the load-bearing stack."
+    },
+    {
+      "path": "data/raw/creator-event-rules-new.md",
+      "zone": "data",
+      "reason": "Raw community event rules text; input to the dead harvest pipeline."
+    },
+    {
+      "path": "data/raw/creator-event-rules-old.md",
+      "zone": "data",
+      "reason": "Explicitly superseded prior revision of the event rules."
+    },
+    {
+      "path": "data/raw/discord-found-sheet.csv",
+      "zone": "data",
+      "reason": "One-off scrape dump of Discord guild links from Era 16."
+    },
+    {
+      "path": "data/raw/new-player-guide-1.txt",
+      "zone": "data",
+      "reason": "Raw text export of a community new-player FAQ with no ongoing consumer."
+    },
+    {
+      "path": "data/raw/new-player-guide-2.txt",
+      "zone": "data",
+      "reason": "Raw text export of a community new-player guide with no ongoing consumer."
+    },
+    {
+      "path": "data/raw/new-player-sheet.csv",
+      "zone": "data",
+      "reason": "Raw quest/reward dump feeding the pruned quest-catalog pipeline."
+    },
+    {
+      "path": "data/raw/slayer-guild-handbook.txt",
+      "zone": "data",
+      "reason": "Raw text export of the Slayer guild handbook; SOURCES.md notes it already drifts from the other sources."
+    },
+    {
+      "path": "data/raw/weapon-choices.csv",
+      "zone": "data",
+      "reason": "Raw weapon-stat dump feeding the pruned weapons-economy output."
+    },
+    {
+      "path": "data/raw/weapons-economy-balance.csv",
+      "zone": "data",
+      "reason": "Raw weapon economy/balance dump feeding the pruned processed JSON."
+    },
+    {
+      "path": "discord-search-export/content.js",
+      "zone": "data",
+      "reason": "One-off Chrome content script for scraping Discord search results; work is finished."
+    },
+    {
+      "path": "discord-search-export/manifest.json",
+      "zone": "data",
+      "reason": "Manifest for the one-off Discord scraping extension."
+    },
+    {
+      "path": "docs/adoption-strategy.md",
+      "zone": "docs",
+      "reason": "Philosophical strategy essay on early adoption barriers with no ongoing consumer."
+    },
+    {
+      "path": "docs/comfy-base-layer-architecture-plan.md",
+      "zone": "docs",
+      "reason": "Point-in-time architecture plan predating the current p7 release pipeline implementation."
+    },
+    {
+      "path": "docs/community-insights.md",
+      "zone": "docs",
+      "reason": "Narrative synthesis of community behaviors and problems; research notes, not a living reference."
+    },
+    {
+      "path": "docs/creator-events-rules-analysis.md",
+      "zone": "docs",
+      "reason": "One-off analysis of community event rules and their enforceability."
+    },
+    {
+      "path": "docs/github-integration-strategy.md",
+      "zone": "docs",
+      "reason": "44 KB proposed CI/CD integration strategy, superseded by what actually shipped under infra/gcp/p7/."
+    },
+    {
+      "path": "docs/governance.md",
+      "zone": "docs",
+      "reason": "High-level community policy/governance notes unrelated to the live server or pipeline."
+    },
+    {
+      "path": "docs/kernel.md",
+      "zone": "docs",
+      "reason": "Narrative manifesto describing the initial project's philosophy and aims."
+    },
+    {
+      "path": "docs/method/conversation-extract.md",
+      "zone": "docs",
+      "reason": "196 KB raw chat transcript dump of a single planning session."
+    },
+    {
+      "path": "docs/method/conversation-ledger.md",
+      "zone": "docs",
+      "reason": "Chronological ledger summarizing the same raw chat transcript."
+    },
+    {
+      "path": "docs/method/the-lens-first-playbook.md",
+      "zone": "docs",
+      "reason": "Methodology essay extracted from one chat session; reflective, not operational."
+    },
+    {
+      "path": "docs/personas.md",
+      "zone": "docs",
+      "reason": "Early mapping of community roles and archetypes with no ongoing consumer."
+    },
+    {
+      "path": "docs/perspectives/README.md",
+      "zone": "docs",
+      "reason": "Index for the historical persona-perspectives folder, all of which is pruned."
+    },
+    {
+      "path": "docs/perspectives/bruce.md",
+      "zone": "docs",
+      "reason": "Narrative write-up of one community member's perspective."
+    },
+    {
+      "path": "docs/perspectives/derek.md",
+      "zone": "docs",
+      "reason": "Narrative write-up of one community member's perspective."
+    },
+    {
+      "path": "docs/perspectives/ivo.md",
+      "zone": "docs",
+      "reason": "Narrative write-up of one community member's perspective."
+    },
+    {
+      "path": "docs/perspectives/mikers.md",
+      "zone": "docs",
+      "reason": "Narrative write-up of one community member's perspective."
+    },
+    {
+      "path": "docs/perspectives/mistral.md",
+      "zone": "docs",
+      "reason": "Narrative write-up of one community member's perspective."
+    },
+    {
+      "path": "docs/perspectives/raevyxn.md",
+      "zone": "docs",
+      "reason": "Narrative write-up of one community member's perspective."
+    },
+    {
+      "path": "docs/positioning.md",
+      "zone": "docs",
+      "reason": "Historical messaging/positioning guidelines for talking to the community."
+    },
+    {
+      "path": "docs/thesis-gold-local-lab-plan.md",
+      "zone": "docs",
+      "reason": "Proposal for a local experimentation lab; aspirational plan, not living architecture."
+    },
+    {
+      "path": "docs/tool-proposal.md",
+      "zone": "docs",
+      "reason": "Early proposal for community tooling that was never the load-bearing path."
+    },
+    {
+      "path": "fieldlab/AUTHORITATIVE-ZDO-CONSUMER-COMPLETION-PLAN.md",
+      "zone": "fieldlab-docs",
+      "reason": "Explicitly marked complete and superseded by M-series strict admission plans."
+    },
+    {
+      "path": "fieldlab/BEYOND-I7-BACKLOG.md",
+      "zone": "fieldlab-docs",
+      "reason": "Historical backlog absorbed by the active M-series living roadmap."
+    },
+    {
+      "path": "fieldlab/GROUND-TRUTH.md",
+      "zone": "fieldlab-docs",
+      "reason": "Explicitly marked historical and retired; authority passed to the roadmap."
+    },
+    {
+      "path": "fieldlab/NETWORKSENSE-ERA16-MATRIX.md",
+      "zone": "fieldlab-docs",
+      "reason": "Explicitly era-bound and superseded by newer baseline methodology."
+    },
+    {
+      "path": "fieldlab/NETWORKSENSE-PERF-DEBUG-PLAN.md",
+      "zone": "fieldlab-docs",
+      "reason": "Explicitly era-bound status/plan document, now superseded."
+    },
+    {
+      "path": "fieldlab/OMEN-CLIENT-SMOKE.md",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time smoke runbook superseded by the M-series validation framework."
+    },
+    {
+      "path": "fieldlab/README.md",
+      "zone": "fieldlab-docs",
+      "reason": "Stale entrypoint with pre-cutover pointers; replace rather than retain if fieldlab survives."
+    },
+    {
+      "path": "fieldlab/TEST-PROGRAM.md",
+      "zone": "fieldlab-docs",
+      "reason": "Explicitly marked historical and retired in favor of the living roadmap."
+    },
+    {
+      "path": "fieldlab/VALHEIM-LUMBERJACKS-FEASIBILITY.md",
+      "zone": "fieldlab-docs",
+      "reason": "Early feasibility research replaced by the shipped implementation."
+    },
+    {
+      "path": "fieldlab/VALHEIM-NETCODE-REPLACEMENT-FEASIBILITY-RESEARCH.md",
+      "zone": "fieldlab-docs",
+      "reason": "Early deep-research fan-out obsoleted by the concrete netcode maps."
+    },
+    {
+      "path": "fieldlab/audits/p7-efficiency/README.md",
+      "zone": "fieldlab-docs",
+      "reason": "Instructions for a dated one-off efficiency audit run."
+    },
+    {
+      "path": "fieldlab/audits/p7-efficiency/audit-manifest.ps1",
+      "zone": "fieldlab-docs",
+      "reason": "Generates data for the pruned point-in-time efficiency audit."
+    },
+    {
+      "path": "fieldlab/audits/p7-efficiency/deployment-audit-20260715.md",
+      "zone": "fieldlab-docs",
+      "reason": "Dated point-in-time audit results."
+    },
+    {
+      "path": "fieldlab/audits/p7-efficiency/initial-findings-20260715.md",
+      "zone": "fieldlab-docs",
+      "reason": "Dated point-in-time audit findings."
+    },
+    {
+      "path": "fieldlab/audits/p7-efficiency/run-live-compaction.ps1",
+      "zone": "fieldlab-docs",
+      "reason": "Helper script bound to the pruned historical efficiency audit."
+    },
+    {
+      "path": "fieldlab/audits/p7-efficiency/sample-cutover.ps1",
+      "zone": "fieldlab-docs",
+      "reason": "Telemetry sampler bound to the pruned historical efficiency audit."
+    },
+    {
+      "path": "fieldlab/command-plans/era16-density-pressure-matrix.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Point-in-time script generating a density pressure matrix for the finished Era16 milestone."
+    },
+    {
+      "path": "fieldlab/command-plans/lumberjacks-native-runtime-smoke.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Local smoke-test wrapper built for the old split-repo local workflow, not part of the live docker-based release pipeline."
+    },
+    {
+      "path": "fieldlab/command-plans/thesis-gold-progressive-enhancement.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Discovery script gathering telemetry to prove out a past hypothesis; no ongoing consumer."
+    },
+    {
+      "path": "fieldlab/command-plans/valheim-era16-teleport-rehearsal.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Rehearsal plan for the specific Era16 volunteer-readiness phase, now complete."
+    },
+    {
+      "path": "fieldlab/command-plans/valheim-era16-volunteer-readiness-baseline.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Baseline-capture script for the past Era16 milestone."
+    },
+    {
+      "path": "fieldlab/command-plans/valheim-lumberjacks-bridge-feasibility.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Feasibility probe checking whether the sidecar protocol and visual projection work locally."
+    },
+    {
+      "path": "fieldlab/command-plans/valheim-lumberjacks-priority-gateway-plan.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Experiment validating a priority routing strategy in the Gateway during an old development spike."
+    },
+    {
+      "path": "fieldlab/command-plans/valheim-lumberjacks-priority-live-mirror.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Experiment testing a live mirror of object loading over the sidecar channel."
+    },
+    {
+      "path": "fieldlab/command-plans/valheim-lumberjacks-priority-load-order.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Trial run characterizing priority load-order execution under pressure."
+    },
+    {
+      "path": "fieldlab/command-plans/valheim-lumberjacks-priority-mirror.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Trial run testing Lumberjacks side-channel metadata integrity."
+    },
+    {
+      "path": "fieldlab/command-plans/valheim-lumberjacks-shadow-authority.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Feasibility probe comparing authoritative shadow movement against vanilla local movement."
+    },
+    {
+      "path": "fieldlab/command-plans/valheim-lumberjacks-shadow-route.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Experiment observing shadow-route drift distribution under measurement-only conditions."
+    },
+    {
+      "path": "fieldlab/evidence/i1-airtight/netcode-probe-summary.json",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time test artifact for closed iteration I1."
+    },
+    {
+      "path": "fieldlab/evidence/i1-airtight/netcode-probe.excerpt.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "Raw telemetry excerpt for closed iteration I1."
+    },
+    {
+      "path": "fieldlab/evidence/i1-airtight/netcode-probe.sha256",
+      "zone": "fieldlab-docs",
+      "reason": "Hash of an already-pruned point-in-time artifact."
+    },
+    {
+      "path": "fieldlab/evidence/i1/PROVENANCE.md",
+      "zone": "fieldlab-docs",
+      "reason": "Provenance note for closed iteration I1."
+    },
+    {
+      "path": "fieldlab/evidence/i1/netcode-probe-summary.json",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time test artifact for closed iteration I1."
+    },
+    {
+      "path": "fieldlab/evidence/i1/netcode-probe.excerpt.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "Raw telemetry excerpt for closed iteration I1."
+    },
+    {
+      "path": "fieldlab/evidence/i2-observe/PROVENANCE.json",
+      "zone": "fieldlab-docs",
+      "reason": "Provenance for closed iteration I2."
+    },
+    {
+      "path": "fieldlab/evidence/i2-observe/ownership-churn.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "171 KB raw ownership-churn telemetry from closed iteration I2."
+    },
+    {
+      "path": "fieldlab/evidence/i2-observe/summary.json",
+      "zone": "fieldlab-docs",
+      "reason": "Run summary for closed iteration I2."
+    },
+    {
+      "path": "fieldlab/evidence/i2-pin/ownership-churn.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "375 KB raw telemetry dump, over the 256 KiB pack limit; closed iteration."
+    },
+    {
+      "path": "fieldlab/evidence/i2-pin/ownership-pin.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "100 KB raw ownership-pin telemetry from closed iteration I2."
+    },
+    {
+      "path": "fieldlab/evidence/i2-repeat/ANALYSIS.md",
+      "zone": "fieldlab-docs",
+      "reason": "Analysis for closed iteration I2-repeat."
+    },
+    {
+      "path": "fieldlab/evidence/i2-repeat/ownership-churn.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "491 KB raw telemetry dump, over the 256 KiB pack limit; closed iteration."
+    },
+    {
+      "path": "fieldlab/evidence/i2-repeat/ownership-pin.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "176 KB raw ownership-pin telemetry from closed iteration I2."
+    },
+    {
+      "path": "fieldlab/evidence/i3-redirect/PROVENANCE.json",
+      "zone": "fieldlab-docs",
+      "reason": "Provenance for closed iteration I3."
+    },
+    {
+      "path": "fieldlab/evidence/i3-redirect/gate-verdict.json",
+      "zone": "fieldlab-docs",
+      "reason": "Gate verdict snapshot for closed iteration I3."
+    },
+    {
+      "path": "fieldlab/evidence/i3-redirect/lumberjacks-receipts-i3-w4.json",
+      "zone": "fieldlab-docs",
+      "reason": "Raw receipt dump for closed iteration I3."
+    },
+    {
+      "path": "fieldlab/evidence/i3-redirect/mod-redirect-status.json",
+      "zone": "fieldlab-docs",
+      "reason": "Raw status snapshot for closed iteration I3."
+    },
+    {
+      "path": "fieldlab/evidence/i3-redirect/redirect-send.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "450 KB raw redirect trace, over the 256 KiB pack limit; closed iteration."
+    },
+    {
+      "path": "fieldlab/evidence/i4-injection/ANALYSIS.md",
+      "zone": "fieldlab-docs",
+      "reason": "Analysis for closed iteration I4."
+    },
+    {
+      "path": "fieldlab/evidence/i4-injection/PROVENANCE.md",
+      "zone": "fieldlab-docs",
+      "reason": "Provenance for closed iteration I4."
+    },
+    {
+      "path": "fieldlab/evidence/i4-injection/gateway-status.json",
+      "zone": "fieldlab-docs",
+      "reason": "Raw status snapshot for closed iteration I4."
+    },
+    {
+      "path": "fieldlab/evidence/i4-injection/injection-apply.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "Raw injection trace for closed iteration I4."
+    },
+    {
+      "path": "fieldlab/evidence/i4-injection/save-integrity-baseline.json",
+      "zone": "fieldlab-docs",
+      "reason": "Test baseline captured for closed iteration I4."
+    },
+    {
+      "path": "fieldlab/evidence/i5-handshake/handshake-loopback.json",
+      "zone": "fieldlab-docs",
+      "reason": "Loopback test capture for closed iteration I5."
+    },
+    {
+      "path": "fieldlab/evidence/i6-steam-only.md",
+      "zone": "fieldlab-docs",
+      "reason": "Historical analysis note for closed iteration I6."
+    },
+    {
+      "path": "fieldlab/evidence/i7-gcp-w1/PROVENANCE.json",
+      "zone": "fieldlab-docs",
+      "reason": "Provenance for closed iteration I7 window 1."
+    },
+    {
+      "path": "fieldlab/evidence/i7-gcp-w1/environment.txt",
+      "zone": "fieldlab-docs",
+      "reason": "Raw environment dump for closed iteration I7."
+    },
+    {
+      "path": "fieldlab/evidence/i7-gcp-w1/gcp-server-log-decisions.txt",
+      "zone": "fieldlab-docs",
+      "reason": "Raw server log excerpt for closed iteration I7."
+    },
+    {
+      "path": "fieldlab/evidence/i7-gcp-w1/redirect-send-i7-gcp-w1.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "2 MB raw redirect trace, far over the pack limit; closed iteration."
+    },
+    {
+      "path": "fieldlab/evidence/i7-live-w2-authoritative-zdo-20260714-v0524.md",
+      "zone": "fieldlab-docs",
+      "reason": "Historical per-run report for closed iteration I7."
+    },
+    {
+      "path": "fieldlab/evidence/i7-live-w2-authoritative-zdo-20260714-v0525.md",
+      "zone": "fieldlab-docs",
+      "reason": "Historical per-run report for closed iteration I7."
+    },
+    {
+      "path": "fieldlab/evidence/i7-live-w2-authoritative-zdo-20260714.md",
+      "zone": "fieldlab-docs",
+      "reason": "Historical per-run report for closed iteration I7."
+    },
+    {
+      "path": "fieldlab/evidence/i7-live-w3-all-authoritative-zdo-20260714-v0525.md",
+      "zone": "fieldlab-docs",
+      "reason": "Historical per-run report for closed iteration I7."
+    },
+    {
+      "path": "fieldlab/evidence/i7-w6/PROVENANCE.json",
+      "zone": "fieldlab-docs",
+      "reason": "Provenance for closed iteration I7 window 6."
+    },
+    {
+      "path": "fieldlab/evidence/i7-w6/gateway-handshake-status.json",
+      "zone": "fieldlab-docs",
+      "reason": "Raw status snapshot for closed iteration I7."
+    },
+    {
+      "path": "fieldlab/evidence/i7-w6/gateway-injection-status.json",
+      "zone": "fieldlab-docs",
+      "reason": "Raw status snapshot for closed iteration I7."
+    },
+    {
+      "path": "fieldlab/evidence/i7-w6/gateway-redirect-status.json",
+      "zone": "fieldlab-docs",
+      "reason": "Raw status snapshot for closed iteration I7."
+    },
+    {
+      "path": "fieldlab/evidence/i7-w6/injection-apply-client.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "Raw client injection trace for closed iteration I7 window 6."
+    },
+    {
+      "path": "fieldlab/evidence/i7-w6/ownership-pin-i7-w6-tail.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "Raw ownership-pin log tail for closed iteration I7 window 6."
+    },
+    {
+      "path": "fieldlab/evidence/i7-w6/redirect-send-i7-w6-tail.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "Raw redirect log tail for closed iteration I7 window 6."
+    },
+    {
+      "path": "fieldlab/evidence/i7-w6/server-log-lifecycle.txt",
+      "zone": "fieldlab-docs",
+      "reason": "Raw server lifecycle log excerpt for closed iteration I7."
+    },
+    {
+      "path": "fieldlab/evidence/p7-primary-v1-authoritative-zdo-20260715-v0527.md",
+      "zone": "fieldlab-docs",
+      "reason": "Per-run report superseded by the P7 gold-run publication."
+    },
+    {
+      "path": "fieldlab/evidence/p7-session-20260719-release-gate-defect/gateway-container.txt",
+      "zone": "fieldlab-docs",
+      "reason": "235 KB raw container log dump from a closed bug investigation."
+    },
+    {
+      "path": "fieldlab/evidence/p7-session-20260719-release-gate-defect/telemetry-final.txt",
+      "zone": "fieldlab-docs",
+      "reason": "Raw telemetry from a closed bug investigation."
+    },
+    {
+      "path": "fieldlab/handoffs/AGENT-QUESTIONS.md",
+      "zone": "fieldlab-docs",
+      "reason": "Historical Q&A transcript from a finished session."
+    },
+    {
+      "path": "fieldlab/handoffs/HANDOFF-I1-INTERCEPTION-REACHABILITY.md",
+      "zone": "fieldlab-docs",
+      "reason": "Finished point-in-time session handoff for closed iteration I1."
+    },
+    {
+      "path": "fieldlab/handoffs/HANDOFF-PERF-TEST-AB-CHECKLIST.md",
+      "zone": "fieldlab-docs",
+      "reason": "Explicitly era-bound and superseded checklist."
+    },
+    {
+      "path": "fieldlab/handoffs/HANDOFF-PLAYER-ON-NETWORK-AM4-SERVER.md",
+      "zone": "fieldlab-docs",
+      "reason": "Explicitly superseded handoff for the retired AM4 server topology."
+    },
+    {
+      "path": "fieldlab/handoffs/HANDOFF-QOL-TOOLING-REWIRE.md",
+      "zone": "fieldlab-docs",
+      "reason": "Finished handoff whose tasks were absorbed into past test programs."
+    },
+    {
+      "path": "fieldlab/handoffs/HANDOFF-STEP6-VM-REPROVISION.md",
+      "zone": "fieldlab-docs",
+      "reason": "Session-prompt context for a finished cutover step."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/HOST-SETUP.md",
+      "zone": "fieldlab-docs",
+      "reason": "Host setup instructions for the superseded M1 guest drop."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/README.md",
+      "zone": "fieldlab-docs",
+      "reason": "README for a superseded artifact-drop structure."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1.zip",
+      "zone": "fieldlab-docs",
+      "reason": "Binary archive of the superseded M1 guest drop; unpacked copy also pruned."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1/GUEST-GUIDE.md",
+      "zone": "fieldlab-docs",
+      "reason": "Generated guide for a historical M1 candidate drop."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1/guest-index.json",
+      "zone": "fieldlab-docs",
+      "reason": "Index for a historical M1 candidate drop."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1/guest-package-inputs.json",
+      "zone": "fieldlab-docs",
+      "reason": "Inputs config for a historical M1 candidate drop."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1/manifest.json",
+      "zone": "fieldlab-docs",
+      "reason": "Manifest for a historical M1 candidate drop, superseded by later releases."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1/scripts/Collect-ComfyGuestDiagnostics.ps1",
+      "zone": "fieldlab-docs",
+      "reason": "Installer-pack script bound to the superseded M1 guest drop."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1/scripts/Install-ComfyGuest.ps1",
+      "zone": "fieldlab-docs",
+      "reason": "Installer-pack script bound to the superseded M1 guest drop."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1/scripts/Invoke-GuestPreflight.ps1",
+      "zone": "fieldlab-docs",
+      "reason": "Installer-pack script bound to the superseded M1 guest drop."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1/scripts/Uninstall-ComfyGuest.ps1",
+      "zone": "fieldlab-docs",
+      "reason": "Installer-pack script bound to the superseded M1 guest drop."
+    },
+    {
+      "path": "fieldlab/handoffs/guest-client-pack/comfy-guest-m1-clean-20260717-r1/scripts/lib/ComfyGuestCommon.psm1",
+      "zone": "fieldlab-docs",
+      "reason": "Shared library for the superseded M1 guest-pack installer scripts."
+    },
+    {
+      "path": "fieldlab/hardware/lan-machines.json",
+      "zone": "fieldlab-docs",
+      "reason": "Local LAN hardware topology unused by the active GCP pipeline."
+    },
+    {
+      "path": "fieldlab/integration/evidence/.gitattributes",
+      "zone": "fieldlab-docs",
+      "reason": "Git config for the evidence tree that this audit prunes entirely."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/artifacts.json",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time integration run output."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/client-trace.txt",
+      "zone": "fieldlab-docs",
+      "reason": "Raw client log excerpt from a single integration run."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/consumer-status.json",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time integration run output."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/effective-config.json",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time config capture from a single integration run."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/evidence-manifest.json",
+      "zone": "fieldlab-docs",
+      "reason": "Manifest for a single point-in-time integration run."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/gateway-status.json",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time integration run output."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/gateway-trace.txt",
+      "zone": "fieldlab-docs",
+      "reason": "Raw gateway log excerpt from a single integration run."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/redirect-trace.jsonl",
+      "zone": "fieldlab-docs",
+      "reason": "Raw redirect trace from a single point-in-time integration run."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/rollback-audit.json",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time rollback audit output, superseded by the M0 drill receipts."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/server-trace.txt",
+      "zone": "fieldlab-docs",
+      "reason": "Raw server log excerpt from a single integration run."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/tripwire.json",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time tripwire capture from a single integration run."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/verdict.json",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time verdict output from a single integration run."
+    },
+    {
+      "path": "fieldlab/integration/evidence/20260719-172149/verification.json",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time verification output from a single integration run."
+    },
+    {
+      "path": "fieldlab/retro/HANDOFF-NEXT-SESSION.md",
+      "zone": "fieldlab-docs",
+      "reason": "Historical session prompt and state context."
+    },
+    {
+      "path": "fieldlab/scenarios/era16-density-pressure-matrix.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Era-bound scenario referencing local paths and superseded workflows."
+    },
+    {
+      "path": "fieldlab/scenarios/lumberjacks-native-runtime-smoke.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Pre-merge smoke scenario with hardcoded local C:/work paths."
+    },
+    {
+      "path": "fieldlab/scenarios/thesis-gold-progressive-enhancement.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Point-in-time research scenario superseded by the live architecture."
+    },
+    {
+      "path": "fieldlab/scenarios/valheim-autonomous-lab.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Local Docker lab scenario superseded by the GCP P7 deployment."
+    },
+    {
+      "path": "fieldlab/scenarios/valheim-lumberjacks-bridge-feasibility.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Feasibility probe scenario for superseded early mod versions."
+    },
+    {
+      "path": "fieldlab/scenarios/valheim-lumberjacks-netcode-probe.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Retired I1 netcode probe scenario."
+    },
+    {
+      "path": "fieldlab/scenarios/valheim-lumberjacks-priority-gateway-plan.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Historical gateway-plan scenario from the closed I-series."
+    },
+    {
+      "path": "fieldlab/scenarios/valheim-lumberjacks-priority-live-mirror.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Historical priority live-mirror test scenario."
+    },
+    {
+      "path": "fieldlab/scenarios/valheim-lumberjacks-priority-load-order.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Historical load-order priority scenario."
+    },
+    {
+      "path": "fieldlab/scenarios/valheim-lumberjacks-priority-mirror.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Historical priority-mirror metadata test scenario."
+    },
+    {
+      "path": "fieldlab/scenarios/valheim-lumberjacks-shadow-authority.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Outdated probe scenario testing shadow authority."
+    },
+    {
+      "path": "fieldlab/scenarios/valheim-lumberjacks-shadow-route.yaml",
+      "zone": "fieldlab-docs",
+      "reason": "Outdated shadow-routing test scenario."
+    },
+    {
+      "path": "fieldlab/scripts/Invoke-ComfyLumberjacksIntegration.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "One-off local integration proof tied to a specific m4-integration milestone."
+    },
+    {
+      "path": "fieldlab/scripts/analyze-networksense-perf.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Ad-hoc local analysis of performance telemetry logs; not wired into the active pipeline."
+    },
+    {
+      "path": "fieldlab/scripts/bootstrap-lumberjacks.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Clones Lumberjacks as a separate repo \u2014 obsoleted by the subtree merge."
+    },
+    {
+      "path": "fieldlab/scripts/bootstrap-windows-postgres.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Local Postgres bootstrapper written specifically for local fieldlab test runs."
+    },
+    {
+      "path": "fieldlab/scripts/bootstrap-wsl-postgres.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "PowerShell wrapper for the WSL Postgres bootstrap used by retired fieldlab test runs."
+    },
+    {
+      "path": "fieldlab/scripts/bootstrap-wsl-postgres.sh",
+      "zone": "fieldlab-scripts",
+      "reason": "WSL Postgres bootstrap for the retired local fieldlab harness."
+    },
+    {
+      "path": "fieldlab/scripts/close-build-request-receipt.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Closes receipts for the old manual build-request workflow and hardcodes the pre-merge C:\\work\\comfy path."
+    },
+    {
+      "path": "fieldlab/scripts/collect-environment.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Collects hardware/environment metadata for fieldlab experiment run packets that are no longer produced."
+    },
+    {
+      "path": "fieldlab/scripts/install-dotnet9.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Local dev dependency bootstrapper tied to superseded run scripts and hardcoded C:\\work paths."
+    },
+    {
+      "path": "fieldlab/scripts/new-build-request-receipt.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Old manual build-request workflow that assumes the pre-consolidation C:\\work\\comfy repo structure."
+    },
+    {
+      "path": "fieldlab/scripts/observe_priority_manifest.py",
+      "zone": "fieldlab-scripts",
+      "reason": "Point-in-time UDP listener for priority manifests during the priority experiments."
+    },
+    {
+      "path": "fieldlab/scripts/omen-client-smoke.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Point-in-time client runner tied to the specific OMEN lab-PC hardware setup."
+    },
+    {
+      "path": "fieldlab/scripts/run-autonomous-valheim-lab.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Superseded local docker-compose lab harness for headless client rehearsal."
+    },
+    {
+      "path": "fieldlab/scripts/run-experiment.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Superseded 80 KiB local scenario runner for the historical fieldlab experiment campaigns."
+    },
+    {
+      "path": "fieldlab/scripts/run-handshake-loopback.py",
+      "zone": "fieldlab-scripts",
+      "reason": "Test driver for the P6/I5 handshake experiment battery, not used in live operations."
+    },
+    {
+      "path": "fieldlab/scripts/run-injection-window.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Point-in-time orchestrator for the historical I4 proof gate."
+    },
+    {
+      "path": "fieldlab/scripts/run-loopback-window.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Point-in-time orchestrator for the historical I7 proof gate against the am4 server."
+    },
+    {
+      "path": "fieldlab/scripts/run-netcode-probe-cycle.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Point-in-time orchestrator for the historical P1 step-11 proof cycle."
+    },
+    {
+      "path": "fieldlab/scripts/run-omen-smoke.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Wrapper for a local smoke-test workflow tied to the superseded OMEN lab-PC environment."
+    },
+    {
+      "path": "fieldlab/scripts/run-redirect-window.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Point-in-time orchestrator for the historical I3 proof gate."
+    },
+    {
+      "path": "fieldlab/scripts/run-valheim-yolo-swarm.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Superseded local docker-compose script for spawning headless Valheim swarm clients."
+    },
+    {
+      "path": "fieldlab/scripts/set-gcp-p7-target.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Env setup for the pruned run-loopback-window.ps1 harness; carries live p7 VM coordinates, so confirm those are also recorded under infra/gcp/p7/ before deleting."
+    },
+    {
+      "path": "fieldlab/scripts/set-wsl-resource-profile.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Configures WSL degradation-testing environments for the retired fieldlab lab harness."
+    },
+    {
+      "path": "fieldlab/scripts/start-lumberjacks-gateway.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Local dev launcher whose stated purpose is the finished P4/I3 redirect over the am4/OMEN tailnet, superseded by GCP p7; verified by direct read."
+    },
+    {
+      "path": "fieldlab/scripts/validate-run-packet.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Validates artifacts emitted by the superseded fieldlab experiment campaigns."
+    },
+    {
+      "path": "fieldlab/scripts/verify-netcode-probe.ps1",
+      "zone": "fieldlab-scripts",
+      "reason": "Point-in-time verifier for the historical I1 proof gate."
+    },
+    {
+      "path": "fieldlab/status/dashboard.html",
+      "zone": "fieldlab-docs",
+      "reason": "Explicitly retired status dashboard."
+    },
+    {
+      "path": "fieldlab/valheim-bringup-plan.html",
+      "zone": "fieldlab-docs",
+      "reason": "Explicitly superseded and absorbed into retired test phases."
+    },
+    {
+      "path": "framework/AGENTS.md",
+      "zone": "misc",
+      "reason": "Operating rules for the off-purpose community-systems recipes; no consumer among the live systems."
+    },
+    {
+      "path": "framework/README.md",
+      "zone": "misc",
+      "reason": "Index for a community-systems kit about guild content, unrelated to the Valheim server, release pipeline, mod, or roadmap."
+    },
+    {
+      "path": "handoffs/HANDOFF-CLAUDE.md",
+      "zone": "handoffs",
+      "reason": "Historical session handoff document from July 2026 whose work is finished."
+    },
+    {
+      "path": "handoffs/HANDOFF-NETWORKSENSE-ERA16-MATRIX.md",
+      "zone": "handoffs",
+      "reason": "Historical session handoff for older NetworkSense matrix experiments."
+    },
+    {
+      "path": "handoffs/REBOOT-HANDOFF.md",
+      "zone": "handoffs",
+      "reason": "Historical handoff from a July 2026 reboot/consolidation effort."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/CHANGELOG.md",
+      "zone": "handoffs",
+      "reason": "Changelog for ComfyControlSurface, an inactive handoff mod distinct from the live ComfyNetworkSense."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/ComfyControlSurface.cs",
+      "zone": "handoffs",
+      "reason": "Entry-point source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/ComfyControlSurface.csproj",
+      "zone": "handoffs",
+      "reason": "Project file for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Config/PluginConfig.cs",
+      "zone": "handoffs",
+      "reason": "Config source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Config/comfy-control/actions.json",
+      "zone": "handoffs",
+      "reason": "Action config for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/ActionDefinitionLoader.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/AtomicFile.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/Commands/ControlSurfaceCommands.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/ControlAction.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/ControlSurfacePanel.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/GameContext.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/JsonText.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/PanelTheme.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/PlayerStatus.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/QuestTriggerService.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/QuestViewLoader.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/StartupStatus.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/StatusFiles.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/SubmissionService.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/TraceWriter.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/TrackedQuest.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Core/WorkbenchPaths.cs",
+      "zone": "handoffs",
+      "reason": "Source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/DESIGN-PROMPT-quest-log.md",
+      "zone": "handoffs",
+      "reason": "Point-in-time design prompt for the inactive quest-log feature."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/PROOF.md",
+      "zone": "handoffs",
+      "reason": "Point-in-time proof checklist for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Patches/PanelInputPatches.cs",
+      "zone": "handoffs",
+      "reason": "Harmony patch source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Patches/QuestTriggerPatches.cs",
+      "zone": "handoffs",
+      "reason": "Harmony patch source for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/Properties/AssemblyInfo.cs",
+      "zone": "handoffs",
+      "reason": "Assembly metadata for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/QUEST.md",
+      "zone": "handoffs",
+      "reason": "Point-in-time quest instructions for the inactive handoff artifact."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/README.md",
+      "zone": "handoffs",
+      "reason": "Documentation for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/bridge-consumer/README.md",
+      "zone": "handoffs",
+      "reason": "Documentation for the bridge consumer belonging to the inactive handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/bridge-consumer/bridge_consumer.py",
+      "zone": "handoffs",
+      "reason": "Bridge-consumer script for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/bridge-consumer/fixtures/20260701-153012-submit-proof-7f3a.json",
+      "zone": "handoffs",
+      "reason": "Timestamped one-off proof payload from the inactive handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/bridge-consumer/mikers-demo/README.md",
+      "zone": "handoffs",
+      "reason": "Demo documentation for the inactive handoff artifact."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/bridge-consumer/mikers-demo/actions.slayer-rank.json",
+      "zone": "handoffs",
+      "reason": "Demo fixture for the inactive handoff artifact."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/bridge-consumer/mikers-demo/outbox/20260701-210000-slayer-rank-thrall-demo.json",
+      "zone": "handoffs",
+      "reason": "Timestamped one-off demo output from the inactive handoff artifact."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/bridge-consumer/review_inbox.py",
+      "zone": "handoffs",
+      "reason": "Review-inbox script for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/build-and-install.ps1",
+      "zone": "handoffs",
+      "reason": "Build script for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/fixtures/actions.multi.json",
+      "zone": "handoffs",
+      "reason": "Test fixture for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/fixtures/actions.single.json",
+      "zone": "handoffs",
+      "reason": "Test fixture for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/fixtures/quest-view.json",
+      "zone": "handoffs",
+      "reason": "Test fixture for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/fixtures/submission.example.json",
+      "zone": "handoffs",
+      "reason": "Example fixture for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/fixtures/trace.example.jsonl",
+      "zone": "handoffs",
+      "reason": "Example trace fixture for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/generate-actions-from-rank-ladder.py",
+      "zone": "handoffs",
+      "reason": "One-off generation script for the inactive handoff artifact."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/inspect-proof.ps1",
+      "zone": "handoffs",
+      "reason": "Diagnostic script for the inactive handoff artifact's proof run."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/manifest.json",
+      "zone": "handoffs",
+      "reason": "Plugin manifest for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfy-control-surface/support/diagnose.ps1",
+      "zone": "handoffs",
+      "reason": "Support diagnostic script for the inactive ComfyControlSurface handoff mod."
+    },
+    {
+      "path": "handoffs/comfymods-inspection-prompt.md",
+      "zone": "handoffs",
+      "reason": "Point-in-time prompt used to drive a one-off ComfyMods inspection."
+    },
+    {
+      "path": "handoffs/comfymods-inspection.md",
+      "zone": "handoffs",
+      "reason": "Point-in-time analysis output of the ComfyMods inspection, no ongoing consumer."
+    },
+    {
+      "path": "handoffs/in-game-control-surface.md",
+      "zone": "handoffs",
+      "reason": "Historical planning document for a control-surface vertical slice that is no longer active."
+    },
+    {
+      "path": "handoffs/segment-2-get-into-the-world.md",
+      "zone": "handoffs",
+      "reason": "Segmented task brief for the finished camera-flythrough exploration."
+    },
+    {
+      "path": "handoffs/segment-3-flight-path-mod.md",
+      "zone": "handoffs",
+      "reason": "Segmented task brief for the finished camera-flythrough exploration."
+    },
+    {
+      "path": "handoffs/segment-4-runner.md",
+      "zone": "handoffs",
+      "reason": "Segmented task brief for the finished camera-flythrough exploration."
+    },
+    {
+      "path": "handoffs/segment-4-video-to-gallery.md",
+      "zone": "handoffs",
+      "reason": "Segmented task brief for the finished camera-flythrough exploration."
+    },
+    {
+      "path": "handoffs/timeline.sample.json",
+      "zone": "handoffs",
+      "reason": "Sample fixture for the finished camera-flythrough exploration."
+    },
+    {
+      "path": "handoffs/valheim-camera-proof/ComfyCameraProof.csproj",
+      "zone": "handoffs",
+      "reason": "Project file for a finished camera-flythrough proof-of-concept mod, not the live ComfyNetworkSense."
+    },
+    {
+      "path": "handoffs/valheim-camera-proof/Plugin.cs",
+      "zone": "handoffs",
+      "reason": "Source for a finished camera-flythrough proof-of-concept mod, not the live ComfyNetworkSense."
+    },
+    {
+      "path": "handoffs/valheim-camera-proof/README.md",
+      "zone": "handoffs",
+      "reason": "Readme for a finished camera-flythrough proof-of-concept."
+    },
+    {
+      "path": "handoffs/valheim-camera-proof/TUTORIAL.md",
+      "zone": "handoffs",
+      "reason": "Tutorial for a finished camera-flythrough proof-of-concept."
+    },
+    {
+      "path": "handoffs/valheim-camera-proof/build-and-install.ps1",
+      "zone": "handoffs",
+      "reason": "Build script for a finished camera-flythrough proof-of-concept."
+    },
+    {
+      "path": "handoffs/valheim-camera-proof/prepare-world-copy.ps1",
+      "zone": "handoffs",
+      "reason": "Setup script for a finished camera-flythrough proof-of-concept."
+    },
+    {
+      "path": "handoffs/video_to_gallery.py",
+      "zone": "handoffs",
+      "reason": "One-off media-conversion script for the finished camera-flythrough exploration."
+    },
+    {
+      "path": "handoffs/waypoints.sample.json",
+      "zone": "handoffs",
+      "reason": "Sample fixture for the finished camera-flythrough exploration."
+    },
+    {
+      "path": "quest_select_design/.thumbnail",
+      "zone": "misc",
+      "reason": "Binary thumbnail belonging to the superseded design-snapshot directory; obviously scratch."
+    },
+    {
+      "path": "quest_select_design/Quest Picker Discovery.dc.html",
+      "zone": "misc",
+      "reason": "Point-in-time design-discovery snapshot, explicitly superseded."
+    },
+    {
+      "path": "quest_select_design/README.md",
+      "zone": "misc",
+      "reason": "Confirms the directory is a historical design exploration superseded by the canonical picker."
+    },
+    {
+      "path": "quest_select_design/support.js",
+      "zone": "misc",
+      "reason": "Support code for the superseded design snapshot."
+    },
+    {
+      "path": "quest_select_design/uploads/pasted-1782970521497-0.png",
+      "zone": "misc",
+      "reason": "229 KB pasted screenshot inside the superseded design-snapshot directory; obviously scratch."
+    },
+    {
+      "path": "recipes/rank-ladders/PROMPT.md",
+      "zone": "misc",
+      "reason": "Agent prompt for the off-purpose guild rank-ladder recipe."
+    },
+    {
+      "path": "recipes/rank-ladders/example-input.md",
+      "zone": "misc",
+      "reason": "Example fixture for the off-purpose guild rank-ladder recipe."
+    },
+    {
+      "path": "recipes/rank-ladders/example-output.json",
+      "zone": "misc",
+      "reason": "Example fixture for the off-purpose guild rank-ladder recipe."
+    },
+    {
+      "path": "recipes/rank-ladders/render.py",
+      "zone": "misc",
+      "reason": "Renderer for the off-purpose guild rank-ladder recipe."
+    },
+    {
+      "path": "recipes/rank-ladders/schema.md",
+      "zone": "misc",
+      "reason": "Schema for the off-purpose guild rank-ladder recipe."
+    },
+    {
+      "path": "recipes/rank-ladders/validate.py",
+      "zone": "misc",
+      "reason": "Validator for the off-purpose guild rank-ladder recipe."
+    },
+    {
+      "path": "steward-config.json",
+      "zone": "root",
+      "reason": "Config for a local/offline Valheim World Viewer, unconnected to the live GCP p7 stack or ComfyNetworkSense."
+    },
+    {
+      "path": "tests/test_repo_activity.py",
+      "zone": "misc",
+      "reason": "Tests the pruned repo_activity.py mapper."
+    },
+    {
+      "path": "tools/README.md",
+      "zone": "misc",
+      "reason": "Documents only repo_activity.py and the docs/repo-map output, both being pruned."
+    },
+    {
+      "path": "tools/repo_activity.py",
+      "zone": "misc",
+      "reason": "Git-history activity mapper whose entire signal was flattened by the subtree merge."
+    }
+  ]
+}
