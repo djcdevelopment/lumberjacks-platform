@@ -7,6 +7,13 @@ using Xunit;
 
 namespace Game.Simulation.Tests;
 
+/// <summary>
+/// Shares the "GameplayEventFeed" xUnit collection with TelemetryV0EndpointsTests: PlayerHandler.Join
+/// captures a PlayerEnteredRegion event into that process-wide static ring, so this class must never
+/// run concurrently with tests that Reset/Snapshot the same feed. See the collection definition's
+/// XML doc in TelemetryV0EndpointsTests.cs for the intermittent-failure history this fixes.
+/// </summary>
+[Collection("GameplayEventFeed")]
 public class PlayerHandlerTests
 {
     private static (PlayerHandler handler, WorldState world) CreateHandler(IConfiguration? config = null)
