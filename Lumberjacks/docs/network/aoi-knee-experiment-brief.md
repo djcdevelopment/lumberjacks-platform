@@ -151,6 +151,71 @@ is a second, separate result.
 - Results committed. The prior campaign's artifacts spent three months in a gitignored `var/`
   directory in a since-retired repo.
 
+## Sweep this shape first — it is three config values, not a code change
+
+Derek's proposal, 2026-07-21, refined against what the model already predicts. **Run this before
+the general sweep**; if it holds it is most of the win, and it costs nothing to try.
+
+**Where the cost actually is.** In the recovered model at `extreme` density / `combat_build`, the
+bands are wildly asymmetric:
+
+| band | modeled distance | bucket | worst case |
+|---|---|---|---|
+| self | 0 m | `near_20hz` | 2000 updates/s · 1536 kbps |
+| near | 50 m | `near_20hz` | 2000 updates/s · 1536 kbps |
+| mid | 200 m | `mid_5hz` | 5–500 updates/s · 3.84–384 kbps |
+| far | 500 m | `far_suppressed` | **0.00 · 0.00** |
+
+Two consequences. **Far is already free** — cutting harder at distance buys nothing, it already
+sends zero. And the 50 m band costs the same as standing still, so **the entire budget lives in
+`near_20hz`, 0–50 m at 20 Hz.** Since area goes as r², pulling the full-rate radius from 50 m to
+~30 m removes roughly 71% of the objects in the only expensive band. That is the largest single
+lever in the model and it has never been pulled.
+
+**Cut the rate, not the object.** Valheim activates and renders by **zone, and its zone size is
+64 m** — the mod's own `NearbyRadiusMeters` and `BuildScanRadiusMeters` both default to 64 for that
+reason, and the code uses `ZoneSystem.GetZone` / `IsZoneLoaded` throughout. An object 40 m away is
+therefore in the same loaded, active zone as the player. If replication *drops* it at 30 m it stays
+visible and interactable while its state goes stale — present but wrong, a desync between two
+systems' notions of "nearby".
+
+So thin instead of drop, which is what the model's own `thin_datagrams_to_5hz_defer_detail` already
+describes — just applied at 200 m today instead of 30 m. Bandwidth is rate x count; 20 Hz → 5 Hz
+past 30 m takes most of the saving with none of the staleness risk.
+
+**The shape to test:**
+
+| zone | radius | rate | rationale |
+|---|---|---|---|
+| full | 0 – ~30 m | 20 Hz | where the player actually interacts |
+| thinned | ~30 m – 64 m | 5 Hz (or lower) | still inside Valheim's active zone, so it must stay coherent |
+| dropped | beyond 64 m | none | Valheim's own zone boundary; both systems agree nothing is needed |
+| landmark | by grant, any range | announced, not streamed | **a separate channel, not subject to the cut at all** — see below |
+
+**The cut creates a discovery problem, and the answer is not to un-cut it.** If everything past the
+zone boundary is dropped, a client can never learn that a landmark exists at 500 m — the announcement
+would travel on the path that was just severed. The temptation is to widen the radius back out to
+"listen" for distant great works, which gives back exactly the saving the cut just bought.
+
+Don't. Landmarks ride a **radius-independent announcement channel** that already exists: the priority
+manifest is broadcast (`POST /valheim/priority-manifests/{manifestId}/broadcast`) and the mod already
+subscribes to it via `LumberjacksPriorityManifestListener`, which tracks `manifest_id` and is not
+consulted by `InterestManager` at all. The client hears *"structural_anchor at (x,z), reach 1500 m"*
+and spawns the proxy locally; the real build is never streamed at range.
+
+That keeps the two costs independent: the interest radius bounds per-tick churn, and the landmark
+count bounds announcements. Discovery cost scales with **how many great works exist**, not with how
+far away they are — which is what makes an aggressive near cut affordable rather than self-defeating.
+
+Concretely: `Replication:NearRadius` ~30, `Replication:MidRadius` ~64, and `MidTickInterval` tuned
+for the thinned rate. All three are startup config in `ReplicationOptions`, so a run is a config
+change plus a restart.
+
+**What would falsify it:** the knee does not move when `NearRadius` drops (meaning the cost is not
+where the model says), or objects between 30 m and 64 m visibly stale or pop despite being thinned
+rather than dropped (meaning 5 Hz is not enough inside an active zone). Watch `culled` versus `sent`
+from `/tick` — the ratio should shift sharply and the `interest` phase p99 should fall.
+
 ## One likely finding worth pre-registering
 
 `InterestSubscription.ComputeSubscriptions` compares every player against every other player

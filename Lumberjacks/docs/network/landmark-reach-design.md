@@ -122,5 +122,37 @@ different systems:
   number the engine can rely on.
 - **What happens when a landmark's real build is deleted or changes shape?** The proxy is a promise
   about something that may no longer be there.
-- **Does the existing `far_suppressed` interest bucket need a fourth state**, or is landmark reach a
-  parallel path that never consults interest buckets at all? The second is simpler and probably right.
+- ~~**Does the existing `far_suppressed` interest bucket need a fourth state**, or is landmark reach a
+  parallel path that never consults interest buckets at all?~~ **Settled 2026-07-21: parallel path.**
+  Not merely simpler — *necessary*, for a reason that only appears once the near radius is cut
+  aggressively. See below.
+
+## The discovery problem, and why the channel must be parallel
+
+Cutting the interest radius hard (see the three-tier sweep in
+[`aoi-knee-experiment-brief.md`](aoi-knee-experiment-brief.md)) creates an obvious hole: **if
+everything past the zone boundary is dropped, how does a client ever learn a landmark exists at
+500 m?** The announcement would have to travel the same path that was just severed.
+
+The tempting answer is to widen the radius back out so clients can "listen" for distant great works.
+That gives back precisely the saving the cut just bought, and it scales with distance — the thing we
+were trying to stop paying for.
+
+**The right answer is that landmarks were never on that path.** The priority manifest is *broadcast*,
+not interest-filtered: `POST /valheim/priority-manifests/{manifestId}/broadcast` on the gateway,
+`LumberjacksPriorityManifestListener` on the mod. `InterestManager` never sees it. So the client can
+be standing in a 30 m bubble and still receive *"structural_anchor at (x,z), reach 1500 m"*.
+
+What arrives is an **announcement, not a stream**: identity, position, tier, reach. The client then
+spawns the far-field proxy locally. The real build is never replicated at range — which is the whole
+reason the proxy exists.
+
+This keeps the two costs independent, and that independence is the load-bearing property:
+
+| cost | bounded by |
+|---|---|
+| per-tick churn | the interest radius |
+| landmark discovery | **how many great works exist** — not how far away they are |
+
+An aggressive near cut is therefore affordable *because* discovery is a separate, sparse, distance-free
+channel. Fold the two together and the cut defeats itself.
