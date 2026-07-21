@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T08:31:14.768Z</span>
+        <span>Updated 2026-07-21T09:07:58.329Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721083114-world-tested-the-baseline-re-provision-m5-accept">
+        <div class="journal"><article class="journal-entry" id="note-20260721090758-root-caused-the-telemetry-heartbeat-409-deferred">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T09:07:58.329Z">2026-07-21T09:07:58.329Z</time>
+        <span class="pill note-kind">planning</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Root-caused the telemetry heartbeat 409; deferred the fix to the next release cut</h3>
+      <p><strong>Impact:</strong> The mod logs &#39;Lumberjacks telemetry heartbeat failed: HTTP/1.1 409 Conflict&#39; during play. Not a fault: ValheimTelemetryHeartbeatService.CanAcceptPrimaryHeartbeat refuses any lumberjacks-primary heartbeat while a peer is connected unless the authoritative window is fully applied (IsAuthoritativeComplete requires redirect.Pending == 0 and consumer.Pending == 0). Any queue backlog therefore rejects the heartbeat by design, and it succeeds again once drained. Two mod-side defects make this look like a failure: LumberjacksTelemetryHeartbeatRunner reads only the first 256 bytes and parses the status line, discarding the gateway&#39;s explanatory body, and it logs at LogWarning so designed backpressure reads as an error. A third, larger question is a design wrinkle rather than a bug: the health signal is gated on a condition that load makes temporarily false, so a sustained busy session could exceed the 15s staleness window and show the dashboard as stale while the system is healthy. DEFERRED DELIBERATELY: any fix changes the mod, which is a frozen release artifact, so it would invalidate the world-tested clean_build_sha256 035faa87. Cheapest fix next cut: surface the response body and log at info. The staleness-under-load question needs a decision, not just a patch.</p>
+      <details><summary>Verification (2)</summary><ul><li>Traced end to end: ValheimTelemetryHeartbeatEndpoints.cs line 42 returns Results.Conflict, gated by CanAcceptPrimaryHeartbeat at ValheimTelemetryHeartbeatService.cs line 168</li><li>Matches observation: 409s appeared only while a peer was connected with pending greater than zero; heartbeat_stale stayed false throughout and the acceptance sample was captured with pending at zero</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/src/Game.Gateway/Valheim/ValheimTelemetryHeartbeatService.cs</code> <code>network/mod/ComfyNetworkSense/Core/Services/LumberjacksTelemetryHeartbeatRunner.cs</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721083114-world-tested-the-baseline-re-provision-m5-accept">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
