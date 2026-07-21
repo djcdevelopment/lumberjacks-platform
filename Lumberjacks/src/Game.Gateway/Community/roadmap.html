@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T12:59:39.107Z</span>
+        <span>Updated 2026-07-21T13:06:01.362Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721125939-adr-0010-consistency-means-predictable-not-invar">
+        <div class="journal"><article class="journal-entry" id="note-20260721130601-wrote-the-session-handoff-corrected-the-push-sta">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T13:06:01.362Z">2026-07-21T13:06:01.362Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Wrote the session handoff; corrected the push state I had been misreporting</h3>
+      <p><strong>Impact:</strong> HANDOFF.md at repo root, deliberately short and linking out rather than restating. It leads with the three things that bite: the live comfy-gateway runs from the retired C:/work/comfy checkout so edits here do not reach the running 8720 surface, fieldlab/autonomous must not be deleted because it is that gateway&#39;s live definition plus a running Valheim server, and the P7 VM is still billing by decision. Then the four open register items with the gateway re-provision at the top, two ready-to-start paths, the design decisions that must be read before touching AoI, and an explicit do-not-re-execute pointing at the withdrawn config-surface recommendations. Also corrects a standing claim: I told Derek repeatedly through the session that the work was local and unpushed, which was true when said and stopped being true when the background flake-fix session pushed main - the reflog shows f945562 update by push, carrying 17 of the day&#39;s commits with it. Only the last two remain local. Nothing was damaged, but the state I had been asserting was stale and saying so is cheaper than letting him find it.</p>
+      <details><summary>Verification (1)</summary><ul><li>All nine relative links in HANDOFF.md resolve; key count confirmed at 73; origin/main tip confirmed f945562 with 2 local commits ahead; the flake fix commit d5bed21 is present in history</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>HANDOFF.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721125939-adr-0010-consistency-means-predictable-not-invar">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
