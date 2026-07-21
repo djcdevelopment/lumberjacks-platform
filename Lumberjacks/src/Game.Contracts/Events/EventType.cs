@@ -36,6 +36,11 @@ public static class EventType
     public const string DiscordRoleSyncRequested = "discord_role_sync_requested";
     public const string DiscordRoleSynced = "discord_role_synced";
 
+    // Gameplay / combat events (mod-produced via the Valheim GameplayEventProducer)
+    public const string FirstHit = "first_hit";
+    public const string KillingBlow = "killing_blow";
+    public const string WeaponUsed = "weapon_used";
+
     // Operational events
     public const string RegionActivated = "region_activated";
     public const string RegionDeactivated = "region_deactivated";
@@ -52,6 +57,7 @@ public static class EventType
         ItemPickedUp, ItemStored, RoadSegmentMaintained, SettlementSignatureUpdated,
         ChallengeStarted, ChallengeCompleted, GuildObjectiveProgressed, GuildObjectiveCompleted,
         RewardGranted, DiscordIdentityLinked, DiscordRoleSyncRequested, DiscordRoleSynced,
+        FirstHit, KillingBlow, WeaponUsed,
         RegionActivated, RegionDeactivated, InterestSubscriptionChanged,
         EdgeNodeRegistered, EdgeNodeUnhealthy, EdgeNodeDetached,
     ];

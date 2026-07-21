@@ -53,6 +53,10 @@ public static class ValheimAccessPolicy
         ("POST", "/valheim/handshake/begin", ValheimCapability.Producer),
         ("POST", "/valheim/handshake/peerinfo", ValheimCapability.Producer),
         ("POST", "/valheim/telemetry/heartbeat", ValheimCapability.Telemetry),
+        // Mod-produced gameplay events (first_hit/killing_blow/weapon_used). Producer, not
+        // Telemetry: only the server-side mod on the private plane may post — a public enrolled
+        // client (consumer+telemetry) must not be able to inject/spoof gameplay events.
+        ("POST", "/valheim/events", ValheimCapability.Producer),
         ("GET", "/api/v0/valheim/enrollment/me", ValheimCapability.Consumer),
         // Per-enrollment telemetry snapshot; self-scoped inside the endpoint.
         ("GET", "/api/v0/valheim/enrollment/", ValheimCapability.Consumer),

@@ -59,6 +59,12 @@ public static class GameplayEventFeed
         EventType.RegionActivated,
         EventType.RegionDeactivated,
         EventType.InterestSubscriptionChanged,
+        // Gameplay/combat activity. Public-safe because the captured projection carries only a
+        // NON-identifying detail (creature category, weapon skill) — never the acting player's
+        // name/id/position (those ride only the out-of-process EventLog event, not this feed).
+        EventType.FirstHit,
+        EventType.KillingBlow,
+        EventType.WeaponUsed,
     };
 
     private static readonly object Gate = new();

@@ -183,6 +183,7 @@ ValheimZdoRedirectEndpoints.Map(app);
 ValheimZdoInjectionEndpoints.Map(app);
 ValheimHandshakeEndpoints.Map(app);
 ValheimTelemetryHeartbeatEndpoints.Map(app);
+ValheimGameplayEventEndpoints.Map(app);
 SteamEnrollmentEndpoints.Map(app);
 
 app.Run();
