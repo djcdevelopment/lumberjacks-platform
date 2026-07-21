@@ -197,11 +197,19 @@ zone boundary is dropped, a client can never learn that a landmark exists at 500
 would travel on the path that was just severed. The temptation is to widen the radius back out to
 "listen" for distant great works, which gives back exactly the saving the cut just bought.
 
-Don't. Landmarks ride a **radius-independent announcement channel** that already exists: the priority
-manifest is broadcast (`POST /valheim/priority-manifests/{manifestId}/broadcast`) and the mod already
-subscribes to it via `LumberjacksPriorityManifestListener`, which tracks `manifest_id` and is not
-consulted by `InterestManager` at all. The client hears *"structural_anchor at (x,z), reach 1500 m"*
-and spawns the proxy locally; the real build is never streamed at range.
+Don't — because **the dual-channel transport already solved this.** `InterestManager`'s own header:
+*"Reliable-lane messages (structure placed, entity removed, etc.) always go to the full region. This
+class only filters datagram-lane tick broadcasts."* The reliable lane is region-wide and never
+consults an interest radius, and `ValheimPriorityDeliveryPlanner.ReliableTiers` already routes
+`structural_anchor` — the lighthouse tier — onto it.
+
+The lane split is semantic: reliable carries *"this exists / this changed"* (rare, region-wide),
+datagram carries *"where it is right now"* (every tick, filtered). **A static landmark is pure
+reliable-lane traffic** — one message when placed, zero datagrams forever, because it does not move.
+Its cost is a function of how often it changes, not of how far away it is.
+
+So the aggressive datagram cut costs landmarks **nothing**; they were never datagram traffic. The
+client hears *"structural_anchor at (x,z), reach 1500 m"* and spawns the proxy locally.
 
 That keeps the two costs independent: the interest radius bounds per-tick churn, and the landmark
 count bounds announcements. Discovery cost scales with **how many great works exist**, not with how

@@ -138,10 +138,34 @@ The tempting answer is to widen the radius back out so clients can "listen" for 
 That gives back precisely the saving the cut just bought, and it scales with distance — the thing we
 were trying to stop paying for.
 
-**The right answer is that landmarks were never on that path.** The priority manifest is *broadcast*,
-not interest-filtered: `POST /valheim/priority-manifests/{manifestId}/broadcast` on the gateway,
-`LumberjacksPriorityManifestListener` on the mod. `InterestManager` never sees it. So the client can
-be standing in a 30 m bubble and still receive *"structural_anchor at (x,z), reach 1500 m"*.
+**The right answer is that landmarks were never on that path — and the dual-channel transport was
+built this way on purpose.** `InterestManager`'s own header says it outright:
+
+> Reliable-lane messages (structure placed, entity removed, etc.) **always go to the full region.**
+> This class **only filters datagram-lane tick broadcasts.**
+
+The reliable lane is already region-wide and already exempt from interest filtering. And
+`ValheimPriorityDeliveryPlanner.ReliableTiers` already contains **`structural_anchor`** — the
+lighthouse tier — alongside `player_critical`, `portal` and `storage_crafting`. The routing exists.
+
+That is not a coincidence of implementation; it is what the lane split *means*:
+
+| lane | semantics | frequency | interest-filtered? |
+|---|---|---|---|
+| reliable | **"this exists / this changed"** | rare | **no — full region** |
+| datagram | **"where it is right now"** | every tick | yes |
+
+**A static landmark is pure reliable-lane traffic**: one message when it is placed, and zero datagrams
+forever after, because it does not move. Its cost is therefore not a function of distance at all — it
+is a function of *how often it changes*, and a lighthouse never changes.
+
+Which means the aggressive datagram cut costs landmarks **nothing**. They were never datagram traffic.
+
+The priority manifest broadcast (`POST /valheim/priority-manifests/{manifestId}/broadcast`, consumed by
+`LumberjacksPriorityManifestListener`) is one mechanism that rides this lane — useful for announcing a
+*set* of landmarks at once — but it is an application-level convenience on top of the transport
+property, not the property itself. A client standing in a 30 m bubble receives
+*"structural_anchor at (x,z), reach 1500 m"* because the reliable lane does not consult its radius.
 
 What arrives is an **announcement, not a stream**: identity, position, tier, reach. The client then
 spawns the far-field proxy locally. The real build is never replicated at range — which is the whole

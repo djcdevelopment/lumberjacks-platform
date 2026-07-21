@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T12:07:19.494Z</span>
+        <span>Updated 2026-07-21T12:09:09.297Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721120719-pre-registered-the-three-tier-radius-sweep-and-s">
+        <div class="journal"><article class="journal-entry" id="note-20260721120909-corrected-the-landmark-discovery-answer-the-dual">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T12:09:09.297Z">2026-07-21T12:09:09.297Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Corrected the landmark discovery answer: the dual-channel lane split already solved it</h3>
+      <p><strong>Impact:</strong> The parallel-channel resolution recorded an hour ago was one layer too high. The real answer is the dual-channel transport, which was built for exactly this. InterestManager&#39;s own header states that reliable-lane messages - structure placed, entity removed - always go to the full region, and that the class only filters datagram-lane tick broadcasts. So the reliable lane is already region-wide and already exempt from interest filtering. And ValheimPriorityDeliveryPlanner.ReliableTiers already contains structural_anchor, the lighthouse tier, alongside player_critical, portal and storage_crafting. The routing exists; nothing needed inventing. The lane split is semantic rather than merely technical: reliable carries this exists or this changed, which is rare and region-wide, while datagram carries where it is right now, which is every tick and filtered. A static landmark is therefore pure reliable-lane traffic - one message when placed and zero datagrams forever, because it does not move. Its cost is a function of how often it changes, not of how far away it is, which is why it can be visible at 1500 metres for essentially nothing and why the aggressive datagram cut costs landmarks literally nothing. The priority manifest broadcast is one mechanism riding this lane, useful for announcing a set of landmarks at once, but it is an application-level convenience on top of the transport property rather than the property itself. Both the design note and the experiment brief were corrected to lead with the lane split.</p>
+      <details><summary>Verification (1)</summary><ul><li>InterestManager&#39;s scope comment and the ReliableTiers set were both read directly before the correction was written; structural_anchor is confirmed present in ReliableTiers</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/docs/network/landmark-reach-design.md</code> <code>Lumberjacks/docs/network/aoi-knee-experiment-brief.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721120719-pre-registered-the-three-tier-radius-sweep-and-s">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
