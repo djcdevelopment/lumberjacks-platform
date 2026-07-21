@@ -97,7 +97,7 @@ services:
       - --callers
       - /workspace/network/mcp/comfy_gateway/etc/callers.json
       - --providers
-      - comfy_gateway.toolsurface.valheim,comfy_gateway.toolsurface.matrix,comfy_gateway.toolsurface.inference
+      - comfy_gateway.toolsurface.valheim,comfy_gateway.toolsurface.inference
 
   # ---------------------------------------------------------------------------
   # THE valheim-client-NN SERVICES BELOW NO LONGER SELF-DRIVE (2026-07-21).

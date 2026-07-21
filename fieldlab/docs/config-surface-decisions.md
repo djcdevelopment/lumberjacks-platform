@@ -58,8 +58,8 @@ Close that gate first, then delete.
 
 ---
 
-> ## ⚠ Revision 2026-07-21 (later the same day) — D2 and D3 were re-examined before execution and
-> **both were withdrawn.** Read this before acting on anything below.
+> ## ⚠ Revision 2026-07-21 (later the same day) — D2 was **withdrawn**; D3 was withdrawn and then
+> **executed on Derek's instruction, together with D4.** Read this before acting on anything below.
 >
 > These decisions were written from audit output. Audit output describes *files*; it does not
 > describe *couplings*. Every one of the deletions turned out to be entangled with something the
@@ -71,11 +71,23 @@ Close that gate first, then delete.
 > | D2 delete `LumberjacksPriorityProbe*` | **keep** | It writes the priority manifest the [landmark reach design](../../Lumberjacks/docs/network/landmark-reach-design.md) depends on. |
 > | D2 delete `LumberjacksShadow*` | **keep** | Entangled with `RunTeleportRoute` via `shadow_route` — the *manual* route walk deliberately kept when the swarm harness went. |
 > | D2 delete `LumberjacksProjection*` | **keep** | It renders "local-only Unity primitives without ZNetView or ZDO ownership", already branching `structure` → Cube. That is precisely the far-field proxy mechanism the landmark design needs, and the only prior art for it in the repo. |
-> | D3 delete `NetcodeProbeAutoStart*` | **defer with D4** | `TryDriveNetcodeProbeAuto` is the *arming path* for the ownership observe and pin runners, which D4 defers. D3 and D4 are not independent. |
+> | D3 delete `NetcodeProbeAutoStart*` | **executed with D4** | `TryDriveNetcodeProbeAuto` is the *arming path* for the ownership observe and pin runners, so D3 and D4 are not independent. Initially deferred for that reason; Derek then called for both, and they were removed as one unit. |
 >
-> D5 and D7 **were** executed — see their sections. The lesson is recorded as `L-2026-07-21-19`:
+> D5 and D7 were also executed — see their sections. The lesson is recorded as `L-2026-07-21-19`:
 > a recommendation is a snapshot of what was known; executing it later without re-reading is how a
 > considered decision becomes a mistake.
+>
+> **Two near-misses during the D3/D4 cut, both caught by asserting before deleting:**
+>
+> - `TryEnsurePrimaryRedirect` — the **production** redirect arming — sits *inside* the line range
+>   that a stale comment implied belonged to `TryDriveNetcodeProbeAuto`. The comment describing the
+>   probe auto-start had drifted above the wrong method. Cutting from the comment would have deleted
+>   the live serving path's arming. A pre-cut assertion that the excised block must *not* contain
+>   `TryEnsurePrimaryRedirect` caught it; the comment has since been rewritten to describe the method
+>   it actually sits above.
+> - `NetcodeProbeMaxDetailRows` was kept — and it turned out to matter more than the original
+>   reasoning knew: `TryEnsurePrimaryRedirect` reads it as the detail-row cap for the **live**
+>   redirect runner, not just for the probe.
 
 ## D2 — ~~Evidence-only Lumberjacks scaffolding~~ · **WITHDRAWN, keep all 17**
 
@@ -114,6 +126,24 @@ not; comparing captures across boots gets sloppier without a fixed window.
 out cleanly.
 
 ---
+
+## D4 — P3/P5 lab experiments · **DONE 2026-07-21**
+
+Removed on Derek's instruction, together with D3: 15 keys total, plus `ZdoInjectionRunner.cs`,
+`OwnershipObserveRunner.cs`, `OwnershipPinRunner.cs`, and `TryDriveNetcodeProbeAuto` — the
+lab-window coupling that armed all of them from one place. 88 → 73 keys; mod builds 0 warnings.
+
+The counter-reason below still stands and was not refuted, only overruled: the injection pipeline
+*was* the only deterministic client-side deserialization test, and it is now recoverable only from
+git (`8ba6398`). The **gateway-side** injection surface was deliberately left in place —
+`ValheimZdoInjectionService` / `Endpoints` are referenced by `ValheimHandshakeService`, so removing
+them is a separate and larger question.
+
+One contract note: the mod's telemetry heartbeat no longer emits `injection_applied` /
+`_rendered` / `_rejected`. The gateway's `ValheimTelemetryHeartbeat` declares those three as
+nullable, so they simply arrive unset — no gateway change was required.
+
+Original reasoning follows.
 
 ## D4 — P3/P5 lab experiments · **DEFER**
 
@@ -256,11 +286,11 @@ spawner connection caches (4), the core sampling knobs, and the Lumberjacks iden
 |---|---|---|
 | D1 swarm harness | 19 | **done 2026-07-21** — 107 → 88 keys |
 | D2 evidence scaffolding | 17 | **withdrawn** - all three groups load-bearing |
-| D3 probe automation | 3 | **deferred with D4** - it arms D4's runners |
-| D4 P3/P5 experiments | 12 | defer |
+| D3 probe automation | 3 | **done 2026-07-21** - executed together with D4 |
+| D4 P3/P5 experiments | 12 | **done 2026-07-21** - Derek's call |
 | D5 auto-disarm timers | 4 | **done 2026-07-21** - redirect + handshake defaults now 0 |
 | D6 serving-path flags | 4 | no change; track a reference .cfg |
 | D7 description rot | — | **done 2026-07-21** |
 | D8 credentials | 2 | promote, low priority |
 
-D1 removed 19 keys (107 to 88). D2 and D3 were withdrawn on re-examination, so the remaining removable surface is far smaller than first estimated - which is the honest outcome, not a failure.
+D1 removed 19 keys (107 to 88); D3+D4 removed a further 15 (88 to 73). D2 was withdrawn on re-examination - all three of its groups turned out load-bearing. Net: 34 of 107 keys removed, none of them on the serving path.
