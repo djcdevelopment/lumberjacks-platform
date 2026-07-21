@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T07:13:15.579Z</span>
+        <span>Updated 2026-07-21T07:13:34.856Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721071315-fixed-the-flagged-stale-rollback-defaults-in-run">
+        <div class="journal"><article class="journal-entry" id="note-20260721071334-extended-the-release-gate-from-gateway-alone-to-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T07:13:34.856Z">2026-07-21T07:13:34.856Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Comfy + Lumberjacks</span>
+        <span>M0</span>
+      </div>
+      <h3>Extended the release gate from gateway alone to all five P7 services</h3>
+      <p><strong>Impact:</strong> eventlog/progression/operatorapi built from build: context: ${LUMBERJACKS_ROOT:-/opt/lumberjacks} on the VM - whatever source happened to be checked out there, no release identity, no gate, no hash, drift raising no error. They are now pinned by image digest like gateway (build+hash+pin, no admission check - they have nothing to admit, unlike gateway/mod), with matching manifest schema v3 fields (schema bumped from v2&#39;s two-repo source.comfy_commit+lumberjacks_commit to one source.baseline_commit, following the cutover).</p>
+      <details><summary>Verification (1)</summary><ul><li>docker compose config resolves all four required image vars; all four Dockerfile targets build clean against the merged tree; a full v3 manifest built from real artifacts round-tripped through build-release-bundle.ps1 and validate-release-bundle.ps1 end to end, status: valid</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>infra/gcp/p7/docker-compose.yml</code> <code>infra/gcp/p7/scripts/build-release-bundle.ps1</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721071315-fixed-the-flagged-stale-rollback-defaults-in-run">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
