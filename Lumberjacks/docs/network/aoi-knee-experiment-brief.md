@@ -5,6 +5,31 @@ self-contained: it assumes no memory of the session that produced it.
 
 ---
 
+## What this is for (read before the question)
+
+Three player-facing limitations motivate all of it, and the knee number is what makes each of them
+decidable rather than arguable. See §0 of [`area-of-interest-findings.md`](area-of-interest-findings.md)
+for the full framing:
+
+1. **Multi-person combat and events** — several players, things happening, filtering cost and update
+   volume peaking together.
+2. **Skirting the coast into the unknown** — moving fast enough that the world cannot keep up.
+   *"Lag into the coast, get stuck, jumped and die."* The failure mode has a dead character in it,
+   not just a stutter.
+3. **Visiting heavy builds** — the best things the community makes are the hardest to share, because
+   load time makes inviting people impractical.
+
+The sharpest single requirement: **a lighthouse on the coast, visible at distance.** It needs almost
+no updates, so it is not a datagram-filtering problem — it is a load-order and priority problem, and
+the current architecture cannot express "this object matters at range" because rank and distance
+never meet. If a design makes the lighthouse possible without breaking the tick budget, it is
+probably the right design.
+
+Note also that the prior campaign's `priority_expectation` column already specifies a **five-level
+graded shedding ladder**, and its `process_budget` column is already three-state
+(`green_under_tick` / `yellow_near_tick` / `red_over_budget`) with 1,920 rows predicting yellow or
+red. The parameter space was designed deliberately; it was never measured.
+
 ## The question
 
 **For a given observer range and a given object count, where does the tick loop stop keeping

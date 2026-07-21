@@ -18,6 +18,66 @@ stated instead of filled in.
 
 ---
 
+## 0. What this is actually for
+
+Recorded 2026-07-21 from Derek, because every section below is easier to design against with the
+goal in view, and none of it was written down.
+
+The game is fine. The community modders have done great work. **The limitations that remain are
+also some of the greatest draws** — and all three of the ones worth fixing are area-of-interest
+problems:
+
+1. **Multi-person combat, and exploring through an event.** Several players in one place, with
+   things happening. The case where per-observer filtering cost and update volume both peak at once.
+2. **Skirting the coast into the unknown.** Sailing or running along the shore fast enough that the
+   world cannot keep up — *"lag into the coast, get stuck, jumped and die."* This is the one with a
+   real death attached: the failure is not a stutter, it is losing a character to terrain that had
+   not arrived yet.
+3. **Visiting what the artists and builders make.** The fantastical builds are heavy. Load times
+   make it impractical to invite one person, let alone several — so the best thing the community
+   produces is the thing hardest to share.
+
+And the concrete want that sharpens all of it: **a lighthouse on the river or coast, visible from a
+distance.**
+
+### Why the lighthouse is a requirement and not an anecdote
+
+It isolates exactly which of the two systems in §1 is at fault, because a lighthouse barely needs
+updates — it does not move. What it needs is to *exist in your world at range*. That is ZDO
+replication and load order (System B), not the tick broadcaster's datagram filtering (System A).
+
+System B already has the vocabulary. `LumberjacksPriorityClassifier` ranks `structural_anchor` at
+**2** — above doors, chests, workbenches and decoration. It already knows a tower outranks a rug.
+
+But `InterestManager`'s Far band is *dropped*, and the pressure model's own `interest_bucket` third
+state is `far_suppressed`. Past `MidRadius` there is no notion of "this particular object matters at
+range." **Rank and distance never meet** — which is §1's finding arriving from the opposite
+direction, with an acceptance test attached that a person can check from a boat.
+
+### The grid was a plan
+
+`fieldlab/evidence/aoi-density-pressure-matrix-20260704/` is those three scenarios encoded, which is
+obvious once you know to look:
+
+| Scenario | Axis |
+|---|---|
+| combat and events | `event_profile`: `movement_only`, `build_social`, `combat_build`, `event_surge` |
+| skirting the coast | `observer_range`: `self`, `near`, `mid`, `far` |
+| heavy builds | `density_band`: `sparse` → `extreme`, each a **real sampled 500 m cell** |
+
+Two of its columns matter more than the row count:
+
+- **`priority_expectation` is a five-level graded shedding ladder** — `full_near_datagram_budget` →
+  `protect_reliable_core_limit_low_priority` → `protect_reliable_core_drop_low_priority` →
+  `thin_datagrams_to_5hz_defer_detail` → `suppress_far_datagrams_defer_world_detail`. §8's
+  recommendation to make shedding graded rather than binary is **not a new proposal**; it was
+  specified here in July 2026 and the implementation never received it. `InterestManager` still has
+  one binary mid-band switch.
+- **`process_budget` is already three-state** — `green_under_tick`, `yellow_near_tick`,
+  `red_over_budget` — and **1,920 rows predict yellow or red**, evenly split at 480 per observer
+  range. The model already says where the knee is. It has never been checked against a running
+  server.
+
 ## 1. The thing to understand first: there are two systems, and they never met
 
 This is the single most important fact in this document, and it is easy to lose. The repo

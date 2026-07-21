@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T11:49:53.803Z</span>
+        <span>Updated 2026-07-21T11:52:23.487Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721114953-closed-the-audit-session-retro-addendum-adr-0009">
+        <div class="journal"><article class="journal-entry" id="note-20260721115223-recorded-the-player-facing-goals-behind-the-aoi-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T11:52:23.487Z">2026-07-21T11:52:23.487Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Recorded the player-facing goals behind the AoI work, and read the 9,600-row grid as the specification it is</h3>
+      <p><strong>Impact:</strong> The findings record had the what and the how but not the why, and the why changes the design. Three player-facing limitations motivate all of it, in Derek&#39;s words: multi-person combat and exploring through an event; skirting the coast into the unknown fast enough that the world cannot keep up, where the failure is not a stutter but losing a character to terrain that had not arrived; and visiting the fantastical builds the community makes, where load time means the best thing the community produces is the hardest to share. The sharpest requirement is a lighthouse on the coast visible at distance, and it is a requirement rather than an anecdote because it isolates which of the two systems is at fault. A lighthouse barely needs updates - it does not move - so it is not a datagram-filtering problem; it needs to exist in the world at range, which is ZDO load order. The classifier already ranks structural_anchor at 2, above doors and chests and decoration, so System B already knows a tower outranks a rug. But InterestManager&#39;s Far band is dropped and the model&#39;s own third interest_bucket is far_suppressed, so past MidRadius nothing expresses that a particular object matters at range. Rank and distance never meet - the same gap the findings record identified, arriving from the opposite direction with an acceptance test a person can check from a boat. Re-read the recovered grid as a specification rather than a dataset: its three axes are exactly those three scenarios, its density bands are real sampled 500m cells rather than synthetic, its priority_expectation column is a five-level graded shedding ladder that the findings record had proposed as a new idea when it was specified in July, and its process_budget column is already three-state with 1,920 rows predicting yellow or red.</p>
+      <details><summary>Verification (2)</summary><ul><li>Every axis value quoted was read from the recovered CSV: six density_bands with real-cell labels, four observer_ranges, four event_profiles, three interest_buckets, five priority_expectations, three process_budgets, and 1,920 non-green rows split 480 per observer range</li><li>The structural_anchor rank of 2 was read from LumberjacksPriorityClassifier, and the Far-band drop from InterestManager</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/docs/network/area-of-interest-findings.md</code> <code>fieldlab/evidence/aoi-density-pressure-matrix-20260704/modeled-pressure-matrix.csv</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721114953-closed-the-audit-session-retro-addendum-adr-0009">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
