@@ -1,5 +1,5 @@
 param(
-  [string]$TargetPath = "C:\work\Lumberjacks",
+  [string]$TargetPath = "$PSScriptRoot\..\..\Lumberjacks",
 
   [string]$RepositoryUrl = "https://github.com/djcdevelopment/Lumberjacks.git"
 )

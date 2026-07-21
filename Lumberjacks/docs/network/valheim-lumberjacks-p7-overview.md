@@ -3,7 +3,7 @@
 Status: single-client authoritative-priority victory, 2026-07-16 UTC.
 
 This is the canonical map of the live P7 deployment. The matching run record is
-`C:\work\comfy\fieldlab\runs\20260716-011112-valheim-lumberjacks-authoritative-priority-cutover\report.md`.
+`fieldlab\runs\20260716-011112-valheim-lumberjacks-authoritative-priority-cutover\report.md`.
 It complements the general [network architecture](architecture.md),
 [interest-management](interest-management.md), and [evidence index](evidence-index.md).
 
@@ -169,15 +169,15 @@ and consumer completion are separate clocks.
 ## Evidence and operations
 
 - Versioned victory evidence:
-  `C:\work\comfy\fieldlab\evidence\p7-primary-v1-authoritative-priority-zdo-20260716-v0531.md`.
+  `fieldlab\evidence\p7-primary-v1-authoritative-priority-zdo-20260716-v0531.md`.
 - Victory report and snapshot:
-  `C:\work\comfy\fieldlab\runs\20260716-011112-valheim-lumberjacks-authoritative-priority-cutover\`.
+  `fieldlab\runs\20260716-011112-valheim-lumberjacks-authoritative-priority-cutover\`.
 - Release manifest:
-  `C:\work\comfy\fieldlab\runs\releases\p7-primary-v1-0.5.31-clean.json`.
+  `fieldlab\runs\releases\p7-primary-v1-0.5.31-clean.json`.
 - P7 deployment and reproduction runbook:
-  `C:\work\comfy\infra\gcp\p7\README.md`.
+  `infra\gcp\p7\README.md`.
 - Volunteer enrollment runbook:
-  `C:\work\comfy\infra\gcp\p7\VOLUNTEER-ENDPOINT.md`.
+  `infra\gcp\p7\VOLUNTEER-ENDPOINT.md`.
 - Raw OMEN client telemetry:
   `C:\Program Files (x86)\Steam\steamapps\common\Valheim\BepInEx\config\comfy-network-sense\telemetry-client.jsonl`.
 - Governing evidence rules: [network evidence index](evidence-index.md).

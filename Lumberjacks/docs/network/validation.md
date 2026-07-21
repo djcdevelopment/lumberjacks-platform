@@ -29,7 +29,7 @@ establish replacement of Steam login, Valheim simulation, native candidate relev
 selection, non-ZDO RPCs, or recipient isolation under multiple clients. See the
 [P7 network overview](valheim-lumberjacks-p7-overview.md) and the retained FieldLab
 report at
-`C:\work\comfy\fieldlab\runs\20260716-011112-valheim-lumberjacks-authoritative-priority-cutover\report.md`.
+`fieldlab\runs\20260716-011112-valheim-lumberjacks-authoritative-priority-cutover\report.md`.
 
 ## Recorded dual-channel result
 

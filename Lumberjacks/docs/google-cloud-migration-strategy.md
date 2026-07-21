@@ -31,8 +31,8 @@ Current endpoints and entry points:
 
 - Valheim direct join: `8.231.129.249:2456`
 - Lumberjacks gateway health/control: `http://8.231.129.249:4000`
-- fieldlab target setup: `C:\work\comfy\fieldlab\scripts\set-gcp-p7-target.ps1`
-- fieldlab P7 runner: `C:\work\comfy\fieldlab\scripts\run-loopback-window.ps1`
+- fieldlab target setup: `fieldlab\scripts\set-gcp-p7-target.ps1`
+- fieldlab P7 runner: `fieldlab\scripts\run-loopback-window.ps1`
 - VM service wrapper: `comfy-lumberjacks-p7.service`
 
 Current Compose services:

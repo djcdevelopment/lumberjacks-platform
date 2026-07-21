@@ -3,7 +3,7 @@
 Status: proposed execution plan
 Date: 2026-07-15 America/Los_Angeles
 Applies to: Lumberjacks Gateway, the ComfyNetworkSense Valheim mod, the GCP
-`ComfyEra16` test server, and `C:\work\comfy\fieldlab`
+`ComfyEra16` test server, and `fieldlab`
 
 ## Outcome
 

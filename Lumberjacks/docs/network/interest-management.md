@@ -54,11 +54,11 @@ sync-list boundary.
 
 The single-client P7 audit observed 100% enrolled coverage and zero native-only
 traffic while the consumer drained the durable queue. Raw evidence is retained
-outside this repository at:
+at:
 
 ```text
-C:\work\comfy\fieldlab\runs\audits\p7-efficiency\
-C:\work\comfy\fieldlab\evidence\p7-primary-v1-authoritative-zdo-20260715-v0527.md
+fieldlab/runs/audits/p7-efficiency/
+fieldlab/evidence/p7-primary-v1-authoritative-zdo-20260715-v0527.md
 ```
 
 The next AoI audit must measure Valheim relevance selection separately from

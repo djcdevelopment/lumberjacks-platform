@@ -405,8 +405,8 @@ surfaces:
     the mod source. That was wrong, and the word did real damage** — it made the
     fix sound ephemeral and stopped anyone from looking for it. It was committed
     2026-07-16 as `cc2f95e` on branch `claude/handshake-bounded-read` in the
-    `comfy` repo (the mod lives in `C:\work\comfy`, not in this one — a second
-    reason it was hard to find from here). Two later commits from that branch were
+    `comfy` repo (the mod lives at the repo root, not under `Lumberjacks/` — a
+    second reason it was hard to find from here). Two later commits from that branch were
     cherry-picked onto `main`; `cc2f95e` was not, so it sat stranded on the branch,
     invisible to anyone reading `main`, while this plan reported it as done.
     Recovered 2026-07-17 — cherry-picked onto `comfy` `main` as `3b9249f`, with
@@ -483,7 +483,7 @@ surfaces:
     the *path* and the compiler's nondeterminism but not the source bytes; the
     source checksum rides the debug directory into the DLL.
     (b) **A fresh clone and the working tree do not agree.** `git clone` of comfy
-    materialises the mod sources CRLF; `C:\work\comfy` holds **29 of 41** of them
+    materialises the mod sources CRLF; the repo root working tree holds **29 of 41** of them
     as LF. `git status` reports clean the whole time, so nothing surfaces this.
     (c) **Therefore the builds differ**: fresh clone `a6f95c9a…` vs working tree
     `c59d506b…`, same commit.
@@ -527,7 +527,7 @@ surfaces:
     nothing in those three commits broke anything.
     The real axis is **clone vs worktree**, which is not the same claim and is still
     unexplained: a fresh `git clone` builds `6ba2965c…` where a worktree (and
-    `C:\work\comfy` itself) builds `391c6dd8…`, from **byte-identical sources**, same
+    the repo root itself) builds `391c6dd8…`, from **byte-identical sources**, same
     commit, same `core.autocrlf`, same generated `obj` inputs, no SourceLink and no
     embedded git SHA. Exactly 72 bytes differ, at the PE deterministic timestamp-hash
     and the MVID/PDB checksum — the deterministic *identity* fields, so an input still
@@ -566,7 +566,7 @@ surfaces:
     reversible. Recorded in comfy `554488d` (the cut script's parting text now states this).
 
 13. **Fixed — the release cut's artifact comparison was broken and had never executed.** Script
-    `C:\work\comfy\infra\gcp\p7\scripts\New-ReleaseCut.ps1` (added in comfy `3e6f6304`) implements
+    `infra\gcp\p7\scripts\New-ReleaseCut.ps1` (added in comfy `3e6f6304`) implements
     risk 9's fix: type the release id once, build both sides, then read the id back out of BOTH
     compiled DLLs and refuse if they disagree. The comparison was believed to be an active
     safeguard; in reality it had never executed, because it sits behind `-WhatIf` and only runs

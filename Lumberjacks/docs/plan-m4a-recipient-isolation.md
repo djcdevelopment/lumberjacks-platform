@@ -14,7 +14,7 @@ mod still emits no recipient.
   treated as legacy. Query/body labels never select a recipient.
 - The producer-side recipient field is additive. This commit builds the
   partition, but the frozen 0.5.31 producer does not populate it; the per-peer
-  mod adapter belongs to stage 3 in `C:\work\comfy` and is untouched here.
+  mod adapter belongs to stage 3 at the repo root and is untouched here.
 - `ValheimQueue:ProducerEmitsRecipients` defaults off. Until the producer cut is
   enabled, enrollment consumers intentionally resolve to `Legacy`; enabling
   recipient scoping before producer emission would otherwise create an empty

@@ -265,7 +265,7 @@
           <tr>
             <td>“GCP P7” = the proven deployment the dashboard describes</td>
             <td><span class="pill info">NOTE</span></td>
-            <td>Lives in a <b>separate repo</b> <span class="src">C:\work\comfy\infra\gcp\p7</span>. <b>Confirmed 2026-07-11:</b> it runs the <em>same</em> Ops Agent OTLP collector and per-service OTLP wiring as stage1 — but has <b>no Cloud Monitoring dashboard</b>, and gameplay series are empty while disarmed. See P7 fact sheet in §03.</td>
+            <td>Lives in a <b>separate repo</b> <span class="src">infra/gcp/p7</span>. <b>Confirmed 2026-07-11:</b> it runs the <em>same</em> Ops Agent OTLP collector and per-service OTLP wiring as stage1 — but has <b>no Cloud Monitoring dashboard</b>, and gameplay series are empty while disarmed. See P7 fact sheet in §03.</td>
           </tr>
         </tbody>
       </table>
@@ -360,7 +360,7 @@ Live                 Safety                History              Trust
 
     <div class="panel">
       <p class="kicker">P7 today — fact sheet (D-01, confirmed 2026-07-11)</p>
-      <p style="margin-top:2px;font-size:13.5px">Read-only inspection of <span class="src">C:\work\comfy\infra\gcp\p7</span>.
+      <p style="margin-top:2px;font-size:13.5px">Read-only inspection of <span class="src">infra/gcp/p7</span>.
         The Phase-0 premise was partly wrong: P7 is <b>not</b> telemetry-blind. It runs the identical Ops Agent OTLP
         receiver (<code>:4317</code>, <code>googlecloudmonitoring</code>) and identical per-service OTLP env wiring
         (<code>deployment.environment=gcp-p7</code>), building the same <code>lumberjacks.*</code>-emitting binaries.
@@ -378,7 +378,7 @@ Live                 Safety                History              Trust
       </div>
       <p class="note" style="margin-bottom:0"><b>Single cheapest lever:</b> clone stage1’s <code>google_monitoring_dashboard</code>
         (“Lumberjacks — Gate 1 Operations”) into <span class="src">infra/gcp/p7</span> — the collector already exists,
-        only the dashboard is missing. That edit lives in <code>C:\work\comfy</code> → <b>cross-repo, requires sign-off</b> (D-10).</p>
+        only the dashboard is missing. That edit lives in <code>infra/gcp/p7</code> → <b>cross-repo, requires sign-off</b> (D-10).</p>
     </div>
 
     <div class="panel">
@@ -504,7 +504,7 @@ Live                 Safety                History              Trust
         <p class="kicker">Pull-in triggers (interrupt the human)</p>
         <ul style="font-size:14px;margin-bottom:0">
           <li>A decision would <b>fork the vocabulary</b> or an invariant (lanes, tick budget, evidence tiers).</li>
-          <li>Cross-repo action touching <code>C:\work\comfy</code> or the disarmed P7 VM.</li>
+          <li>Cross-repo action touching <code>infra/gcp/p7</code> or the disarmed P7 VM.</li>
           <li>Anything irreversible, outward-facing, or in the safety-rule prohibited/permission list.</li>
           <li>Ambiguity that would otherwise cause rework — surface it early to prevent thrash.</li>
         </ul>
@@ -710,7 +710,7 @@ Live                 Safety                History              Trust
     <span class="src">docs/google-cloud-*</span>, <span class="src">docs/github-integration-strategy.md</span>,
     <span class="src">src/Game.ServiceDefaults/LumberjacksTelemetry.cs</span>, and
     <span class="src">infra/gcp/stage1/observability.tf</span>. Cross-repo P7 truth lives in
-    <span class="src">C:\work\comfy</span>.
+    <span class="src">infra/gcp/p7</span>.
   </p>
 </footer>
 

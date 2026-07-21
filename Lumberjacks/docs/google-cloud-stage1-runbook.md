@@ -20,7 +20,7 @@ Cloud status as of 2026-07-11 local / 2026-07-12 UTC (HISTORICAL - superseded by
 2026-07-20 reconciliation below; the machine type and Gateway port in this paragraph
 are no longer current): the proven deployment is
 the combined Comfy/Lumberjacks P7 Valheim netcode replacement environment, not this
-original Godot Stage 1 proof. That deployment lives under `C:\work\comfy\infra\gcp\p7`
+original Godot Stage 1 proof. That deployment lives under `infra\gcp\p7`
 and runs VM `comfy-lumberjacks-p7` (`n2-highmem-8`, us-west1-b) in project
 `lumberjacks-exp-20260711-djc`.
 It exposes Valheim at `8.231.129.249:2456`, Lumberjacks Gateway at
@@ -38,7 +38,7 @@ original Godot Stage 1 VM (`lumberjacks-stage1`, `e2-medium`) was stopped on
 2026-07-12 as superseded; `comfy-lumberjacks-p7` remains running.
 
 Reconciliation, 2026-07-20 (closes the "Unreconciled" note in
-`C:\work\comfy\fieldlab\evidence\p7-session-20260719-release-gate-defect\deployment-identifiers.md`):
+`fieldlab\evidence\p7-session-20260719-release-gate-defect\deployment-identifiers.md`):
 the two paragraphs above are accurate as history but stale as present tense. Read from
 the GCP service inventory on 2026-07-20, `comfy-lumberjacks-p7` is:
 

@@ -15,7 +15,7 @@
 
 $ErrorActionPreference = "Stop"
 $dotnet = "C:\work\dotnet9\dotnet.exe"   # PATH dotnet is 8.x; the repo needs the 9.x SDK
-$repo   = "C:\work\Lumberjacks"
+$repo   = (Resolve-Path (Join-Path $PSScriptRoot "..\..\Lumberjacks")).Path
 
 $env:DOTNET_ROOT = "C:\work\dotnet9"
 

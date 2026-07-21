@@ -16,8 +16,8 @@
 [CmdletBinding()]
 param(
   [string] $ReleaseId = 'm4-integration-20260719-r1',
-  [string] $ComfyRoot = 'C:\work\comfy',
-  [string] $LumberjacksRoot = 'C:\work\Lumberjacks',
+  [string] $ComfyRoot = "$PSScriptRoot\..\..",
+  [string] $LumberjacksRoot = "$PSScriptRoot\..\..\Lumberjacks",
   [string] $ServerContainer = 'comfy-valheim-lab-valheim-server-1',
   [string] $ClientContainer = 'comfy-valheim-lab-valheim-client-01-1',
   [string] $LabNetwork = 'comfy-valheim-lab_default',

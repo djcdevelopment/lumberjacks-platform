@@ -27,8 +27,8 @@
 [CmdletBinding()]
 param(
   [Parameter(Mandatory)][string] $ReleaseId,
-  [string] $ComfyRoot       = 'C:\work\comfy',
-  [string] $LumberjacksRoot = 'C:\work\Lumberjacks',
+  [string] $ComfyRoot       = "$PSScriptRoot\..\..\..\..",
+  [string] $LumberjacksRoot = "$PSScriptRoot\..\..\..\..\Lumberjacks",
   [switch] $WhatIf
 )
 

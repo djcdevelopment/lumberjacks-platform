@@ -52,7 +52,7 @@
 param(
   [Parameter(Mandatory)][string] $ImageReleaseId,
   [Parameter(Mandatory)][string] $AdmittedModRelease,
-  [string] $LumberjacksRoot = 'C:\work\Lumberjacks'
+  [string] $LumberjacksRoot = "$PSScriptRoot\..\..\..\..\Lumberjacks"
 )
 
 $ErrorActionPreference = 'Stop'

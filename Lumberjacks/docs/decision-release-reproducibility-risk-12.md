@@ -117,8 +117,8 @@ claim.** Manifests should record image ids to say *what ran*, and payload hashes
 ## Related
 
 - Gateway image release id and admitted mod release are **separate identities**:
-  `C:\work\comfy\infra\gcp\p7\scripts\New-GatewayReleaseCut.ps1`
+  `infra\gcp\p7\scripts\New-GatewayReleaseCut.ps1`
 - Authoritative gate, reads the completed image:
-  `C:\work\comfy\infra\gcp\p7\scripts\Test-GatewayImageRelease.ps1`
-- Regression suite: `C:\work\comfy\infra\gcp\p7\scripts\Test-GatewayImageReleaseRegression.ps1`
-- Defect evidence: `C:\work\comfy\fieldlab\evidence\p7-session-20260719-release-gate-defect\`
+  `infra\gcp\p7\scripts\Test-GatewayImageRelease.ps1`
+- Regression suite: `infra\gcp\p7\scripts\Test-GatewayImageReleaseRegression.ps1`
+- Defect evidence: `fieldlab\evidence\p7-session-20260719-release-gate-defect\`

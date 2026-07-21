@@ -38,7 +38,7 @@ drill plan. This never opens an SSH connection:
 
 ```powershell
 & C:\work\comfy\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
-  -ManifestPath C:\work\Lumberjacks\docs\roadmap\m0-clean-build-candidate-r2.json `
+  -ManifestPath Lumberjacks\docs\roadmap\m0-clean-build-candidate-r2.json `
   -BundleRoot C:\work\comfy\fieldlab\runs\releases\m0-clean-20260716-r2
 ```
 
@@ -51,7 +51,7 @@ Inside the scheduled window:
 
 ```powershell
 & C:\work\comfy\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
-  -ManifestPath C:\work\Lumberjacks\docs\roadmap\m0-clean-build-candidate-r2.json `
+  -ManifestPath Lumberjacks\docs\roadmap\m0-clean-build-candidate-r2.json `
   -BundleRoot C:\work\comfy\fieldlab\runs\releases\m0-clean-20260716-r2 `
   -RollbackModBackupPath /mnt/comfy-p7/backups/comfynetworksense/20260716T004955Z `
   -Execute

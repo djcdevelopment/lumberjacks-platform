@@ -483,7 +483,7 @@ function New-RuntimePublishLines {
     "",
     "## What Ran",
     "",
-    "- EventLog, Progression, OperatorApi, and Gateway were started from ``C:\work\Lumberjacks``.",
+    "- EventLog, Progression, OperatorApi, and Gateway were started from ``Lumberjacks/``.",
     "- Postgres mode: $postgresMode at $($postgresHost):$postgresPort.",
     "- Existing probes: ``scripts/test-vertical-slice.js``, ``scripts/test-multiplayer.js``, and ``scripts/load-test-dual-channel.js``.",
     "",

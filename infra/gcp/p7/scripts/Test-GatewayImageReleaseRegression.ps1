@@ -39,7 +39,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string] $LumberjacksRoot = 'C:\work\Lumberjacks'
+  [string] $LumberjacksRoot = "$PSScriptRoot\..\..\..\..\Lumberjacks"
 )
 
 $ErrorActionPreference = 'Stop'

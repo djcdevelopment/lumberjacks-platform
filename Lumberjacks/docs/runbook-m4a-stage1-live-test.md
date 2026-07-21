@@ -39,7 +39,7 @@ GCP console:
    runbook targets the public deployment.
 2. **Run IAP SSH in the foreground.** From a backgrounded shell it never exits — the
    payload runs, the output is lost. Diagnosis is in
-   `C:\work\comfy\infra\gcp\p7\scripts\run-promotion-drill.ps1:74-79`.
+   `infra\gcp\p7\scripts\run-promotion-drill.ps1:74-79`.
 3. **`-Finalize` or it isn't durable.** Without it the drill leaves the candidate
    running only via a compose override that systemd does not load; the next reboot
    silently reverts the Gateway.
@@ -51,8 +51,10 @@ GCP console:
 
 ## Phase 0 — Local proof (already green, re-run only if you touched code)
 
+Run from `Lumberjacks\`:
+
 ```powershell
-docker run --rm -v "C:\work\Lumberjacks:/src" -w /src mcr.microsoft.com/dotnet/sdk:9.0 dotnet test Game.sln --filter "Category!=Performance"
+docker run --rm -v "${PWD}:/src" -w /src mcr.microsoft.com/dotnet/sdk:9.0 dotnet test Game.sln --filter "Category!=Performance"
 ```
 
 **Expect `520/520` passing.** Last run: 120 Contracts + 246 Simulation + 154 Gateway,
@@ -62,21 +64,21 @@ roadmap path tests fail on Windows paths only. Do not fix them.)
 Just the recipient surface:
 
 ```powershell
-docker run --rm -v "C:\work\Lumberjacks:/src" -w /src mcr.microsoft.com/dotnet/sdk:9.0 dotnet test Game.sln --filter "FullyQualifiedName~ValheimRecipient"
+docker run --rm -v "${PWD}:/src" -w /src mcr.microsoft.com/dotnet/sdk:9.0 dotnet test Game.sln --filter "FullyQualifiedName~ValheimRecipient"
 ```
 
 ### Optional — the mutation drill (proves the tests have teeth)
 
 Break one thing, confirm the *named* tests fail, restore. From
-`C:\work\Lumberjacks\docs\plan-m4a-recipient-isolation.md` §5:
+`Lumberjacks\docs\plan-m4a-recipient-isolation.md` §5:
 
 | Mutation | Expected failures |
 | --- | --- |
-| Scope predicate — in `C:\work\Lumberjacks\src\Game.Gateway\Valheim\ValheimRecipientScopePolicy.cs`, make the enrollment branch ignore `producerEmitsRecipients` | 4: `ValheimRecipientScopePolicyTests.EnrollmentUsesServerRecipientAndIgnoresRequestedLabel`, `…EnrollmentWithoutRecipientFailsClosed`, and both N=2 / N=10 `ValheimRecipientIsolationTests.ValheimRecipientIsolation` |
+| Scope predicate — in `Lumberjacks\src\Game.Gateway\Valheim\ValheimRecipientScopePolicy.cs`, make the enrollment branch ignore `producerEmitsRecipients` | 4: `ValheimRecipientScopePolicyTests.EnrollmentUsesServerRecipientAndIgnoresRequestedLabel`, `…EnrollmentWithoutRecipientFailsClosed`, and both N=2 / N=10 `ValheimRecipientIsolationTests.ValheimRecipientIsolation` |
 | Lease expiry | 2: `ValheimRecipientLeaseTests.LeaseIsScopedAndExpiresWithoutSleeping`, `…RecipientReconnectRefreshesOnlyItsOwnLeaseAndTakeoverFollowsExpiry` |
 | WAL version branch | 1: `ValheimZdoAuthoritativeTelemetryTests.RecipientLessV1WalFixtureReplaysIntoLegacyBucket` |
 
-`git -C C:\work\Lumberjacks checkout -- <file>` to restore. Re-run: back to 520/520.
+`git -C Lumberjacks checkout -- <file>` to restore. Re-run: back to 520/520.
 
 ---
 
@@ -103,7 +105,7 @@ compose stack hasn't come up — check with the SSH command in Phase 4.
 (`\d+` won't take the `a`). Use `m4`:
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\New-GatewayReleaseCut.ps1 `
+& infra\gcp\p7\scripts\New-GatewayReleaseCut.ps1 `
     -ImageReleaseId     m4-clean-20260720-r1 `
     -AdmittedModRelease m1-clean-20260717-r1
 ```
@@ -136,21 +138,21 @@ the gate — so the cut passed while the deployed Gateway admitted anything.
 > manifest carried that m0 string unchanged. Tag with the release id as above; see
 > the retag note in Phase 3.
 
-Then write the manifest JSON under `C:\work\Lumberjacks\docs\roadmap\`, modelled on
-`C:\work\Lumberjacks\docs\roadmap\m0-clean-build-candidate-r2.json`, and bundle:
+Then write the manifest JSON under `Lumberjacks\docs\roadmap\`, modelled on
+`Lumberjacks\docs\roadmap\m0-clean-build-candidate-r2.json`, and bundle:
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\build-release-bundle.ps1 `
-    -ManifestPath   C:\work\Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
-    -OutputRoot     C:\work\comfy\fieldlab\runs\releases\m4-clean-20260718-r1 `
-    -ComfyRepo      C:\work\comfy `
-    -LumberjacksRepo C:\work\Lumberjacks `
+& infra\gcp\p7\scripts\build-release-bundle.ps1 `
+    -ManifestPath   Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
+    -OutputRoot     fieldlab\runs\releases\m4-clean-20260718-r1 `
+    -ComfyRepo      . `
+    -LumberjacksRepo Lumberjacks `
     -ModDllPath     <path to frozen 0.5.31 mod dll> `
     -GatewayImage   lumberjacks-gateway:m4-clean-20260718-r1
 
-& C:\work\comfy\infra\gcp\p7\scripts\validate-release-bundle.ps1 `
-    -ManifestPath C:\work\Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
-    -BundleRoot   C:\work\comfy\fieldlab\runs\releases\m4-clean-20260718-r1
+& infra\gcp\p7\scripts\validate-release-bundle.ps1 `
+    -ManifestPath Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
+    -BundleRoot   fieldlab\runs\releases\m4-clean-20260718-r1
 ```
 
 **Stop condition:** validate returns `status = 'valid'`. Both repos must be clean and
@@ -163,17 +165,17 @@ at manifest HEAD or the bundle step refuses.
 Rehearse first (no VM contact):
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
-    -ManifestPath C:\work\Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
-    -BundleRoot   C:\work\comfy\fieldlab\runs\releases\m4-clean-20260718-r1
+& infra\gcp\p7\scripts\run-promotion-drill.ps1 `
+    -ManifestPath Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
+    -BundleRoot   fieldlab\runs\releases\m4-clean-20260718-r1
 ```
 
 Then promote — **foreground shell, never backgrounded**:
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
-    -ManifestPath C:\work\Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
-    -BundleRoot   C:\work\comfy\fieldlab\runs\releases\m4-clean-20260718-r1 `
+& infra\gcp\p7\scripts\run-promotion-drill.ps1 `
+    -ManifestPath Lumberjacks\docs\roadmap\m4-clean-build-candidate-r1.json `
+    -BundleRoot   fieldlab\runs\releases\m4-clean-20260718-r1 `
     -RollbackModBackupPath /mnt/comfy-p7/backups/comfynetworksense/20260716T004955Z `
     -Execute -Finalize
 ```
@@ -234,14 +236,14 @@ Expect `{"ok":true,"window_id":"m4a-live-test-v1","received":2,"total":2}`.
 
 Wire format is **snake_case** throughout (`window_id`, `body_b64`, `recipient_id`) —
 set by `PropertyNamingPolicy = SnakeCaseLower` in
-`C:\work\Lumberjacks\src\Game.ServiceDefaults\ServiceDefaultsExtensions.cs:50`.
+`Lumberjacks\src\Game.ServiceDefaults\ServiceDefaultsExtensions.cs:50`.
 
 ### 5b. Enroll wary.fool
 
 Mint a one-use, 24-hour invite:
 
 ```powershell
-& C:\work\comfy\infra\gcp\p7\scripts\new-player-invite.ps1
+& infra\gcp\p7\scripts\new-player-invite.ps1
 ```
 
 Open the returned `/join?t=<token>` URL in the browser where you're signed in as
@@ -298,7 +300,7 @@ This confirms *why* the flag stays off. It is a compose edit, not just an env-fi
 edit: `/etc/comfy-p7/environment` is injected into the `docker compose` process, and
 nothing forwards it into the container without a `${...}` reference.
 
-In `C:\work\comfy\infra\gcp\p7\docker-compose.yml`, gateway `environment:` map:
+In `infra\gcp\p7\docker-compose.yml`, gateway `environment:` map:
 
 ```yaml
       ValheimQueue__ProducerEmitsRecipients: "${VALHEIM_QUEUE_PRODUCER_EMITS_RECIPIENTS:-false}"
@@ -348,7 +350,7 @@ Never `POST /valheim/zdo-redirect/reset` unqualified — it clears every window.
 - Plan: [docs/plan-m4a-recipient-isolation.md](plan-m4a-recipient-isolation.md)
 - ADR: [docs/adrs/0020-recipient-scoped-durable-delivery.md](adrs/0020-recipient-scoped-durable-delivery.md)
 - Review thread: [docs/handoffs/AGENT-QUESTIONS.md](handoffs/AGENT-QUESTIONS.md)
-- Promotion drill: `C:\work\comfy\infra\gcp\p7\PROMOTION-DRILL.md`
-- P7 compose: `C:\work\comfy\infra\gcp\p7\docker-compose.yml`
+- Promotion drill: `infra\gcp\p7\PROMOTION-DRILL.md`
+- P7 compose: `infra\gcp\p7\docker-compose.yml`
 - Published M0 evidence:
   <https://github.com/djcdevelopment/comfy/blob/433f1cc33605561ae1287db9cd8f37125d795c5d/fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover/PUBLICATION.md>

@@ -121,7 +121,7 @@ Each stage is independently valuable and independently revertible.
 ### Stage 3 — Producer recipient emission (Comfy, stage-3)
 - **Goal:** the mod populates `recipient_id` per peer, so the isolation partition
   can actually fill.
-- **Preconditions:** Stage 2 green. Work is in `C:\work\comfy`, mod side.
+- **Preconditions:** Stage 2 green. Work is at the repo root, mod side.
 - **Do:** emit `recipient_id` on the schema-2 envelope per destination peer. This
   is a mod change, so it needs a **both-sides** cut and unfreezes 0.5.31 —
   budget for reissuing guest packages.
@@ -183,9 +183,9 @@ Each stage is independently valuable and independently revertible.
 
 ## Reference
 
-- Acceptance: `C:\work\comfy\fieldlab\integration\COMFY-LUMBERJACKS-ACCEPTANCE.md`
-- Seam: `C:\work\comfy\fieldlab\integration\comfy-lumberjacks-seam.md`
-- Diagrams: `C:\work\comfy\fieldlab\integration\diagrams\`
+- Acceptance: `fieldlab\integration\COMFY-LUMBERJACKS-ACCEPTANCE.md`
+- Seam: `fieldlab\integration\comfy-lumberjacks-seam.md`
+- Diagrams: `fieldlab\integration\diagrams\`
 - Runbook: [runbook-m4a-stage1-live-test.md](runbook-m4a-stage1-live-test.md)
 - Plan / ADR: [plan-m4a-recipient-isolation.md](plan-m4a-recipient-isolation.md),
   [adrs/0020-recipient-scoped-durable-delivery.md](adrs/0020-recipient-scoped-durable-delivery.md)

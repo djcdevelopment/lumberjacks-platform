@@ -43,7 +43,7 @@ $ErrorActionPreference = "Stop"
 
 # --- paths + hosts (env overrides match the sibling drivers) --------------------------------------
 $repo        = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$lumberjacks = "C:\work\Lumberjacks"
+$lumberjacks = Join-Path $repo "Lumberjacks"
 $dotnet9     = "C:\work\dotnet9\dotnet.exe"
 $python      = if ($env:FIELDLAB_PYTHON) { $env:FIELDLAB_PYTHON } else { "C:\Users\derek\AppData\Local\Programs\Python\Python312\python.exe" }
 $valheim     = "C:\Program Files (x86)\Steam\steamapps\common\Valheim"

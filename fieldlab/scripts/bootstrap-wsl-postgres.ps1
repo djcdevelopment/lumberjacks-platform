@@ -3,7 +3,7 @@ param(
   [string]$Database = "game",
   [string]$User = "game",
   [string]$Password = "game",
-  [string]$InitSqlPath = "C:\work\Lumberjacks\infra\docker\init.sql",
+  [string]$InitSqlPath = "$PSScriptRoot\..\..\Lumberjacks\infra\docker\init.sql",
   [string]$WslUser = "root",
   [string]$ListenAddresses = "*"
 )
