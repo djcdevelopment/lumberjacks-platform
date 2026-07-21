@@ -50,9 +50,19 @@ sudo docker cp '$remoteDll' '${Container}:$runtimeDll'
 test `$(sudo stat -c '%u:%g:%a' '$hostConfig') = '1000:1000:664'
 sudo docker exec '$Container' supervisorctl restart valheim-server
 "@
-$deployEncoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($deploy))
+# Ship the remote script as a FILE and run it, not `printf | base64 -d | bash`: over the IAP tunnel
+# on Windows, piping the script through the remote shell's stdin corrupts it (the remote bash reads
+# its script off the same stdin the tunnel multiplexes, yielding `set: usage` / `unexpected end of
+# file`). scp + `bash file` is stdin-clean. The `stdin ReadFile failed` traceback ssh prints on
+# teardown is cosmetic gcloud-IAP noise and does not affect the remote exit code.
+$deployScript = [IO.Path]::GetTempFileName()
+[IO.File]::WriteAllText($deployScript, ($deploy -replace "`r`n", "`n"))
 $ErrorActionPreference = 'Continue'
-ssh $SshTarget "printf '%s' '$deployEncoded' | base64 -d | bash"
+scp $deployScript "${SshTarget}:/tmp/comfyns-deploy.sh"
+$deployScpExit = $LASTEXITCODE
+Remove-Item $deployScript -ErrorAction SilentlyContinue
+if ($deployScpExit -ne 0) { $ErrorActionPreference = 'Stop'; throw "SCP of deploy script to $SshTarget failed" }
+ssh $SshTarget "bash /tmp/comfyns-deploy.sh; rc=`$?; rm -f /tmp/comfyns-deploy.sh; exit `$rc"
 $deployExit = $LASTEXITCODE
 $ErrorActionPreference = 'Stop'
 if ($deployExit -ne 0) { throw "Remote deployment or restart failed" }
@@ -68,7 +78,7 @@ $serverReady = $false
 do {
   Start-Sleep -Seconds 5
   $ErrorActionPreference = 'Continue'
-  $startup = ssh $SshTarget "sudo docker logs --since '$startedUtc' '$Container' 2>&1" 2>$null
+  $startup = ssh -n $SshTarget "sudo docker logs --since '$startedUtc' '$Container' 2>&1" 2>$null
   $logExit = $LASTEXITCODE
   $ErrorActionPreference = 'Stop'
   if ($logExit -ne 0) { continue }
@@ -84,7 +94,7 @@ if (!$modReady -or !$serverReady) {
 }
 
 $ErrorActionPreference = 'Continue'
-$hashOutput = ssh $SshTarget "sudo docker exec '$Container' sha256sum '$runtimeDll'"
+$hashOutput = ssh -n $SshTarget "sudo docker exec '$Container' sha256sum '$runtimeDll'"
 $hashExit = $LASTEXITCODE
 $ErrorActionPreference = 'Stop'
 if ($hashExit -ne 0) { throw "Could not hash the runtime DLL" }
@@ -94,7 +104,7 @@ if ($actualHash -ne $expectedHash) {
 }
 
 $ErrorActionPreference = 'Continue'
-$fallbackHashOutput = ssh $SshTarget "sudo sha256sum '$fallbackDll'"
+$fallbackHashOutput = ssh -n $SshTarget "sudo sha256sum '$fallbackDll'"
 $fallbackHashExit = $LASTEXITCODE
 $ErrorActionPreference = 'Stop'
 if ($fallbackHashExit -ne 0) { throw "Could not hash the cold-start DLL" }
@@ -112,9 +122,15 @@ sudo sed -i '/^COMFY_NETWORKSENSE_VERSION=/d' /etc/comfy-p7/environment
 printf '%s\n' 'COMFY_NETWORKSENSE_VERSION=$pluginVersion' | sudo tee -a /etc/comfy-p7/environment >/dev/null
 sudo grep -Fx 'COMFY_NETWORKSENSE_VERSION=$pluginVersion' /etc/comfy-p7/environment
 "@
-$metadataEncoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($updateMetadata))
+# Same stdin-clean scp-a-script form as the deploy block above (not printf | base64 -d | bash).
+$metadataScript = [IO.Path]::GetTempFileName()
+[IO.File]::WriteAllText($metadataScript, ($updateMetadata -replace "`r`n", "`n"))
 $ErrorActionPreference = 'Continue'
-ssh $SshTarget "printf '%s' '$metadataEncoded' | base64 -d | bash"
+scp $metadataScript "${SshTarget}:/tmp/comfyns-metadata.sh"
+$metadataScpExit = $LASTEXITCODE
+Remove-Item $metadataScript -ErrorAction SilentlyContinue
+if ($metadataScpExit -ne 0) { $ErrorActionPreference = 'Stop'; throw "SCP of metadata script to $SshTarget failed" }
+ssh $SshTarget "bash /tmp/comfyns-metadata.sh; rc=`$?; rm -f /tmp/comfyns-metadata.sh; exit `$rc"
 $metadataExit = $LASTEXITCODE
 $ErrorActionPreference = 'Stop'
 if ($metadataExit -ne 0) { throw "Deployment metadata fallback reconciliation failed" }
@@ -139,7 +155,7 @@ if ($ManifestPath) {
     [ordered]@{ path = $_; sha256 = (Get-FileHash $_ -Algorithm SHA256).Hash.ToLowerInvariant() }
   }
   $ErrorActionPreference = 'Continue'
-  $remoteImage = ssh $SshTarget "sudo docker image inspect '$Container' --format '{{index .Config.Image}} {{index .Image}}'" 2>$null
+  $remoteImage = ssh -n $SshTarget "sudo docker image inspect '$Container' --format '{{index .Config.Image}} {{index .Image}}'" 2>$null
   $ErrorActionPreference = 'Stop'
   $manifest = [ordered]@{
     schema = 'comfy-p7-release/v1'
