@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T10:48:03.344Z</span>
+        <span>Updated 2026-07-21T10:58:13.345Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721104803-audited-the-accreted-conditional-logic-deleted-t">
+        <div class="journal"><article class="journal-entry" id="note-20260721105813-completed-the-mod-config-inventory-and-turned-it">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T10:58:13.345Z">2026-07-21T10:58:13.345Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Completed the mod config inventory and turned it into decisions with counter-reasons</h3>
+      <p><strong>Impact:</strong> The first audit pass covered only 44 of the 107 ConfigEntry keys: it was given an 8000-token output budget and pro is a thinking model, so the thinking consumed the budget and the analysis sections never emitted. Re-run as three scoped passes with a 30000-token budget, splitting by property-name prefix so each thread owned a disjoint set. The 63 uncovered keys were the operationally important ones - ZdoRedirect, ZdoInjection, Ownership, HandshakeResponder and the Lumberjacks integration block. Two audit claims were checked and rejected. One said the ActiveSeconds timers are live time-bombs that drop the serving path 90 seconds in; ZdoRedirectRunner.cs:226-227 treats 0 as no cap and infra/gcp/p7/README.md:101 pins zdoRedirectActiveSeconds=0, so production is correctly configured - the real and narrower risk is that the safe value is recorded only in a runbook and in a .cfg that lives on the VM, with no reference production config tracked in this repo. The other recommended flipping the serving-path flags to default true; ZdoRedirectRunner.cs:50 states that zdoRedirectEnabled=false IS the standing rollback, and defaulting them on would mean a mod dropped into any server hijacks world sync on load. Recorded a better answer than either default: keep the flags off, flip the ActiveSeconds default from 90 to 0 so the safe value is the default and the finite lab window is opt-in, and version-control a reference production .cfg so the posture stops living only as VM state. Eight decisions, each with the strongest case against it stated rather than implied; acting on the three clean ones removes 40 of 107 keys without touching the serving path.</p>
+      <details><summary>Verification (2)</summary><ul><li>All 107 keys accounted for across three disjoint passes; counted against the ConfigEntry declarations in PluginConfig.cs</li><li>The auto-disarm semantics were read directly from ZdoRedirectRunner.cs rather than taken from the audit, and the production override was located in the P7 runbook</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/docs/config-surface-decisions.md</code> <code>fieldlab/docs/audit-2026-07-21-conditional-logic.svg</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721104803-audited-the-accreted-conditional-logic-deleted-t">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
