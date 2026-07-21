@@ -427,6 +427,17 @@
             </div>
         </div>
 
+        <div class="panel" id="panel-quests" style="grid-column: 1 / -1;">
+            <h2>Quests Completed <span class="stale-warning">API Unreachable</span></h2>
+            <div class="data-item" style="margin-bottom: 12px;">
+                <span class="data-label">Recent completions</span>
+                <span class="data-value" id="questCount">--</span>
+            </div>
+            <div id="questList" style="max-height: 260px; overflow-y: auto; padding-right: 8px;">
+                <span class="data-value" style="font-size: 0.85rem;">Awaiting data...</span>
+            </div>
+        </div>
+
     </div>
 
     <footer>
@@ -728,10 +739,12 @@
                     `${data.count} (cap ${data.capacity}, ${data.dropped_since_start} dropped)`;
 
                 const list = document.getElementById('gameplayList');
-                if (!data.events || data.events.length === 0) {
+                // quest_completed has its own panel (updateQuestData) — keep this feed to combat.
+                const combat = (data.events || []).filter(e => e.event_type !== 'quest_completed');
+                if (combat.length === 0) {
                     list.innerHTML = '<span class="data-value" style="font-size: 0.85rem;">No recent gameplay events</span>';
                 } else {
-                    list.innerHTML = data.events.map(e => `
+                    list.innerHTML = combat.map(e => `
                         <div class="list-row" style="flex-direction: column; align-items: flex-start; gap: 2px;">
                             <div style="display:flex; justify-content:space-between; width:100%;">
                                 <strong>${escapeHtml(e.event_type)}</strong>
@@ -750,6 +763,36 @@
             }
         }
 
+        async function updateQuestData() {
+            try {
+                const data = await fetchEndpoint('/api/v0/telemetry/events');
+                updateBadge(data.api_version, data.stability);
+
+                // The public feed carries only a non-identifying detail (the quest name) — quest_id,
+                // guild, and command ride the durable EventLog, never this projection.
+                const quests = (data.events || []).filter(e => e.event_type === 'quest_completed');
+                document.getElementById('questCount').textContent = quests.length;
+
+                const list = document.getElementById('questList');
+                if (quests.length === 0) {
+                    list.innerHTML = '<span class="data-value" style="font-size: 0.85rem;">No recent quest completions</span>';
+                } else {
+                    list.innerHTML = quests.map(e => `
+                        <div class="list-row">
+                            <strong>${escapeHtml(e.detail || 'quest')}</strong>
+                            <span style="font-size:0.75rem; color:var(--text-dim);">${new Date(e.occurred_at).toLocaleTimeString()}</span>
+                        </div>
+                    `).join('');
+                }
+
+                setPanelStale('panel-quests', false);
+                return true;
+            } catch (e) {
+                setPanelStale('panel-quests', true);
+                return false;
+            }
+        }
+
         // Main Loop
         async function pollAll() {
             // Run all fetches concurrently, don't let one failure block others
@@ -759,7 +802,8 @@
                 updateSessionsData(),
                 updateDeliveryData(),
                 updateRegionsData(),
-                updateGameplayData()
+                updateGameplayData(),
+                updateQuestData()
             ]);
             
             const allSuccess = results.every(res => res === true);
