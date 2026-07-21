@@ -38,6 +38,33 @@ up?**
 Not throughput. Not average RTT. The **knee** — the frontier in the (range x objects) plane
 where the server crosses from comfortable to overrunning its tick budget.
 
+### Define the knee by variance onset, not failure onset
+
+The target here is **consistent fidelity**, not peak capacity. That distinction changes where the
+knee actually is, and it is easy to get wrong.
+
+`game.tick.overruns` marks where the budget is *breached* — but by then the experience has already
+degraded, because a frame that is merely *late sometimes* feels worse than one that is uniformly
+slower. The interesting frontier is earlier: **where p99 starts pulling away from p50.** That is
+the point at which the system stops being predictable, which is what a player perceives long before
+anything exceeds 50 ms.
+
+So record both, and report them as two separate curves:
+
+| frontier | signal | meaning |
+|---|---|---|
+| **variance onset** | p99 / p50 ratio for the `interest` phase and for total tick | it stopped being *consistent* — the knee that matters |
+| **failure onset** | first non-zero `game.tick.overruns` | it stopped *keeping up* — the hard ceiling |
+
+Expect the first to arrive meaningfully before the second. If it does not, that is itself worth
+knowing. `TickMetrics` already keeps p50/p99/max per phase over a rolling ~100-tick window, so both
+come out of the same `/tick` read at no extra cost.
+
+This is not a stylistic preference. The whole telemetry schema in `network/telemetry-and-scores.md`
+is variance-oriented — `jitter_ms` beside `rtt_ms`, `p95_frame_time_ms` beside `avg_fps`,
+`correction_count_recent`, `correction_magnitude_avg`, `time_since_last_authoritative_update_ms`.
+Measuring this system by averages would contradict the thing it was instrumented to care about.
+
 The output should be a surface, or at minimum a curve per radius: *at NearRadius = R, the
 knee is at N objects.* That number is what makes every downstream AoI decision arguable
 instead of guessed.
