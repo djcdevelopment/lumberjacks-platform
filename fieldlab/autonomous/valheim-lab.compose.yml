@@ -114,8 +114,13 @@ services:
   # does NOT start them — it brings up only valheim-server and comfy-gateway, both
   # of which are live and unaffected. Only `--profile clients` reaches this.
   #
-  # Either drive character select by hand over the noVNC console, or restore the
-  # harness from the commit above. Do not assume these collect telemetry.
+  # DECISION (2026-07-21, HANDOFF task 9): KEEP them as manual noVNC clients.
+  # They are deliberately retained — profile-gated, harmless, and useful for the
+  # two-client recipient-isolation work (HANDOFF task 6) where a human drives the
+  # joins anyway. To use one: `docker compose --profile clients up valheim-client-01`,
+  # then drive character select by hand over the noVNC console. To make them
+  # self-drive again, restore the swarm harness from commit 1887626. They are NOT
+  # deleted and NOT expected to collect telemetry on their own.
   # ---------------------------------------------------------------------------
   valheim-client-01:
     <<: *steam-client
