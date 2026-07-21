@@ -38,6 +38,28 @@ Read-only telemetry and stats, all GET-only:
 the next browser refresh after `npm run roadmap:render` — no Gateway or GCP redeploy.
 Everything else is live from the VM.
 
+## Verify it's live (no browser needed)
+
+After the tunnel is up and `docker compose up -d`, confirm the proxy is serving **live** P7
+telemetry — not a stale cache — straight from PowerShell:
+
+```powershell
+# 1. Tunnel reaches the live gateway (uptime/tick prove liveness):
+Invoke-RestMethod http://127.0.0.1:14000/api/v0/telemetry/server | Format-List current_tick,uptime_seconds
+
+# 2. Dashboard proxy forwards it (run twice — current_tick must advance):
+Invoke-RestMethod http://127.0.0.1:8080/api/v0/telemetry/server | Select current_tick, @{n='policy';e={$_.replication.policy}}
+
+# 3. community.html is served and wired to poll the API:
+(Invoke-WebRequest http://127.0.0.1:8080/community -UseBasicParsing).Content -match '/api/v0/telemetry'  # -> True
+
+# 4. Gameplay-event feed (empty until the mod producer is armed — see the plan's Increment 1):
+Invoke-RestMethod http://127.0.0.1:8080/api/v0/telemetry/events | Select count, capacity, dropped_since_start
+```
+
+A `current_tick` that advances between calls in step 2 is the live-vs-stale proof. Then open
+`http://127.0.0.1:8080/community`. Verified live against P7 (`gcp-p7`, mod 0.5.31) on 2026-07-21.
+
 ## Why the tunnel, and why widening the allowlist is not widening exposure
 
 This proxy used to point at `8.231.129.249:42317`, the VM's **public** player endpoint.
