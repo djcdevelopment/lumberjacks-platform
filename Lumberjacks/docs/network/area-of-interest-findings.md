@@ -9,7 +9,8 @@ Every claim below is marked with its provenance:
 - **MEASURED** — a number exists in a committed artifact, with the file named.
 - **IMPLEMENTED** — the behaviour is in code today; file:line given.
 - **DESIGNED** — written down as intent; never verified against a running system.
-- **GONE** — was measured, but the artifact was never committed and cannot be recovered.
+- **RECOVERED** — the artifact was never committed to this repo, but survived in a retired
+  source checkout and has since been rescued into `fieldlab/evidence/`.
 - **OPEN** — the record itself says this was never settled.
 
 Nothing here is inferred from what "should" be true. Where the evidence is missing, that is
@@ -222,26 +223,50 @@ produces means anything.
 
 ---
 
-## 6. GONE — the density-pressure matrix
+## 6. RECOVERED — the density-pressure matrix, and why it produced nothing
+
+> **Correction, 2026-07-21.** An earlier revision of this section said this data was GONE.
+> That was wrong. All three artifacts survived in `C:\work\comfy\network\mcp\var\matrix\` —
+> a gitignored var directory in a retired source repo — and are now committed at
+> [`fieldlab/evidence/aoi-density-pressure-matrix-20260704/`](../../../fieldlab/evidence/aoi-density-pressure-matrix-20260704/README.md).
+> The lesson stands but changes shape: **"not tracked in git" is not the same as "lost"**,
+> because the retired checkouts are themselves an archive. Check them before declaring
+> anything unrecoverable.
 
 Between 2026-07-04 and 07-07 a swarm-driven collector was built for an
 "era16-density-pressure-matrix": each client checked out a cell (a density band coordinate,
-an **observer range offset**, an event profile, a benchmark window), ran it, and reported.
-Observer range offset is the AoI knob; this was an AoI tuning campaign.
+an **observer range offset**, an event profile, a 60 s benchmark window), ran it, and
+reported. Observer range offset is the AoI knob; this was an AoI tuning campaign.
 
-**Its data is not recoverable:**
+Having recovered it, the far more useful finding is **why it produced nothing to incorporate**:
 
-- `modeled-pressure-matrix.csv` (the modeled baseline) — never tracked in git.
-- `results.jsonl` (the collected reports) — never tracked in git.
-- `plan.json` (run state) — absent; `network/mcp/var/matrix/` does not exist.
+| Artifact | Content | Status |
+|---|---|---|
+| `modeled-pressure-matrix.csv` | 9,600 rows: density bands x observer ranges x event profiles, with `estimated_udp_kbps`, `interest_bucket`, `priority_expectation` | **MODELED** — every number a prediction, none observed |
+| `plan.json` | 96 cells | **1 done, 1 assigned, 94 pending** |
+| `results.jsonl` | 1,000 rows | **998 simulated** (`sim-viking01..30`, each carrying a `sim` key), 1 smoke row, **1 real capture** |
 
-The client half was deleted 2026-07-21 (`SWARM-HARNESS-REMOVED.md`); the server half is
-`network/mcp/comfy_gateway/toolsurface/matrix.py`. **Deleting the code lost nothing that the
-missing data had not already lost.** But whatever that campaign found about observer range
-versus density is gone and would have to be re-collected.
+And the single real capture — cell `open_control.self.movement_only`, `avg_fps 12.03`,
+`p95_frame_time_ms 16.4` — reports `rtt_ms: 0`, `jitter_ms: 0`, `bytes_in_per_sec: 0`,
+`bytes_out_per_sec: 0`, `packets_in_per_sec: 0`, `packets_out_per_sec: 0`, `mode: Solo`.
 
-This is the concrete cost of writing results to a gitignored var directory. If we re-run it,
-**commit the results.**
+**The client was never connected.** So even the one real sample measured no network traffic.
+
+The campaign therefore produced **zero networked AoI measurements**. That is the precise
+answer to "we tested so much and none of it got incorporated", for this campaign: the
+harness was built, modeled and dry-run proven, and then stopped before producing anything
+that *could* have been incorporated. Not neglect — an unfinished run.
+
+It is also the §5 trap in its worst form. Stationary bots cross no boundaries; a
+disconnected client does not even generate traffic to filter.
+
+**What this leaves us with:** a complete, entirely unvalidated 9,600-row model of AoI
+pressure, and a harness proven to move data end to end. That is a better starting position
+than nothing — but the model has never once been checked against an observation.
+
+The client half of the harness was deleted 2026-07-21 (`SWARM-HARNESS-REMOVED.md`,
+recoverable at `1887626`); the server half remains at
+`network/mcp/comfy_gateway/toolsurface/matrix.py`.
 
 ---
 
@@ -287,12 +312,31 @@ Derived only from gaps evidenced above.
    performance problem.
 6. **Fix the O(players squared) subscription scan** before any many-player claim. It is per
    region, per sample tick.
-7. **Instrument first.** `InterestManager` emits no counters and no metrics — nothing
-   measures filtered-vs-sent, band populations, or boundary crossings. Any tuning campaign
-   without this is blind, which is part of how the last one produced nothing durable.
+7. ~~**Instrument first.**~~ **Correction 2026-07-21: the instrumentation already exists,
+   one layer up.** `InterestManager` itself emits nothing, which is what an earlier revision
+   of this document reported — but the system around it is well instrumented, and a tuning
+   campaign is *not* blind:
+   - `TickMetrics.TickBudgetMs = 50.0` and the `game.tick.overruns` counter
+     (`TickMetrics.cs:205`) — a tick exceeding budget is recorded. **This is a knee
+     detector.**
+   - The `game.tick.duration` histogram is tagged **per phase**, and the phases separate
+     `interest` from `send` (`TickMetrics.cs:191`), so AoI filter cost is measurable in
+     isolation from transmission cost.
+   - `TickBroadcaster.cs:342` calls `RecordReplication(entitiesSent, entitiesCulled)` —
+     **filtered-vs-sent is already counted.**
+   - `RecordDegraded` records whether adaptive degrade fired.
+   - All of it is exposed over HTTP through `/tick` and the v0 telemetry endpoints, as a
+     rolling 100-tick window (~5 s at 20 Hz) reduced to p50/p99/max.
+
+   What is missing is not instrumentation but **band-population** detail: how many entities
+   sat in near vs mid vs far. That is one counter away.
 8. **Test under density.** Existing tests pin set membership and fallback correctness only.
    There is no test with many entities, many clients, or boundary churn.
-9. **Re-run the density campaign, and commit the results this time.**
+9. **Finish the density campaign — 94 of its 96 cells never ran.** The model
+   (`fieldlab/evidence/aoi-density-pressure-matrix-20260704/`) has 9,600 predicted rows and
+   zero observations against it. Reject any sample whose `rtt_ms` and `bytes_in_per_sec` are
+   both zero at capture time; that single check would have caught the 2026-07-04 run on its
+   first cell instead of three months later.
 
 ## 9. Provenance notes
 
