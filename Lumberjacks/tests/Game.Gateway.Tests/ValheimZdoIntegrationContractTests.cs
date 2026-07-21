@@ -13,15 +13,21 @@ public sealed class ValheimZdoIntegrationContractTests
         var admitted = ValheimZdoRedirectAdmissionPolicy.Evaluate(2, Release, Release);
         var wrong = ValheimZdoRedirectAdmissionPolicy.Evaluate(2, "m4-integration-20260719-r0", Release);
         var missing = ValheimZdoRedirectAdmissionPolicy.Evaluate(2, null, Release);
-        var unconfigured = ValheimZdoRedirectAdmissionPolicy.Evaluate(2, Release, null);
+        var uncut = ValheimZdoRedirectAdmissionPolicy.Evaluate(2, Release, null);
 
         Assert.True(admitted.Allowed);
         Assert.False(wrong.Allowed);
         Assert.Equal("mod_release_incompatible", wrong.Error);
         Assert.Equal(409, wrong.StatusCode);
         Assert.Equal("mod_release_required", missing.Error);
-        Assert.Equal("release_admission_unconfigured", unconfigured.Error);
-        Assert.Equal(503, unconfigured.StatusCode);
+
+        // An uncut Gateway (null baked release) now ADMITS schema-2 submissions unattested rather
+        // than returning 503 release_admission_unconfigured — mirroring the handshake's fail-open on
+        // a null baked id, so a dev build does not connect cleanly and then have every ZDO rejected.
+        // This assertion was changed deliberately from the old 503 contract. (HANDOFF task 2.)
+        Assert.True(uncut.Allowed);
+        Assert.True(uncut.LegacyUnadmitted);
+        Assert.Null(uncut.AdmittedRelease);
     }
 
     [Fact]
