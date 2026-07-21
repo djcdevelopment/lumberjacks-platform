@@ -5,16 +5,16 @@ using Game.ServiceDefaults;
 namespace Game.Gateway.Valheim;
 
 /// <summary>
-/// Mod → gateway ingress for first-class gameplay events (first_hit, killing_blow, weapon_used),
-/// produced by the ComfyNetworkSense <c>GameplayEventProducer</c>. Mirrors the in-process
-/// emission seam <see cref="TickBroadcaster"/> already uses, but sourced from the mod instead of
-/// the simulation: capture the public-safe projection into <see cref="GameplayEventFeed"/>
+/// Mod → gateway ingress for first-class gameplay events (first_hit, killing_blow, weapon_used,
+/// quest_completed), produced by the ComfyNetworkSense <c>GameplayEventProducer</c>. Mirrors the
+/// in-process emission seam <see cref="TickBroadcaster"/> already uses, but sourced from the mod
+/// instead of the simulation: capture the public-safe projection into <see cref="GameplayEventFeed"/>
 /// (drives <c>GET /api/v0/telemetry/events</c>), then fire-and-forget the FULL identifying event
 /// to the out-of-process EventLog. Gated by <c>ValheimClientAccessMiddleware</c> as
 /// <see cref="ValheimCapability.Producer"/> — only the server-side mod on the private Docker
-/// plane may post (a public enrolled client cannot spoof gameplay events). The producer runs
-/// server-side, hooking creature damage where the server owns the creature, so it attributes via
-/// <c>HitData.GetAttacker()</c> rather than a (headless-null) local player.
+/// plane may post (a public enrolled client cannot spoof gameplay events). Capture runs CLIENT-side
+/// (the client owns the creature it fights — ADR 0012) and the event is relayed to the server over a
+/// routed RPC; the server-side handler is the sole peer on the private plane, so it does the POST.
 /// </summary>
 public static class ValheimGameplayEventEndpoints
 {
@@ -25,6 +25,7 @@ public static class ValheimGameplayEventEndpoints
         EventType.FirstHit,
         EventType.KillingBlow,
         EventType.WeaponUsed,
+        EventType.QuestCompleted,
     };
 
     public static void Map(WebApplication app)
@@ -41,7 +42,7 @@ public static class ValheimGameplayEventEndpoints
             {
                 return Results.BadRequest(new
                 {
-                    error = "event_type is required and must be one of: first_hit, killing_blow, weapon_used",
+                    error = "event_type is required and must be one of: first_hit, killing_blow, weapon_used, quest_completed",
                 });
             }
 

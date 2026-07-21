@@ -65,6 +65,9 @@ public static class GameplayEventFeed
         EventType.FirstHit,
         EventType.KillingBlow,
         EventType.WeaponUsed,
+        // Quest completion (quest-evaluator track). Public-safe: the projection carries only the
+        // quest name as detail (never the acting player); quest_id/guild/command ride the EventLog.
+        EventType.QuestCompleted,
     };
 
     private static readonly object Gate = new();

@@ -40,6 +40,7 @@ public static class EventType
     public const string FirstHit = "first_hit";
     public const string KillingBlow = "killing_blow";
     public const string WeaponUsed = "weapon_used";
+    public const string QuestCompleted = "quest_completed";
 
     // Operational events
     public const string RegionActivated = "region_activated";
@@ -57,7 +58,7 @@ public static class EventType
         ItemPickedUp, ItemStored, RoadSegmentMaintained, SettlementSignatureUpdated,
         ChallengeStarted, ChallengeCompleted, GuildObjectiveProgressed, GuildObjectiveCompleted,
         RewardGranted, DiscordIdentityLinked, DiscordRoleSyncRequested, DiscordRoleSynced,
-        FirstHit, KillingBlow, WeaponUsed,
+        FirstHit, KillingBlow, WeaponUsed, QuestCompleted,
         RegionActivated, RegionDeactivated, InterestSubscriptionChanged,
         EdgeNodeRegistered, EdgeNodeUnhealthy, EdgeNodeDetached,
     ];
