@@ -3,6 +3,11 @@ using Game.Contracts.Protocol;
 
 namespace Game.Contracts.Valheim;
 
+// ReachMeters: how far this object should remain PRESENT to an observer — the landmark-reach
+// primitive (landmark-reach-design.md). Distinct from DistanceMeters (how far the observer was when
+// sampled): reach is an authored, granted property, not an observation. 0 = not a landmark. It rides
+// the reliable-lane announcement, so a client can spawn a far-field proxy without the real build ever
+// being replicated at range. Enforcement of the same idea lives mod-side in ZdoIntegrationContract.
 public sealed record ValheimPriorityObject(
     string StableKey,
     string ObjectName,
@@ -13,7 +18,8 @@ public sealed record ValheimPriorityObject(
     double DistanceMeters,
     string RouteStopId,
     string SampleId,
-    Vec3 Position);
+    Vec3 Position,
+    double ReachMeters = 0);
 
 public sealed record ValheimPriorityDeliveryItem(
     string StableKey,
@@ -27,7 +33,8 @@ public sealed record ValheimPriorityDeliveryItem(
     int DeliveryOrder,
     string RouteStopId,
     string SampleId,
-    Vec3 Position);
+    Vec3 Position,
+    double ReachMeters = 0);
 
 public sealed record ValheimPriorityDeliveryPlan(
     IReadOnlyList<ValheimPriorityDeliveryItem> Reliable,
@@ -120,5 +127,6 @@ public static class ValheimPriorityDeliveryPlanner
             deliveryOrder,
             item.RouteStopId,
             item.SampleId,
-            item.Position);
+            item.Position,
+            item.ReachMeters);
 }

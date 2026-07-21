@@ -67,7 +67,34 @@ public class ValheimPriorityDeliveryPlannerTests
         Assert.Equal(new[] { "c" }, plan.Deferred.Select(i => i.StableKey));
     }
 
-    private static ValheimPriorityObject Obj(string key, string tier, int rank, int order, double distance) =>
+    [Fact]
+    public void CreatePlan_carries_landmark_reach_through_to_the_delivery_item()
+    {
+        // Reach is an authored property that must survive dedup + lane assignment onto the
+        // reliable-lane announcement — the client needs it to size the far-field proxy.
+        var plan = ValheimPriorityDeliveryPlanner.CreatePlan(
+            new[] { Obj("lighthouse", "structural_anchor", 2, 1, 10, reach: 1500) },
+            reliableBudget: 4,
+            datagramBudget: 4);
+
+        var item = Assert.Single(plan.Reliable);
+        Assert.Equal(1500, item.ReachMeters);
+        Assert.Equal(DeliveryLane.Reliable, item.Lane); // a landmark rides the region-wide reliable lane
+    }
+
+    [Fact]
+    public void CreatePlan_defaults_reach_to_zero_for_unmarked_objects()
+    {
+        var plan = ValheimPriorityDeliveryPlanner.CreatePlan(
+            new[] { Obj("rug", "decorative_far", 6, 1, 10) },
+            reliableBudget: 4,
+            datagramBudget: 4);
+
+        Assert.Equal(0, Assert.Single(plan.Datagram).ReachMeters);
+    }
+
+    private static ValheimPriorityObject Obj(
+        string key, string tier, int rank, int order, double distance, double reach = 0) =>
         new(
             StableKey: key,
             ObjectName: key,
@@ -78,5 +105,6 @@ public class ValheimPriorityDeliveryPlannerTests
             DistanceMeters: distance,
             RouteStopId: "route",
             SampleId: "sample",
-            Position: new Vec3(distance, 0, 0));
+            Position: new Vec3(distance, 0, 0),
+            ReachMeters: reach);
 }
