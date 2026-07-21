@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T07:59:22.211Z</span>
+        <span>Updated 2026-07-21T08:08:24.863Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721075922-corrected-the-drill-runbook-the-three-sibling-se">
+        <div class="journal"><article class="journal-entry" id="note-20260721080824-re-provisioned-comfy-lumberjacks-p7-from-baselin">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T08:08:24.863Z">2026-07-21T08:08:24.863Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Re-provisioned comfy-lumberjacks-p7 from baseline; all five services now gated</h3>
+      <p><strong>Impact:</strong> Plan step 6. The VM&#39;s deployment source was a checkout of the RETIRED comfy repo at 8ca27eda with 471 dirty files, and its compose still built eventlog/progression/operatorapi from VM-local source - so the five-service release gate existed in the repo but had never existed on the VM. /opt/comfy is now a baseline checkout at ecbd6e3, compose pins all five by digest with no build: fallback, and the three sibling images were transported as OCI archives from the v3 bundle. The VM has no GitHub credentials, so history moved as a 24 MB incremental git bundle rather than a fetch - 8ca27eda turned out to be a genuine ancestor of baseline main, 232 commits back. Cut a v3 manifest for the release: gateway image and mod DLL are the original m5 artifacts carried forward unchanged, since the .NET 8 SDK embeds the git HEAD sha in the PDB and the mod therefore cannot be rebuilt to its shipped hash at any later commit.</p>
+      <details><summary>Verification (4)</summary><ul><li>All four gated services report the exact manifest image ids after a systemctl restart, which is the reboot path (docker compose up -d, EnvironmentFile= only, no override file)</li><li>Mod DLL is 035faa87 at both the runtime and fallback paths, matching the world-tested artifact</li><li>Gateway health ok internally and publicly; eventlog/progression/operatorapi all 200; four dashboards 200</li><li>Authoritative window empty and healthy: persistence_healthy true, 0 receipts, 0 pending, 0 consumers</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/docs/roadmap/m5-v3-reprovision-receipt.json</code> <code>Lumberjacks/docs/roadmap/m5-recipients-build-candidate-v3.json</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721075922-corrected-the-drill-runbook-the-three-sibling-se">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

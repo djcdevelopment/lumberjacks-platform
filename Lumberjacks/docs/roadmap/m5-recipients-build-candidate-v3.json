@@ -1,0 +1,86 @@
+{
+  "schema": "comfy-p7-release/v3-candidate",
+  "release_id": "m5-recipients-20260720-r1",
+  "captured_utc": "2026-07-21T08:05:00Z",
+  "source": {
+    "baseline_commit": "807769a9523a363877e25eb4f0d5c7eeaba5ebec",
+    "baseline_clean": true
+  },
+  "artifact_provenance": {
+    "note": "Mixed provenance, deliberately. This is the v3 re-cut of an already world-tested release: the gateway image and mod DLL are the ORIGINAL m5 artifacts, byte-for-byte, built before the monorepo cutover. Only the three sibling images are new, built at baseline_commit above. Rebuilding the gateway/mod at baseline_commit would produce different bytes and would NOT be the thing that was world-tested.",
+    "gateway_and_mod_built_at": {
+      "comfy_commit": "8ca27eda0c332dd94af1d899957bcf8869343a16",
+      "lumberjacks_commit": "1d801e7c88767bf31f49bf0cd281e6ecb04aea2a"
+    },
+    "siblings_built_at": "807769a9523a363877e25eb4f0d5c7eeaba5ebec",
+    "equivalence": "Both pre-cutover commits landed in baseline unmodified (comfy at root, Lumberjacks under Lumberjacks/ via subtree), so baseline_commit's tree is source-equivalent for all five services even where the binaries predate it."
+  },
+  "build_contract": {
+    "continuous_integration_build": true,
+    "deterministic": false,
+    "path_map": "fixed repository source roots",
+    "mod_repeatability": "NOT rebuildable at baseline_commit. The .NET 8 SDK's implicit source-control tasks embed the git HEAD sha in the portable PDB, whose checksum rides in the DLL's debug directory, so the mod DLL hash changes on every commit with unchanged source. Confirmed 2026-07-21: rebuilding at baseline_commit yields 2d43f8a957a44e2dc549dd26dcf6f208f8e5722bdfdc0d71aa396a5addc2f3ec, not the shipped 035faa87. The shipped DLL is the artifact; the bundle carries it.",
+    "gateway_reproducibility": "image payload is the reproducibility unit (Lumberjacks c34b255): .dockerignore excludes .git so the build stage cannot query the repository",
+    "sibling_reproducibility": "eventlog/progression/operatorapi were built from baseline_commit's Lumberjacks/src via docker build --target <svc>, same .dockerignore rule, so they are reproducible from this commit."
+  },
+  "mod": {
+    "version": "0.5.31.0",
+    "release_id": "m5-recipients-20260720-r1",
+    "clean_build_sha256": "035faa8793114c75ccb4295e219a6c10a91250a3a4f3764e70aed499a32a0dfd",
+    "frozen": false,
+    "unfreeze_note": "This release UNFREEZES the 0.5.31 artifact that m1-clean-20260717-r1 pinned. Deliberate: the mod had to change to stamp the destination peer. Guest packages pinned to the old hash must be reissued.",
+    "supersedes_mod_sha256": "94a3843ef8042adceaca6bc4d5c0c38c7c8dc5a1aa05b5f2a3019879840ba3a8",
+    "build_command": "New-ReleaseCut.ps1 -ReleaseId m5-recipients-20260720-r1 (pre-cutover; artifact carried forward unchanged)"
+  },
+  "gateway": {
+    "image_id": "sha256:69e025e8c13bc7ce01a21a054c9dcb42478415531d727e8b55b4b2d37ca7b38b",
+    "image_release_id": "m5-recipients-20260720-r1",
+    "admitted_mod_release": "m5-recipients-20260720-r1",
+    "release_label": "m5-recipients-20260720-r1",
+    "revision_label": "1d801e7",
+    "clean_start_health": "PASS",
+    "identity_check": "Test-GatewayImageRelease.ps1 read /app/Game.Gateway.dll FROM the built image and confirmed it admits m5-recipients-20260720-r1",
+    "build_command": "New-ReleaseCut.ps1 -ReleaseId m5-recipients-20260720-r1 (pre-cutover; artifact carried forward unchanged)"
+  },
+  "eventlog": {
+    "image_id": "sha256:501537285f89052991a62201969117557005c03ddfd280086bde81ce8e8593e4",
+    "release_label": "m5-recipients-20260720-r1",
+    "gate": "build+hash+pin, no admission check - nothing else has to agree with it",
+    "build_command": "docker build --target eventlog -t lumberjacks-eventlog:m5-recipients-20260720-r1 . (from Lumberjacks/ at baseline_commit)"
+  },
+  "progression": {
+    "image_id": "sha256:1700513587ae259d7447caba267c90213c5249ce7da50408f65648a2bf4872bc",
+    "release_label": "m5-recipients-20260720-r1",
+    "gate": "build+hash+pin, no admission check - nothing else has to agree with it",
+    "build_command": "docker build --target progression -t lumberjacks-progression:m5-recipients-20260720-r1 . (from Lumberjacks/ at baseline_commit)"
+  },
+  "operatorapi": {
+    "image_id": "sha256:cec85d9272530a13b9c1e5217ef8864f0bffd4dc8fc89a18d2236d75482761a7",
+    "release_label": "m5-recipients-20260720-r1",
+    "gate": "build+hash+pin, no admission check - nothing else has to agree with it",
+    "build_command": "docker build --target operatorapi -t lumberjacks-operatorapi:${RELEASE_LABEL} . (from Lumberjacks/ at baseline_commit)"
+  },
+  "runtime_config": {
+    "note": "This release is only coherent with these settings. They are NOT carried by the image and must move with it.",
+    "ValheimQueue__ProducerEmitsRecipients": "true",
+    "compose_reference_required": "infra/gcp/p7/docker-compose.yml must map ValheimQueue__ProducerEmitsRecipients from the environment file, which is read by the compose process and reaches the container through nothing else",
+    "strict_roster_enabled": "true, but IN-MEMORY ONLY - the handshake config endpoint re-arms it and every container recreate silently disarms it"
+  },
+  "toolchain": {
+    "mod_sdk": "8.0.422",
+    "gateway_sdk_digest": "sha256:24fe7c00719afc72e2b67cace264dea2ee39ae45f5b553bd59493fe3ddfc920f",
+    "gateway_aspnet_digest": "sha256:8b9f90e53d41154d42e537517aef22e8fe497baabd43e423d5f2edafd06f04f6"
+  },
+  "deployment": {
+    "world_tested": "Real player session 2026-07-21 against the v2 cut of this release: server stamped the destination peer, Gateway mapped it to the enrolled opaque recipient, and the client drained its own partition with populated correlation ids.",
+    "target": "comfy-lumberjacks-p7 (GCP, us-west1-b)",
+    "method": "Release bundle: docker save of all five images + mod DLL, transported by run-promotion-drill.ps1 and pinned by digest. Supersedes the v2 cut's hand-copied deployment.",
+    "reproducibility_gap_closed": "The v2 cut recorded that /opt/comfy on the VM is not a git checkout, so the running compose had no provenance and a rebuild would not reproduce it. This v3 cut exists to close that: every gated service is now pinned by digest from a validated bundle built at a named baseline commit."
+  },
+  "limitations": [
+    "Two-consumer isolation is UNTESTED. Pinned deliberately until volunteers exist. All observed envelopes were structural_anchor with a single consumer.",
+    "Rollback is a re-pin plus reinstalling the superseded mod hash, never a rebuild. Rolling the Gateway back WITHOUT rolling the mod back leaves recipients stamped and the flag honoured by an older image - verify both halves move together.",
+    "The gateway image and mod DLL in this bundle cannot be rebuilt from baseline_commit; see build_contract. They are carried forward as artifacts. Only the three sibling images are reproducible from this commit.",
+    "This v3 manifest has not itself been world-tested. The v2 cut of the same release was. Re-testing after the re-provision is the point of the exercise."
+  ]
+}

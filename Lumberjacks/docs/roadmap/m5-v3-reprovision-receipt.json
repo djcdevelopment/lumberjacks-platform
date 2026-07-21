@@ -1,0 +1,48 @@
+{
+  "schema": "comfy-p7-reprovision/v1",
+  "release_id": "m5-recipients-20260720-r1",
+  "manifest": "Lumberjacks/docs/roadmap/m5-recipients-build-candidate-v3.json",
+  "completed_utc": "2026-07-21T08:07:00Z",
+  "goal": "Plan step 6: re-provision comfy-lumberjacks-p7 from baseline and confirm it reproduces what was world-tested in m5-recipients-20260720-r1.",
+  "what_changed_on_the_vm": {
+    "deployment_source": "/opt/comfy was a checkout of the RETIRED djcdevelopment/comfy.git at 8ca27eda with 471 dirty files; it is now a baseline checkout at ecbd6e3 on branch main, working tree clean apart from two inert untracked files (.terraform.lock.hcl, docker-compose.yml.bak-pre-m5).",
+    "transport": "The VM has no GitHub credentials (git fetch failed: could not read Username). History moved as a 24 MB INCREMENTAL git bundle instead: 8ca27eda proved to be a genuine ancestor of baseline main, 232 commits back, so only the delta had to travel. Real commits, real history, no credentials on the VM.",
+    "compose": "docker-compose.yml now pins all five services by digest with no build: fallback. Verified byte-identical to the repo copy (sha256 88caf504dc99af18b7c499a87b9bc0be7218db06f52b6b47fa9c28100598ec6e, LF-normalized).",
+    "environment": "/etc/comfy-p7/environment gained LUMBERJACKS_EVENTLOG_IMAGE, _PROGRESSION_IMAGE and _OPERATORAPI_IMAGE; still 0600 root:root.",
+    "images": "eventlog/progression/operatorapi transported as OCI archives from the v3 bundle and docker load-ed. Gateway image was already present from the m5 world test."
+  },
+  "verified": {
+    "running_image_ids": {
+      "gateway": "sha256:69e025e8c13bc7ce01a21a054c9dcb42478415531d727e8b55b4b2d37ca7b38b",
+      "eventlog": "sha256:501537285f89052991a62201969117557005c03ddfd280086bde81ce8e8593e4",
+      "progression": "sha256:1700513587ae259d7447caba267c90213c5249ce7da50408f65648a2bf4872bc",
+      "operatorapi": "sha256:cec85d9272530a13b9c1e5217ef8864f0bffd4dc8fc89a18d2236d75482761a7"
+    },
+    "all_four_match_manifest": true,
+    "mod_sha256_runtime": "035faa8793114c75ccb4295e219a6c10a91250a3a4f3764e70aed499a32a0dfd",
+    "mod_sha256_fallback": "035faa8793114c75ccb4295e219a6c10a91250a3a4f3764e70aed499a32a0dfd",
+    "reboot_path": "PROVED. systemctl restart comfy-lumberjacks-p7.service runs `docker compose up -d` with no --env-file, resolving only through EnvironmentFile=. All four gated services came back on the exact manifest digests, so the durable pin is real and not an override artifact.",
+    "gateway_health": "ok, internally on 4000 and publicly on 8.231.129.249:42317",
+    "sibling_health": "eventlog 4002, progression 4003, operatorapi 4004 all return 200",
+    "dashboards": "community, networksense, events, testing all 200",
+    "authoritative_window": "empty and healthy: persistence_healthy true, durable_queue true, 0 receipts, 0 pending, 0 active consumers",
+    "release_coherence_flags": {
+      "VALHEIM_QUEUE_PRODUCER_EMITS_RECIPIENTS": "true",
+      "COMFY_NETWORKSENSE_VERSION": "0.5.31",
+      "COMFY_LUMBERJACKS_CUTOVER_MODE": "lumberjacks-primary"
+    }
+  },
+  "rollback": {
+    "full_backup": "/mnt/comfy-p7/backups/reprovision-20260721/opt-comfy.tgz (plus environment and docker-compose.yml, hashes in backup.sha256)",
+    "environment": "/etc/comfy-p7/environment.bak-prereprovision",
+    "git": "The pre-cutover comfy commit is retained as local branch 'master' at 8ca27eda; `git checkout -f master` restores the old deployment source in one command.",
+    "note": "Rolling back the deployment source does NOT roll back the loaded images or the env pins; those are additive and harmless to leave."
+  },
+  "not_done": {
+    "world_test": "NOT DONE. Requires a real player session (README sections 7-9). Telemetry currently reads stale/heartbeat_stale because no client is connected; that is expected, not a fault.",
+    "strict_roster": "DISARMED. It is in-memory only and the systemd restart recreated every container. Re-arm via POST /valheim/handshake/config before any strict evidence window. Deliberately left disarmed so it cannot block a join.",
+    "promotion_drill": "run-promotion-drill.ps1 -Execute has NOT been run against this release. The re-provision used a direct deploy; the drill remains the separate rollback-discipline proof.",
+    "vm_self_update": "The VM cannot git fetch from GitHub (no credentials). A deploy key would be needed for the VM to update itself; today every update travels as a bundle or an OCI archive."
+  },
+  "wal_bytes_observed": 416658594
+}
