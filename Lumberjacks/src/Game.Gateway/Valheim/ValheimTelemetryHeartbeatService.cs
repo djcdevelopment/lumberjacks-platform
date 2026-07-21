@@ -165,6 +165,26 @@ public sealed class ValheimTelemetryHeartbeatService
             consumer.Pending == 0;
     }
 
+    /// <summary>
+    /// Records liveness, then answers whether the beat is admissible. The order is the
+    /// point and is why this is one method rather than two calls at the endpoint: a
+    /// rejected heartbeat is still proof the server is alive and reporting, so it must
+    /// refresh <c>_lastSeen</c>. Skipping <see cref="Record"/> on rejection let the 15s
+    /// staleness clock run out under sustained load — the coverage figures that prove the
+    /// cutover is working froze at their last admitted values and the dashboard headline
+    /// flipped to "stale", while the redirect and consumer counters beside them kept
+    /// updating live off their own services. <see cref="CutoverSnapshot"/> recomputes
+    /// <see cref="IsAuthoritativeComplete"/> per request, so recording a rejected beat
+    /// cannot make the dashboard claim completeness; it reads "fresh but draining", which
+    /// is the truth. Same reasoning as the <c>PeerCount == 0</c> carve-out below.
+    /// </summary>
+    public bool RecordAndAdmit(ValheimTelemetryHeartbeat heartbeat,
+        ValheimZdoRedirectService redirects, ValheimZdoConsumerTelemetryService consumers)
+    {
+        Record(heartbeat);
+        return CanAcceptPrimaryHeartbeat(heartbeat, redirects, consumers);
+    }
+
     public bool CanAcceptPrimaryHeartbeat(ValheimTelemetryHeartbeat heartbeat,
         ValheimZdoRedirectService redirects, ValheimZdoConsumerTelemetryService consumers)
     {

@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T10:07:33.502Z</span>
+        <span>Updated 2026-07-21T10:17:52.113Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721100733-repointed-every-retired-checkout-root-reference-">
+        <div class="journal"><article class="journal-entry" id="note-20260721101752-separated-heartbeat-liveness-from-primary-admiss">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T10:17:52.113Z">2026-07-21T10:17:52.113Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>baseline</span>
+        <span>M1</span>
+      </div>
+      <h3>Separated heartbeat liveness from primary admission; the gate stays strict</h3>
+      <p><strong>Impact:</strong> The telemetry endpoint returned 409 for a lumberjacks-primary heartbeat before calling Record, so a rejected beat never advanced _lastSeen. Under sustained load with peers connected - exactly when a session is busiest - every beat is rejected, the 15s staleness clock runs out, and the dashboard goes stale. What actually degraded was narrower and stranger than going blind: CutoverSnapshot reads its queue counters live from the redirect and consumer services, so pending, active_consumers and consumer_draining kept updating, while everything sourced from the last admitted beat - coverage_total, coverage_lumberjacks, coverage_native_only, mode, mod_version - froze. The coverage figures that prove the cutover is working were the ones that stopped moving, next to queue counters that visibly did not. The gate itself was left alone: a backlogged primary genuinely is not a fully authoritative window, and the 409 is the honest answer. RecordAndAdmit now records liveness and then answers admissibility, and the endpoint calls that one method rather than ordering two calls itself, because line order inside a lambda is what regressed here. Malformed beats are still never recorded - the 400 checks run ahead of admission. Both community pages already preferred consumer_draining over the stale headline, so they were written expecting a state the gate had made unreachable. Checked before landing that nothing gates on EnrollmentSnapshot.state, which now reads advertised rather than stale during backlog.</p>
+      <details><summary>Verification (3)</summary><ul><li>New test RejectedPrimaryHeartbeatStillRefreshesLiveness was run against the old gate-then-record order and fails there (stale was True), so it catches the regression rather than merely passing</li><li>dotnet test Game.sln: 528/528 pass, up from 525/525 with three new tests</li><li>Grepped every consumer of stale/heartbeat_stale/advertised across cs, ts, js, html and py: no caller gates on the enrollment state string</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/docs/adr/0008-liveness-is-not-admission.md</code> <code>Lumberjacks/src/Game.Gateway/Valheim/ValheimTelemetryHeartbeatService.cs</code> <code>Lumberjacks/tests/Game.Gateway.Tests/ValheimZdoAuthoritativeTelemetryTests.cs</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721100733-repointed-every-retired-checkout-root-reference-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

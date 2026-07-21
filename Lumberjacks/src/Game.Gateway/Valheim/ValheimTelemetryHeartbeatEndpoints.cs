@@ -37,7 +37,9 @@ public static class ValheimTelemetryHeartbeatEndpoints
                 });
             }
 
-            if (!service.CanAcceptPrimaryHeartbeat(heartbeat, redirects, consumers))
+            // Records liveness first, then gates acceptance — a rejected beat still keeps the
+            // dashboard fresh. See ValheimTelemetryHeartbeatService.RecordAndAdmit.
+            if (!service.RecordAndAdmit(heartbeat, redirects, consumers))
             {
                 return Results.Conflict(new
                 {
@@ -47,7 +49,6 @@ public static class ValheimTelemetryHeartbeatEndpoints
                 });
             }
 
-            service.Record(heartbeat);
             return Results.Ok(new { ok = true, received_at = DateTimeOffset.UtcNow });
         }).RequireRateLimiting("telemetry");
 

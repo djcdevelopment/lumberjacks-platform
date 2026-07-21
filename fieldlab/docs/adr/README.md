@@ -13,6 +13,7 @@ Format follows the standard Status / Context / Decision / Consequences shape.
 | [0005](0005-carry-forward-unreproducible-artifacts.md) | Carry forward an unreproducible release artifact rather than rebuild it | Accepted | M5/cutover |
 | [0006](0006-git-bundle-transport-no-vm-credentials.md) | Move repo history to the P7 VM by `git bundle`; keep no credentials on the box | Accepted | M5/cutover |
 | [0007](0007-prune-audit-signal-discipline.md) | Choose prune signals after checking what the merge did to them; exclude proven-live code | Accepted | repo curation |
+| [0008](0008-liveness-is-not-admission.md) | Record heartbeat liveness before admission; keep the primary gate strict | Accepted | M1/telemetry |
 
 Canon: `../../GROUND-TRUTH.md` (state) · `../../TEST-PROGRAM.md` (plan) ·
 `../../VALHEIM-NETCODE-REPLACEMENT-WORKLOG.md` (I-ladder). Retros: `../../retro/`.

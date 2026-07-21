@@ -393,6 +393,99 @@ public sealed class ValheimZdoAuthoritativeTelemetryTests
         Assert.Equal(4, status.Pending);
     }
 
+    /// <summary>
+    /// The load-blindness case: a busy primary is rejected (409) yet must still refresh
+    /// liveness, or the 15s staleness clock runs out and the coverage figures that prove the
+    /// cutover is working freeze at their last admitted values — while the queue counters
+    /// beside them keep updating live off their own services, so the dashboard contradicts
+    /// itself exactly when an operator is watching it under load.
+    /// </summary>
+    [Fact]
+    public void RejectedPrimaryHeartbeatStillRefreshesLiveness()
+    {
+        var heartbeat = new ValheimTelemetryHeartbeatService();
+        var redirects = new ValheimZdoRedirectService();
+        var consumers = new ValheimZdoConsumerTelemetryService();
+
+        // Two envelopes out, none acknowledged: a real backlog, so admission must fail.
+        redirects.RecordEnvelopes(Window, "server", [Envelope(1), Envelope(2)]);
+        consumers.Record(Consumer(applied: 2, acknowledged: 2));
+
+        Assert.False(heartbeat.RecordAndAdmit(Primary(coverageTotal: 100), redirects, consumers));
+
+        var snapshot = Snapshot(heartbeat.CutoverSnapshot(redirects, consumers));
+        Assert.False(snapshot.GetProperty("stale").GetBoolean());
+        Assert.False(snapshot.GetProperty("heartbeat_stale").GetBoolean());
+
+        // Fresh, and honest about why it was rejected: draining, not complete.
+        Assert.True(snapshot.GetProperty("consumer_draining").GetBoolean());
+        Assert.False(snapshot.GetProperty("authoritative_window").GetProperty("complete").GetBoolean());
+        Assert.Equal(2, snapshot.GetProperty("authoritative_window").GetProperty("pending").GetInt64());
+
+        // The coverage figures from the rejected beat are visible rather than frozen.
+        Assert.Equal(100, snapshot.GetProperty("coverage_total").GetInt64());
+        Assert.Equal(0, snapshot.GetProperty("coverage_native_only").GetInt64());
+    }
+
+    [Fact]
+    public void AdmittedPrimaryHeartbeatReportsAFullyAppliedWindow()
+    {
+        var heartbeat = new ValheimTelemetryHeartbeatService();
+        var redirects = new ValheimZdoRedirectService();
+        var consumers = new ValheimZdoConsumerTelemetryService();
+
+        redirects.RecordEnvelopes(Window, "server", [Envelope(1), Envelope(2)]);
+        redirects.Acknowledge(Window, [1, 2]);
+        consumers.Record(Consumer(applied: 2, acknowledged: 2));
+
+        Assert.True(heartbeat.RecordAndAdmit(Primary(coverageTotal: 100), redirects, consumers));
+
+        var snapshot = Snapshot(heartbeat.CutoverSnapshot(redirects, consumers));
+        Assert.False(snapshot.GetProperty("stale").GetBoolean());
+        Assert.False(snapshot.GetProperty("consumer_draining").GetBoolean());
+        Assert.True(snapshot.GetProperty("authoritative_window").GetProperty("complete").GetBoolean());
+        Assert.Equal("lumberjacks-primary", snapshot.GetProperty("state").GetString());
+    }
+
+    /// <summary>Rejection must never be the reason a malformed beat is kept out of the
+    /// store — the endpoint rejects those with 400 before admission is ever consulted.</summary>
+    [Fact]
+    public void AdmissionIsAboutTheWindowNotTheBeatShape()
+    {
+        var heartbeat = new ValheimTelemetryHeartbeatService();
+        var redirects = new ValheimZdoRedirectService();
+        var consumers = new ValheimZdoConsumerTelemetryService();
+
+        // A primary naming no window can never be admitted, whatever the queues say.
+        Assert.False(heartbeat.RecordAndAdmit(
+            Primary(coverageTotal: 100) with { EnrollmentManifestId = "" }, redirects, consumers));
+
+        // A non-primary beat is not gated at all.
+        Assert.True(heartbeat.RecordAndAdmit(
+            Primary(coverageTotal: 100) with { CutoverMode = "mirrored" }, redirects, consumers));
+    }
+
+    private static readonly JsonSerializerOptions SnapshotJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
+
+    private static JsonElement Snapshot(object snapshot) =>
+        JsonDocument.Parse(JsonSerializer.Serialize(snapshot, SnapshotJson)).RootElement;
+
+    private static ValheimTelemetryHeartbeat Primary(long coverageTotal) => new()
+    {
+        CutoverMode = "lumberjacks-primary",
+        EnrollmentManifestId = Window,
+        InstanceId = "server-test",
+        ModVersion = "0.5.22",
+        TimestampUtc = DateTimeOffset.UtcNow.ToString("O"),
+        PeerCount = 1,
+        CoverageTotal = coverageTotal,
+        CoverageLumberjacks = coverageTotal,
+        CoverageNativeOnly = 0,
+    };
+
     private static ValheimZdoRedirectEnvelope Envelope(long seq) => new()
     {
         Seq = seq,
