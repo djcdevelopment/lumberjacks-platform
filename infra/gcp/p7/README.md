@@ -31,17 +31,30 @@ Canonical evidence (paths are relative to this repo, `C:\work\baseline`):
 |---|---|
 | GCP project | `lumberjacks-exp-20260711-djc` |
 | VM / zone | `comfy-lumberjacks-p7` / `us-west1-b` |
-| Machine | `n2-highmem-8` |
+| Machine | `n2-highmem-2` (deliberate cost downsize from `n2-highmem-8`) |
 | SSH target | `comfy-p7` through IAP |
+| Deployment source | `/opt/comfy` — a **`baseline` checkout**, branch `main`. Updated by `git bundle` over SSH; the box holds no GitHub credentials (ADR 0006). Pre-cutover `comfy` commit retained as local branch `master` for rollback. |
 | Persistent disk | `/mnt/comfy-p7` |
 | World / server | `ComfyEra16` / `Comfy Era16 Lab` |
 | Valheim join | `8.231.129.249:2456` UDP; Steam-only, unlisted, password-free |
 | Player Gateway | `http://8.231.129.249:42317` |
 | Mode / window | `lumberjacks-primary` / `p7-primary-v1` |
+| Release | `m5-recipients-20260720-r1` (v3 manifest) |
 | Mod | ComfyNetworkSense `0.5.31` |
-| Mod SHA-256 | `b31697d2a0cbe47b86c32b33d19fb9445e21af0cfe51687cb5afe871a3d7d77b` |
-| Gateway image | `sha256:358f5e11e35b54367a83d4e52ea3d47c0346e62a82ed357c2ff403eafafcd0a2` |
+| Mod SHA-256 | `035faa8793114c75ccb4295e219a6c10a91250a3a4f3764e70aed499a32a0dfd` |
+| Gateway image | `sha256:69e025e8c13bc7ce01a21a054c9dcb42478415531d727e8b55b4b2d37ca7b38b` |
+| EventLog image | `sha256:501537285f89052991a62201969117557005c03ddfd280086bde81ce8e8593e4` |
+| Progression image | `sha256:1700513587ae259d7447caba267c90213c5249ce7da50408f65648a2bf4872bc` |
+| Operator API image | `sha256:cec85d9272530a13b9c1e5217ef8864f0bffd4dc8fc89a18d2236d75482761a7` |
 | Valheim image | `ghcr.io/community-valheim-tools/valheim-server@sha256:e8b13da3c44f54a38511c8ac224f2959a437c0b2626cf916683ca7acc8dfb146` |
+
+All five Lumberjacks images are pinned by digest in `docker-compose.yml` with no `build:`
+fallback, and resolve through `/etc/comfy-p7/environment` alone — verified by a real
+`systemctl restart`, which is exactly what the reboot path runs.
+
+> **Server restart is not instant.** A `systemctl restart` reloads the ~9.1M-ZDO `ComfyEra16`
+> world; the server is not joinable until the log emits `Game server connected`, roughly a
+> minute later. Wait for that line before telling a player to join.
 
 Services:
 

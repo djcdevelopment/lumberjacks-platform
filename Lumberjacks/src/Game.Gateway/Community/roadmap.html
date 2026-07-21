@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T09:17:43.731Z</span>
+        <span>Updated 2026-07-21T09:31:15.358Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721091743-pruned-279-of-1045-tracked-files-after-a-gemini-">
+        <div class="journal"><article class="journal-entry" id="note-20260721093115-closed-out-the-session-retro-three-adrs-plan-out">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-21T09:31:15.358Z">2026-07-21T09:31:15.358Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>baseline</span>
+        <span>M0</span>
+      </div>
+      <h3>Closed out the session: retro, three ADRs, plan outcome, decisions register</h3>
+      <p><strong>Impact:</strong> Session retrospective for the baseline cutover step-6 close and the repo prune. Three durable decisions became ADRs: 0005 carries an unreproducible release artifact forward with explicit provenance rather than rebuilding it into untested bytes, because the .NET 8 SDK embeds the git HEAD sha in the PDB; 0006 moves repo history to the credential-free P7 VM by git bundle rather than installing a token; 0007 sets prune-signal discipline after both git-history staleness and basename-orphan detection proved actively misleading in a subtree-merged monorepo. plan-baseline-cutover.md gains a section 7 recording that all six steps closed and that two of the plan&#39;s own assumptions were wrong. Five open decisions were appended to DECISIONS-PENDING: the VM&#39;s running cost, the reproducibility remedy, whether the VM gets a deploy key, whether the telemetry gate should tolerate load-induced backlog, and strict-roster posture for future acceptance windows.</p>
+      <details><summary>Verification (1)</summary><ul><li>roadmap:check passes; ADR index updated with 0005-0007; every relative link in the retro and ADRs resolves</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/retro/SESSION-RETRO-2026-07-21.md</code> <code>fieldlab/docs/adr/README.md</code> <code>fieldlab/DECISIONS-PENDING.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721091743-pruned-279-of-1045-tracked-files-after-a-gemini-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
