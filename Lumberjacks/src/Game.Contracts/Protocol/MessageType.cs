@@ -7,6 +7,7 @@ public static class MessageType
     public const string LeaveRegion = "leave_region";
     public const string PlayerMove = "player_move";
     public const string PlayerInput = "player_input";
+    public const string ValheimPlayerMotion = "valheim_player_motion";
     public const string PlaceStructure = "place_structure";
     public const string Interact = "interact";
 

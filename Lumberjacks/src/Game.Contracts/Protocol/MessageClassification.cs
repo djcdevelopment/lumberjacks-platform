@@ -24,6 +24,7 @@ public static class MessageClassification
         // Datagram: transient, supersedable, safely discardable
         [MessageType.PlayerMove] = DeliveryLane.Datagram,
         [MessageType.PlayerInput] = DeliveryLane.Datagram,
+        [MessageType.ValheimPlayerMotion] = DeliveryLane.Datagram,
         [MessageType.EntityUpdate] = DeliveryLane.Datagram,
         [MessageType.EntityRemoved] = DeliveryLane.Datagram,
         [MessageType.PriorityManifestObject] = DeliveryLane.Datagram,

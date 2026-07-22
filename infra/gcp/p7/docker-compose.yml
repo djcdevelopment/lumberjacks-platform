@@ -50,7 +50,10 @@ services:
     ports:
       - "127.0.0.1:4000:4000"
       - "${LUMBERJACKS_PLAYER_PORT:-42317}:4000"
-      - "127.0.0.1:4005:4005/udp"
+      # Authenticated datagram lane. Remote clients receive a random session token over their
+      # enrolled WebSocket before this socket accepts motion; the matching GCP rule intentionally
+      # uses the same source ranges as the player gateway.
+      - "${LUMBERJACKS_PLAYER_UDP_PORT:-4005}:4005/udp"
     environment:
       <<: *lumberjacks-telemetry
       OTEL_SERVICE_NAME: lumberjacks-gateway

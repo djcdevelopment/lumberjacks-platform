@@ -45,6 +45,12 @@ variable "lumberjacks_player_port" {
   default     = 42317
 }
 
+variable "lumberjacks_player_udp_port" {
+  description = "Session-token-authenticated Lumberjacks datagram port used by enrolled clients."
+  type        = number
+  default     = 4005
+}
+
 variable "lumberjacks_player_source_ranges" {
   description = "IPv4 CIDRs allowed to reach the authenticated Lumberjacks player port."
   type        = list(string)

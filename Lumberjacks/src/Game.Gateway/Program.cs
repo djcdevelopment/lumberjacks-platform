@@ -22,6 +22,7 @@ builder.Services.AddSingleton<BoundaryEventDiagnostics>();
 // Gateway services
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<MessageRouter>();
+builder.Services.AddSingleton<ValheimMotionTelemetry>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ValheimPriorityManifestService>();
 builder.Services.AddSingleton<ValheimZdoRedirectService>();

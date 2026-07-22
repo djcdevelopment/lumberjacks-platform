@@ -13,6 +13,8 @@ namespace Game.Contracts.Protocol.Binary;
 /// </summary>
 public static class PayloadSerializers
 {
+    public const int ValheimPlayerMotionBytes = 36;
+
     // ──────────────────────────────────────────────
     //  EntityUpdate (server → client)
     //
@@ -112,6 +114,65 @@ public static class PayloadSerializers
         return new PlayerInputBinary(direction, speedPercent, actionFlags, inputSeq);
     }
 
+    // Valheim player motion is an observed transform, not an input for Lumberjacks' generic
+    // simulation. The ZDO id is the cross-client entity key already shared by Valheim. Position
+    // uses signed centimetres (enough precision and world range for presentation), velocity uses
+    // signed centimetres/second, and yaw uses 0.1-degree units. Sequence lives in BinaryEnvelope.
+    public static int WriteValheimPlayerMotion(
+        Span<byte> buffer,
+        long zdoUserId,
+        uint zdoId,
+        Vec3 position,
+        Vec3 velocity,
+        double yaw,
+        uint sentMilliseconds)
+    {
+        var writer = new BitWriter(buffer);
+        var userBits = unchecked((ulong)zdoUserId);
+        writer.WriteUInt32((uint)(userBits >> 32));
+        writer.WriteUInt32((uint)userBits);
+        writer.WriteUInt32(zdoId);
+        WriteCentimetres(ref writer, position.X);
+        WriteCentimetres(ref writer, position.Y);
+        WriteCentimetres(ref writer, position.Z);
+        writer.WriteInt16(ToCentimetresPerSecond(velocity.X));
+        writer.WriteInt16(ToCentimetresPerSecond(velocity.Y));
+        writer.WriteInt16(ToCentimetresPerSecond(velocity.Z));
+        var normalizedYaw = ((yaw % 360.0) + 360.0) % 360.0;
+        writer.WriteUInt16((ushort)Math.Round(normalizedYaw * 10.0));
+        writer.WriteUInt32(sentMilliseconds);
+        return writer.ByteLength;
+    }
+
+    public static ValheimPlayerMotionBinary ReadValheimPlayerMotion(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length != ValheimPlayerMotionBytes)
+            throw new ArgumentException($"Valheim motion payload must be {ValheimPlayerMotionBytes} bytes, got {payload.Length}");
+
+        var reader = new BitReader(payload);
+        var userBits = ((ulong)reader.ReadUInt32() << 32) | reader.ReadUInt32();
+        var zdoId = reader.ReadUInt32();
+        var position = new Vec3(ReadCentimetres(ref reader), ReadCentimetres(ref reader), ReadCentimetres(ref reader));
+        var velocity = new Vec3(
+            reader.ReadInt16() / 100.0,
+            reader.ReadInt16() / 100.0,
+            reader.ReadInt16() / 100.0);
+        var yaw = reader.ReadUInt16() / 10.0;
+        var sentMilliseconds = reader.ReadUInt32();
+        return new ValheimPlayerMotionBinary(unchecked((long)userBits), zdoId, position, velocity, yaw, sentMilliseconds);
+    }
+
+    private static void WriteCentimetres(ref BitWriter writer, double value)
+    {
+        var scaled = Math.Clamp(Math.Round(value * 100.0), int.MinValue, int.MaxValue);
+        writer.WriteUInt32(unchecked((uint)(int)scaled));
+    }
+
+    private static double ReadCentimetres(ref BitReader reader) => unchecked((int)reader.ReadUInt32()) / 100.0;
+
+    private static short ToCentimetresPerSecond(double value) =>
+        (short)Math.Clamp(Math.Round(value * 100.0), short.MinValue, short.MaxValue);
+
     // ──────────────────────────────────────────────
     //  EntityRemoved (server → client)
     //
@@ -155,6 +216,14 @@ public readonly record struct PlayerInputBinary(
     byte SpeedPercent,
     byte ActionFlags,
     ushort InputSeq);
+
+public readonly record struct ValheimPlayerMotionBinary(
+    long ZdoUserId,
+    uint ZdoId,
+    Vec3 Position,
+    Vec3 Velocity,
+    double Yaw,
+    uint SentMilliseconds);
 
 /// <summary>Deserialized binary entity removed.</summary>
 public readonly record struct EntityRemovedBinary(

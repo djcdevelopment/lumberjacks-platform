@@ -12,6 +12,11 @@ public enum ProtocolMode { Json, Binary }
 
 public record GameSession(string SessionId, string PlayerId, System.Net.WebSockets.WebSocket Socket)
 {
+    private readonly object _motionGate = new();
+    private readonly SemaphoreSlim _socketSendGate = new(1, 1);
+    private bool _motionSequenceSet;
+    private ushort _lastMotionSequence;
+
     public string? GuildId { get; set; }
     public string? RegionId { get; set; }
     public string ResumeToken { get; init; } = Guid.NewGuid().ToString("N");
@@ -30,6 +35,59 @@ public record GameSession(string SessionId, string PlayerId, System.Net.WebSocke
     /// Null means the client hasn't bound a UDP channel yet.
     /// </summary>
     public IPEndPoint? UdpEndpoint { get; set; }
+
+    /// <summary>Opaque enrollment recipient; null sessions cannot publish Valheim motion.</summary>
+    public string? ValheimRecipientId { get; set; }
+
+    /// <summary>The player ZDO first claimed by this authenticated session.</summary>
+    public long? ValheimMotionZdoUserId { get; private set; }
+    public uint? ValheimMotionZdoId { get; private set; }
+
+    /// <summary>
+    /// WebSocket permits only one outstanding send. Tick broadcasts, control replies, and the
+    /// Valheim motion fallback are independent producers, so serialize them at the session edge.
+    /// </summary>
+    public async Task SendAsync(byte[] payload, WebSocketMessageType messageType,
+        CancellationToken cancellationToken)
+    {
+        await _socketSendGate.WaitAsync(cancellationToken);
+        try
+        {
+            await Socket.SendAsync(payload, messageType, true, cancellationToken);
+        }
+        finally
+        {
+            _socketSendGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Bind the first observed player ZDO to this session and reject duplicates/out-of-order
+    /// datagrams thereafter. The half-range comparison handles ushort wrap without accepting an
+    /// arbitrarily old packet after wrap.
+    /// </summary>
+    public bool TryAcceptValheimMotion(long zdoUserId, uint zdoId, ushort sequence)
+    {
+        lock (_motionGate)
+        {
+            if (string.IsNullOrWhiteSpace(ValheimRecipientId)) return false;
+            if (ValheimMotionZdoUserId.HasValue &&
+                (ValheimMotionZdoUserId.Value != zdoUserId || ValheimMotionZdoId != zdoId))
+                return false;
+
+            if (_motionSequenceSet)
+            {
+                var delta = unchecked((ushort)(sequence - _lastMotionSequence));
+                if (delta == 0 || delta >= 0x8000) return false;
+            }
+
+            ValheimMotionZdoUserId ??= zdoUserId;
+            ValheimMotionZdoId ??= zdoId;
+            _lastMotionSequence = sequence;
+            _motionSequenceSet = true;
+            return true;
+        }
+    }
 
     private static ulong GenerateUdpToken()
     {

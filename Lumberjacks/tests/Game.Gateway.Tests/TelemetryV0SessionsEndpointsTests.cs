@@ -104,4 +104,26 @@ public sealed class TelemetryV0SessionsEndpointsTests
 
         Assert.Equal(0, doc.RootElement.GetProperty("total").GetInt32());
     }
+
+    [Fact]
+    public void ValheimMotionBindsOneZdoAndRejectsDuplicateOrOldSequences()
+    {
+        var sessions = new SessionManager();
+        var session = sessions.Create(new FakeWebSocket());
+        session.ValheimRecipientId = "opaque-recipient";
+
+        Assert.True(session.TryAcceptValheimMotion(10, 20, 65534));
+        Assert.False(session.TryAcceptValheimMotion(10, 20, 65534));
+        Assert.True(session.TryAcceptValheimMotion(10, 20, 65535));
+        Assert.True(session.TryAcceptValheimMotion(10, 20, 0));
+        Assert.False(session.TryAcceptValheimMotion(10, 20, 65535));
+        Assert.False(session.TryAcceptValheimMotion(10, 21, 1));
+    }
+
+    [Fact]
+    public void AnonymousSessionCannotPublishValheimMotion()
+    {
+        var session = new SessionManager().Create(new FakeWebSocket());
+        Assert.False(session.TryAcceptValheimMotion(10, 20, 1));
+    }
 }

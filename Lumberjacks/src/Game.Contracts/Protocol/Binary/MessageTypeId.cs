@@ -25,6 +25,7 @@ public enum MessageTypeId : byte
     Error = 15,
     PriorityManifest = 16,
     PriorityManifestObject = 17,
+    ValheimPlayerMotion = 18,
 }
 
 /// <summary>
@@ -38,6 +39,7 @@ public static class MessageTypeMapping
         [MessageType.LeaveRegion] = MessageTypeId.LeaveRegion,
         [MessageType.PlayerMove] = MessageTypeId.PlayerMove,
         [MessageType.PlayerInput] = MessageTypeId.PlayerInput,
+        [MessageType.ValheimPlayerMotion] = MessageTypeId.ValheimPlayerMotion,
         [MessageType.PlaceStructure] = MessageTypeId.PlaceStructure,
         [MessageType.Interact] = MessageTypeId.Interact,
         [MessageType.SessionStarted] = MessageTypeId.SessionStarted,
@@ -56,6 +58,7 @@ public static class MessageTypeMapping
         [MessageTypeId.LeaveRegion] = MessageType.LeaveRegion,
         [MessageTypeId.PlayerMove] = MessageType.PlayerMove,
         [MessageTypeId.PlayerInput] = MessageType.PlayerInput,
+        [MessageTypeId.ValheimPlayerMotion] = MessageType.ValheimPlayerMotion,
         [MessageTypeId.PlaceStructure] = MessageType.PlaceStructure,
         [MessageTypeId.Interact] = MessageType.Interact,
         [MessageTypeId.SessionStarted] = MessageType.SessionStarted,

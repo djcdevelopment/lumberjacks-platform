@@ -672,10 +672,9 @@ public class TickBroadcaster : ITickBroadcaster
             seq: 0,
             payloadBuf[..payloadLen]);
 
-        await session.Socket.SendAsync(
+        await session.SendAsync(
             frameBuf[..frameLen].ToArray(),
             WebSocketMessageType.Binary,
-            true,
             ct);
 
         LumberjacksTelemetry.RecordDelivery("binary_ws");
@@ -702,10 +701,9 @@ public class TickBroadcaster : ITickBroadcaster
 
         var env = EnvelopeFactory.Create(MessageType.EntityUpdate, updateData);
         var json = EnvelopeFactory.Serialize(env);
-        await session.Socket.SendAsync(
+        await session.SendAsync(
             Encoding.UTF8.GetBytes(json),
             WebSocketMessageType.Text,
-            true,
             ct);
 
         LumberjacksTelemetry.RecordDelivery("json_ws");
@@ -734,10 +732,9 @@ public class TickBroadcaster : ITickBroadcaster
 
         var env = EnvelopeFactory.Create(MessageType.EntityUpdate, updateData);
         var json = EnvelopeFactory.Serialize(env);
-        await session.Socket.SendAsync(
+        await session.SendAsync(
             Encoding.UTF8.GetBytes(json),
             WebSocketMessageType.Text,
-            true,
             ct);
     }
 }

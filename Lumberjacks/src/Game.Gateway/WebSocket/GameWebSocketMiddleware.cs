@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using Game.Contracts.Protocol;
 using Game.Contracts.Protocol.Binary;
+using Game.Gateway.Valheim;
 
 namespace Game.Gateway.WebSocket;
 
@@ -68,6 +69,9 @@ public class GameWebSocketMiddleware
 
         // Set protocol mode based on handshake
         session.Protocol = useBinary ? ProtocolMode.Binary : ProtocolMode.Json;
+        // The UDP token authenticates packets to this WebSocket session. Only enrollment-backed
+        // sessions may publish Valheim motion, and the identifier retained here is opaque.
+        session.ValheimRecipientId = ValheimPrincipal.From(context)?.Enrollment?.RecipientId;
 
         // Send session_started envelope (includes resume_token for future reconnects)
         // Include udp_token and udp_port so clients can bind a UDP channel
@@ -81,13 +85,13 @@ public class GameWebSocketMiddleware
             resumed,
             udp_token = session.UdpToken.ToString(),
             udp_port = udpPort,
+            valheim_motion_available = session.ValheimRecipientId != null,
         };
         var envelope = EnvelopeFactory.Create(MessageType.SessionStarted, startedPayload);
         var json = EnvelopeFactory.Serialize(envelope);
-        await ws.SendAsync(
+        await session.SendAsync(
             Encoding.UTF8.GetBytes(json),
             WebSocketMessageType.Text,
-            true,
             CancellationToken.None);
 
         // If resumed into a region, send a fresh world_snapshot
@@ -133,6 +137,20 @@ public class GameWebSocketMiddleware
                             continue; // skip JSON conversion entirely
                         }
 
+                        if (header.Type == MessageTypeId.ValheimPlayerMotion)
+                        {
+                            if (BinaryEnvelope.FrameSize(header) != frame.Length)
+                                throw new InvalidDataException("Valheim motion binary frame length mismatch");
+                            var transport = _services.GetRequiredService<UdpTransport>();
+                            await transport.HandleValheimMotionFrameAsync(
+                                session,
+                                header,
+                                BinaryEnvelope.GetPayload(frame, header).ToArray(),
+                                frame.ToArray(),
+                                "websocket");
+                            continue;
+                        }
+
                         // Fallback: other message types still bridge through JSON payload
                         var typeName = MessageTypeMapping.ToName(header.Type);
                         var fallbackPayload = BinaryEnvelope.GetPayload(frame, header);
@@ -168,10 +186,9 @@ public class GameWebSocketMiddleware
                     var error = new ErrorMessage("INVALID_MESSAGE", "Failed to parse message");
                     var errEnvelope = EnvelopeFactory.Create(MessageType.Error, error);
                     var errJson = EnvelopeFactory.Serialize(errEnvelope);
-                    await ws.SendAsync(
+                    await session.SendAsync(
                         Encoding.UTF8.GetBytes(errJson),
                         WebSocketMessageType.Text,
-                        true,
                         CancellationToken.None);
                 }
             }

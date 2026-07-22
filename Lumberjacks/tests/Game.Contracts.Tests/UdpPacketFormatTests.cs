@@ -104,6 +104,49 @@ public class UdpPacketFormatTests
     }
 
     [Fact]
+    public void ValheimPlayerMotion_UdpPacket_Roundtrip()
+    {
+        const ulong token = 0x0102030405060708;
+        var payload = new byte[PayloadSerializers.ValheimPlayerMotionBytes];
+        var payloadLength = PayloadSerializers.WriteValheimPlayerMotion(
+            payload,
+            zdoUserId: -9876543210,
+            zdoId: 4242,
+            new Game.Contracts.Entities.Vec3(123.456, -7.891, -432.109),
+            new Game.Contracts.Entities.Vec3(6.789, -1.234, 0.125),
+            yaw: -45.0,
+            sentMilliseconds: 123456789);
+
+        var envelope = new byte[BinaryEnvelope.HeaderBytes + payloadLength];
+        var envelopeLength = BinaryEnvelope.Write(
+            envelope, 1, MessageTypeId.ValheimPlayerMotion, DeliveryLane.Datagram, 65534, payload);
+        var packet = new byte[TokenBytes + envelopeLength];
+        BitConverter.TryWriteBytes(packet.AsSpan(0, TokenBytes), token);
+        envelope.CopyTo(packet.AsSpan(TokenBytes));
+
+        var header = BinaryEnvelope.ReadHeader(packet.AsSpan(TokenBytes));
+        var motion = PayloadSerializers.ReadValheimPlayerMotion(
+            BinaryEnvelope.GetPayload(packet.AsSpan(TokenBytes), header));
+
+        Assert.Equal(token, BitConverter.ToUInt64(packet, 0));
+        Assert.Equal(MessageTypeId.ValheimPlayerMotion, header.Type);
+        Assert.Equal(DeliveryLane.Datagram, header.Lane);
+        Assert.Equal(65534, header.Seq);
+        Assert.Equal(-9876543210, motion.ZdoUserId);
+        Assert.Equal((uint)4242, motion.ZdoId);
+        Assert.Equal(123.46, motion.Position.X, 2);
+        Assert.Equal(-7.89, motion.Position.Y, 2);
+        Assert.Equal(-432.11, motion.Position.Z, 2);
+        Assert.Equal(6.79, motion.Velocity.X, 2);
+        Assert.Equal(315.0, motion.Yaw, 1);
+        Assert.Equal((uint)123456789, motion.SentMilliseconds);
+        Assert.Equal(50, packet.Length);
+        Assert.Equal(
+            "080706050403020114bfffc00480fffffffdb34fe916000010920000303afffffcebffff573502a7ff85000c0c4e075bcd15",
+            Convert.ToHexString(packet).ToLowerInvariant());
+    }
+
+    [Fact]
     public void EntityUpdate_UdpPacket_WellUnder100Bytes()
     {
         // Full entity update packet should be tiny compared to JSON

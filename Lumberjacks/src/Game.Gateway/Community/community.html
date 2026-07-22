@@ -1012,6 +1012,25 @@
             }
         }
 
+        async function updateValheimMotionData() {
+            try {
+                const data = await fetchEndpoint('/live/valheim-motion');
+                const dropped = (data.dropped_invalid || 0) +
+                    (data.dropped_unauthorized || 0) + (data.dropped_stale || 0);
+                const relayed = (data.relayed_udp || 0) + (data.relayed_websocket || 0);
+                const message = `${data.received || 0} received ` +
+                    `(UDP ${data.received_udp || 0}, WS ${data.received_websocket || 0}) · ` +
+                    `${relayed} relayed (UDP ${data.relayed_udp || 0}, WS fallback ${data.relayed_websocket || 0}) · ` +
+                    `${dropped} dropped`;
+                addTraceIfChanged('valheim-motion', 'motion', message,
+                    dropped > 0 ? 'warn' : ((data.received || 0) > 0 ? 'good' : ''));
+                return true;
+            } catch (e) {
+                addTrace('motion', `Valheim motion telemetry failed: ${e.message || e}`, 'bad');
+                return false;
+            }
+        }
+
         // Main Loop
         async function pollAll() {
             // Run all fetches concurrently, don't let one failure block others
@@ -1022,7 +1041,8 @@
                 updateDeliveryData(),
                 updateRegionsData(),
                 updateGameplayData(),
-                updateQuestData()
+                updateQuestData(),
+                updateValheimMotionData()
             ]);
             
             const allSuccess = results.every(res => res === true);

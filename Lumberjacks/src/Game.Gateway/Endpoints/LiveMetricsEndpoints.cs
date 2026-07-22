@@ -1,4 +1,5 @@
 using Game.Gateway.WebSocket;
+using Game.Gateway.Valheim;
 using Game.ServiceDefaults;
 
 namespace Game.Gateway.Endpoints;
@@ -45,5 +46,8 @@ public static class LiveMetricsEndpoints
                 detached = transitions.TryGetValue("detached", out var d) ? d : 0,
             });
         });
+
+        app.MapGet("/live/valheim-motion", (ValheimMotionTelemetry motion) =>
+            Results.Ok(motion.Snapshot()));
     }
 }

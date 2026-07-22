@@ -80,6 +80,22 @@ resource "google_compute_firewall" "lumberjacks_player" {
   }
 }
 
+# Session-bound datagram lane for enrolled Lumberjacks clients. The random UDP token is issued
+# only after the authenticated WebSocket handshake; exposing this port makes the existing
+# UDP-preferred / WebSocket-fallback transport real for remote P7 clients.
+resource "google_compute_firewall" "lumberjacks_player_udp" {
+  name          = "${local.name}-player-udp"
+  network       = google_compute_network.p7.name
+  direction     = "INGRESS"
+  source_ranges = var.lumberjacks_player_source_ranges
+  target_tags   = [local.name]
+
+  allow {
+    protocol = "udp"
+    ports    = [tostring(var.lumberjacks_player_udp_port)]
+  }
+}
+
 # TLS termination for the volunteer endpoint (M1 gate). Caddy answers on both; the gateway itself
 # is never reached from outside except through it.
 #

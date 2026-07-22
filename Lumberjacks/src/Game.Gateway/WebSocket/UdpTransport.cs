@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Net.WebSockets;
+using Game.Contracts.Protocol;
 using Game.Contracts.Protocol.Binary;
+using Game.Gateway.Valheim;
 using Game.ServiceDefaults;
 using Game.Simulation.Tick;
 using Game.Simulation.World;
@@ -44,6 +47,7 @@ public class UdpTransport : BackgroundService
     private readonly SessionManager _sessions;
     private readonly MessageRouter _router;
     private readonly ILogger<UdpTransport> _logger;
+    private readonly ValheimMotionTelemetry _motionTelemetry;
     private readonly int _port;
     private readonly int _socketCount;
     private readonly object[] _sendLocks;
@@ -64,11 +68,13 @@ public class UdpTransport : BackgroundService
     public UdpTransport(
         SessionManager sessions,
         MessageRouter router,
+        ValheimMotionTelemetry motionTelemetry,
         IConfiguration config,
         ILogger<UdpTransport> logger)
     {
         _sessions = sessions;
         _router = router;
+        _motionTelemetry = motionTelemetry;
         _logger = logger;
         _port = config.GetValue("Udp:Port", 4005);
 
@@ -144,7 +150,7 @@ public class UdpTransport : BackgroundService
 
                 try
                 {
-                    ProcessPacket(result.Buffer, result.RemoteEndPoint);
+                    await ProcessPacketAsync(result.Buffer, result.RemoteEndPoint);
                 }
                 catch (Exception ex)
                 {
@@ -167,37 +173,125 @@ public class UdpTransport : BackgroundService
         }
     }
 
-    private void ProcessPacket(byte[] data, IPEndPoint remoteEndpoint)
+    private Task ProcessPacketAsync(byte[] data, IPEndPoint remoteEndpoint)
     {
-        // Extract 8-byte UDP token
         var token = BitConverter.ToUInt64(data, 0);
-
         var session = _sessions.FindByUdpToken(token);
         LumberjacksTelemetry.RecordUdpPacket(session == null ? "unknown_session" : "received");
-        if (session == null)
-            return; // unknown token — drop silently
+        if (session == null) return Task.CompletedTask;
 
-        // Bind/update the UDP endpoint for this session
+        // Any token-authenticated datagram binds or refreshes this session's NAT endpoint.
         session.UdpEndpoint = remoteEndpoint;
-
-        // Parse binary envelope from the rest of the packet
         var envelope = data.AsSpan(TokenBytes);
-        if (envelope.Length < BinaryEnvelope.HeaderBytes)
-            return;
+        if (envelope.Length < BinaryEnvelope.HeaderBytes) return Task.CompletedTask;
 
         var header = BinaryEnvelope.ReadHeader(envelope);
+        if (header.Version != 1 || header.Lane != DeliveryLane.Datagram ||
+            BinaryEnvelope.FrameSize(header) != envelope.Length)
+        {
+            _motionTelemetry.DroppedInvalid();
+            return Task.CompletedTask;
+        }
 
-        // Fast path: player_input
         if (header.Type == MessageTypeId.PlayerInput)
         {
             var payload = BinaryEnvelope.GetPayload(envelope, header);
             var input = PayloadSerializers.ReadPlayerInput(payload);
             _router.HandlePlayerInputBinary(session, input, "udp");
+            return Task.CompletedTask;
+        }
+
+        if (header.Type == MessageTypeId.ValheimPlayerMotion)
+        {
+            return HandleValheimMotionFrameAsync(
+                session,
+                header,
+                BinaryEnvelope.GetPayload(envelope, header).ToArray(),
+                envelope.ToArray(),
+                "udp");
+        }
+
+        _logger.LogDebug("Unhandled UDP message type {Type} from {PlayerId}", header.Type, session.PlayerId);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Authenticated WebSocket fallback and UDP ingress converge here.</summary>
+    public Task HandleValheimMotionFrameAsync(
+        GameSession session,
+        BinaryEnvelopeHeader header,
+        byte[] payload,
+        byte[] binaryFrame,
+        string sourceTransport)
+    {
+        if (header.Version != 1 || header.Type != MessageTypeId.ValheimPlayerMotion ||
+            header.Lane != DeliveryLane.Datagram ||
+            binaryFrame.Length != BinaryEnvelope.FrameSize(header))
+        {
+            _motionTelemetry.DroppedInvalid();
+            return Task.CompletedTask;
+        }
+        if (string.IsNullOrWhiteSpace(session.ValheimRecipientId))
+        {
+            _motionTelemetry.DroppedUnauthorized();
+            return Task.CompletedTask;
+        }
+
+        ValheimPlayerMotionBinary motion;
+        try
+        {
+            motion = PayloadSerializers.ReadValheimPlayerMotion(payload);
+        }
+        catch
+        {
+            _motionTelemetry.DroppedInvalid();
+            return Task.CompletedTask;
+        }
+
+        if (!session.TryAcceptValheimMotion(motion.ZdoUserId, motion.ZdoId, header.Seq))
+        {
+            _motionTelemetry.DroppedStale();
+            return Task.CompletedTask;
+        }
+
+        _motionTelemetry.Received(sourceTransport);
+        return RelayValheimMotionAsync(session, binaryFrame);
+    }
+
+    private async Task RelayValheimMotionAsync(GameSession source, byte[] binaryFrame)
+    {
+        if (source.RegionId == null)
+        {
+            _motionTelemetry.DroppedInvalid();
             return;
         }
 
-        // Other datagram-lane messages could be handled here in the future
-        _logger.LogDebug("Unhandled UDP message type {Type} from {PlayerId}", header.Type, session.PlayerId);
+        foreach (var target in _sessions.GetByRegion(source.RegionId))
+        {
+            if (target.SessionId == source.SessionId || target.ValheimRecipientId == null ||
+                string.Equals(target.ValheimRecipientId, source.ValheimRecipientId, StringComparison.Ordinal))
+                continue;
+
+            if (TrySend(target, binaryFrame))
+            {
+                _motionTelemetry.RelayedUdp();
+                continue;
+            }
+
+            if (target.Socket.State != WebSocketState.Open) continue;
+            try
+            {
+                await target.SendAsync(
+                    binaryFrame,
+                    WebSocketMessageType.Binary,
+                    CancellationToken.None);
+                LumberjacksTelemetry.RecordDelivery("binary_ws");
+                _motionTelemetry.RelayedWebSocket();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Valheim motion WebSocket fallback failed for {SessionId}", target.SessionId);
+            }
+        }
     }
 
     /// <summary>

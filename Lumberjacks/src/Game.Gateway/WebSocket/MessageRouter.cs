@@ -465,10 +465,9 @@ public class MessageRouter
         if (session.Socket.State != WebSocketState.Open) return;
 
         var json = EnvelopeFactory.Serialize(envelope);
-        await session.Socket.SendAsync(
+        await session.SendAsync(
             Encoding.UTF8.GetBytes(json),
             WebSocketMessageType.Text,
-            true,
             CancellationToken.None);
     }
 
@@ -498,7 +497,7 @@ public class MessageRouter
 
             try
             {
-                await s.Socket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+                await s.SendAsync(bytes, WebSocketMessageType.Text, CancellationToken.None);
             }
             catch (Exception ex)
             {

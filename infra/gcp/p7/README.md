@@ -62,7 +62,7 @@ Services:
 |---|---|---|
 | Valheim | public UDP `2456-2457` | world simulation and native peer connection |
 | Gateway | GCP loopback `4000`; pilot public TCP `42317` | priority ZDO queue, acknowledgements, enrollment, telemetry |
-| Gateway UDP | loopback UDP `4005` | progressive transport infrastructure; not this ZDO consumer path |
+| Gateway UDP | public UDP `4005` | session-token-authenticated player motion; UDP preferred with binary WebSocket fallback |
 | PostgreSQL | loopback `5433` | general Lumberjacks persistence |
 | EventLog / Progression / Operator API | loopback `4002` / `4003` / `4004` | internal service and operator surfaces |
 | `redirect.wal` | `/mnt/comfy-p7/lumberjacks/zdo-queue/redirect.wal` | durable authoritative ZDO delivery |
@@ -113,6 +113,12 @@ zdoAuthoritativeConsumerEnabled = true
 ```
 
 Never commit, screenshot, or paste an issued access key into an evidence report.
+
+Player motion uses the same enrollment identity. The client first authenticates its
+WebSocket, receives a random per-session UDP token, joins the configured Lumberjacks
+region, and then sends a fixed 50-byte motion datagram at up to 20 Hz. UDP `4005` uses
+the same Terraform source-range policy as player TCP `42317`. A client that cannot
+establish UDP carries the same binary motion frame over the WebSocket instead.
 
 ## Reproduce the current deployment
 
@@ -264,6 +270,14 @@ transport failures.
 
 The live API can reset receipt counters after a consumer leaves or a window rolls;
 save the coherent closure sample rather than reconstructing it from later totals.
+
+### 10. Run the player-motion canary
+
+Use [VALHEIM-MOTION-CANARY.md](VALHEIM-MOTION-CANARY.md) for the two-client,
+observe-first A/B. Do not begin with `APPLY` enabled. First prove both clients send,
+the Gateway receives, and the peer receives; then compare UDP to WebSocket fallback;
+only then enable apply on one observer. The in-game truth strip and the community
+dashboard trace are the two acceptance surfaces.
 
 ## Dashboards
 
