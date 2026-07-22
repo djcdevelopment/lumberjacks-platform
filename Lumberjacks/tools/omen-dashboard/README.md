@@ -22,7 +22,8 @@ Start-Process http://127.0.0.1:8080/community
 
 ## Surfaces
 
-HTML views — `/community`, `/networksense`, `/events`, `/testing`, and `/roadmap`.
+HTML views — `/community`, `/networksense`, `/events`, `/testing`, `/roadmap`, and
+`/ops/boundary`.
 
 Read-only telemetry and stats, all GET-only:
 
@@ -32,6 +33,7 @@ Read-only telemetry and stats, all GET-only:
 /valheim/zdo-redirect/status[/<windowId>]
 /api/v0/valheim/zdo-consumers/<windowId>
 /valheim/zdo-injection/status[/<windowId>]
+/ops/boundary/summary
 ```
 
 `/roadmap` is served from the file mounted straight off this checkout, so it updates on
@@ -55,6 +57,9 @@ Invoke-RestMethod http://127.0.0.1:8080/api/v0/telemetry/server | Select current
 
 # 4. Gameplay-event feed (empty until the mod producer is armed — see the plan's Increment 1):
 Invoke-RestMethod http://127.0.0.1:8080/api/v0/telemetry/events | Select count, capacity, dropped_since_start
+
+# 5. Boundary diagnostics: identity/auth/request/ZDO JSONL summary:
+Invoke-RestMethod http://127.0.0.1:8080/ops/boundary/summary | Select rows, proxy_boundary_warnings, writer_dropped_rows
 ```
 
 A `current_tick` that advances between calls in step 2 is the live-vs-stale proof. Then open
@@ -79,6 +84,10 @@ Deliberately still not forwarded, though the tunnel could now reach them:
 - `/valheim/handshake/*` — admission control, not observation.
 - `/join/*` — the volunteer credential flow.
 - every non-GET method — this is a viewing surface.
+
+`/ops/boundary` is included because it is a read-only summary of the append-only boundary
+event stream. The Gateway also refuses requests with a public `X-Forwarded-For` claim,
+so this route works over the operator tunnel but not through the public TLS proxy.
 
 Note that several forwarded prefixes also contain mutating routes (`/valheim/zdo-redirect`
 holds `/reset` and `/compact`; `/valheim/zdo-injection` holds `/stage` and `/reset`). The

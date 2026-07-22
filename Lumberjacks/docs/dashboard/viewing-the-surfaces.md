@@ -49,6 +49,7 @@ Open in a browser — no login, served straight from the game Gateway. All data 
 | `http://localhost:4000/events` | **G4 Gameplay Event feed** — live, anonymized event stream (structure/inventory/region/interest events) |
 | `http://localhost:4000/community` | **Live Community View** — server overview: uptime, tick perf, sessions, delivery, regions |
 | `http://localhost:4000/testing` | **G5 Local Testing Tools** — scenario cards (simulated) |
+| `http://localhost:4000/ops/boundary` | **Boundary Diagnostics** — operator-only identity/auth/request/ZDO JSONL summary for builders and hackers |
 
 Raw API behind them (same-origin, `GET` from any origin, DB-less):
 `http://localhost:4000/api/v0/telemetry/{server,tick,sessions,delivery,regions,events,valheim,cutover}`
@@ -75,6 +76,13 @@ http://8.231.129.249:42317/networksense
 http://8.231.129.249:42317/events
 http://8.231.129.249:42317/testing
 ```
+
+`/ops/boundary` is intentionally not listed as a public P7 URL. It is an operator
+surface for the append-only boundary stream and should be opened through a trusted
+operator path such as the OMEN tunnel. The endpoint refuses requests with a public
+`X-Forwarded-For` claim even when the socket itself appears private, so it does not
+repeat the Caddy private-plane bypass while that deployment shape is still being
+hardened.
 
 On OMEN, the loopback-only dashboard proxy exposes the page at
 `http://127.0.0.1:8080/roadmap`. It mounts the generated local

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+  <title>Lumberjacks Boundary Diagnostics</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel2: #0f141b;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --blue: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, Segoe UI, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; }
+    header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+    h1 { margin: 0 0 6px; font-family: var(--sans); font-size: 22px; color: var(--blue); }
+    a { color: var(--blue); text-decoration: none; }
+    .sub { color: var(--muted); line-height: 1.4; }
+    .nav { display: flex; gap: 12px; white-space: nowrap; }
+    main { padding: 18px 20px 28px; }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px; min-width: 0; }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: 1 / -1; }
+    h2 { margin: 0 0 12px; font-family: var(--sans); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .metric { font-size: 26px; color: var(--blue); font-weight: 700; line-height: 1.1; }
+    .metric.ok { color: var(--green); }
+    .metric.warn { color: var(--yellow); }
+    .metric.bad { color: var(--red); }
+    .label { color: var(--muted); margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 6px 7px; border-bottom: 1px solid rgba(255,255,255,.07); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-family: var(--sans); }
+    td.num, th.num { text-align: right; }
+    tr:last-child td { border-bottom: none; }
+    .pill { display: inline-block; padding: 2px 6px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel2); color: var(--muted); }
+    .pill.ok { color: var(--green); border-color: rgba(63,185,80,.45); }
+    .pill.warn { color: var(--yellow); border-color: rgba(210,153,34,.45); }
+    .pill.bad { color: var(--red); border-color: rgba(248,81,73,.45); }
+    .scroll { overflow: auto; max-height: 360px; }
+    .mono { font-family: var(--mono); }
+    .empty { color: var(--muted); padding: 8px 0; }
+    .footer { color: var(--muted); margin-top: 16px; display: flex; justify-content: space-between; gap: 12px; }
+    @media (max-width: 1100px) { .span-3, .span-4, .span-6, .span-8 { grid-column: 1 / -1; } header { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Lumberjacks Boundary Diagnostics</h1>
+      <div class="sub">Operator view of append-only identity, authorization, request, and ZDO queue evidence. This page refuses public forwarded clients.</div>
+    </div>
+    <nav class="nav">
+      <a href="/community">community</a>
+      <a href="/events">events</a>
+      <a href="/roadmap">roadmap</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="grid">
+      <div class="panel span-3">
+        <h2>Rows Scanned</h2>
+        <div class="metric" id="rows">--</div>
+        <div class="label" id="files">-- files</div>
+      </div>
+      <div class="panel span-3">
+        <h2>Writer Health</h2>
+        <div class="metric ok" id="writer">--</div>
+        <div class="label" id="writerLabel">drops/faults</div>
+      </div>
+      <div class="panel span-3">
+        <h2>Parse Health</h2>
+        <div class="metric ok" id="parse">--</div>
+        <div class="label" id="parseLabel">malformed/truncated</div>
+      </div>
+      <div class="panel span-3">
+        <h2>Proxy Boundary</h2>
+        <div class="metric" id="proxyWarnings">--</div>
+        <div class="label">private socket plus public forwarded claim</div>
+      </div>
+
+      <div class="panel span-4">
+        <h2>Event Families</h2>
+        <div id="eventTypes"></div>
+      </div>
+      <div class="panel span-4">
+        <h2>Identity Resolution</h2>
+        <div id="identity"></div>
+      </div>
+      <div class="panel span-4">
+        <h2>Authorization Result / Reason</h2>
+        <div id="auth"></div>
+      </div>
+
+      <div class="panel span-6">
+        <h2>Required -> Granted Capabilities</h2>
+        <div id="caps"></div>
+      </div>
+      <div class="panel span-6">
+        <h2>Socket / Forwarded Classes</h2>
+        <div id="proxy"></div>
+      </div>
+
+      <div class="panel span-8">
+        <h2>Recent Authorization Decisions</h2>
+        <div class="scroll" id="recent"></div>
+      </div>
+      <div class="panel span-4">
+        <h2>Request Status by Route</h2>
+        <div class="scroll" id="routes"></div>
+      </div>
+
+      <div class="panel span-12">
+        <h2>Segments</h2>
+        <div id="segments"></div>
+      </div>
+    </section>
+
+    <div class="footer">
+      <span id="updated">waiting for data</span>
+      <span>polls every 2000ms via /ops/boundary/summary</span>
+    </div>
+  </main>
+
+  <script>
+    const fmt = new Intl.NumberFormat();
+    const cell = (value) => value == null || value === '' ? '<span class="pill">empty</span>' : String(value);
+    function rows(map, limit = 12) {
+      const entries = Object.entries(map || {}).sort((a, b) => b[1] - a[1]).slice(0, limit);
+      if (!entries.length) return '<div class="empty">no rows</div>';
+      return `<table><tbody>${entries.map(([k, v]) => `<tr><td>${cell(k)}</td><td class="num">${fmt.format(v)}</td></tr>`).join('')}</tbody></table>`;
+    }
+    function setMetric(id, value, cls) {
+      const el = document.getElementById(id);
+      el.textContent = fmt.format(value ?? 0);
+      el.className = `metric ${cls || ''}`;
+    }
+    async function poll() {
+      try {
+        const data = await fetch('/ops/boundary/summary?max_files=12&max_rows=50000').then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        });
+        setMetric('rows', data.rows, data.enabled ? '' : 'bad');
+        document.getElementById('files').textContent = `${fmt.format((data.files || []).length)} files scanned`;
+        const writerBad = (data.writer_dropped_rows || 0) + (data.writer_faults || 0);
+        setMetric('writer', writerBad, writerBad ? 'bad' : 'ok');
+        document.getElementById('writerLabel').textContent = `${fmt.format(data.writer_dropped_rows || 0)} dropped / ${fmt.format(data.writer_faults || 0)} faults`;
+        const parseBad = (data.malformed_rows || 0) + (data.truncated_rows || 0);
+        setMetric('parse', parseBad, parseBad ? 'warn' : 'ok');
+        document.getElementById('parseLabel').textContent = `${fmt.format(data.malformed_rows || 0)} malformed / ${fmt.format(data.truncated_rows || 0)} truncated`;
+        setMetric('proxyWarnings', data.proxy_boundary_warnings || 0, data.proxy_boundary_warnings ? 'bad' : 'ok');
+
+        document.getElementById('eventTypes').innerHTML = rows(data.by_event_type);
+        document.getElementById('identity').innerHTML = rows(data.identity_resolution);
+        document.getElementById('auth').innerHTML = rows(data.authorization_result_reason);
+        document.getElementById('caps').innerHTML = rows(data.required_granted_capabilities, 16);
+        document.getElementById('proxy').innerHTML = rows(data.proxy_boundary, 16);
+        document.getElementById('routes').innerHTML = rows(data.route_status, 24);
+
+        const recent = data.recent_authorization || [];
+        document.getElementById('recent').innerHTML = recent.length ? `<table><thead><tr><th>UTC</th><th>Policy</th><th>Result</th><th>Reason</th><th>Caps</th></tr></thead><tbody>${recent.map(r => `<tr><td>${cell(r.timestamp_utc)}</td><td>${cell(r.policy)}</td><td><span class="pill ${r.result === 'allow' ? 'ok' : 'bad'}">${cell(r.result)}</span></td><td>${cell(r.reason)}</td><td>${cell(r.required_capabilities)} -> ${cell(r.granted_capabilities)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">no authorization decisions</div>';
+
+        const files = data.files || [];
+        document.getElementById('segments').innerHTML = files.length ? `<table><thead><tr><th>Name</th><th class="num">Bytes</th><th>State</th><th>Last Write UTC</th></tr></thead><tbody>${files.map(f => `<tr><td>${cell(f.name)}</td><td class="num">${fmt.format(f.bytes)}</td><td><span class="pill ${f.open ? 'warn' : 'ok'}">${f.open ? 'open' : 'closed'}</span></td><td>${cell(f.last_write_utc)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">no segment files</div>';
+
+        document.getElementById('updated').textContent = `updated ${new Date().toLocaleTimeString()} from ${data.root || 'no path'}`;
+      } catch (error) {
+        document.getElementById('updated').textContent = `boundary diagnostics unavailable: ${error.message}`;
+        setMetric('writer', 1, 'bad');
+      }
+    }
+    poll();
+    setInterval(poll, 2000);
+  </script>
+</body>
+</html>

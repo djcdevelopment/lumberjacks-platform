@@ -17,6 +17,7 @@ builder.Services.Configure<BoundaryEventOptions>(builder.Configuration.GetSectio
 builder.Services.AddSingleton<BoundaryEventWriter>();
 builder.Services.AddSingleton<IBoundaryEventSink>(sp => sp.GetRequiredService<BoundaryEventWriter>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<BoundaryEventWriter>());
+builder.Services.AddSingleton<BoundaryEventDiagnostics>();
 
 // Gateway services
 builder.Services.AddSingleton<SessionManager>();
@@ -189,6 +190,7 @@ Game.Gateway.Endpoints.RoadmapViewEndpoints.Map(app);
 Game.Gateway.Endpoints.NetworkSenseEndpoints.Map(app);
 Game.Gateway.Endpoints.GameplayEventsEndpoints.Map(app);
 Game.Gateway.Endpoints.LocalTestingEndpoints.Map(app);
+Game.Gateway.Endpoints.BoundaryDiagnosticsEndpoints.Map(app);
 ValheimPriorityManifestEndpoints.Map(app);
 ValheimZdoRedirectEndpoints.Map(app);
 ValheimZdoInjectionEndpoints.Map(app);
