@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-21T18:30:00.000Z</span>
+        <span>Updated 2026-07-22T09:40:05.496Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 1</span>
@@ -481,8 +481,8 @@
     <div class="meta-line"><span>shared</span><span class="deps">depends on <span class="dep">M0</span></span></div>
     <p>Bind the actual joining Steam account to enrollment, compatibility, and capacity.</p>
     <div class="ownership"><span><strong>Owns</strong>Steam enrollment identity, least-privilege authorization, strict admission, the enforced one-seat reservation, and validated public TLS.</span><span><strong>Does not own</strong>Recipient-scoped queue semantics, producer loss safety, guest installation, traffic-proof presentation, or volunteer readiness scheduling.</span></div>
-    <ul class="work-list"><li>Add enrollment list, revoke, expiry, last-used state, and unique active SteamID rules.</li><li>Split admin, producer, consumer, telemetry, and public proof permissions.</li><li>Make strict admission fail closed and reserve one authoritative seat.</li><li>Add certificate-validating TLS for public volunteer traffic.</li></ul>
-    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>An invited, enrolled, compatible account is accepted through the strict admission decision.</li><li>Uninvited, revoked, expired, mismatched, replayed, and over-capacity clients are rejected with actionable reasons.</li><li>Consumer credentials cannot reach admin, producer, reset, compaction, handshake-mutation, or arbitrarily named recipient operations.</li><li>Strict admission fails closed when its authority is unavailable, and no reusable credential crosses an unencrypted public link.</li></ul></div>
+    <ul class="work-list"><li>Add enrollment list, revoke, expiry, last-used state, and unique active SteamID rules.</li><li>Split admin, producer, consumer, telemetry, and public proof permissions.</li><li>Make strict admission fail closed and reserve one authoritative seat.</li><li>Add certificate-validating TLS for public volunteer traffic.</li><li>Treat reverse-proxy source-address capability inheritance as a consciously accepted known-alpha risk; before access widens beyond the owner&#39;s known cohort, preserve the real client address through trusted proxies and replace implicit private-source Admin with explicit operator and workload authorization.</li></ul>
+    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>An invited, enrolled, compatible account is accepted through the strict admission decision.</li><li>Uninvited, revoked, expired, mismatched, replayed, and over-capacity clients are rejected with actionable reasons.</li><li>Consumer credentials cannot reach admin, producer, reset, compaction, handshake-mutation, or arbitrarily named recipient operations.</li><li>A public request cannot inherit private-plane capabilities solely because it arrived through a trusted reverse proxy.</li><li>Strict admission fails closed when its authority is unavailable, and no reusable credential crosses an unencrypted public link.</li></ul></div>
     <div class="milestone-evidence">
       <div><strong>Inputs</strong><ul><li>M0 immutable release identity and protocol manifest.</li><li>Existing Steam OpenID enrollment, Gateway handshake responder, and client-auth middleware.</li></ul></div>
       <div><strong>Closing evidence</strong><span class="empty-evidence">None recorded; this exit gate remains open.</span></div>
@@ -510,9 +510,9 @@
     </div>
     <div class="meta-line"><span>volunteer</span><span class="deps">depends on <span class="dep">M1</span></span></div>
     <p>For the enforced one-seat window, prove each selected ZDO revision reached durable Gateway storage, the authenticated client, Unity application or safe supersession, and a durable terminal acknowledgement.</p>
-    <div class="ownership"><span><strong>Owns</strong>The capacity-one per-run ledger, conservation pipeline, volunteer/operator/public dashboard views, bounded telemetry, sealed receipt, and final verdict rules.</span><span><strong>Does not own</strong>Concurrent recipient queue isolation, producer outbox correctness, or the real two-client gate; those belong to M4a and M4b.</span></div>
-    <ul class="work-list"><li>Replace destructive empty-server reset with a run-scoped OPEN -&gt; CLOSING -&gt; SEALED lifecycle; stop suppression on last-peer transition and open the next epoch only after the prior seal is fsynced.</li><li>Bind receipts, pending delivery, terminal applied/superseded outcomes, and consumer telemetry to run_id; persist sealed summaries in the WAL through restart and compaction.</li><li>Show live deltas, rates, queue age, applied/superseded outcomes, native sends, gaps, failures, and release identity.</li><li>Keep readiness, routing mode, live evidence, participation, and final system verdict on separate axes; reserve PROVEN for a sealed receipt.</li><li>Bound and rotate raw telemetry instead of producing unbounded per-ZDO logs.</li></ul>
-    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>At the one-consumer ceiling, a seeded envelope visibly advances through every conservation stage and closes in a retained receipt.</li><li>Deliberate fallback, stale readiness, missing sequence, persistence failure, native eligible send, or unauthorized recipient request changes the correct live axis to FAULT or the sealed verdict away from PROVEN.</li><li>An idle heartbeat remains IDLE, never proof, and a run that closes without qualifying traffic becomes INCONCLUSIVE.</li><li>A service restart or WAL compaction does not erase or alter the sealed run, its release identity, conservation result, or canonical receipt hash.</li><li>Late old-run messages and a fast reconnect cannot mutate the next run or suppress traffic into a closing epoch; a forced incomplete close is retained with a non-PROVEN verdict.</li></ul></div>
+    <div class="ownership"><span><strong>Owns</strong>The capacity-one per-run ledger, conservation pipeline, volunteer/operator/public dashboard views, bounded append-only boundary telemetry, sealed receipt, and final verdict rules.</span><span><strong>Does not own</strong>Concurrent recipient queue isolation, producer outbox correctness, or the real two-client gate; those belong to M4a and M4b.</span></div>
+    <ul class="work-list"><li>Replace destructive empty-server reset with a run-scoped OPEN -&gt; CLOSING -&gt; SEALED lifecycle; stop suppression on last-peer transition and open the next epoch only after the prior seal is fsynced.</li><li>Bind receipts, pending delivery, terminal applied/superseded outcomes, and consumer telemetry to run_id; persist sealed summaries in the WAL through restart and compaction.</li><li>Show live deltas, rates, queue age, applied/superseded outcomes, native sends, gaps, failures, and release identity.</li><li>Keep readiness, routing mode, live evidence, participation, and final system verdict on separate axes; reserve PROVEN for a sealed receipt.</li><li>Start with a schema-versioned append-only boundary event stream, not a unified identity platform: emit only identity.resolved, authorization.decided, zdo.batch.queued, and request.completed while preserving the in-memory request context and never reinterpreting historical rows.</li><li>Bound and rotate physical JSONL segments by size and date using flush, close, and atomic rename; the first parser only validates required fields and reports basic event, decision, capability, missing-value, and duration counts.</li></ul>
+    <div class="gate open"><strong>Exit gate · not yet met</strong><ul class="exit-criteria"><li>At the one-consumer ceiling, a seeded envelope visibly advances through every conservation stage and closes in a retained receipt.</li><li>Deliberate fallback, stale readiness, missing sequence, persistence failure, native eligible send, or unauthorized recipient request changes the correct live axis to FAULT or the sealed verdict away from PROVEN.</li><li>An idle heartbeat remains IDLE, never proof, and a run that closes without qualifying traffic becomes INCONCLUSIVE.</li><li>A Gateway request records schema-versioned identity, authorization, and completion observations, one accepted ZDO receipt batch records one queue observation, and closed historical rows remain unchanged.</li><li>No event records a reusable credential or raw private identity; any stable cross-event pseudonym is opaque or keyed rather than a plain hash of an enumerable identifier.</li><li>A service restart or WAL compaction does not erase or alter the sealed run, its release identity, conservation result, or canonical receipt hash.</li><li>Late old-run messages and a fast reconnect cannot mutate the next run or suppress traffic into a closing epoch; a forced incomplete close is retained with a non-PROVEN verdict.</li></ul></div>
     <div class="milestone-evidence">
       <div><strong>Inputs</strong><ul><li>M0 immutable release identity and hash-recorded P7 metric vocabulary.</li><li>M1 enrollment, readiness, authorization, and run-identity contracts.</li><li>The top-level conservation proof pipeline in this roadmap source.</li><li>The 2026-07-16 owner observation captured exact live closure, then observed the empty-server reset erase the Gateway receipt denominator before any per-run receipt was sealed.</li></ul></div>
       <div><strong>Closing evidence</strong><span class="empty-evidence">None recorded; this exit gate remains open.</span></div>
@@ -843,7 +843,81 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260721183000-shipped-distance-band-aoi-band-shaping-to-produc">
+        <div class="journal"><article class="journal-entry" id="note-20260722094005-added-scripts-build-ps1-and-the-containerized-bu">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-22T09:40:05.496Z">2026-07-22T09:40:05.496Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M3</span>
+      </div>
+      <h3>Added scripts/build.ps1 and the containerized build-release runbook so Verify, GatewayImage, and AllImages use the same Dockerfile targets.</h3>
+      <p><strong>Impact:</strong> Operators have one repeatable PowerShell entry point and a checked-in procedure for the SDK 9 build, test, release identity, and image promotion boundaries.</p>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260722093857-unified-the-net-build-and-release-path-around-lu">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-22T09:38:57.277Z">2026-07-22T09:38:57.277Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M3</span>
+      </div>
+      <h3>Unified the .NET build and release path around Lumberjacks/Dockerfile: solution restore, compilation, and tests now run in the SDK 9 verify stage inherited by shipping images; removed the redundant advisory Gateway SDK-container build and added the build/release runbook.</h3>
+      <p><strong>Impact:</strong> Host SDK version no longer determines release verification, the shipping image cannot bypass the solution test lane, and operators have one documented container path while the net48 mod build remains intentionally separate.</p>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260722092824-added-the-reduced-boundary-event-stream-four-ver">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-22T09:28:24.806Z">2026-07-22T09:28:24.806Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M3</span>
+      </div>
+      <h3>Added the reduced boundary-event stream: four versioned JSONL events, bounded rotating writer, access observations, ZDO batch timing, and a basic check/summarize analyzer; P7 compose now has an opt-in durable volume.</h3>
+      <p><strong>Impact:</strong> Alpha operators can inspect identity/auth/completion and one queue boundary without changing authorization behavior; heavier tracing, integrity manifests, and identity-model refactoring remain deferred.</p>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260722091838-reduced-the-first-boundary-event-slice-to-four-e">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-22T09:18:38.738Z">2026-07-22T09:18:38.738Z</time>
+        <span class="pill note-kind">planning</span>
+        <span>Lumberjacks</span>
+        <span>M1 · M3</span>
+      </div>
+      <h3>Reduced the first boundary-event slice to four events and simple rotation</h3>
+      <p><strong>Impact:</strong> The first implementation now persists only identity.resolved, authorization.decided, zdo.batch.queued, and request.completed. Request entry remains in memory; segments rotate by flush, close, and atomic rename; and the initial parser performs validation plus basic counts. Compression, sidecar manifests, hashing, trace reconstruction, schema-drift analysis, percentiles, derived databases, cross-service instrumentation, and principal-model refactoring remain deferred until real event history justifies them.</p>
+      <details><summary>Verification (1)</summary><ul><li>Roadmap source validates and generated HTML is current.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260722090853-recorded-trusted-alpha-boundary-hardening-and-ap">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-22T09:08:53.927Z">2026-07-22T09:08:53.927Z</time>
+        <span class="pill note-kind">planning</span>
+        <span>Lumberjacks</span>
+        <span>M1 · M3</span>
+      </div>
+      <h3>Recorded trusted-alpha boundary hardening and append-only contract history</h3>
+      <p><strong>Impact:</strong> The self-service flow is a material improvement over manual secret exchange while remaining an intentionally provisional alpha boundary. M1 now requires trusted-proxy-aware authorization and explicit operator/workload authority before access widens. M3 now names a smaller intermediate step before any unified identity platform: a schema-versioned append-only event stream for boundary decisions and one reconstructable request lifecycle, with rotated source segments and derived analyses. Protocol emulators, observer services, and formal attestation remain deferred until product contracts settle.</p>
+      <details><summary>Verification (1)</summary><ul><li>Roadmap source validates and generated HTML is current.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260721183000-shipped-distance-band-aoi-band-shaping-to-produc">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

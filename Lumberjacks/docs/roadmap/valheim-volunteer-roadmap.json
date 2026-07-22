@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-21T18:30:00.000Z",
+  "updated_at": "2026-07-22T09:40:05.496Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -267,12 +267,14 @@
         "Add enrollment list, revoke, expiry, last-used state, and unique active SteamID rules.",
         "Split admin, producer, consumer, telemetry, and public proof permissions.",
         "Make strict admission fail closed and reserve one authoritative seat.",
-        "Add certificate-validating TLS for public volunteer traffic."
+        "Add certificate-validating TLS for public volunteer traffic.",
+        "Treat reverse-proxy source-address capability inheritance as a consciously accepted known-alpha risk; before access widens beyond the owner's known cohort, preserve the real client address through trusted proxies and replace implicit private-source Admin with explicit operator and workload authorization."
       ],
       "exit_criteria": [
         "An invited, enrolled, compatible account is accepted through the strict admission decision.",
         "Uninvited, revoked, expired, mismatched, replayed, and over-capacity clients are rejected with actionable reasons.",
         "Consumer credentials cannot reach admin, producer, reset, compaction, handshake-mutation, or arbitrarily named recipient operations.",
+        "A public request cannot inherit private-plane capabilities solely because it arrived through a trusted reverse proxy.",
         "Strict admission fails closed when its authority is unavailable, and no reusable credential crosses an unencrypted public link."
       ],
       "inputs": [
@@ -318,7 +320,7 @@
       "depends_on": [
         "M1"
       ],
-      "owns": "The capacity-one per-run ledger, conservation pipeline, volunteer/operator/public dashboard views, bounded telemetry, sealed receipt, and final verdict rules.",
+      "owns": "The capacity-one per-run ledger, conservation pipeline, volunteer/operator/public dashboard views, bounded append-only boundary telemetry, sealed receipt, and final verdict rules.",
       "does_not_own": "Concurrent recipient queue isolation, producer outbox correctness, or the real two-client gate; those belong to M4a and M4b.",
       "summary": "For the enforced one-seat window, prove each selected ZDO revision reached durable Gateway storage, the authenticated client, Unity application or safe supersession, and a durable terminal acknowledgement.",
       "work": [
@@ -326,12 +328,15 @@
         "Bind receipts, pending delivery, terminal applied/superseded outcomes, and consumer telemetry to run_id; persist sealed summaries in the WAL through restart and compaction.",
         "Show live deltas, rates, queue age, applied/superseded outcomes, native sends, gaps, failures, and release identity.",
         "Keep readiness, routing mode, live evidence, participation, and final system verdict on separate axes; reserve PROVEN for a sealed receipt.",
-        "Bound and rotate raw telemetry instead of producing unbounded per-ZDO logs."
+        "Start with a schema-versioned append-only boundary event stream, not a unified identity platform: emit only identity.resolved, authorization.decided, zdo.batch.queued, and request.completed while preserving the in-memory request context and never reinterpreting historical rows.",
+        "Bound and rotate physical JSONL segments by size and date using flush, close, and atomic rename; the first parser only validates required fields and reports basic event, decision, capability, missing-value, and duration counts."
       ],
       "exit_criteria": [
         "At the one-consumer ceiling, a seeded envelope visibly advances through every conservation stage and closes in a retained receipt.",
         "Deliberate fallback, stale readiness, missing sequence, persistence failure, native eligible send, or unauthorized recipient request changes the correct live axis to FAULT or the sealed verdict away from PROVEN.",
         "An idle heartbeat remains IDLE, never proof, and a run that closes without qualifying traffic becomes INCONCLUSIVE.",
+        "A Gateway request records schema-versioned identity, authorization, and completion observations, one accepted ZDO receipt batch records one queue observation, and closed historical rows remain unchanged.",
+        "No event records a reusable credential or raw private identity; any stable cross-event pseudonym is opaque or keyed rather than a plain hash of an enumerable identifier.",
         "A service restart or WAL compaction does not erase or alter the sealed run, its release identity, conservation result, or canonical receipt hash.",
         "Late old-run messages and a fast reconnect cannot mutate the next run or suppress traffic into a closing epoch; a forced incomplete close is retained with a non-PROVEN verdict."
       ],

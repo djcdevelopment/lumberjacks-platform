@@ -3,6 +3,7 @@ using Game.Contracts.Protocol;
 using Game.Persistence;
 using Game.ServiceDefaults;
 using Game.Gateway.Valheim;
+using Game.Gateway.BoundaryEvents;
 using Game.Gateway.WebSocket;
 using Game.Simulation.Tick;
 using Game.Simulation.World;
@@ -12,6 +13,10 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.Services.Configure<BoundaryEventOptions>(builder.Configuration.GetSection("BoundaryEvents"));
+builder.Services.AddSingleton<BoundaryEventWriter>();
+builder.Services.AddSingleton<IBoundaryEventSink>(sp => sp.GetRequiredService<BoundaryEventWriter>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BoundaryEventWriter>());
 
 // Gateway services
 builder.Services.AddSingleton<SessionManager>();
@@ -154,6 +159,7 @@ catch (Exception ex)
 }
 
 app.MapServiceDefaults();
+app.UseMiddleware<BoundaryRequestMiddleware>();
 app.UseRateLimiter();
 app.UseMiddleware<ValheimClientAccessMiddleware>();
 app.UseWebSockets();

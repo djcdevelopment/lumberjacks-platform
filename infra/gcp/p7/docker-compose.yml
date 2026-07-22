@@ -54,6 +54,12 @@ services:
     environment:
       <<: *lumberjacks-telemetry
       OTEL_SERVICE_NAME: lumberjacks-gateway
+      BoundaryEvents__Enabled: "${BOUNDARY_EVENTS_ENABLED:-true}"
+      BoundaryEvents__Path: "/var/lib/lumberjacks/boundary-events"
+      BoundaryEvents__SegmentBytes: "${BOUNDARY_EVENTS_SEGMENT_BYTES:-67108864}"
+      BoundaryEvents__FlushIntervalMilliseconds: "${BOUNDARY_EVENTS_FLUSH_INTERVAL_MS:-1000}"
+      BoundaryEvents__Release: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
+      BoundaryEvents__Instance: "${HOSTNAME:-p7-gateway}"
       Urls: "http://+:4000"
       ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
       ServiceUrls__EventLog: "http://eventlog:4002"
@@ -72,6 +78,7 @@ services:
     volumes:
       - /mnt/comfy-p7/lumberjacks/zdo-queue:/var/lib/lumberjacks/zdo-queue
       - /mnt/comfy-p7/lumberjacks/enrollment:/var/lib/lumberjacks/enrollment
+      - /mnt/comfy-p7/lumberjacks/boundary-events:/var/lib/lumberjacks/boundary-events
       - /mnt/comfy-p7/lumberjacks/modpack:/var/lib/lumberjacks/modpack:ro
     depends_on:
       postgres:

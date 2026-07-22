@@ -1,3 +1,5 @@
+using Game.Gateway.BoundaryEvents;
+
 namespace Game.Gateway.Valheim;
 
 /// <summary>
@@ -18,7 +20,8 @@ public static class ValheimZdoRedirectEndpoints
             ValheimZdoRedirectService redirects,
             SteamEnrollmentService enrollments,
             IConfiguration configuration,
-            ILoggerFactory loggerFactory) =>
+            ILoggerFactory loggerFactory,
+            IBoundaryEventSink boundaryEvents) =>
         {
             if (string.IsNullOrWhiteSpace(request.WindowId))
                 return Results.BadRequest(new { error = "window_id is required" });
@@ -101,11 +104,13 @@ public static class ValheimZdoRedirectEndpoints
             // nothing polls.
             var producerEmitsRecipients =
                 configuration.GetValue("ValheimQueue:ProducerEmitsRecipients", false);
+            var queueTimer = System.Diagnostics.Stopwatch.StartNew();
             var result = producerEmitsRecipients
                 ? redirects.RecordEnvelopes(request.WindowId, source, envelopes,
                     envelope => enrollments.GetRecipientId(envelope.Recipient) ?? ValheimRecipient.Legacy)
                 : redirects.RecordEnvelopes(request.WindowId, source, envelopes,
                     _ => ValheimRecipient.Legacy);
+            queueTimer.Stop();
             var correlations = envelopes.Select(envelope => envelope.CorrelationId)
                 .Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
             var recipients = envelopes.Select(envelope => envelope.Recipient ?? envelope.RecipientId ?? ValheimRecipient.Legacy)
@@ -114,6 +119,17 @@ public static class ValheimZdoRedirectEndpoints
                 "ZDO submission accepted caller_identity={CallerIdentity} mod_release={ModRelease} window_id={WindowId} recipients={Recipients} correlations={Correlations}",
                 callerIdentity, request.ModRelease, request.WindowId,
                 string.Join(",", recipients), string.Join(",", correlations));
+
+            boundaryEvents.TryWrite(BoundaryEventEnvelope.Create("zdo.batch.queued",
+                new BoundaryEventSource("lumberjacks-gateway", "unknown", "unknown", null), new
+                {
+                    observed_mod_release = request.ModRelease,
+                    recipient_count = recipients.Length,
+                    envelope_count = envelopes.Count,
+                    request_bytes = context.Request.ContentLength ?? 0,
+                    accepted_count = result.Received,
+                    queue_duration_ms = queueTimer.Elapsed.TotalMilliseconds,
+                }, System.Diagnostics.Activity.Current));
 
             return Results.Ok(new
             {

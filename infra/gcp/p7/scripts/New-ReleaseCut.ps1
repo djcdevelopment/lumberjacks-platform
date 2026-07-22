@@ -79,22 +79,10 @@ if (-not $WhatIf) {
   & dotnet build $modProject -c Release -v quiet --nologo -p:PluginOutputPath=C:\__comfy_cut_no_plugin_copy__
   if ($LASTEXITCODE -ne 0) { throw 'mod build failed' }
 
-  # The Gateway targets net9.0 and this workstation ships only the .NET 8 SDK, so a bare
-  # `dotnet build` here fails with NETSDK1045 rather than producing an artifact. The net9 lane on
-  # this box is the sdk:9.0 container with the repo mounted; prefer a local SDK when one exists so
-  # this is not Docker-dependent on a machine that does not need it.
-  $hasNet9 = @(& dotnet --list-sdks 2>$null | Where-Object { $_ -match '^9\.' }).Count -gt 0
-  Write-Host "building gateway (net9.0, Release) with -p:LumberjacksExpectedModRelease=$ReleaseId ..."
-  if ($hasNet9) {
-    & dotnet build $gatewayProj -c Release -v quiet --nologo -p:LumberjacksExpectedModRelease=$ReleaseId
-    if ($LASTEXITCODE -ne 0) { throw 'gateway build failed' }
-  } else {
-    Write-Host '  no local .NET 9 SDK; building through mcr.microsoft.com/dotnet/sdk:9.0'
-    $rel = 'src/Game.Gateway/Game.Gateway.csproj'
-    & docker run --rm -v "${LumberjacksRoot}:/src" -w /src mcr.microsoft.com/dotnet/sdk:9.0 `
-        dotnet build $rel -c Release -v quiet --nologo "-p:LumberjacksExpectedModRelease=$ReleaseId"
-    if ($LASTEXITCODE -ne 0) { throw 'gateway build failed (sdk:9.0 container)' }
-  }
+  # The Gateway bin/Release output is advisory only and never ships. The canonical Docker build
+  # below compiles and tests the solution before publishing the actual image, so do not spend a
+  # second build producing an artifact that the release gate deliberately ignores.
+  Write-Host '  Gateway compilation and tests run as part of the authoritative Docker image build.'
 }
 
 # --- 3. THE CHECK: ask the ARTIFACTS, not the source --------------------------------------------
