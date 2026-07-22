@@ -441,9 +441,7 @@ function renderNote(note) {
         <span>${note.milestones.map((id) => escapeHtml(id)).join(' · ')}</span>
       </div>
       <h3>${escapeHtml(note.summary)}</h3>
-      <p><strong>Impact:</strong> ${escapeHtml(note.impact)}</p>
-      ${verification}
-      ${evidence}
+      <p><strong>Impact:</strong> ${escapeHtml(note.impact)}</p>${verification ? `\n      ${verification}` : ''}${evidence ? `\n      ${evidence}` : ''}
       <div class="containing-commit">Recorded by ${escapeHtml(note.author)} · associated with the Git commit containing this note</div>
     </div>
   </article>`;

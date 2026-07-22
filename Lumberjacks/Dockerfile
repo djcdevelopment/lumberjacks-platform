@@ -2,7 +2,7 @@
 # Build stage: compiles all projects from the solution
 # Runtime stages: one per service, copies only the needed binaries
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS source
 WORKDIR /src
 
 # Copy solution and project files first for layer caching
@@ -15,16 +15,26 @@ COPY src/Game.Simulation/Game.Simulation.csproj src/Game.Simulation/
 COPY src/Game.EventLog/Game.EventLog.csproj src/Game.EventLog/
 COPY src/Game.Progression/Game.Progression.csproj src/Game.Progression/
 COPY src/Game.OperatorApi/Game.OperatorApi.csproj src/Game.OperatorApi/
+COPY tests/Game.Contracts.Tests/Game.Contracts.Tests.csproj tests/Game.Contracts.Tests/
+COPY tests/Game.Simulation.Tests/Game.Simulation.Tests.csproj tests/Game.Simulation.Tests/
+COPY tests/Game.Gateway.Tests/Game.Gateway.Tests.csproj tests/Game.Gateway.Tests/
 
-# Restore only the src projects (tests excluded from Docker build)
-RUN dotnet restore src/Game.Gateway \
- && dotnet restore src/Game.Simulation \
- && dotnet restore src/Game.EventLog \
- && dotnet restore src/Game.Progression \
- && dotnet restore src/Game.OperatorApi
+# Restore the same solution used by local development. This keeps the SDK, restore graph, and
+# test dependencies identical for host builds, CI, and release-image builds.
+RUN dotnet restore Game.sln
 
-# Copy everything and publish each service
+# Copy source and tests only after restore so ordinary source edits preserve the NuGet cache layer.
 COPY src/ src/
+COPY tests/ tests/
+
+# The verification target is the canonical .NET build/test lane. Runtime image targets derive from
+# it, so a promotable image cannot quietly bypass compilation or tests.
+FROM source AS verify
+RUN dotnet build Game.sln -c Release --no-restore
+RUN dotnet test Game.sln -c Release --no-build --no-restore --logger "console;verbosity=minimal"
+
+# Publish each service from the verified source tree.
+FROM verify AS build
 RUN dotnet publish src/Game.Simulation -c Release -o /app/simulation --no-restore
 RUN dotnet publish src/Game.EventLog -c Release -o /app/eventlog --no-restore
 RUN dotnet publish src/Game.Progression -c Release -o /app/progression --no-restore

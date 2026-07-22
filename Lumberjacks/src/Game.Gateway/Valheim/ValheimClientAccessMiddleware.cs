@@ -1,3 +1,7 @@
+using System.Diagnostics;
+using Game.Gateway.BoundaryEvents;
+using Microsoft.Extensions.Options;
+
 namespace Game.Gateway.Valheim;
 
 /// <summary>
@@ -20,11 +24,18 @@ public sealed class ValheimClientAccessMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IConfiguration _configuration;
+    private readonly IBoundaryEventSink _boundaryEvents;
+    private readonly BoundaryEventSource _source;
 
-    public ValheimClientAccessMiddleware(RequestDelegate next, IConfiguration configuration)
+    public ValheimClientAccessMiddleware(RequestDelegate next, IConfiguration configuration,
+        IBoundaryEventSink? boundaryEvents = null, IOptions<BoundaryEventOptions>? options = null)
     {
         _next = next;
         _configuration = configuration;
+        _boundaryEvents = boundaryEvents ?? NullBoundaryEventSink.Instance;
+        var value = options?.Value;
+        _source = new(value?.Service ?? "lumberjacks-gateway", value?.Instance ?? "unknown",
+            value?.Release ?? "unknown", null);
     }
 
     public async Task InvokeAsync(HttpContext context, SteamEnrollmentService enrollments)
@@ -35,11 +46,29 @@ public sealed class ValheimClientAccessMiddleware
             return;
         }
 
-        var principal = Resolve(context, enrollments);
+        var principal = Resolve(context, enrollments, out var observation);
         context.Items[ValheimPrincipal.ItemKey] = principal;
+        _boundaryEvents.TryWrite(BoundaryEventEnvelope.Create("identity.resolved", _source, new
+        {
+            principal_kind = observation.PrincipalKind,
+            principal_reference = observation.PrincipalReference,
+            resolution_basis = observation.ResolutionBasis,
+            socket_peer_class = observation.SocketPeerClass,
+            forwarded_peer_claim_class = observation.ForwardedPeerClaimClass,
+            granted_capabilities = observation.GrantedCapabilities.ToString(),
+        }, Activity.Current));
 
         var required = ValheimAccessPolicy.RequiredFor(context);
-        if (!principal.Has(required))
+        var allowed = principal.Has(required);
+        _boundaryEvents.TryWrite(BoundaryEventEnvelope.Create("authorization.decided", _source, new
+        {
+            policy = "valheim." + required.ToString().ToLowerInvariant() + ".required",
+            required_capabilities = required.ToString(),
+            granted_capabilities = principal.Capabilities.ToString(),
+            result = allowed ? "allow" : "deny",
+            reason = observation.ResolutionBasis,
+        }, Activity.Current));
+        if (!allowed)
         {
             context.Response.StatusCode = principal.Capabilities == ValheimCapability.None
                 ? StatusCodes.Status401Unauthorized
@@ -57,13 +86,16 @@ public sealed class ValheimClientAccessMiddleware
         await _next(context);
     }
 
-    ValheimPrincipal Resolve(HttpContext context, SteamEnrollmentService enrollments)
+    ValheimPrincipal Resolve(HttpContext context, SteamEnrollmentService enrollments,
+        out AccessResolutionObservation observation)
     {
         if (IsPrivateOrLoopback(context.Connection.RemoteIpAddress))
         {
-            return new ValheimPrincipal("private-plane",
+            var principal = new ValheimPrincipal("private-plane",
                 ValheimCapability.Admin | ValheimCapability.Producer |
                 ValheimCapability.Consumer | ValheimCapability.Telemetry);
+            observation = Observe(context, principal, null, "private_socket");
+            return principal;
         }
 
         var supplied = context.Request.Headers["X-Lumberjacks-Client-Key"].ToString();
@@ -72,19 +104,29 @@ public sealed class ValheimClientAccessMiddleware
         if (!string.IsNullOrWhiteSpace(enrollmentId) &&
             enrollments.Verify(enrollmentId, supplied, out var view, out _))
         {
-            return new ValheimPrincipal("enrollment",
+            var principal = new ValheimPrincipal("enrollment",
                 ValheimCapability.Consumer | ValheimCapability.Telemetry, view);
+            observation = Observe(context, principal, view.EnrollmentId, "enrollment");
+            return principal;
         }
 
         var sharedKey = _configuration["LUMBERJACKS_CLIENT_ACCESS_KEY"];
         if (!string.IsNullOrWhiteSpace(sharedKey) && CryptographicEquals(supplied, sharedKey))
         {
-            return new ValheimPrincipal("shared-client-key",
+            var principal = new ValheimPrincipal("shared-client-key",
                 ValheimCapability.Consumer | ValheimCapability.Telemetry);
+            observation = Observe(context, principal, null, "shared_client_key");
+            return principal;
         }
 
+        observation = Observe(context, ValheimPrincipal.Anonymous, null, "anonymous");
         return ValheimPrincipal.Anonymous;
     }
+
+    private static AccessResolutionObservation Observe(HttpContext context, ValheimPrincipal principal,
+        string? reference, string basis) => new(principal.Kind, reference, basis,
+        PeerClass.Classify(context.Connection.RemoteIpAddress), PeerClass.ForwardedClass(context.Request),
+        principal.Capabilities);
 
     static bool IsPrivateOrLoopback(System.Net.IPAddress? address)
     {
