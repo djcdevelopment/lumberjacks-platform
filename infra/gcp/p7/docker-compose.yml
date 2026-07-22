@@ -64,9 +64,15 @@ services:
       # set while the Gateway never sees it. Defaults false: flipping it before the mod that stamps
       # recipients is deployed halts delivery silently.
       ValheimQueue__ProducerEmitsRecipients: "${VALHEIM_QUEUE_PRODUCER_EMITS_RECIPIENTS:-false}"
+      # Self-service volunteer onboarding: the base mod-pack template the Gateway personalizes and
+      # streams from POST /join/pack, and the Valheim connect address the status banner advertises.
+      # The template is mounted read-only below and MUST be kept in sync with the shipped mod build.
+      LUMBERJACKS_MODPACK_TEMPLATE: "${LUMBERJACKS_MODPACK_TEMPLATE:-/var/lib/lumberjacks/modpack/Comfy-P7-Alpha-Mods.zip}"
+      LUMBERJACKS_VALHEIM_CONNECT: "${LUMBERJACKS_VALHEIM_CONNECT:-8.231.129.249:2456}"
     volumes:
       - /mnt/comfy-p7/lumberjacks/zdo-queue:/var/lib/lumberjacks/zdo-queue
       - /mnt/comfy-p7/lumberjacks/enrollment:/var/lib/lumberjacks/enrollment
+      - /mnt/comfy-p7/lumberjacks/modpack:/var/lib/lumberjacks/modpack:ro
     depends_on:
       postgres:
         condition: service_healthy
