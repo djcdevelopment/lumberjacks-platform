@@ -27,8 +27,7 @@ public class MessageClassificationTests
     [Fact]
     public void All_event_types_are_present()
     {
-        // 34 canonical event types (the four gameplay/quest types — first_hit, killing_blow,
-        // weapon_used, quest_completed — are mod-produced and not yet mirrored into docs/events.md).
-        Assert.Equal(34, Game.Contracts.Events.EventType.All.Count);
+        // Includes the public-safe mod-produced transport_control_changed observation.
+        Assert.Equal(35, Game.Contracts.Events.EventType.All.Count);
     }
 }

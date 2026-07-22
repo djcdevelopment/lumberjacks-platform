@@ -435,6 +435,27 @@ public class TelemetryV0EndpointsTests
     }
 
     [Fact]
+    public void TransportControlEventIsPublicSafeAndCarriesNoActorIdentity()
+    {
+        GameplayEventFeed.Reset();
+        Assert.True(GameplayEventFeed.IsPublicEventType(EventType.TransportControlChanged));
+        GameplayEventFeed.Capture(
+            EventType.TransportControlChanged,
+            regionId: null,
+            detail: "lumberjacks_http=off via native_valheim_rpc",
+            provenance: "observed",
+            occurredAt: FixedNow.AddMinutes(-1));
+
+        var json = ToJson(TelemetryV0Endpoints.BuildEventsInfo(
+            GameplayEventFeed.Snapshot(), TimeSpan.Zero, FixedNow));
+
+        Assert.Contains("transport_control_changed", json);
+        Assert.Contains("lumberjacks_http=off", json);
+        Assert.DoesNotContain("actor", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("player_id", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void FeedRingDropsOldestPastCapacityAndCountsDrops()
     {
         GameplayEventFeed.Reset();

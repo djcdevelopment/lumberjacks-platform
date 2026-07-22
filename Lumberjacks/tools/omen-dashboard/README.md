@@ -77,6 +77,30 @@ Invoke-RestMethod http://127.0.0.1:8080/ops/boundary/summary | Select rows, prox
 A `current_tick` that advances between calls in step 2 is the live-vs-stale proof. Then open
 `http://127.0.0.1:8080/community`. Verified live against P7 (`gcp-p7`, mod 0.5.31) on 2026-07-21.
 
+## In-game transport truth strip
+
+Current ComfyNetworkSense builds show the dashboard URL and these runtime facts at the bottom of
+the game:
+
+```text
+NETWORK      Native Valheim [x]  LJ ZDO [x]  FULL NETCODE [NO]
+LJ ZDO PATH  HTTP [x]  JSON [x]  WebSocket [-]  UDP [-]  MCP [x]
+```
+
+`WebSocket [-]` and `UDP [-]` are intentional: Lumberjacks implements those dual channels, but the
+live Valheim ZDO adapter currently uses authenticated HTTP/JSON. Native Valheim still owns the base
+peer, relevance selection, non-ZDO RPCs, and client receive/movement presentation.
+
+Click `HTTP [x]` to pause the client-side Lumberjacks ZDO poll/ack path. This does **not** promise a
+disconnect: the native peer can stay connected while authoritative world delivery freezes. Click
+it again to resume. `MCP` independently gates the local `:8720` Raven helper. `DISCONNECT` requests
+a native Valheim logout after relaying the observation.
+
+Each change writes `transport-controls.jsonl` locally and relays a public-safe
+`transport_control_changed` event over native Valheim RPC to the server. The server posts it to the
+Gateway, so `/community` shows the exact switch and state in Live Trace even when the client's own
+Lumberjacks HTTP path has just been disabled.
+
 ## Why the tunnel, and why widening the allowlist is not widening exposure
 
 This proxy used to point at `8.231.129.249:42317`, the VM's **public** player endpoint.

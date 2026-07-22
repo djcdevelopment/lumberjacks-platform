@@ -17,6 +17,11 @@ The `verify` target restores the solution, builds all .NET projects and test
 projects, then runs the tests. The test source is intentionally included in the
 Docker build context; `bin/` and `obj/` remain excluded.
 
+The ordering in `.dockerignore` is load-bearing: `tests/**/bin` and `tests/**/obj`
+must be excluded *after* the broad `!tests/**` source include. Otherwise a host-generated
+Windows `project.assets.json` can overwrite the container's Linux restore graph and make
+the mandatory image gate fail with `NETSDK1064` even though `dotnet restore` succeeded.
+
 ## Build a promotable Gateway image
 
 The release scripts remain the authority for release identity and image

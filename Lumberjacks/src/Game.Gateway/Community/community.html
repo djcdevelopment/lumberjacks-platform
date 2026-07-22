@@ -185,7 +185,7 @@
 
         .status-strip {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 8px;
         }
 
@@ -339,7 +339,8 @@
         <div class="status-strip" style="margin-top:8px">
             <div class="status-card"><strong>Deployment</strong><span id="deployment-status">loading...</span></div>
             <div class="status-card"><strong>Valheim</strong><span id="valheim-status">waiting for heartbeat...</span></div>
-            <div class="status-card"><strong>Cutover / ZDO</strong><span id="cutover-status">waiting for coverage...</span></div>
+            <div class="status-card"><strong>Lumberjacks ZDO delivery</strong><span id="cutover-status">waiting for coverage...</span></div>
+            <div class="status-card"><strong>Full netcode cutover</strong><span style="color:var(--accent-red)">NO â€” native Valheim peer, relevance, RPCs, and receive semantics remain</span></div>
         </div>
         </div>
         <div class="badges">
@@ -936,11 +937,11 @@
 
                 const list = document.getElementById('gameplayList');
                 // quest_completed has its own panel (updateQuestData) — keep this feed to combat.
-                const combat = (data.events || []).filter(e => e.event_type !== 'quest_completed');
-                if (combat.length === 0) {
+                const publicEvents = (data.events || []).filter(e => e.event_type !== 'quest_completed');
+                if (publicEvents.length === 0) {
                     list.innerHTML = '<span class="data-value" style="font-size: 0.85rem;">No recent gameplay events</span>';
                 } else {
-                    list.innerHTML = combat.map(e => `
+                    list.innerHTML = publicEvents.map(e => `
                         <div class="list-row" style="flex-direction: column; align-items: flex-start; gap: 2px;">
                             <div style="display:flex; justify-content:space-between; width:100%;">
                                 <strong>${escapeHtml(e.event_type)}</strong>
@@ -951,9 +952,21 @@
                     `).join('');
                 }
 
-                setPanelSilent('panel-gameplay', combat.length === 0);
-                if (combat.length > 0) {
-                    addTraceIfChanged('gameplay', 'gameplay', `${combat.length} combat/public gameplay events in buffer`, 'good');
+                setPanelSilent('panel-gameplay', publicEvents.length === 0);
+                if (publicEvents.length > 0) {
+                    addTraceIfChanged('gameplay', 'gameplay', `${publicEvents.length} public gameplay/ops events in buffer`, 'good');
+                }
+
+                window.__seenTransportControls = window.__seenTransportControls || {};
+                const controls = publicEvents
+                    .filter(e => e.event_type === 'transport_control_changed')
+                    .slice(0, 20)
+                    .reverse();
+                for (const event of controls) {
+                    if (window.__seenTransportControls[event.event_id]) continue;
+                    window.__seenTransportControls[event.event_id] = true;
+                    const detail = event.detail || 'transport control changed';
+                    addTrace('transport', detail, detail.includes('=off') ? 'warn' : 'good');
                 }
                 setPanelStale('panel-gameplay', false);
                 return true;
@@ -1052,7 +1065,7 @@
                     addTraceIfChanged('cutover', 'cutover', 'heartbeat stale', 'warn');
                     return;
                 }
-                const coverage = d.coverage_percent == null ? 'coverage pending' : `${d.coverage_percent}% gameplay coverage`;
+                const coverage = d.coverage_percent == null ? 'coverage pending' : `${d.coverage_percent}% ZDO delivery coverage`;
                 const a = d.authoritative_window;
                 const authoritative = a?.receipts > 0
                     ? `ZDO ${a.acknowledged}/${a.receipts} ack, ${a.applied} applied, ${a.superseded ?? 0} superseded, ${a.pending} queued, ${a.rejected} rejected, ${a.durable_queue && a.persistence_healthy ? 'durable' : 'volatile'}${a.complete ? ' ✓' : ''}`

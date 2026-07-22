@@ -68,6 +68,9 @@ public static class GameplayEventFeed
         // Quest completion (quest-evaluator track). Public-safe: the projection carries only the
         // quest name as detail (never the acting player); quest_id/guild/command ride the EventLog.
         EventType.QuestCompleted,
+        // Alpha transport fault switch. Detail is a bounded component/state/path description;
+        // actor identity remains confined to the durable EventLog projection.
+        EventType.TransportControlChanged,
     };
 
     private static readonly object Gate = new();

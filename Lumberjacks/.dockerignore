@@ -8,6 +8,11 @@ packages/
 tests/
 !tests/
 !tests/**
+# The broad test-source include above also negates the global bin/obj exclusions.
+# Re-exclude host artifacts last: Windows project.assets.json points at C:\Users\...
+# and must never overwrite the container's Linux restore output.
+tests/**/bin/
+tests/**/obj/
 scripts/
 docs/
 infra/

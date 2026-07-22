@@ -42,6 +42,9 @@ public static class EventType
     public const string WeaponUsed = "weapon_used";
     public const string QuestCompleted = "quest_completed";
 
+    // Alpha observability events (mod-produced; public projection carries no identity)
+    public const string TransportControlChanged = "transport_control_changed";
+
     // Operational events
     public const string RegionActivated = "region_activated";
     public const string RegionDeactivated = "region_deactivated";
@@ -58,7 +61,7 @@ public static class EventType
         ItemPickedUp, ItemStored, RoadSegmentMaintained, SettlementSignatureUpdated,
         ChallengeStarted, ChallengeCompleted, GuildObjectiveProgressed, GuildObjectiveCompleted,
         RewardGranted, DiscordIdentityLinked, DiscordRoleSyncRequested, DiscordRoleSynced,
-        FirstHit, KillingBlow, WeaponUsed, QuestCompleted,
+        FirstHit, KillingBlow, WeaponUsed, QuestCompleted, TransportControlChanged,
         RegionActivated, RegionDeactivated, InterestSubscriptionChanged,
         EdgeNodeRegistered, EdgeNodeUnhealthy, EdgeNodeDetached,
     ];

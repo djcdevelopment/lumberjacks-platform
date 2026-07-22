@@ -595,7 +595,7 @@
             try {
                 const d = await fetch('/api/v0/telemetry/cutover').then(r => r.ok ? r.json() : Promise.reject(r.status));
                 if (d.stale && !d.consumer_draining) { el.textContent = 'Cutover: heartbeat stale'; return; }
-                const coverage = d.coverage_percent == null ? 'coverage pending' : `${d.coverage_percent}% gameplay coverage`;
+                const coverage = d.coverage_percent == null ? 'coverage pending' : `${d.coverage_percent}% ZDO delivery coverage`;
                 const a = d.authoritative_window;
                 const authoritative = a?.receipts > 0
                     ? `ZDO ${a.acknowledged}/${a.receipts} ack, ${a.applied} applied, ${a.superseded ?? 0} superseded, ${a.pending} queued, ${a.rejected} rejected, ${a.durable_queue && a.persistence_healthy ? 'durable' : 'volatile'}${a.complete ? ' ✓' : ''}`

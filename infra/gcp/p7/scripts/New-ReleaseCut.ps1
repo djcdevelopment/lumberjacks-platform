@@ -52,7 +52,7 @@ foreach ($p in @($modProject, $modSource, $gatewayProj)) {
 }
 
 # --- 1. the mod: the const is the only place it can live (GenerateAssemblyInfo=false) -----------
-$src = Get-Content -LiteralPath $modSource -Raw
+$src = Get-Content -LiteralPath $modSource -Raw -Encoding UTF8
 $pattern = '(public const string ReleaseId = ")([^"]*)(";)'
 if ($src -notmatch $pattern) { throw "could not find the ReleaseId const in $modSource" }
 $current = [regex]::Match($src, $pattern).Groups[2].Value

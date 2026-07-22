@@ -26,6 +26,7 @@ public static class ValheimGameplayEventEndpoints
         EventType.KillingBlow,
         EventType.WeaponUsed,
         EventType.QuestCompleted,
+        EventType.TransportControlChanged,
     };
 
     public static void Map(WebApplication app)
@@ -42,7 +43,7 @@ public static class ValheimGameplayEventEndpoints
             {
                 return Results.BadRequest(new
                 {
-                    error = "event_type is required and must be one of: first_hit, killing_blow, weapon_used, quest_completed",
+                    error = "event_type is required and must be one of: first_hit, killing_blow, weapon_used, quest_completed, transport_control_changed",
                 });
             }
 
