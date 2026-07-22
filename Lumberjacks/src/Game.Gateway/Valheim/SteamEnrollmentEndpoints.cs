@@ -1,5 +1,3 @@
-using System.Net;
-
 namespace Game.Gateway.Valheim;
 
 public static class SteamEnrollmentEndpoints
@@ -45,7 +43,7 @@ public static class SteamEnrollmentEndpoints
         {
             var token = request.Query["t"].ToString();
             var login = SteamLoginUrl(request, $"/join/steam-callback?t={Uri.EscapeDataString(token)}");
-            return Results.Text($"<html><body><h1>Lumberjacks invite</h1><p>Use Steam to redeem this one-time invitation.</p><a href=\"{WebUtility.HtmlEncode(login)}\">Sign in with Steam</a></body></html>", "text/html");
+            return Results.Text(EnrollmentPages.InvitePage(login), "text/html");
         }).RequireRateLimiting("join");
 
         app.MapGet("/join/steam-callback", async (HttpRequest request, SteamEnrollmentService service, IHttpClientFactory clients) =>
@@ -56,7 +54,7 @@ public static class SteamEnrollmentEndpoints
 
             if (!service.TryRedeem(token, steamId!, out var issued, out var reason))
                 return Results.BadRequest(new { error = reason });
-            return Results.Text(BuildDownloadPage(issued, PublicBaseUrl(request)), "text/html");
+            return Results.Text(EnrollmentPages.DownloadPage(issued.Enrollment.SteamId, issued.BootstrapToken, PublicBaseUrl(request)), "text/html");
         }).RequireRateLimiting("join");
 
         // Self-serve re-issue for a volunteer whose setup code expired before they
@@ -66,7 +64,7 @@ public static class SteamEnrollmentEndpoints
         app.MapGet("/join/reissue", (HttpRequest request) =>
         {
             var login = SteamLoginUrl(request, "/join/reissue/steam-callback");
-            return Results.Text("<html><body><h1>Lumberjacks setup code re-issue</h1><p>Setup code expired before you installed? Sign in with Steam to get a fresh one. Your enrollment stays as it is; the old code stops working.</p><a href=\"" + WebUtility.HtmlEncode(login) + "\">Sign in with Steam</a></body></html>", "text/html");
+            return Results.Text(EnrollmentPages.ReissuePage(login), "text/html");
         }).RequireRateLimiting("join");
 
         app.MapGet("/join/reissue/steam-callback", async (HttpRequest request, SteamEnrollmentService service, IHttpClientFactory clients) =>
@@ -76,7 +74,7 @@ public static class SteamEnrollmentEndpoints
 
             if (!service.TryReissueBootstrap(steamId!, out var issued, out var reason))
                 return Results.BadRequest(new { error = reason });
-            return Results.Text(BuildDownloadPage(issued, PublicBaseUrl(request)), "text/html");
+            return Results.Text(EnrollmentPages.DownloadPage(issued.Enrollment.SteamId, issued.BootstrapToken, PublicBaseUrl(request)), "text/html");
         }).RequireRateLimiting("join");
 
         // Public by design: the bootstrap token is the only credential, it is
@@ -167,36 +165,6 @@ public static class SteamEnrollmentEndpoints
             return (null, Results.Unauthorized());
 
         return (claimed[(claimed.LastIndexOf('/') + 1)..], null);
-    }
-
-    // What the browser sees after Steam verifies: a one-click download of the personalized mod pack.
-    // The single-use bootstrap rides in a hidden form field (a POST, so it stays out of history and
-    // referers) and is spent when the pack is built. The page carries no reusable credential itself —
-    // that is minted only when /join/pack consumes the bootstrap, and it lands inside the download.
-    static string BuildDownloadPage(SteamEnrollmentService.BootstrapIssued issued, string baseUrl)
-    {
-        var trimmed = baseUrl.TrimEnd('/');
-        var action = WebUtility.HtmlEncode(trimmed + "/join/pack");
-        var reissue = WebUtility.HtmlEncode(trimmed + "/join/reissue");
-        var steam = WebUtility.HtmlEncode(issued.Enrollment.SteamId);
-        var bootstrap = WebUtility.HtmlEncode(issued.BootstrapToken);
-        return
-            "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
-            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
-            "<title>Lumberjacks — finish setup</title></head><body>" +
-            "<h1>You're verified ✓</h1>" +
-            "<p>SteamID <code>" + steam + "</code> is enrolled. One step left:</p>" +
-            "<form method=\"post\" action=\"" + action + "\">" +
-            "<input type=\"hidden\" name=\"token\" value=\"" + bootstrap + "\">" +
-            "<button type=\"submit\">Download my mod pack</button></form>" +
-            "<h2>Then</h2><ol>" +
-            "<li>Extract the <code>Valheim</code> folder from the zip into your Valheim install folder " +
-            "(Steam → right-click Valheim → Manage → Browse local files), letting it merge.</li>" +
-            "<li>Launch Valheim and join the server.</li></ol>" +
-            "<p><strong>This download is personal — it contains your access key. Don't share it.</strong></p>" +
-            "<p>The download works once. If it didn't start, sign in again at " +
-            "<a href=\"" + reissue + "\">/join/reissue</a> for a fresh link.</p>" +
-            "</body></html>";
     }
 
     // The raw access token appears exactly once: in this response, to whoever spent the
