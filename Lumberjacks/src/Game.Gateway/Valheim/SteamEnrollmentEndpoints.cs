@@ -56,7 +56,7 @@ public static class SteamEnrollmentEndpoints
 
             if (!service.TryRedeem(token, steamId!, out var issued, out var reason))
                 return Results.BadRequest(new { error = reason });
-            return Results.Text(BuildHandoff(issued, ReissueUrl(request)), "text/plain");
+            return Results.Text(BuildDownloadPage(issued, PublicBaseUrl(request)), "text/html");
         }).RequireRateLimiting("join");
 
         // Self-serve re-issue for a volunteer whose setup code expired before they
@@ -76,7 +76,7 @@ public static class SteamEnrollmentEndpoints
 
             if (!service.TryReissueBootstrap(steamId!, out var issued, out var reason))
                 return Results.BadRequest(new { error = reason });
-            return Results.Text(BuildHandoff(issued, ReissueUrl(request)), "text/plain");
+            return Results.Text(BuildDownloadPage(issued, PublicBaseUrl(request)), "text/html");
         }).RequireRateLimiting("join");
 
         // Public by design: the bootstrap token is the only credential, it is
@@ -89,6 +89,42 @@ public static class SteamEnrollmentEndpoints
                 return Results.BadRequest(new { error = reason });
             var gateway = Environment.GetEnvironmentVariable("LUMBERJACKS_PLAYER_GATEWAY_URL") ?? baseUrlFor(request);
             return Results.Text(BuildConfig(issued, gateway), "text/plain");
+        }).RequireRateLimiting("join");
+
+        // The self-service download: the button on the callback page POSTs the single-use bootstrap
+        // here (form field, so it stays a POST — out of history/referers, and single-use). Consuming
+        // it mints the access token at that moment (stored only as a hash), which is injected into the
+        // base mod-pack template and streamed back as a drop-in personalized zip — no code relay, no
+        // config editing. The credential rides in the download by design (over TLS in production); the
+        // link works once. `request.Form[...]` is read directly rather than model-bound so no
+        // antiforgery token is required for this credential-free-until-consumed POST.
+        app.MapPost("/join/pack", (HttpRequest request, SteamEnrollmentService service) =>
+        {
+            var token = request.HasFormContentType ? request.Form["token"].ToString() : string.Empty;
+            if (!service.TryConsumeBootstrap(token, out var issued, out var reason))
+                return Results.BadRequest(new { error = reason });
+
+            var templatePath = Environment.GetEnvironmentVariable("LUMBERJACKS_MODPACK_TEMPLATE");
+            if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+                return Results.Problem(
+                    "mod pack template not configured (LUMBERJACKS_MODPACK_TEMPLATE)", statusCode: 503);
+
+            var gateway = Environment.GetEnvironmentVariable("LUMBERJACKS_PLAYER_GATEWAY_URL") ?? baseUrlFor(request);
+            byte[] pack;
+            try
+            {
+                pack = ModPackBuilder.BuildPersonalizedPack(
+                    File.ReadAllBytes(templatePath),
+                    gateway,
+                    issued.Enrollment.QueueWindowId,
+                    issued.Enrollment.EnrollmentId,
+                    issued.AccessToken);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 503);
+            }
+            return Results.File(pack, "application/zip", "Comfy-P7-Mods.zip");
         }).RequireRateLimiting("join");
     }
 
@@ -108,8 +144,6 @@ public static class SteamEnrollmentEndpoints
 
     static string PublicBaseUrl(HttpRequest request) =>
         (Environment.GetEnvironmentVariable("LUMBERJACKS_ENROLLMENT_PUBLIC_URL") ?? baseUrlFor(request)).TrimEnd('/');
-
-    static string ReissueUrl(HttpRequest request) => $"{PublicBaseUrl(request)}/join/reissue";
 
     static string SteamLoginUrl(HttpRequest request, string returnPath)
     {
@@ -135,16 +169,35 @@ public static class SteamEnrollmentEndpoints
         return (claimed[(claimed.LastIndexOf('/') + 1)..], null);
     }
 
-    // What the browser sees. Deliberately not the config: this page is the one part of
-    // the flow that lands in history, screenshots, and over-the-shoulder views, so it
-    // carries a code that is worthless the moment the installer spends it.
-    static string BuildHandoff(SteamEnrollmentService.BootstrapIssued issued, string reissueUrl) =>
-        $"Lumberjacks enrollment complete. SteamID={issued.Enrollment.SteamId}\n\n" +
-        "Setup code (works once):\n\n" +
-        $"    {issued.BootstrapToken}\n\n" +
-        $"Paste it into the Lumberjacks installer to finish setup. It expires {issued.ExpiresUtc:u}.\n" +
-        $"If it expires before you install, sign in again at {reissueUrl} for a fresh one.\n" +
-        "If it was already used, ask the operator.\n";
+    // What the browser sees after Steam verifies: a one-click download of the personalized mod pack.
+    // The single-use bootstrap rides in a hidden form field (a POST, so it stays out of history and
+    // referers) and is spent when the pack is built. The page carries no reusable credential itself —
+    // that is minted only when /join/pack consumes the bootstrap, and it lands inside the download.
+    static string BuildDownloadPage(SteamEnrollmentService.BootstrapIssued issued, string baseUrl)
+    {
+        var trimmed = baseUrl.TrimEnd('/');
+        var action = WebUtility.HtmlEncode(trimmed + "/join/pack");
+        var reissue = WebUtility.HtmlEncode(trimmed + "/join/reissue");
+        var steam = WebUtility.HtmlEncode(issued.Enrollment.SteamId);
+        var bootstrap = WebUtility.HtmlEncode(issued.BootstrapToken);
+        return
+            "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
+            "<title>Lumberjacks — finish setup</title></head><body>" +
+            "<h1>You're verified ✓</h1>" +
+            "<p>SteamID <code>" + steam + "</code> is enrolled. One step left:</p>" +
+            "<form method=\"post\" action=\"" + action + "\">" +
+            "<input type=\"hidden\" name=\"token\" value=\"" + bootstrap + "\">" +
+            "<button type=\"submit\">Download my mod pack</button></form>" +
+            "<h2>Then</h2><ol>" +
+            "<li>Extract the <code>Valheim</code> folder from the zip into your Valheim install folder " +
+            "(Steam → right-click Valheim → Manage → Browse local files), letting it merge.</li>" +
+            "<li>Launch Valheim and join the server.</li></ol>" +
+            "<p><strong>This download is personal — it contains your access key. Don't share it.</strong></p>" +
+            "<p>The download works once. If it didn't start, sign in again at " +
+            "<a href=\"" + reissue + "\">/join/reissue</a> for a fresh link.</p>" +
+            "</body></html>";
+    }
 
     // The raw access token appears exactly once: in this response, to whoever spent the
     // bootstrap. It is minted here, stored only as a hash, and never returned again.
