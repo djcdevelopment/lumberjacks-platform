@@ -18,6 +18,7 @@ Format follows the standard Status / Context / Decision / Consequences shape.
 | [0010](0010-consistency-is-predictability.md) | Consistency means predictable, not invariant | Accepted | AoI / degradation |
 | [0011](0011-aoi-lives-on-the-producer.md) | AoI is enforced mod-side (producer); suppress/ack/emit are three separate operations | Accepted | Valheim netcode / ZDO redirect |
 | [0012](0012-gameplay-telemetry-is-client-side.md) | Gameplay telemetry is captured client-side and relayed to the server by routed RPC | Accepted | Community telemetry / G4 |
+| [0013](0013-ownership-visibility-split.md) | Ownership, visibility, delivery, and ack are four things — split them for area co-presence | Proposed | Valheim netcode / multi-player density |
 
 Canon: `../../GROUND-TRUTH.md` (state) · `../../TEST-PROGRAM.md` (plan) ·
 `../../VALHEIM-NETCODE-REPLACEMENT-WORKLOG.md` (I-ladder). Retros: `../../retro/`.
