@@ -3,6 +3,19 @@
 - **Status:** Proposed (2026-07-21)
 - **Rung:** Valheim netcode replacement — multi-player area co-presence (the pinned "multi-player density" item, now with a live repro)
 
+## ⚠️ Reality check (2026-07-22, live 2-client test) — premise now UNCERTAIN
+
+The first live 2-client test found that the "empty world" symptom for the second player was
+**`[Automation] autoPortOnJoinEnabled=true`** in that client's config teleporting it off the base to an
+empty region on join — **not** the single-recipient ownership starvation this ADR is built around.
+Delivery was reaching **both** consumers the whole time (2 active consumers, 42013 applied, 0 rejected);
+with autoport off, both players saw the same world in real time. So the recipient-partitioned queue may
+already deliver correctly to co-located players, and **the bug this fan-out fixes may not be triggering
+in this deployment.** This does not disprove the ownership bug (an earlier Prototyper session observed a
+genuine co-presence symptom that may be distinct), but its live status is now **unknown, not confirmed**.
+**Before deploying/arming the fan-out, re-confirm the bug actually reproduces** with a default client
+config (autoport off). See `SESSION-RETRO-2026-07-22.md` and memory `calibration-over-confident-assertions`.
+
 ## Verified since proposal (2026-07-21, headless)
 
 Facts the code now establishes, folded back into this ADR before building the mod-side emit:
