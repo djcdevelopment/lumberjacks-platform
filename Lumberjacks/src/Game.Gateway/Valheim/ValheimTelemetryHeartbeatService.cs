@@ -160,7 +160,13 @@ public sealed class ValheimTelemetryHeartbeatService
             (!redirects.PersistenceEnabled || redirects.PersistenceHealthy) &&
             redirect.Pending == 0 &&
             redirect.Acknowledged >= redirect.DistinctSeq &&
-            consumer.ActiveConsumers == 1 &&
+            // Multi-consumer: N concurrent players each drain their own (window, recipient)
+            // partition, so completeness is "at least one active consumer and every partition
+            // caught up" — NOT exactly one. redirect.Pending / consumer.Pending are already
+            // aggregated across all recipient partitions (AggregateStatuses / GetWindowStatus),
+            // so an undrained peer partition keeps this false until that peer's consumer catches
+            // up. Was `== 1`, the single-volunteer gate that broke the dashboard on the 2nd cutover.
+            consumer.ActiveConsumers >= 1 &&
             consumer.Rejected == 0 &&
             consumer.Pending == 0;
     }
