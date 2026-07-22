@@ -47,7 +47,7 @@ Open in a browser — no login, served straight from the game Gateway. All data 
 | `http://localhost:4000/roadmap` | **Valheim volunteer roadmap** — living milestone gates, validated proof, known no-go findings, and append-only commit notes |
 | `http://localhost:4000/networksense` | **G3 NetworkSense HUD** — glanceable overlay: tick health vs 50 ms budget, sessions, delivery mix |
 | `http://localhost:4000/events` | **G4 Gameplay Event feed** — live, anonymized event stream (structure/inventory/region/interest events) |
-| `http://localhost:4000/community` | **Live Community View** — server overview: uptime, tick perf, sessions, delivery, regions |
+| `http://localhost:4000/community` | **Live Community View** — compact public signal page: deployment/Valheim/cutover status, tick health, and a single live trace rail; idle baseline panels collapse until they have useful data |
 | `http://localhost:4000/testing` | **G5 Local Testing Tools** — scenario cards (simulated) |
 | `http://localhost:4000/ops/boundary` | **Boundary Diagnostics** — operator-only identity/auth/request/ZDO JSONL summary for builders and hackers |
 | `http://localhost:4000/join/reissue` | **Alpha zip reissue** — Steam sign-in path that mints a fresh personal mod pack download for an already-enrolled tester |
@@ -65,6 +65,11 @@ Lumberjacks-primary mode by itself.
 
 The pages poll every 2 s. If a poll fails they show a "reconnecting / stale" chip and keep
 the last good values — they never fabricate data.
+
+`/community` is intentionally sparse when the shard is idle. Sessions, delivery,
+regions, gameplay, quests, and empty replication panels hide themselves at baseline;
+the live trace rail remains visible so builders can still see each poll, state
+transition, ZDO/cutover update, and error as it happens.
 
 ## 2a. Live GCP P7 deployment
 

@@ -32,16 +32,17 @@
             color: var(--text-main);
             font-family: var(--font-mono);
             line-height: 1.5;
-            padding: 20px;
+            padding: 14px;
             font-size: 14px;
         }
 
         header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 14px;
+            align-items: start;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
             border-bottom: 1px solid var(--panel-border);
             font-family: var(--font-sans);
         }
@@ -56,6 +57,7 @@
             display: flex;
             gap: 12px;
             align-items: center;
+            justify-content: flex-end;
         }
 
         .badge {
@@ -93,23 +95,29 @@
 
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 12px;
         }
 
         .panel {
             background-color: var(--panel-bg);
             border: 1px solid var(--panel-border);
             border-radius: 8px;
-            padding: 16px;
+            padding: 14px;
             position: relative;
             transition: opacity 0.3s ease;
         }
 
+        .panel.compact { grid-column: span 3; }
+        .panel.medium { grid-column: span 4; }
+        .panel.wide { grid-column: span 6; }
+        .panel.full { grid-column: 1 / -1; }
+        .panel.silent { display: none; }
+
         .panel h2 {
             font-family: var(--font-sans);
-            font-size: 1rem;
-            margin-bottom: 12px;
+            font-size: 0.82rem;
+            margin-bottom: 10px;
             color: var(--text-dim);
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -156,7 +164,7 @@
         }
 
         .data-value.large {
-            font-size: 1.5rem;
+            font-size: 1.35rem;
             color: var(--accent-blue);
         }
 
@@ -172,8 +180,78 @@
         canvas {
             display: block;
             width: 100%;
-            height: 80px;
+            height: 58px;
         }
+
+        .status-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 8px 10px;
+            min-height: 54px;
+        }
+
+        .status-card strong {
+            display: block;
+            color: var(--text-dim);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 3px;
+        }
+
+        .status-card span {
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+        }
+
+        .subtle {
+            color: var(--text-dim);
+            font-size: 0.78rem;
+            margin-top: 2px;
+        }
+
+        .quiet-note {
+            grid-column: 1 / -1;
+            border: 1px dashed var(--panel-border);
+            color: var(--text-dim);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            display: none;
+        }
+
+        .trace-list {
+            height: 360px;
+            overflow-y: auto;
+            padding-right: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .trace-row {
+            display: grid;
+            grid-template-columns: 72px 128px 1fr;
+            gap: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            align-items: baseline;
+        }
+
+        .trace-row .time { color: var(--text-dim); font-size: 0.72rem; }
+        .trace-row .type { color: var(--accent-blue); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        .trace-row.good .type { color: var(--accent-green); }
+        .trace-row.warn .type { color: var(--accent-yellow); }
+        .trace-row.bad .type { color: var(--accent-red); }
+        .trace-row .message { color: var(--text-main); font-size: 0.82rem; overflow-wrap: anywhere; }
 
         .sparkline-legend {
             display: flex;
@@ -242,16 +320,28 @@
         }
 
         .roadmap-link:hover { border-color: var(--accent-blue); }
+
+        @media (max-width: 1100px) {
+            header { grid-template-columns: 1fr; }
+            .badges { justify-content: flex-start; }
+            .status-strip { grid-template-columns: 1fr; }
+            .panel.compact, .panel.medium, .panel.wide { grid-column: 1 / -1; }
+        }
     </style>
 </head>
 <body>
 
     <header>
         <a class="roadmap-link" href="/roadmap">Volunteer roadmap</a>
+        <div>
         <h1>Lumberjacks — Live Community View</h1>
-        <div id="deployment-status" style="font-size:.78rem;color:var(--text-dim);margin-top:4px">Deployment: loading...</div>
-        <div id="valheim-status" style="font-size:.78rem;color:var(--text-dim);margin-top:2px">Valheim: waiting for heartbeat...</div>
-        <div id="cutover-status" style="font-size:.78rem;color:var(--text-dim);margin-top:2px">Cutover: waiting for coverage...</div>
+        <div class="subtle">Signal-first alpha view. Idle baseline panels collapse; live trace shows what moved.</div>
+        <div class="status-strip" style="margin-top:8px">
+            <div class="status-card"><strong>Deployment</strong><span id="deployment-status">loading...</span></div>
+            <div class="status-card"><strong>Valheim</strong><span id="valheim-status">waiting for heartbeat...</span></div>
+            <div class="status-card"><strong>Cutover / ZDO</strong><span id="cutover-status">waiting for coverage...</span></div>
+        </div>
+        </div>
         <div class="badges">
             <div id="apiBadgeContainer"></div>
             <div class="status-indicator">
@@ -262,9 +352,10 @@
     </header>
 
     <div class="dashboard-grid">
+        <div class="quiet-note" id="quiet-note">Idle baseline hidden.</div>
         
         <!-- Server Info Panel -->
-        <div class="panel" id="panel-server">
+        <div class="panel compact" id="panel-server">
             <h2>Server Info <span class="stale-warning">API Unreachable</span></h2>
             <div class="data-grid" id="serverInfo">
                 <div class="data-item">
@@ -287,7 +378,7 @@
         </div>
 
         <!-- Tick Performance Panel -->
-        <div class="panel" id="panel-tick">
+        <div class="panel compact" id="panel-tick">
             <h2>Tick Performance <span class="stale-warning">API Unreachable</span></h2>
             <div id="tickWarmingUp" class="warming-up" style="display: none;">Warming up...</div>
             <div id="tickDataContainer">
@@ -321,7 +412,7 @@
         </div>
 
         <!-- Replication Panel -->
-        <div class="panel" id="panel-replication">
+        <div class="panel compact" id="panel-replication">
             <h2>Replication <span class="stale-warning">Stale Data</span></h2>
             <div class="data-grid">
                 <div class="data-item">
@@ -362,7 +453,7 @@
         </div>
 
         <!-- Sessions Panel -->
-        <div class="panel" id="panel-sessions">
+        <div class="panel compact" id="panel-sessions">
             <h2>Sessions <span class="stale-warning">API Unreachable</span></h2>
             <div class="data-item" style="margin-bottom: 16px;">
                 <span class="data-label">Total Connected</span>
@@ -388,7 +479,7 @@
         </div>
 
         <!-- Delivery Panel -->
-        <div class="panel" id="panel-delivery">
+        <div class="panel medium" id="panel-delivery">
             <h2>Delivery & Transitions <span class="stale-warning">API Unreachable</span></h2>
             <div class="data-grid">
                 <div>
@@ -406,8 +497,15 @@
             </div>
         </div>
 
+        <div class="panel wide" id="panel-trace">
+            <h2>Live Trace <span class="stale-warning">No recent polls</span></h2>
+            <div id="traceList" class="trace-list">
+                <div class="trace-row"><span class="time">--</span><span class="type">boot</span><span class="message">Waiting for telemetry polls...</span></div>
+            </div>
+        </div>
+
         <!-- Regions Panel -->
-        <div class="panel" id="panel-regions" style="grid-column: 1 / -1;">
+        <div class="panel full" id="panel-regions">
             <h2>Active Regions <span class="stale-warning">API Unreachable</span></h2>
             <div id="regionsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-top: 12px;">
                 <!-- Populated by JS -->
@@ -416,7 +514,7 @@
         </div>
 
         <!-- Gameplay Events Panel -->
-        <div class="panel" id="panel-gameplay" style="grid-column: 1 / -1;">
+        <div class="panel full" id="panel-gameplay">
             <h2>Gameplay Feed <span class="stale-warning">API Unreachable</span></h2>
             <div class="data-item" style="margin-bottom: 12px;">
                 <span class="data-label">Recent events</span>
@@ -427,7 +525,7 @@
             </div>
         </div>
 
-        <div class="panel" id="panel-quests" style="grid-column: 1 / -1;">
+        <div class="panel full" id="panel-quests">
             <h2>Quests Completed <span class="stale-warning">API Unreachable</span></h2>
             <div class="data-item" style="margin-bottom: 12px;">
                 <span class="data-label">Recent completions</span>
@@ -448,6 +546,9 @@
     <script>
         const POLL_INTERVAL_MS = 2000;
         let tickHistory = [];
+        let traceRows = [];
+        let traceSeq = 0;
+        const MAX_TRACE_ROWS = 80;
         const MAX_HISTORY = 60; // 2 minutes at 2s per poll
 
         // Formatting utilities
@@ -484,6 +585,55 @@
             `).join('');
         }
 
+        function addTrace(type, message, level = '') {
+            const now = new Date();
+            traceRows.unshift({
+                id: ++traceSeq,
+                time: now.toLocaleTimeString(),
+                type,
+                message,
+                level
+            });
+            if (traceRows.length > MAX_TRACE_ROWS) traceRows.pop();
+
+            const list = document.getElementById('traceList');
+            if (!list) return;
+            list.innerHTML = traceRows.map(r => `
+                <div class="trace-row ${escapeHtml(r.level)}">
+                    <span class="time">${escapeHtml(r.time)}</span>
+                    <span class="type">${escapeHtml(r.type)}</span>
+                    <span class="message">${escapeHtml(r.message)}</span>
+                </div>
+            `).join('');
+            setPanelStale('panel-trace', false);
+        }
+
+        function addTraceIfChanged(key, type, message, level = '') {
+            window.__traceState = window.__traceState || {};
+            if (window.__traceState[key] === message) return;
+            window.__traceState[key] = message;
+            addTrace(type, message, level);
+        }
+
+        function setPanelSilent(panelId, isSilent) {
+            const panel = document.getElementById(panelId);
+            if (!panel) return;
+            panel.classList.toggle('silent', Boolean(isSilent));
+            updateQuietNote();
+        }
+
+        function updateQuietNote() {
+            const note = document.getElementById('quiet-note');
+            if (!note) return;
+            const hidden = document.querySelectorAll('.panel.silent').length;
+            if (hidden === 0) {
+                note.style.display = 'none';
+                return;
+            }
+            note.style.display = 'block';
+            note.textContent = `${hidden} idle baseline panel${hidden === 1 ? '' : 's'} hidden. Live trace stays visible; builder-only raw boundary telemetry is on /ops/boundary.`;
+        }
+
         function updateBadge(apiVersion, stability) {
             const container = document.getElementById('apiBadgeContainer');
             if (!container.innerHTML && apiVersion && stability) {
@@ -508,6 +658,7 @@
             } else {
                 dot.className = 'dot error';
                 text.textContent = 'Degraded / Retrying...';
+                addTrace('api', 'one or more community telemetry polls failed', 'bad');
             }
         }
 
@@ -594,9 +745,15 @@
                         `Near: ${data.replication.near_radius}u | Mid: ${data.replication.mid_radius}u (1/${data.replication.mid_tick_interval} ticks)`;
                 }
 
+                addTraceIfChanged(
+                    'server',
+                    'server',
+                    `tick ${formatNumber(data.current_tick)} · ${data.tick_rate_hz}Hz · uptime ${formatUptime(data.uptime_seconds)}`,
+                    'good');
                 setPanelStale('panel-server', false);
                 return true;
             } catch (e) {
+                addTrace('server', `server telemetry failed: ${e.message || e}`, 'bad');
                 setPanelStale('panel-server', true);
                 return false;
             }
@@ -627,6 +784,11 @@
                     
                     const overrunPct = t.sample_count > 0 ? Math.round((t.overruns / t.sample_count) * 100) : 0;
                     document.getElementById('overrunsPerWindow').textContent = `${t.overruns} (${overrunPct}%)`;
+                    addTraceIfChanged(
+                        'tick',
+                        overrunPct > 0 ? 'tick' : 'tick',
+                        `p50 ${p50.toFixed(1)}ms · p99 ${p99.toFixed(1)}ms · max ${max.toFixed(1)}ms · overruns ${t.overruns}/${t.sample_count}`,
+                        overrunPct > 0 ? 'warn' : 'good');
 
                     // Update Sparkline History
                     tickHistory.push({ p50, p99 });
@@ -650,6 +812,14 @@
                             document.getElementById('sentBar').style.width = `0%`;
                             document.getElementById('culledBar').style.width = `0%`;
                         }
+                        setPanelSilent('panel-replication', totalEntities === 0);
+                        if (totalEntities > 0) {
+                            addTraceIfChanged(
+                                'replication',
+                                'replication',
+                                `tick entities sent ${formatNumber(t.replication.sent)} · culled ${formatNumber(t.replication.culled)}`,
+                                t.replication.culled > 0 ? 'warn' : 'good');
+                        }
                     }
                 }
 
@@ -657,6 +827,7 @@
                 setPanelStale('panel-replication', false); // Relies heavily on tick
                 return true;
             } catch (e) {
+                addTrace('tick', `tick telemetry failed: ${e.message || e}`, 'bad');
                 setPanelStale('panel-tick', true);
                 setPanelStale('panel-replication', true);
                 return false;
@@ -672,9 +843,12 @@
                 document.getElementById('sessionsByProtocol').innerHTML = createListRows(data.by_protocol);
                 document.getElementById('sessionsByRegion').innerHTML = createListRows(data.by_region);
 
+                setPanelSilent('panel-sessions', (data.total || 0) === 0);
+                addTraceIfChanged('sessions', 'sessions', `${data.total || 0} connected`, (data.total || 0) > 0 ? 'good' : '');
                 setPanelStale('panel-sessions', false);
                 return true;
             } catch (e) {
+                addTrace('sessions', `session telemetry failed: ${e.message || e}`, 'bad');
                 setPanelStale('panel-sessions', true);
                 return false;
             }
@@ -688,9 +862,16 @@
                 document.getElementById('deliveryPaths').innerHTML = createListRows(data.delivery);
                 document.getElementById('sessionTransitions').innerHTML = createListRows(data.transitions);
 
+                const deliveryCount = Object.keys(data.delivery || {}).length;
+                const transitionCount = Object.keys(data.transitions || {}).length;
+                setPanelSilent('panel-delivery', deliveryCount === 0 && transitionCount === 0);
+                if (deliveryCount > 0 || transitionCount > 0) {
+                    addTraceIfChanged('delivery', 'delivery', `${deliveryCount} active paths · ${transitionCount} transitions`, 'good');
+                }
                 setPanelStale('panel-delivery', false);
                 return true;
             } catch (e) {
+                addTrace('delivery', `delivery telemetry failed: ${e.message || e}`, 'bad');
                 setPanelStale('panel-delivery', true);
                 return false;
             }
@@ -722,9 +903,13 @@
                     `).join('');
                 }
 
+                const activePlayers = (data.regions || []).reduce((sum, r) => sum + (r.player_count || 0), 0);
+                setPanelSilent('panel-regions', activePlayers === 0);
+                addTraceIfChanged('regions', 'regions', `${activePlayers} players in ${data.regions?.length || 0} reported regions`, activePlayers > 0 ? 'good' : '');
                 setPanelStale('panel-regions', false);
                 return true;
             } catch (e) {
+                addTrace('regions', `region telemetry failed: ${e.message || e}`, 'bad');
                 setPanelStale('panel-regions', true);
                 return false;
             }
@@ -755,9 +940,14 @@
                     `).join('');
                 }
 
+                setPanelSilent('panel-gameplay', combat.length === 0);
+                if (combat.length > 0) {
+                    addTraceIfChanged('gameplay', 'gameplay', `${combat.length} combat/public gameplay events in buffer`, 'good');
+                }
                 setPanelStale('panel-gameplay', false);
                 return true;
             } catch (e) {
+                addTrace('gameplay', `gameplay telemetry failed: ${e.message || e}`, 'bad');
                 setPanelStale('panel-gameplay', true);
                 return false;
             }
@@ -785,9 +975,14 @@
                     `).join('');
                 }
 
+                setPanelSilent('panel-quests', quests.length === 0);
+                if (quests.length > 0) {
+                    addTraceIfChanged('quests', 'quests', `${quests.length} quest completions in buffer`, 'good');
+                }
                 setPanelStale('panel-quests', false);
                 return true;
             } catch (e) {
+                addTrace('quests', `quest telemetry failed: ${e.message || e}`, 'bad');
                 setPanelStale('panel-quests', true);
                 return false;
             }
@@ -816,29 +1011,47 @@
             const el = document.getElementById('deployment-status');
             try {
                 const d = await fetch('/api/v0/telemetry/deployment').then(r => r.ok ? r.json() : Promise.reject(r.status));
-                el.textContent = `Deployment: ${d.environment} - ${d.lumberjacks_version}`;
-            } catch (_) { el.textContent = 'Deployment: unavailable'; }
+                el.textContent = `${d.environment} - ${d.lumberjacks_version}`;
+                addTraceIfChanged('deployment', 'deploy', `${d.environment} - ${d.lumberjacks_version}`, 'good');
+            } catch (_) {
+                el.textContent = 'unavailable';
+                addTrace('deploy', 'deployment telemetry unavailable', 'bad');
+            }
         }
         async function pollValheim() {
             const el = document.getElementById('valheim-status');
             try {
                 const d = await fetch('/api/v0/telemetry/valheim').then(r => r.ok ? r.json() : Promise.reject(r.status));
-                el.textContent = d.stale ? 'Valheim: heartbeat stale' : `Valheim: ${d.heartbeat?.server_state || 'ready'} - ${d.heartbeat?.peer_count ?? 0} peers`;
-            } catch (_) { el.textContent = 'Valheim: telemetry unavailable'; }
+                const message = d.stale ? 'heartbeat stale' : `${d.heartbeat?.server_state || 'ready'} - ${d.heartbeat?.peer_count ?? 0} peers`;
+                el.textContent = message;
+                addTraceIfChanged('valheim', 'valheim', message, d.stale ? 'warn' : 'good');
+            } catch (_) {
+                el.textContent = 'telemetry unavailable';
+                addTrace('valheim', 'Valheim telemetry unavailable', 'bad');
+            }
         }
         async function pollCutover() {
             const el = document.getElementById('cutover-status');
             try {
                 const d = await fetch('/api/v0/telemetry/cutover').then(r => r.ok ? r.json() : Promise.reject(r.status));
-                if (d.stale && !d.consumer_draining) { el.textContent = 'Cutover: heartbeat stale'; return; }
+                if (d.stale && !d.consumer_draining) {
+                    el.textContent = 'heartbeat stale';
+                    addTraceIfChanged('cutover', 'cutover', 'heartbeat stale', 'warn');
+                    return;
+                }
                 const coverage = d.coverage_percent == null ? 'coverage pending' : `${d.coverage_percent}% gameplay coverage`;
                 const a = d.authoritative_window;
                 const authoritative = a?.receipts > 0
                     ? `ZDO ${a.acknowledged}/${a.receipts} ack, ${a.applied} applied, ${a.superseded ?? 0} superseded, ${a.pending} queued, ${a.rejected} rejected, ${a.durable_queue && a.persistence_healthy ? 'durable' : 'volatile'}${a.complete ? ' ✓' : ''}`
                     : 'authoritative window pending';
                 const freshness = d.consumer_draining ? 'consumer draining' : (d.heartbeat_stale ? 'heartbeat stale' : 'live');
-                el.textContent = `Cutover: ${d.mode || 'unknown'} - ${coverage} - native-only ${d.coverage_native_only ?? 'n/a'} - ${freshness} - ${authoritative}`;
-            } catch (_) { el.textContent = 'Cutover: telemetry unavailable'; }
+                const message = `${d.mode || 'unknown'} - ${coverage} - native-only ${d.coverage_native_only ?? 'n/a'} - ${freshness} - ${authoritative}`;
+                el.textContent = message;
+                addTraceIfChanged('cutover', 'cutover', message, a?.pending > 0 || d.consumer_draining ? 'warn' : 'good');
+            } catch (_) {
+                el.textContent = 'telemetry unavailable';
+                addTrace('cutover', 'cutover telemetry unavailable', 'bad');
+            }
         }
         pollDeployment();
         pollValheim();
