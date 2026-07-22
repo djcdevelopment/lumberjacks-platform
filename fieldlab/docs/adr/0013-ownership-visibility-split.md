@@ -3,6 +3,37 @@
 - **Status:** Proposed (2026-07-21)
 - **Rung:** Valheim netcode replacement — multi-player area co-presence (the pinned "multi-player density" item, now with a live repro)
 
+## Verified since proposal (2026-07-21, headless)
+
+Facts the code now establishes, folded back into this ADR before building the mod-side emit:
+
+- **Gateway fan-out delivery is proven at N=2 and N=10.** `ValheimCoPresenceFanoutTests`
+  (commit `8f92edf`) drives the queue with the fan-out shape — one logical ZDO (same uid/prefab)
+  copied into every observer's partition — entirely from synthetic producer traffic. Each observer
+  drains its own copy, acks independently, no cross-consumption; at-least-once re-delivery dedups.
+- **Open question #6 is closed for the gateway substrate.** WAL replay reconstructs all N partitions
+  holding copies of one logical ZDO with the logical identity intact. (The client-side apply half of
+  #6 still awaits the live mod/client path.)
+- **The previously described Phase 1 is a no-op.** Reading the runner (`ZdoRedirectRunner.Process`)
+  showed it already emits **independently per peer**: `recipient` is stamped per `Redirect` call,
+  `_lastEmit` is keyed `(recipient, uid)`, and `SuppressNative` touches only the processed peer's
+  `m_zdos`. There is no cross-peer gate in our code to remove.
+- **The remaining defect is narrower than "make passes independent."** Valheim's `CreateSyncList`
+  presents a contended shared-area ZDO to **only one peer's pass per tick** (ownership/force-send
+  bookkeeping). So only the pass that *sees* the ZDO emits it; the fix is for that pass to **fan a
+  read copy out to every in-range observer**, reusing the existing `Redirect` (recipient stamp +
+  `m_zdos` ack + queue + dedup stay centralized). Ownership is untouched.
+- **A pre-existing multi-recipient completeness artifact was found (not introduced by fan-out).**
+  The gateway computes `missing_seq = maxSeq − distinctCount` (`ValheimZdoRedirectService.cs:573`),
+  which assumes each partition's seqs are contiguous from 1. But `Redirect` stamps a **global** `_seq`
+  across all recipients, so any multi-recipient window gets interleaved (gappy) per-partition seqs and
+  reports `missing_seq > 0` → `complete=False`. This matches the live `cutover-watch` log
+  (`complete=True` at 1 consumer, `complete=False` at 2). It does **not** block delivery: `/pending`
+  drains by ack regardless of seq contiguity, and `rejected`/`duplicates` are unaffected. Fan-out
+  amplifies the interleaving (N× per candidate), so it inherits `complete=False` too. The scoped
+  follow-up is **per-recipient contiguous seq** (each partition its own reliable stream), which would
+  restore `complete=True`; deferred to keep this increment narrow and `Redirect` unchanged.
+
 ## Context
 
 The first live two-human authoritative-cutover test (2026-07-21 night, `Durracktu` + `Prototyper`)
@@ -81,11 +112,17 @@ stream cannot serve a near-full and a mid-thinned observer at once).
 - **Phase 0 — Shadow.** Compute the explicit per-observer visibility set and *log* the fan-out that
   would happen; change nothing. Acceptance: the shadow log names the exact ZDOs the starved observer
   was denied, matching the in-game blank set.
-- **Phase 1 — Visibility ≠ recipient.** Give each peer's pass its own last-sent-revision cache so B's
-  pass emits the building to B regardless of A's pass. Ownership untouched. Likely fixes the symptom
-  outright; the keystone experiment (open question 1) resolves here.
-- **Phase 2 — Fan-out (keystone).** Enqueue a read copy into every in-range observer's partition from
-  the shared index. Cost becomes `observers × changed-area-ZDOs`.
+- **Phase 1 — Visibility ≠ recipient.** ~~Give each peer's pass its own last-sent-revision cache.~~
+  **No-op (verified above):** the runner already emits independently per peer. Folded into Phase 2.
+- **Phase 2 — Fan-out (keystone, in progress).** From the one pass that sees a contended ZDO, enqueue
+  a read copy into **every in-range observer's** partition — iterate the connected `ZDOMan` peers, and
+  for each observer whose distance is in-band and whose `m_zdos` does not already have this data
+  revision, call the existing `Redirect` (recipient stamp + `m_zdos` ack + queue + dedup unchanged).
+  Ownership is recorded as evidence but never used for the visibility decision. Flag-gated
+  (`zdoCoPresenceFanoutEnabled`, default off); the single-recipient path is retained for instant
+  rollback. Cost becomes `observers × changed-area-ZDOs`. The pure decision (`ZdoFanoutPolicy` /
+  `ZdoFanoutPlan`) is Unity-free and unit-tested; the shadow (`zdoCoPresenceShadowEnabled`) runs the
+  *same* evaluation with zero delivery change so it predicts the fan-out exactly.
 - **Phase 3 — Snapshot seeding.** On enter-relevance (join / approach-from-far), seed the region's
   current full ZDO set (chunked under the `/pending?limit=1024` window), then deltas. Closes ADR 0011
   accepted-risk #1 (far→approach re-sync).
@@ -123,8 +160,9 @@ stream cannot serve a near-full and a mid-thinned observer at once).
 4. Band interaction under sharing — likely the decisive argument keeping partitions per-observer.
 5. Handoff without flicker when authority *does* legitimately move (read-copy-before-ownership-move;
    band-edge hysteresis — the ADR-0010 damping debt).
-6. Ack semantics for one logical ZDO across N partitions — confirm exactly-once *per observer* and
-   faithful WAL replay after a crash mid-fan-out.
+6. Ack semantics for one logical ZDO across N partitions — **gateway substrate CLOSED** (`8f92edf`:
+   exactly-once per observer + faithful WAL replay proven at N=2/10). The client-side apply half
+   (does B's `RPC_ZDOData` instantiate a read copy it doesn't own) still awaits the live path.
 
 ## Related
 
@@ -138,3 +176,15 @@ Component inventory: `ZdoRedirectRunner` / `RecipientFor` / `SuppressNative` /
 `ValheimTelemetryHeartbeatService` (health gate) / `ValheimHandshakeService` (seat) /
 `ValheimWindowActivityService` (liveness) (gateway). Superseded plan framing:
 `~/.claude/plans/multi-player-queue-plan.md` (its "finish leases/health" scope was incomplete).
+Live procedure: `fieldlab/docs/runbook-copresence-fanout-live-test.md` (shadow → verify → fan-out →
+both players same view → rollback). Pure decision layer + tests:
+`network/mod/ComfyNetworkSense/Core/Services/ZdoFanoutPolicy.cs`,
+`network/mod/ComfyNetworkSense.Tests/ZdoFanoutPolicyTests.cs`. Gateway substrate proof:
+`Lumberjacks/tests/Game.Gateway.Tests/ValheimCoPresenceFanoutTests.cs`.
+
+**Deferred to later increments (not this one):** per-recipient contiguous seq (restores
+`complete=True` under multiple recipients); AoI band-shaping *within* fan-out (v1 emits full to all
+in-band); snapshot seeding for far→approach join; and an **HTTP ingress harness** that POSTs synthetic
+multi-player traffic through the real gateway endpoints (access policy, Steam→recipient mapping, the
+`ProducerEmitsRecipients` flag) — recorded as **defence-in-depth coverage after the live mod/client
+path is proven**, since the service-level suite already closes the substrate risks.
