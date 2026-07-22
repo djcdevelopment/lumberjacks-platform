@@ -89,15 +89,9 @@ public sealed class ValheimClientAccessMiddleware
     ValheimPrincipal Resolve(HttpContext context, SteamEnrollmentService enrollments,
         out AccessResolutionObservation observation)
     {
-        if (IsPrivateOrLoopback(context.Connection.RemoteIpAddress))
-        {
-            var principal = new ValheimPrincipal("private-plane",
-                ValheimCapability.Admin | ValheimCapability.Producer |
-                ValheimCapability.Consumer | ValheimCapability.Telemetry);
-            observation = Observe(context, principal, null, "private_socket");
-            return principal;
-        }
-
+        // Preserve an explicit, valid enrollment through a trusted reverse proxy. Caddy's socket
+        // peer is private, but resolving that fact first erases the enrolled recipient and makes
+        // self-scoped WebSocket features (including Valheim motion) impossible over TLS.
         var supplied = context.Request.Headers["X-Lumberjacks-Client-Key"].ToString();
         var enrollmentId = context.Request.Headers["X-Lumberjacks-Enrollment-Id"].ToString();
 
@@ -107,6 +101,15 @@ public sealed class ValheimClientAccessMiddleware
             var principal = new ValheimPrincipal("enrollment",
                 ValheimCapability.Consumer | ValheimCapability.Telemetry, view);
             observation = Observe(context, principal, view.EnrollmentId, "enrollment");
+            return principal;
+        }
+
+        if (IsPrivateOrLoopback(context.Connection.RemoteIpAddress))
+        {
+            var principal = new ValheimPrincipal("private-plane",
+                ValheimCapability.Admin | ValheimCapability.Producer |
+                ValheimCapability.Consumer | ValheimCapability.Telemetry);
+            observation = Observe(context, principal, null, "private_socket");
             return principal;
         }
 

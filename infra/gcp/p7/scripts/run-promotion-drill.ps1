@@ -53,6 +53,16 @@ param(
   # stop/tar/restart and only re-verifies, hashes, and writes the receipt. The
   # archive must have been taken with the server stopped for it to be valid.
   [string] $ResumeSnapshotRoot = '',
+  # Windows OpenSSH over the gcloud IAP ProxyCommand can lose a long SCP stream even when small
+  # SSH transactions are healthy. This resume switch accepts pre-uploaded OCI archives only after
+  # hashing each remote file against the validated local bundle.
+  [switch] $ReuseUploadedOciArchives,
+  # Resume after archives were already loaded but a later phase failed. Exact image IDs from the
+  # validated manifest are inspected before tags are recreated; no filename is trusted.
+  [switch] $ReuseLoadedCandidateImages,
+  # The candidate DLL may likewise be staged with a reliable out-of-band transfer. Keep it through
+  # cold-start and restore, validating its hash before each deploy.
+  [switch] $ReuseUploadedModDll,
   [switch] $Execute,
   # Retire the promotion override into the durable env pin once the promotion decision
   # is final (PROMOTION-DRILL.md step 3). Without this the drill leaves the candidate
@@ -206,6 +216,23 @@ printf 'durable_pin=%s\n' '$ImageReference'
   return $pinMatch.Groups[1].Value.Trim()
 }
 
+function Stage-OciArchive([string] $LocalPath, [string] $RemotePath, [string] $Label) {
+  if ($ReuseUploadedOciArchives) {
+    $expected = Hash $LocalPath
+    $output = Invoke-Remote "set -eu`nsha256sum '$RemotePath'" "$Label pre-upload validation"
+    $match = [regex]::Match($output, '(?m)^([0-9a-f]{64})\s')
+    if (!$match.Success -or $match.Groups[1].Value -ne $expected) {
+      Fail "$Label pre-uploaded archive hash mismatch"
+    }
+    return
+  }
+
+  $upload = Invoke-NativeJob 'scp' @(
+    '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=8',
+    $LocalPath, "${SshTarget}:$RemotePath") 1800 2
+  if ($null -eq $upload -or $upload.Code -ne 0) { Fail "$Label OCI archive upload failed" }
+}
+
 function Set-GatewayImage([string] $ImageReference, [string] $ExpectedImageId, [string] $Label) {
   $overridePath = "$ComposeRoot/docker-compose.promotion.yml"
   # The sibling override joins the -f chain here too: compose resolves the whole file set before
@@ -245,10 +272,17 @@ function Deploy-SiblingImages {
   foreach ($svc in $siblingServices.Keys) {
     $entry = $siblingServices[$svc]
     $remoteSvcTar = "/tmp/$svc-$releaseId.oci.tar"
-    $svcUpload = Invoke-NativeJob 'scp' @('-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=8', $entry.tar, "${SshTarget}:$remoteSvcTar") 1800 2
-    if ($null -eq $svcUpload -or $svcUpload.Code -ne 0) { Fail "$svc OCI archive upload failed" }
-    Start-Sleep -Seconds 3
-    $svcLoadScript = @"
+    if ($ReuseLoadedCandidateImages) {
+      $svcLoadScript = @"
+set -eu
+sudo docker image inspect '$($entry.image_id)' > /dev/null
+sudo docker tag '$($entry.image_id)' '$($entry.tag)'
+printf 'tagged=%s\n' '$($entry.tag)'
+"@
+    } else {
+      Stage-OciArchive $entry.tar $remoteSvcTar $svc
+      Start-Sleep -Seconds 3
+      $svcLoadScript = @"
 set -eu
 sudo docker load --input '$remoteSvcTar' > /dev/null
 found=`$(sudo docker images --no-trunc --quiet | grep -F '$($entry.image_id)' | head -n 1)
@@ -257,6 +291,7 @@ sudo docker tag '$($entry.image_id)' '$($entry.tag)'
 rm -f '$remoteSvcTar'
 printf 'tagged=%s\n' '$($entry.tag)'
 "@
+    }
     Invoke-Remote $svcLoadScript "$svc image load" | Write-Verbose
   }
 
@@ -404,11 +439,17 @@ Write-Receipt 'snapshot-manifest.json' ([ordered]@{
 
 # ----------------------------------------------------------- phase 2: cold start
 $remoteTar = "/tmp/gateway-$releaseId.oci.tar"
-$tarUpload = Invoke-NativeJob 'scp' @('-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=8', $ociTar, "${SshTarget}:$remoteTar") 1800 2
-if ($null -eq $tarUpload -or $tarUpload.Code -ne 0) { Fail 'gateway OCI archive upload failed' }
-Start-Sleep -Seconds 3
-
-$loadScript = @"
+if ($ReuseLoadedCandidateImages) {
+  $loadScript = @"
+set -eu
+sudo docker image inspect '$candidateImageId' > /dev/null
+sudo docker tag '$candidateImageId' '$candidateTag'
+printf 'tagged=%s\n' '$candidateTag'
+"@
+} else {
+  Stage-OciArchive $ociTar $remoteTar 'gateway'
+  Start-Sleep -Seconds 3
+  $loadScript = @"
 set -eu
 loaded=`$(sudo docker load --input '$remoteTar' | tail -n 1)
 printf 'loaded=%s\n' "`$loaded"
@@ -418,6 +459,7 @@ sudo docker tag '$candidateImageId' '$candidateTag'
 rm -f '$remoteTar'
 printf 'tagged=%s\n' '$candidateTag'
 "@
+}
 Invoke-Remote $loadScript 'image load' | Write-Verbose
 Deploy-SiblingImages | Write-Verbose
 $coldImage = Set-GatewayImage $candidateTag $candidateImageId 'cold start'
@@ -425,9 +467,15 @@ $coldImage = Set-GatewayImage $candidateTag $candidateImageId 'cold start'
 # Candidate mod deploy + hash verification at both runtime paths.
 function Deploy-CandidateMod([string] $Label) {
   $remoteModDll = "/tmp/ComfyNetworkSense-$releaseId.dll"
-  $modUpload = Invoke-NativeJob 'scp' @('-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=8', $modDll, "${SshTarget}:$remoteModDll") 300 3
-  if ($null -eq $modUpload -or $modUpload.Code -ne 0) { Fail "$Label mod DLL upload failed" }
-  Start-Sleep -Seconds 3
+  if ($ReuseUploadedModDll) {
+    $modCheck = Invoke-Remote "set -eu`necho '$candidateModSha  $remoteModDll' | sha256sum -c -" "$Label mod pre-upload validation"
+    if ($modCheck -notmatch ': OK') { Fail "$Label pre-uploaded mod DLL hash mismatch" }
+  } else {
+    $modUpload = Invoke-NativeJob 'scp' @('-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=8', $modDll, "${SshTarget}:$remoteModDll") 300 3
+    if ($null -eq $modUpload -or $modUpload.Code -ne 0) { Fail "$Label mod DLL upload failed" }
+    Start-Sleep -Seconds 3
+  }
+  $removeRemoteMod = if ($ReuseUploadedModDll) { ':' } else { "rm -f '$remoteModDll'" }
   $modDeployScript = @"
 set -eu
 sudo docker cp '$remoteModDll' '${ValheimContainer}:/opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll'
@@ -435,7 +483,7 @@ sudo install -o 1000 -g 1000 -m 0644 '$remoteModDll' /mnt/comfy-p7/valheim/confi
 sudo docker exec '$ValheimContainer' supervisorctl restart valheim-server
 printf 'runtime %s\n' "`$(sudo docker exec '$ValheimContainer' sha256sum /opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll | cut -d' ' -f1)"
 printf 'fallback %s\n' "`$(sudo sha256sum /mnt/comfy-p7/valheim/config/bepinex/plugins/ComfyNetworkSense.dll | cut -d' ' -f1)"
-rm -f '$remoteModDll'
+$removeRemoteMod
 "@
   $modOutput = Invoke-Remote $modDeployScript "$Label mod deploy"
   foreach ($place in 'runtime', 'fallback') {

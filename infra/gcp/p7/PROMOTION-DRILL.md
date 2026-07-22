@@ -1,5 +1,20 @@
 # M0/A4 Promotion Drill Runbook
 
+## Resuming IAP transfer failures
+
+Windows OpenSSH can lose long SCP streams through the gcloud IAP proxy even while
+small remote transactions remain healthy. The drill fails before trusting a partial
+upload. Transfer the OCI archives with `gcloud compute scp`, then resume with
+`-ReuseUploadedOciArchives`; every remote archive is SHA-256 checked against the
+validated local bundle before load.
+
+If a later phase fails after Docker loaded the exact candidate images, use
+`-ReuseLoadedCandidateImages` to inspect those manifest image IDs and recreate their
+tags without retransferring archives. A candidate DLL staged with the same GCP path
+can be reused with `-ReuseUploadedModDll`; its SHA-256 is checked before both the cold
+start and restore deploy. Always pair resume switches with `-ResumeSnapshotRoot` so a
+completed world snapshot is not repeated.
+
 ## 1. Purpose
 
 This runbook guides the operator through the M0/A4 promotion drill: prove that the

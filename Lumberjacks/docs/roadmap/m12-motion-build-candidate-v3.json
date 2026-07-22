@@ -1,0 +1,73 @@
+{
+  "schema": "comfy-p7-release/v3-candidate",
+  "release_id": "m12-motion-20260722-r1",
+  "captured_utc": "2026-07-22T14:55:46Z",
+  "source": {
+    "baseline_commit": "c572979578904f4d23f67871da7014c872d4e1f3",
+    "baseline_clean": true
+  },
+  "build_contract": {
+    "continuous_integration_build": true,
+    "deterministic": false,
+    "path_map": "fixed repository source roots",
+    "mod_repeatability": "Built after the source commit so the DLL and portable PDB embed baseline_commit. The exact DLL is carried in the bundle and promoted by SHA-256.",
+    "gateway_reproducibility": "The image payload is the reproducibility unit. Lumberjacks/.dockerignore excludes .git, and the authoritative image build compiles and tests the solution before publish.",
+    "sibling_reproducibility": "Eventlog, progression, and operatorapi use the same tested source stage and are promoted by image digest."
+  },
+  "mod": {
+    "version": "0.5.33.0",
+    "release_id": "m12-motion-20260722-r1",
+    "clean_build_sha256": "5b4a19fd12751d04aec7622fd83eca91fd07ed96e382a07ec218813d4af7df67",
+    "frozen": false,
+    "build_command": "infra/gcp/p7/scripts/New-ReleaseCut.ps1 -ReleaseId m12-motion-20260722-r1"
+  },
+  "gateway": {
+    "image_id": "sha256:7275dafa6cc3c792703696a46dfb11e9ff17e6f54e628a58a878a84ff52cdd55",
+    "image_release_id": "m12-motion-20260722-r1",
+    "admitted_mod_release": "m12-motion-20260722-r1",
+    "release_label": "m12-motion-20260722-r1",
+    "revision_label": "c572979",
+    "identity_check": "Test-GatewayImageRelease.ps1 read /app/Game.Gateway.dll from the built image and confirmed it admits m12-motion-20260722-r1.",
+    "build_command": "infra/gcp/p7/scripts/New-ReleaseCut.ps1 -ReleaseId m12-motion-20260722-r1"
+  },
+  "eventlog": {
+    "image_id": "sha256:2a949685647327858f1589203f2b76ba2890217c7709759954990a7df402f4c5",
+    "release_label": "m12-motion-20260722-r1",
+    "gate": "build+hash+pin",
+    "build_command": "docker build --target eventlog -t lumberjacks-eventlog:m12-motion-20260722-r1 Lumberjacks"
+  },
+  "progression": {
+    "image_id": "sha256:42bfeef9b2bad0e43f447533ae6456c5130fd889fdf3d0eb7a67b1002b5e5d72",
+    "release_label": "m12-motion-20260722-r1",
+    "gate": "build+hash+pin",
+    "build_command": "docker build --target progression -t lumberjacks-progression:m12-motion-20260722-r1 Lumberjacks"
+  },
+  "operatorapi": {
+    "image_id": "sha256:e2704a47585de7cb3d4c5126a0177c56eae073b667a432a286a8700bc99fff08",
+    "release_label": "m12-motion-20260722-r1",
+    "gate": "build+hash+pin",
+    "build_command": "docker build --target operatorapi -t lumberjacks-operatorapi:m12-motion-20260722-r1 Lumberjacks"
+  },
+  "runtime_config": {
+    "ValheimQueue__ProducerEmitsRecipients": "true",
+    "ValheimHandshake__SeatCapacity": "0",
+    "ValheimHandshake__AlphaSeatGateEnabled": "false",
+    "transport_boundary": "Lumberjacks owns authenticated HTTP/JSON ZDO delivery and an observe-first player-motion lane over session-token UDP with binary WebSocket fallback. Native Valheim remains connected and owns simulation, ownership, non-ZDO RPCs, relevance, and presentation unless a tester explicitly enables the local motion apply switch."
+  },
+  "toolchain": {
+    "mod_sdk": "8.0.422",
+    "gateway_sdk_digest": "sha256:24fe7c00719afc72e2b67cace264dea2ee39ae45f5b553bd59493fe3ddfc920f",
+    "gateway_aspnet_digest": "sha256:8b9f90e53d41154d42e537517aef22e8fe497baabd43e423d5f2edafd06f04f6"
+  },
+  "deployment": {
+    "world_tested": false,
+    "target": "comfy-lumberjacks-p7",
+    "method": "Validated release bundle promoted by exact image IDs and mod SHA-256."
+  },
+  "limitations": [
+    "This is the first real Lumberjacks player-motion lane, not a full netcode cutover.",
+    "Motion application is off by default; the initial P7 promotion proves carriage before changing presentation.",
+    "The first slice broadcasts within one Lumberjacks region and intentionally defers AoI ranking and prediction.",
+    "World verification remains required after P7 and both Windows clients carry the same mod artifact."
+  ]
+}

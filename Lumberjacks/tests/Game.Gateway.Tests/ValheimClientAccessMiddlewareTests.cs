@@ -136,6 +136,22 @@ public sealed class ValheimClientAccessMiddlewareTests : IDisposable
         Assert.Equal(issued.Enrollment.RecipientId, principal.Enrollment!.RecipientId);
     }
 
+    [Fact]
+    public async Task ValidEnrollment_TakesPrecedenceOverPrivateProxySocket()
+    {
+        var (service, issued) = CreateEnrolledService();
+        var context = Request("GET", "/valheim/zdo-redirect/pending/p7-primary-v1", PrivateAddress,
+            ("X-Lumberjacks-Enrollment-Id", issued.Enrollment.EnrollmentId),
+            ("X-Lumberjacks-Client-Key", issued.AccessToken));
+
+        Assert.True(await Invoke(context, service));
+        var principal = ValheimPrincipal.From(context);
+        Assert.NotNull(principal);
+        Assert.Equal("enrollment", principal!.Kind);
+        Assert.Equal(issued.Enrollment.RecipientId, principal.Enrollment!.RecipientId);
+        Assert.False(principal.Has(ValheimCapability.Admin));
+    }
+
     (SteamEnrollmentService Service, SteamEnrollmentService.EnrollmentIssued Issued) CreateEnrolledService()
     {
         Directory.CreateDirectory(_directory);
