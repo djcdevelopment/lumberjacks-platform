@@ -32,6 +32,7 @@ LUMBERJACKS_PLAYER_PORT=42317
 LUMBERJACKS_PLAYER_GATEWAY_URL=http://CHANGE_ME_vm_public_ip:42317
 LUMBERJACKS_ENROLLMENT_PUBLIC_URL=http://CHANGE_ME_vm_public_ip:42317
 LUMBERJACKS_AUTHORITATIVE_WINDOW_ID=p7-primary-v1
+VALHEIM_HANDSHAKE_SEAT_CAPACITY=0
 
 # Recipient cutover flag. Leave false until the mod build that stamps
 # recipients is deployed — flipping this first is silent total delivery

@@ -1,4 +1,5 @@
 using Game.Gateway.Valheim;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace Game.Gateway.Tests;
@@ -186,6 +187,46 @@ public sealed class ValheimHandshakeSeatTests
 
         Assert.True(service.SubmitPeerInfo(Window, Submission("c1", HolderSteamId)).Result!.Accept);
         Assert.True(service.SubmitPeerInfo(Window, Submission("c2", RivalSteamId)).Result!.Accept);
+    }
+
+    [Fact]
+    public void StartupConfiguration_DefaultsToOneSeat()
+    {
+        var settings = ValheimHandshakeStartup.FromConfiguration(new ConfigurationBuilder().Build());
+
+        Assert.Equal(ValheimHandshakeStartup.DefaultWindowId, settings.WindowId);
+        Assert.Equal(1, settings.SeatCapacity);
+    }
+
+    [Fact]
+    public void StartupConfiguration_CanDisableTheAlphaSeatGate()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["LUMBERJACKS_AUTHORITATIVE_WINDOW_ID"] = Window,
+            ["ValheimHandshake:SeatCapacity"] = "0",
+        }).Build();
+        var service = new ValheimHandshakeService();
+
+        ValheimHandshakeStartup.Configure(service, config);
+
+        var status = service.GetStatus(Window);
+        Assert.Equal(0, status.SeatCapacity);
+        Assert.True(service.SubmitPeerInfo(Window, Submission("c1", HolderSteamId)).Result!.Accept);
+        Assert.True(service.SubmitPeerInfo(Window, Submission("c2", RivalSteamId)).Result!.Accept);
+    }
+
+    [Fact]
+    public void StartupConfiguration_RefusesUnsupportedSeatCapacity()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ValheimHandshake:SeatCapacity"] = "2",
+        }).Build();
+
+        var error = Assert.Throws<InvalidOperationException>(
+            () => ValheimHandshakeStartup.FromConfiguration(config));
+        Assert.Contains("seat_capacity", error.Message);
     }
 
     [Fact]

@@ -15,6 +15,7 @@ x-lumberjacks-telemetry: &lumberjacks-telemetry
   LUMBERJACKS_PLAYER_GATEWAY_URL: "${LUMBERJACKS_PLAYER_GATEWAY_URL:-http://127.0.0.1:14000}"
   LUMBERJACKS_ENROLLMENT_PUBLIC_URL: "${LUMBERJACKS_ENROLLMENT_PUBLIC_URL:-http://127.0.0.1:14000}"
   LUMBERJACKS_AUTHORITATIVE_WINDOW_ID: "${LUMBERJACKS_AUTHORITATIVE_WINDOW_ID:-p7-primary-v1}"
+  ValheimHandshake__SeatCapacity: "${VALHEIM_HANDSHAKE_SEAT_CAPACITY:-1}"
 
 x-lumberjacks-service: &lumberjacks-service
   restart: unless-stopped

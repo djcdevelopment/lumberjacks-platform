@@ -10,8 +10,10 @@
 ## Preconditions
 - Gateway is the current image on P7 and healthy (`/api/v0/telemetry/cutover` reachable; dashboard at
   `http://127.0.0.1:8080/community` over the tunnel).
-- Seat gate open for 2 players (`POST /valheim/handshake/config {seat_capacity:0}` — ephemeral, resets
-  on gateway restart; re-POST if the gateway bounced). See `FINDINGS-multiplayer-copresence-2026-07-21.md`.
+- Seat gate open for 2 players (`VALHEIM_HANDSHAKE_SEAT_CAPACITY=0` in `/etc/comfy-p7/environment`;
+  confirm `/valheim/handshake/status/p7-primary-v1` returns `seat_capacity: 0` after any gateway
+  restart). Emergency fallback while debugging remains `POST /valheim/handshake/config` with
+  `seat_capacity: 0`, but that runtime override is not durable.
 - `VALHEIM_QUEUE_PRODUCER_EMITS_RECIPIENTS=true` in `/etc/comfy-p7/environment` (durable; confirm).
 - Cutover mode is `lumberjacks-primary` and coverage is 100% (`native_only=0`) — the state the repro
   needs (no vanilla fallback).
