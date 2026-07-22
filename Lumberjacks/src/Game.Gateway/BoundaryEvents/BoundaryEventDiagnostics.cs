@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using Microsoft.Extensions.Options;
 
 namespace Game.Gateway.BoundaryEvents;
@@ -23,6 +24,9 @@ public sealed class BoundaryEventDiagnostics
         "identity.resolved",
         "authorization.decided",
         "zdo.batch.queued",
+        "zdo.batch.polled",
+        "zdo.batch.acknowledged",
+        "zdo.consumer.heartbeat",
         "request.completed",
     };
 
@@ -77,10 +81,19 @@ public sealed class BoundaryEventDiagnostics
         snapshot.IdentityResolution = Sort(snapshot.IdentityResolution);
         snapshot.ProxyBoundary = Sort(snapshot.ProxyBoundary);
         snapshot.RouteStatus = Sort(snapshot.RouteStatus);
+        snapshot.ZdoByOperation = Sort(snapshot.ZdoByOperation);
+        snapshot.ZdoByWindow = Sort(snapshot.ZdoByWindow);
+        snapshot.ZdoByRecipient = Sort(snapshot.ZdoByRecipient);
+        snapshot.ZdoRelease = Sort(snapshot.ZdoRelease);
+        snapshot.ZdoConsumerResult = Sort(snapshot.ZdoConsumerResult);
         snapshot.UnknownEventTypes.Sort(StringComparer.Ordinal);
         snapshot.RecentAuthorization = snapshot.RecentAuthorization
             .OrderByDescending(item => item.TimestampUtc)
             .Take(40)
+            .ToList();
+        snapshot.RecentEvents = snapshot.RecentEvents
+            .OrderByDescending(item => item.TimestampUtc)
+            .Take(80)
             .ToList();
         return snapshot;
     }
@@ -115,9 +128,11 @@ public sealed class BoundaryEventDiagnostics
 
                 var timestamp = ReadTimestamp(row);
                 var data = row.GetProperty("data");
+                ObserveRecent(row, data, timestamp, snapshot);
                 if (eventType == "authorization.decided") ObserveAuthorization(data, timestamp, snapshot);
                 else if (eventType == "identity.resolved") ObserveIdentity(data, snapshot);
                 else if (eventType == "request.completed") ObserveRequest(data, snapshot);
+                else if (eventType.StartsWith("zdo.", StringComparison.Ordinal)) ObserveZdo(eventType, data, snapshot);
             }
         }
     }
@@ -209,6 +224,59 @@ public sealed class BoundaryEventDiagnostics
         }
     }
 
+    private static void ObserveZdo(string eventType, JsonElement data, BoundaryEventDiagnosticsSnapshot snapshot)
+    {
+        Increment(snapshot.ZdoByOperation, eventType);
+        Increment(snapshot.ZdoByWindow, ReadString(data, "window_id"));
+        Increment(snapshot.ZdoByRecipient, ReadString(data, "recipient_id"));
+        Increment(snapshot.ZdoRelease, ReadString(data, "observed_mod_release"));
+        if (eventType == "zdo.consumer.heartbeat")
+            Increment(snapshot.ZdoConsumerResult, ReadString(data, "last_operation_result"));
+
+        snapshot.ZdoTotals = snapshot.ZdoTotals with
+        {
+            QueuedEnvelopes = snapshot.ZdoTotals.QueuedEnvelopes + (eventType == "zdo.batch.queued" ? ReadLong(data, "envelope_count") : 0),
+            AcceptedEnvelopes = snapshot.ZdoTotals.AcceptedEnvelopes + ReadLong(data, "accepted_count"),
+            RequestBytes = snapshot.ZdoTotals.RequestBytes + ReadLong(data, "request_bytes"),
+            PolledEnvelopes = snapshot.ZdoTotals.PolledEnvelopes + (eventType == "zdo.batch.polled" ? ReadLong(data, "envelope_count") : 0),
+            AckSequenceCount = snapshot.ZdoTotals.AckSequenceCount + ReadLong(data, "sequence_count"),
+            AcknowledgedCount = snapshot.ZdoTotals.AcknowledgedCount + ReadLong(data, "acknowledged_count"),
+            UnknownAckCount = snapshot.ZdoTotals.UnknownAckCount + ReadLong(data, "unknown_count"),
+            AppliedCount = snapshot.ZdoTotals.AppliedCount + ReadLong(data, "applied"),
+            SupersededCount = snapshot.ZdoTotals.SupersededCount + ReadLong(data, "superseded"),
+            RejectedCount = snapshot.ZdoTotals.RejectedCount + ReadLong(data, "rejected"),
+            PendingCount = snapshot.ZdoTotals.PendingCount + ReadLong(data, "pending"),
+            PriorityFastLaneApplied = snapshot.ZdoTotals.PriorityFastLaneApplied + ReadLong(data, "priority_fast_lane_applied"),
+        };
+
+        if (TryReadDouble(data, "queue_duration_ms", out var queueDuration))
+            snapshot.ZdoQueueDuration = snapshot.ZdoQueueDuration.Add(queueDuration);
+        if (TryReadDouble(data, "poll_duration_ms", out var pollDuration))
+            snapshot.ZdoPollDuration = snapshot.ZdoPollDuration.Add(pollDuration);
+        if (TryReadDouble(data, "ack_duration_ms", out var ackDuration))
+            snapshot.ZdoAckDuration = snapshot.ZdoAckDuration.Add(ackDuration);
+    }
+
+    private static void ObserveRecent(JsonElement row, JsonElement data, DateTimeOffset? timestamp,
+        BoundaryEventDiagnosticsSnapshot snapshot)
+    {
+        if (snapshot.RecentEvents.Count >= 240) return;
+        var eventType = row.GetProperty("event_type").GetString() ?? "<missing>";
+        snapshot.RecentEvents.Add(new BoundaryRecentEvent(
+            timestamp,
+            eventType,
+            ReadString(data, "route"),
+            ReadString(data, "window_id"),
+            ReadString(data, "recipient_id"),
+            ReadString(data, "result"),
+            ReadString(data, "reason"),
+            FirstNonMissing(
+                ReadString(data, "envelope_count"),
+                ReadString(data, "acknowledged_count"),
+                ReadString(data, "applied"),
+                ReadString(data, "status_code"))));
+    }
+
     private static DateTimeOffset? ReadTimestamp(JsonElement row) =>
         row.TryGetProperty("timestamp_utc", out var value) &&
         value.ValueKind == JsonValueKind.String &&
@@ -230,6 +298,26 @@ public sealed class BoundaryEventDiagnostics
         };
     }
 
+    private static long ReadLong(JsonElement data, string property)
+    {
+        if (!data.TryGetProperty(property, out var value)) return 0;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var parsed)) return parsed;
+        if (value.ValueKind == JsonValueKind.String && long.TryParse(value.GetString(), out parsed)) return parsed;
+        return 0;
+    }
+
+    private static bool TryReadDouble(JsonElement data, string property, out double parsed)
+    {
+        parsed = 0;
+        if (!data.TryGetProperty(property, out var value)) return false;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out parsed)) return true;
+        return value.ValueKind == JsonValueKind.String &&
+            double.TryParse(value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out parsed);
+    }
+
+    private static string FirstNonMissing(params string[] values) =>
+        values.FirstOrDefault(value => !string.Equals(value, "<missing>", StringComparison.Ordinal)) ?? "<missing>";
+
     private static void Increment(IDictionary<string, long> values, string key) =>
         values[key] = values.TryGetValue(key, out var current) ? current + 1 : 1;
 
@@ -247,6 +335,33 @@ public sealed record BoundaryAuthorizationDecision(
     string Reason,
     string RequiredCapabilities,
     string GrantedCapabilities);
+
+public sealed record BoundaryRecentEvent(
+    DateTimeOffset? TimestampUtc,
+    string EventType,
+    string Route,
+    string WindowId,
+    string RecipientId,
+    string Result,
+    string Reason,
+    string Count);
+
+public sealed record BoundaryZdoTotals(
+    long QueuedEnvelopes,
+    long AcceptedEnvelopes,
+    long RequestBytes,
+    long PolledEnvelopes,
+    long AckSequenceCount,
+    long AcknowledgedCount,
+    long UnknownAckCount,
+    long AppliedCount,
+    long SupersededCount,
+    long RejectedCount,
+    long PendingCount,
+    long PriorityFastLaneApplied)
+{
+    public static BoundaryZdoTotals Empty { get; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+}
 
 public sealed record BoundaryDurationSummary(long Count, double Min, double Max, double Average)
 {
@@ -279,8 +394,18 @@ public sealed class BoundaryEventDiagnosticsSnapshot
     public Dictionary<string, long> IdentityResolution { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, long> ProxyBoundary { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, long> RouteStatus { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, long> ZdoByOperation { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, long> ZdoByWindow { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, long> ZdoByRecipient { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, long> ZdoRelease { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, long> ZdoConsumerResult { get; set; } = new(StringComparer.Ordinal);
     public BoundaryDurationSummary RequestDuration { get; set; } = BoundaryDurationSummary.Empty;
+    public BoundaryDurationSummary ZdoQueueDuration { get; set; } = BoundaryDurationSummary.Empty;
+    public BoundaryDurationSummary ZdoPollDuration { get; set; } = BoundaryDurationSummary.Empty;
+    public BoundaryDurationSummary ZdoAckDuration { get; set; } = BoundaryDurationSummary.Empty;
+    public BoundaryZdoTotals ZdoTotals { get; set; } = BoundaryZdoTotals.Empty;
     public List<string> Errors { get; } = [];
     public List<string> UnknownEventTypes { get; set; } = [];
     public List<BoundaryAuthorizationDecision> RecentAuthorization { get; set; } = [];
+    public List<BoundaryRecentEvent> RecentEvents { get; set; } = [];
 }

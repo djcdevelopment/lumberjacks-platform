@@ -185,13 +185,27 @@ public static class ValheimZdoRedirectEndpoints
         // hot path is untouched.
         group.MapGet("/pending/{windowId}", (string windowId, int? limit, HttpContext context,
             IConfiguration configuration,
-            ValheimZdoRedirectService redirects, ValheimWindowActivityService activity) =>
+            ValheimZdoRedirectService redirects, ValheimWindowActivityService activity,
+            IBoundaryEventSink boundaryEvents) =>
         {
             var scope = Scope(context, configuration);
             if (scope.Error is not null) return Results.StatusCode(StatusCodes.Status403Forbidden);
+            var pollTimer = System.Diagnostics.Stopwatch.StartNew();
             activity.Touch(windowId, scope.Resolved!, DateTime.UtcNow);
+            var requestedLimit = limit ?? 64;
+            var envelopes = redirects.Pending(windowId, scope.Resolved!, requestedLimit);
+            pollTimer.Stop();
+            boundaryEvents.TryWrite(BoundaryEventEnvelope.Create("zdo.batch.polled",
+                Source(), new
+                {
+                    window_id = windowId,
+                    recipient_id = scope.Resolved,
+                    limit = requestedLimit,
+                    envelope_count = envelopes.Count,
+                    poll_duration_ms = pollTimer.Elapsed.TotalMilliseconds,
+                }, System.Diagnostics.Activity.Current));
             return Results.Ok(new { schema_version = 1, window_id = windowId,
-                recipient_id = scope.Resolved, envelopes = redirects.Pending(windowId, scope.Resolved!, limit ?? 64) });
+                recipient_id = scope.Resolved, envelopes });
         }).RequireRateLimiting("consumer");
 
         // Who a consumer IS is the server's to say, not the caller's. Where the caller presented an
@@ -212,7 +226,8 @@ public static class ValheimZdoRedirectEndpoints
         // once no supported mod sends the field, and doing it while a rollback to 0.5.31 must keep
         // working would trade a real outage for a property the override already provides.
         group.MapPost("/consumer", (ValheimZdoConsumerHeartbeat heartbeat, HttpContext context,
-            IConfiguration configuration, ValheimZdoConsumerTelemetryService consumers) =>
+            IConfiguration configuration, ValheimZdoConsumerTelemetryService consumers,
+            IBoundaryEventSink boundaryEvents) =>
         {
             // The rule lives in ValheimConsumerHeartbeatPolicy, not here, and that is the point:
             // nothing in this lambda is reachable from a test (Game.Gateway.Tests is service-level
@@ -227,6 +242,23 @@ public static class ValheimZdoRedirectEndpoints
             }
 
             consumers.Record(resolved.Recorded!);
+            boundaryEvents.TryWrite(BoundaryEventEnvelope.Create("zdo.consumer.heartbeat",
+                Source(), new
+                {
+                    window_id = resolved.Recorded!.WindowId,
+                    recipient_id = resolved.Recorded.ConsumerId,
+                    observed_mod_release = resolved.Recorded.ModVersion,
+                    pending = resolved.Recorded.Pending,
+                    applied = resolved.Recorded.Applied,
+                    superseded = resolved.Recorded.Superseded,
+                    rejected = resolved.Recorded.Rejected,
+                    acknowledged = resolved.Recorded.Acknowledged,
+                    duplicates = resolved.Recorded.Duplicates,
+                    retried = resolved.Recorded.Retried,
+                    priority_tagged = resolved.Recorded.PriorityTagged,
+                    priority_fast_lane_applied = resolved.Recorded.PriorityFastLaneApplied,
+                    last_operation_result = resolved.Recorded.LastOperationResult,
+                }, System.Diagnostics.Activity.Current));
             return Results.Ok(new { ok = true, received_at = DateTimeOffset.UtcNow });
         }).RequireRateLimiting("telemetry");
 
@@ -236,14 +268,27 @@ public static class ValheimZdoRedirectEndpoints
 
         group.MapPost("/ack/{windowId}", (string windowId, long[] sequences, HttpContext context,
             IConfiguration configuration,
-            ValheimZdoRedirectService redirects, ValheimWindowActivityService activity) =>
+            ValheimZdoRedirectService redirects, ValheimWindowActivityService activity,
+            IBoundaryEventSink boundaryEvents) =>
         {
             if (sequences is null || sequences.Length == 0)
                 return Results.BadRequest(new { error = "sequences is required" });
             var scope = Scope(context, configuration);
             if (scope.Error is not null) return Results.StatusCode(StatusCodes.Status403Forbidden);
+            var ackTimer = System.Diagnostics.Stopwatch.StartNew();
             activity.Touch(windowId, scope.Resolved!, DateTime.UtcNow);
             var result = redirects.Acknowledge(windowId, scope.Resolved!, sequences);
+            ackTimer.Stop();
+            boundaryEvents.TryWrite(BoundaryEventEnvelope.Create("zdo.batch.acknowledged",
+                Source(), new
+                {
+                    window_id = windowId,
+                    recipient_id = scope.Resolved,
+                    sequence_count = sequences.Length,
+                    acknowledged_count = result.Acknowledged,
+                    unknown_count = result.Unknown,
+                    ack_duration_ms = ackTimer.Elapsed.TotalMilliseconds,
+                }, System.Diagnostics.Activity.Current));
             return Results.Ok(new { window_id = windowId, acknowledged = result.Acknowledged, unknown = result.Unknown });
         }).RequireRateLimiting("consumer");
 
@@ -297,4 +342,7 @@ public static class ValheimZdoRedirectEndpoints
             principal?.Enrollment?.RecipientId, null,
             configuration.GetValue("ValheimQueue:ProducerEmitsRecipients", false));
     }
+
+    private static BoundaryEventSource Source() =>
+        new("lumberjacks-gateway", "unknown", "unknown", null);
 }

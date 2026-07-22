@@ -32,6 +32,13 @@ LUMBERJACKS_PLAYER_PORT=42317
 LUMBERJACKS_PLAYER_GATEWAY_URL=http://CHANGE_ME_vm_public_ip:42317
 LUMBERJACKS_ENROLLMENT_PUBLIC_URL=http://CHANGE_ME_vm_public_ip:42317
 LUMBERJACKS_AUTHORITATIVE_WINDOW_ID=p7-primary-v1
+# Preferred Gateway alpha admission mode. `disabled` removes the temporary one-seat
+# reservation gate so known-cohort multi-account testing can join. `one-seat`
+# restores the conservative single-seat reservation.
+LUMBERJACKS_ALPHA_SEAT_GATE=disabled
+# Rollback compatibility for older Gateway images that do not understand
+# LUMBERJACKS_ALPHA_SEAT_GATE. Keep aligned with the line above until those images
+# are retired.
 VALHEIM_HANDSHAKE_SEAT_CAPACITY=0
 
 # Recipient cutover flag. Leave false until the mod build that stamps

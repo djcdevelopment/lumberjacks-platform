@@ -102,11 +102,17 @@ that script copies a narrow source-file allowlist and rebuilds on the VM.
    sudo install -m 0644 /tmp/docker-compose-m3-boundary-20260722-r1.yml docker-compose.yml
    sudo sed -i 's|^LUMBERJACKS_GATEWAY_IMAGE=.*|LUMBERJACKS_GATEWAY_IMAGE=lumberjacks-gateway:m3-boundary-20260722-r1|' "$env_file"
    sudo sed -i 's|^LUMBERJACKS_VERSION=.*|LUMBERJACKS_VERSION=m3-boundary-20260722-r1|' "$env_file"
+   sudo sed -i 's|^LUMBERJACKS_ALPHA_SEAT_GATE=.*|LUMBERJACKS_ALPHA_SEAT_GATE=disabled|' "$env_file"
    sudo docker compose --env-file "$env_file" config >/tmp/docker-compose-m3-boundary-20260722-r1.rendered.yml
    sudo docker compose --env-file "$env_file" up -d --no-build --no-deps gateway
    curl --fail --silent http://127.0.0.1:4000/health
    sudo docker inspect comfy-lumberjacks-p7-gateway-1 --format '{{.Image}} {{index .Config.Image}}'
    ```
+
+   `LUMBERJACKS_ALPHA_SEAT_GATE=disabled` is the preferred durable alpha setting.
+   It disables the temporary one-seat Gateway reservation gate; it does not change
+   Valheim's native max-player value. Keep `VALHEIM_HANDSHAKE_SEAT_CAPACITY=0` in
+   the VM env only while older Gateway images remain valid rollback targets.
 
 4. Confirm boundary events are durable and parse complete rows:
 
@@ -116,6 +122,22 @@ that script copies a narrow source-file allowlist and rebuilds on the VM.
    scp comfy-p7:/tmp/boundary-events-p7-complete-rows.jsonl $env:TEMP\boundary-events-p7-complete.jsonl
    node .\scripts\boundary-events.mjs check $env:TEMP
    ```
+
+   For the operator dashboard, verify both the basic stream health and the ZDO
+   movement counters through the OMEN proxy:
+
+   ```powershell
+   Invoke-RestMethod http://127.0.0.1:8080/ops/boundary/summary |
+     Select rows, malformed_rows, truncated_rows, proxy_boundary_warnings,
+       writer_dropped_rows, writer_faults
+
+   (Invoke-RestMethod http://127.0.0.1:8080/ops/boundary/summary).zdo_totals
+   ```
+
+   Expected shape: identity/auth/request rows are always present on an active
+   Gateway; `zdo.batch.queued`, `zdo.batch.polled`, `zdo.batch.acknowledged`, and
+   `zdo.consumer.heartbeat` appear once the Valheim server and at least one enrolled
+   client are actively producing/polling through Lumberjacks.
 
 5. Run the proxy boundary canary:
 
@@ -173,6 +195,12 @@ Operator checks:
   directory and lets it merge.
 - Because the credential rotated, do not expect the tester's older install to
   keep authenticating.
+
+For normal self-service, use the Steam-bound flow instead of the admin rescue path:
+send the tester an invite URL, or have an already-enrolled tester open
+`/join/reissue`, sign in with Steam, and press **Download my mod pack**. That path
+uses the same `ModPackBuilder` and streams a config-personalized zip without a
+Discord key/hash paste loop.
 
 ## Failure handling
 

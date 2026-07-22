@@ -15,7 +15,6 @@ x-lumberjacks-telemetry: &lumberjacks-telemetry
   LUMBERJACKS_PLAYER_GATEWAY_URL: "${LUMBERJACKS_PLAYER_GATEWAY_URL:-http://127.0.0.1:14000}"
   LUMBERJACKS_ENROLLMENT_PUBLIC_URL: "${LUMBERJACKS_ENROLLMENT_PUBLIC_URL:-http://127.0.0.1:14000}"
   LUMBERJACKS_AUTHORITATIVE_WINDOW_ID: "${LUMBERJACKS_AUTHORITATIVE_WINDOW_ID:-p7-primary-v1}"
-  ValheimHandshake__SeatCapacity: "${VALHEIM_HANDSHAKE_SEAT_CAPACITY:-1}"
 
 x-lumberjacks-service: &lumberjacks-service
   restart: unless-stopped
@@ -61,6 +60,13 @@ services:
       BoundaryEvents__FlushIntervalMilliseconds: "${BOUNDARY_EVENTS_FLUSH_INTERVAL_MS:-1000}"
       BoundaryEvents__Release: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
       BoundaryEvents__Instance: "${HOSTNAME:-p7-gateway}"
+      # Preferred operator-facing switch for the temporary alpha reservation gate. `disabled` means
+      # known testers are not artificially capped by Gateway before Valheim admits them; `one-seat`
+      # restores the original conservative reservation. Blank means "use the numeric fallback below."
+      LUMBERJACKS_ALPHA_SEAT_GATE: "${LUMBERJACKS_ALPHA_SEAT_GATE:-}"
+      # Rollback compatibility for older Gateway images that do not understand
+      # LUMBERJACKS_ALPHA_SEAT_GATE.
+      ValheimHandshake__SeatCapacity: "${VALHEIM_HANDSHAKE_SEAT_CAPACITY:-1}"
       Urls: "http://+:4000"
       ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
       ServiceUrls__EventLog: "http://eventlog:4002"

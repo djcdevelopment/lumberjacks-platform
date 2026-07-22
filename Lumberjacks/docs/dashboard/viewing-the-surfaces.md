@@ -50,6 +50,7 @@ Open in a browser — no login, served straight from the game Gateway. All data 
 | `http://localhost:4000/community` | **Live Community View** — server overview: uptime, tick perf, sessions, delivery, regions |
 | `http://localhost:4000/testing` | **G5 Local Testing Tools** — scenario cards (simulated) |
 | `http://localhost:4000/ops/boundary` | **Boundary Diagnostics** — operator-only identity/auth/request/ZDO JSONL summary for builders and hackers |
+| `http://localhost:4000/join/reissue` | **Alpha zip reissue** — Steam sign-in path that mints a fresh personal mod pack download for an already-enrolled tester |
 
 Raw API behind them (same-origin, `GET` from any origin, DB-less):
 `http://localhost:4000/api/v0/telemetry/{server,tick,sessions,delivery,regions,events,valheim,cutover}`
@@ -83,6 +84,11 @@ operator path such as the OMEN tunnel. The endpoint refuses requests with a publ
 `X-Forwarded-For` claim even when the socket itself appears private, so it does not
 repeat the Caddy private-plane bypass while that deployment shape is still being
 hardened.
+
+The boundary page is deliberately dense. Alpha testers are builders, so it shows
+both the first identity/auth view and the rough ZDO movement view: queued, polled,
+acknowledged, consumer heartbeat/applied counts, per-stage durations, window and
+recipient partitions, and recent event rows from the append-only JSONL stream.
 
 On OMEN, the loopback-only dashboard proxy exposes the page at
 `http://127.0.0.1:8080/roadmap`. It mounts the generated local

@@ -67,6 +67,7 @@
       <a href="/community">community</a>
       <a href="/events">events</a>
       <a href="/roadmap">roadmap</a>
+      <a href="/join/reissue">alpha zip</a>
     </nav>
   </header>
 
@@ -93,6 +94,27 @@
         <div class="label">private socket plus public forwarded claim</div>
       </div>
 
+      <div class="panel span-3">
+        <h2>ZDO Queued</h2>
+        <div class="metric" id="zdoQueued">--</div>
+        <div class="label">accepted / request bytes</div>
+      </div>
+      <div class="panel span-3">
+        <h2>ZDO Polled</h2>
+        <div class="metric" id="zdoPolled">--</div>
+        <div class="label">consumer-visible envelopes</div>
+      </div>
+      <div class="panel span-3">
+        <h2>ZDO Acked</h2>
+        <div class="metric" id="zdoAcked">--</div>
+        <div class="label" id="zdoAckLabel">unknown ack count</div>
+      </div>
+      <div class="panel span-3">
+        <h2>ZDO Applied</h2>
+        <div class="metric" id="zdoApplied">--</div>
+        <div class="label" id="zdoAppliedLabel">superseded / pending</div>
+      </div>
+
       <div class="panel span-4">
         <h2>Event Families</h2>
         <div id="eventTypes"></div>
@@ -115,6 +137,32 @@
         <div id="proxy"></div>
       </div>
 
+      <div class="panel span-4">
+        <h2>ZDO Operations</h2>
+        <div id="zdoOps"></div>
+      </div>
+      <div class="panel span-4">
+        <h2>ZDO Windows</h2>
+        <div id="zdoWindows"></div>
+      </div>
+      <div class="panel span-4">
+        <h2>ZDO Consumer Results</h2>
+        <div id="zdoResults"></div>
+      </div>
+
+      <div class="panel span-4">
+        <h2>ZDO Queue Duration</h2>
+        <div id="zdoQueueDuration"></div>
+      </div>
+      <div class="panel span-4">
+        <h2>ZDO Poll Duration</h2>
+        <div id="zdoPollDuration"></div>
+      </div>
+      <div class="panel span-4">
+        <h2>ZDO Ack Duration</h2>
+        <div id="zdoAckDuration"></div>
+      </div>
+
       <div class="panel span-8">
         <h2>Recent Authorization Decisions</h2>
         <div class="scroll" id="recent"></div>
@@ -122,6 +170,11 @@
       <div class="panel span-4">
         <h2>Request Status by Route</h2>
         <div class="scroll" id="routes"></div>
+      </div>
+
+      <div class="panel span-12">
+        <h2>Recent Raw Event Rows</h2>
+        <div class="scroll" id="recentEvents"></div>
       </div>
 
       <div class="panel span-12">
@@ -144,6 +197,15 @@
       if (!entries.length) return '<div class="empty">no rows</div>';
       return `<table><tbody>${entries.map(([k, v]) => `<tr><td>${cell(k)}</td><td class="num">${fmt.format(v)}</td></tr>`).join('')}</tbody></table>`;
     }
+    function duration(d) {
+      if (!d || !d.count) return '<div class="empty">no samples</div>';
+      return `<table><tbody>
+        <tr><td>count</td><td class="num">${fmt.format(d.count)}</td></tr>
+        <tr><td>avg ms</td><td class="num">${Number(d.average || 0).toFixed(3)}</td></tr>
+        <tr><td>min ms</td><td class="num">${Number(d.min || 0).toFixed(3)}</td></tr>
+        <tr><td>max ms</td><td class="num">${Number(d.max || 0).toFixed(3)}</td></tr>
+      </tbody></table>`;
+    }
     function setMetric(id, value, cls) {
       const el = document.getElementById(id);
       el.textContent = fmt.format(value ?? 0);
@@ -164,6 +226,14 @@
         setMetric('parse', parseBad, parseBad ? 'warn' : 'ok');
         document.getElementById('parseLabel').textContent = `${fmt.format(data.malformed_rows || 0)} malformed / ${fmt.format(data.truncated_rows || 0)} truncated`;
         setMetric('proxyWarnings', data.proxy_boundary_warnings || 0, data.proxy_boundary_warnings ? 'bad' : 'ok');
+        const z = data.zdo_totals || {};
+        setMetric('zdoQueued', z.queued_envelopes || 0, '');
+        document.querySelector('#zdoQueued + .label').textContent = `${fmt.format(z.accepted_envelopes || 0)} accepted / ${fmt.format(z.request_bytes || 0)} bytes`;
+        setMetric('zdoPolled', z.polled_envelopes || 0, '');
+        setMetric('zdoAcked', z.acknowledged_count || 0, (z.unknown_ack_count || 0) ? 'warn' : '');
+        document.getElementById('zdoAckLabel').textContent = `${fmt.format(z.unknown_ack_count || 0)} unknown / ${fmt.format(z.ack_sequence_count || 0)} seq`;
+        setMetric('zdoApplied', z.applied_count || 0, '');
+        document.getElementById('zdoAppliedLabel').textContent = `${fmt.format(z.superseded_count || 0)} superseded / ${fmt.format(z.pending_count || 0)} pending`;
 
         document.getElementById('eventTypes').innerHTML = rows(data.by_event_type);
         document.getElementById('identity').innerHTML = rows(data.identity_resolution);
@@ -171,9 +241,17 @@
         document.getElementById('caps').innerHTML = rows(data.required_granted_capabilities, 16);
         document.getElementById('proxy').innerHTML = rows(data.proxy_boundary, 16);
         document.getElementById('routes').innerHTML = rows(data.route_status, 24);
+        document.getElementById('zdoOps').innerHTML = rows(data.zdo_by_operation, 12);
+        document.getElementById('zdoWindows').innerHTML = rows(data.zdo_by_window, 12);
+        document.getElementById('zdoResults').innerHTML = rows(data.zdo_consumer_result, 12);
+        document.getElementById('zdoQueueDuration').innerHTML = duration(data.zdo_queue_duration);
+        document.getElementById('zdoPollDuration').innerHTML = duration(data.zdo_poll_duration);
+        document.getElementById('zdoAckDuration').innerHTML = duration(data.zdo_ack_duration);
 
         const recent = data.recent_authorization || [];
         document.getElementById('recent').innerHTML = recent.length ? `<table><thead><tr><th>UTC</th><th>Policy</th><th>Result</th><th>Reason</th><th>Caps</th></tr></thead><tbody>${recent.map(r => `<tr><td>${cell(r.timestamp_utc)}</td><td>${cell(r.policy)}</td><td><span class="pill ${r.result === 'allow' ? 'ok' : 'bad'}">${cell(r.result)}</span></td><td>${cell(r.reason)}</td><td>${cell(r.required_capabilities)} -> ${cell(r.granted_capabilities)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">no authorization decisions</div>';
+        const raw = data.recent_events || [];
+        document.getElementById('recentEvents').innerHTML = raw.length ? `<table><thead><tr><th>UTC</th><th>Event</th><th>Route</th><th>Window</th><th>Recipient</th><th>Result</th><th>Reason</th><th class="num">Count</th></tr></thead><tbody>${raw.map(r => `<tr><td>${cell(r.timestamp_utc)}</td><td>${cell(r.event_type)}</td><td>${cell(r.route)}</td><td>${cell(r.window_id)}</td><td>${cell(r.recipient_id)}</td><td>${cell(r.result)}</td><td>${cell(r.reason)}</td><td class="num">${cell(r.count)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">no event rows</div>';
 
         const files = data.files || [];
         document.getElementById('segments').innerHTML = files.length ? `<table><thead><tr><th>Name</th><th class="num">Bytes</th><th>State</th><th>Last Write UTC</th></tr></thead><tbody>${files.map(f => `<tr><td>${cell(f.name)}</td><td class="num">${fmt.format(f.bytes)}</td><td><span class="pill ${f.open ? 'warn' : 'ok'}">${f.open ? 'open' : 'closed'}</span></td><td>${cell(f.last_write_utc)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">no segment files</div>';

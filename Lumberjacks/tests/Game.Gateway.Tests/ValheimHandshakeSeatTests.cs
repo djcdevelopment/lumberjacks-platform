@@ -217,6 +217,48 @@ public sealed class ValheimHandshakeSeatTests
     }
 
     [Fact]
+    public void StartupConfiguration_CanDisableTheAlphaSeatGateByNamedMode()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["LUMBERJACKS_AUTHORITATIVE_WINDOW_ID"] = Window,
+            ["LUMBERJACKS_ALPHA_SEAT_GATE"] = "disabled",
+            ["ValheimHandshake:SeatCapacity"] = "1",
+        }).Build();
+
+        var settings = ValheimHandshakeStartup.FromConfiguration(config);
+
+        Assert.Equal(0, settings.SeatCapacity);
+    }
+
+    [Fact]
+    public void StartupConfiguration_CanEnableOneSeatByNamedMode()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["LUMBERJACKS_ALPHA_SEAT_GATE"] = "one-seat",
+            ["ValheimHandshake:SeatCapacity"] = "0",
+        }).Build();
+
+        var settings = ValheimHandshakeStartup.FromConfiguration(config);
+
+        Assert.Equal(1, settings.SeatCapacity);
+    }
+
+    [Fact]
+    public void StartupConfiguration_RefusesUnknownAlphaSeatGateMode()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["LUMBERJACKS_ALPHA_SEAT_GATE"] = "maybe",
+        }).Build();
+
+        var error = Assert.Throws<InvalidOperationException>(
+            () => ValheimHandshakeStartup.FromConfiguration(config));
+        Assert.Contains("LUMBERJACKS_ALPHA_SEAT_GATE", error.Message);
+    }
+
+    [Fact]
     public void StartupConfiguration_RefusesUnsupportedSeatCapacity()
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>

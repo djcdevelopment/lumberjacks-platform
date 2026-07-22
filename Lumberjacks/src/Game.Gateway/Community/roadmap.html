@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-22T11:45:49.987Z</span>
+        <span>Updated 2026-07-22T12:04:36.460Z</span>
         <span>ComfyNetworkSense 0.5.31</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260722114549-deploy-operator-boundary-diagnostics-dashboard">
+        <div class="journal"><article class="journal-entry" id="note-20260722120436-deploy-rough-zdo-movement-dashboard-and-alpha-zi">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-22T12:04:36.460Z">2026-07-22T12:04:36.460Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M2 · M3</span>
+      </div>
+      <h3>Deploy rough ZDO movement dashboard and alpha zip surface</h3>
+      <p><strong>Impact:</strong> Gateway now emits append-only ZDO poll, acknowledgement, and consumer-heartbeat boundary events alongside queued batches, and the operator boundary dashboard renders queued, polled, acknowledged, applied, per-stage duration, window, recipient, and recent-row views for builder alpha testing. The Steam-bound personal mod-pack download path remains the preferred no-paste installer flow and is documented with the dashboard surfaces. The durable alpha seat override now has an explicit named mode, LUMBERJACKS_ALPHA_SEAT_GATE=disabled, so operators do not confuse it with Valheim&#39;s native max-player count; the old numeric variable remains only for rollback compatibility.</p>
+      <details><summary>Verification (3)</summary><ul><li>Docker verify passed: 557 tests across contracts, simulation, and gateway suites.</li><li>P7 runs Gateway image sha256:b3b351e13a56039e314dd17458d1ce301a82bb81cd215659041a8b0bb463dd4c as m8-zdostreamdash-20260722-r3 while admitting frozen mod release m5-recipients-20260720-r1 and preserving the disabled alpha seat gate.</li><li>OMEN /ops/boundary serves the new ZDO panels; public TLS /ops/boundary still returns 403.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>src/Game.Gateway/BoundaryEvents/BoundaryEventDiagnostics.cs</code> <code>src/Game.Gateway/Valheim/ValheimZdoRedirectEndpoints.cs</code> <code>src/Game.Gateway/Community/boundary.html</code> <code>docs/dashboard/viewing-the-surfaces.md</code> <code>infra/gcp/p7/docker-compose.yml</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260722114549-deploy-operator-boundary-diagnostics-dashboard">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

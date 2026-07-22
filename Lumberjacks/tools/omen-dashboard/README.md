@@ -25,6 +25,15 @@ Start-Process http://127.0.0.1:8080/community
 HTML views — `/community`, `/networksense`, `/events`, `/testing`, `/roadmap`, and
 `/ops/boundary`.
 
+`/ops/boundary` is the builder/hacker workbench for the append-only JSONL stream. It
+now shows identity/auth/request rows plus ZDO queue movement: queued, polled,
+acknowledged, consumer heartbeat/applied counters, window/recipient partitions,
+per-stage durations, and recent rows.
+
+Volunteer credential routes such as `/join/reissue` are deliberately not proxied
+through this container. Open those through the normal public enrollment URL so Steam
+callback URLs and one-time download posts stay on the player-facing origin.
+
 Read-only telemetry and stats, all GET-only:
 
 ```text
@@ -60,6 +69,9 @@ Invoke-RestMethod http://127.0.0.1:8080/api/v0/telemetry/events | Select count, 
 
 # 5. Boundary diagnostics: identity/auth/request/ZDO JSONL summary:
 Invoke-RestMethod http://127.0.0.1:8080/ops/boundary/summary | Select rows, proxy_boundary_warnings, writer_dropped_rows
+
+# 6. ZDO movement counters from the same JSONL stream:
+(Invoke-RestMethod http://127.0.0.1:8080/ops/boundary/summary).zdo_totals
 ```
 
 A `current_tick` that advances between calls in step 2 is the live-vs-stale proof. Then open
