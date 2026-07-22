@@ -216,6 +216,7 @@ public sealed record ValheimHandshakeExchangeRecord(
     string ConnectionId,
     bool Accept,
     bool EnteredSteadyState,
+    string? PlayerName,
     int? ErrorCode,
     string? ErrorName,
     string? FailedCheck,
@@ -321,6 +322,11 @@ public sealed class ValheimHandshakeService
         _windows.TryGetValue(windowId, out var window)
             ? window.Status(windowId)
             : Window.Empty(windowId);
+
+    public IReadOnlyList<string> GetAcceptedPlayerNames(string windowId) =>
+        _windows.TryGetValue(windowId, out var window)
+            ? window.AcceptedPlayerNames()
+            : Array.Empty<string>();
 
     public IReadOnlyList<ValheimHandshakeWindowStatus> GetAllStatuses() =>
         _windows.OrderBy(kv => kv.Key, StringComparer.Ordinal)
@@ -487,6 +493,7 @@ public sealed class ValheimHandshakeService
                 {
                     _exchanges.Add(new ValheimHandshakeExchangeRecord(
                         s.ConnectionId!, result.Accept, result.EntersSteadyState,
+                        result.EntersSteadyState ? SanitizePlayerName(s.PlayerName) : null,
                         result.ErrorCode, result.ErrorName, result.FailedCheck, DateTime.UtcNow));
                 }
 
@@ -642,6 +649,19 @@ public sealed class ValheimHandshakeService
         private static ValheimHandshakeGateResult Reject(ValheimConnectionStatus status, string check) =>
             new(false, false, (int)status, status.ToString(), check, null);
 
+        private static string? SanitizePlayerName(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+
+            var trimmed = value.Trim();
+            var safe = new string(trimmed
+                .Where(c => !char.IsControl(c) && c is not '<' and not '>')
+                .Take(32)
+                .ToArray());
+
+            return string.IsNullOrWhiteSpace(safe) ? null : safe;
+        }
+
         private void Touch()
         {
             var now = DateTime.UtcNow;
@@ -671,6 +691,21 @@ public sealed class ValheimHandshakeService
                     new List<ValheimHandshakeExchangeRecord>(_exchanges),
                     _firstUtc,
                     _lastUtc);
+            }
+        }
+
+        public IReadOnlyList<string> AcceptedPlayerNames()
+        {
+            lock (_gate)
+            {
+                return _exchanges
+                    .Where(e => e.EnteredSteadyState && !string.IsNullOrWhiteSpace(e.PlayerName))
+                    .OrderByDescending(e => e.Utc)
+                    .Select(e => e.PlayerName!)
+                    .Distinct(StringComparer.Ordinal)
+                    .Take(10)
+                    .Reverse()
+                    .ToArray();
             }
         }
 

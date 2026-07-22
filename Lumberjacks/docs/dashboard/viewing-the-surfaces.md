@@ -69,7 +69,10 @@ the last good values — they never fabricate data.
 `/community` is intentionally sparse when the shard is idle. Sessions, delivery,
 regions, gameplay, quests, and empty replication panels hide themselves at baseline;
 the live trace rail remains visible so builders can still see each poll, state
-transition, ZDO/cutover update, and error as it happens.
+transition, ZDO/cutover update, and error as it happens. When the Gateway has seen
+accepted post-restart handshakes, the Valheim status card shows public character
+display names beside the peer count; it never exposes Steam IDs, host names, UIDs, or
+positions.
 
 ## 2a. Live GCP P7 deployment
 

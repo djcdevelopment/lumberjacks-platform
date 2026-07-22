@@ -30,11 +30,14 @@ public sealed class ValheimTelemetryHeartbeatService
         }
     }
 
-    public object Snapshot()
+    public object Snapshot(ValheimHandshakeService? handshakes = null)
     {
         lock (_gate)
         {
             var stale = _lastSeen is null || DateTimeOffset.UtcNow - _lastSeen > TimeSpan.FromSeconds(15);
+            var players = handshakes is null || string.IsNullOrWhiteSpace(_latest?.EnrollmentManifestId)
+                ? Array.Empty<string>()
+                : handshakes.GetAcceptedPlayerNames(_latest.EnrollmentManifestId);
             return new
             {
                 stability = "unstable",
@@ -49,6 +52,7 @@ public sealed class ValheimTelemetryHeartbeatService
                     server_role = _latest.ServerRole,
                     server_state = _latest.ServerState,
                     peer_count = _latest.PeerCount,
+                    players,
                     handshake_accepted = _latest.HandshakeAccepted,
                     handshake_rejected = _latest.HandshakeRejected,
                     redirect_suppressed = _latest.RedirectSuppressed,

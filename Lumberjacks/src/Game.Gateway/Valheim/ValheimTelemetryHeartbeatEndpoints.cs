@@ -52,8 +52,9 @@ public static class ValheimTelemetryHeartbeatEndpoints
             return Results.Ok(new { ok = true, received_at = DateTimeOffset.UtcNow });
         }).RequireRateLimiting("telemetry");
 
-        app.MapGet("/api/v0/telemetry/valheim", (ValheimTelemetryHeartbeatService service) =>
-            Results.Ok(service.Snapshot()))
+        app.MapGet("/api/v0/telemetry/valheim", (ValheimTelemetryHeartbeatService service,
+            ValheimHandshakeService handshakes) =>
+            Results.Ok(service.Snapshot(handshakes)))
             .RequireCors(PublicTelemetryV0.CorsPolicyName);
 
         app.MapGet("/api/v0/telemetry/cutover", (ValheimTelemetryHeartbeatService service,

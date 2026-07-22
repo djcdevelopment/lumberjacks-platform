@@ -634,6 +634,17 @@
             note.textContent = `${hidden} idle baseline panel${hidden === 1 ? '' : 's'} hidden. Live trace stays visible; builder-only raw boundary telemetry is on /ops/boundary.`;
         }
 
+        function formatPlayers(players, peerCount) {
+            const names = Array.isArray(players)
+                ? players.filter(p => typeof p === 'string' && p.trim().length > 0).slice(0, 6)
+                : [];
+            if (names.length === 0) return `${peerCount} peer${peerCount === 1 ? '' : 's'}`;
+
+            const visible = names.join(', ');
+            const remainder = Math.max(0, peerCount - names.length);
+            return remainder > 0 ? `${visible} +${remainder}` : visible;
+        }
+
         function updateBadge(apiVersion, stability) {
             const container = document.getElementById('apiBadgeContainer');
             if (!container.innerHTML && apiVersion && stability) {
@@ -1022,7 +1033,9 @@
             const el = document.getElementById('valheim-status');
             try {
                 const d = await fetch('/api/v0/telemetry/valheim').then(r => r.ok ? r.json() : Promise.reject(r.status));
-                const message = d.stale ? 'heartbeat stale' : `${d.heartbeat?.server_state || 'ready'} - ${d.heartbeat?.peer_count ?? 0} peers`;
+                const peerCount = d.heartbeat?.peer_count ?? 0;
+                const playerText = formatPlayers(d.heartbeat?.players, peerCount);
+                const message = d.stale ? 'heartbeat stale' : `${d.heartbeat?.server_state || 'ready'} - ${playerText}`;
                 el.textContent = message;
                 addTraceIfChanged('valheim', 'valheim', message, d.stale ? 'warn' : 'good');
             } catch (_) {

@@ -181,6 +181,36 @@ public sealed class ValheimHandshakeServiceTests
         Assert.Equal(3, status.Exchanges.Count);
     }
 
+    [Fact]
+    public void AcceptedPlayerNames_ArePublicSafeAndDeduplicated()
+    {
+        var service = new ValheimHandshakeService();
+        service.SubmitPeerInfo(Window, ValidSubmission("conn-1") with
+        {
+            Uid = 1,
+            PlayerName = "  wary.fool<>  ",
+        });
+        service.SubmitPeerInfo(Window, ValidSubmission("conn-2") with
+        {
+            Uid = 2,
+            PlayerName = "durracktu",
+        });
+        service.SubmitPeerInfo(Window, ValidSubmission("conn-3") with
+        {
+            Uid = 3,
+            PlayerName = "durracktu",
+        });
+        service.SubmitPeerInfo(Window, ValidSubmission("conn-4") with
+        {
+            Uid = 4,
+            NetVersion = 35,
+            PlayerName = "rejected",
+        });
+
+        Assert.Equal(["wary.fool", "durracktu"], service.GetAcceptedPlayerNames(Window));
+        Assert.Empty(service.GetAcceptedPlayerNames("missing-window"));
+    }
+
     [Theory]
     [MemberData(nameof(MalformedSubmissions))]
     public void MalformedSubmissions_FailClosed(ValheimPeerInfoSubmission submission, string expected)

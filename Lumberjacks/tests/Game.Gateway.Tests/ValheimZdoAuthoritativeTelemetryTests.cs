@@ -80,6 +80,24 @@ public sealed class ValheimZdoAuthoritativeTelemetryTests
     }
 
     [Fact]
+    public void ValheimSnapshotIncludesAcceptedPublicPlayerNames()
+    {
+        var heartbeat = new ValheimTelemetryHeartbeatService();
+        var handshakes = new ValheimHandshakeService();
+        Assert.True(handshakes.SubmitPeerInfo(Window, Submission("conn-1", "wary.fool", 1)).Result!.Accept);
+        Assert.True(handshakes.SubmitPeerInfo(Window, Submission("conn-2", "durracktu", 2)).Result!.Accept);
+
+        heartbeat.Record(Primary(coverageTotal: 100));
+
+        var snapshot = Snapshot(heartbeat.Snapshot(handshakes));
+        var players = snapshot.GetProperty("heartbeat").GetProperty("players")
+            .EnumerateArray().Select(p => p.GetString()).ToArray();
+
+        Assert.Equal(["wary.fool", "durracktu"], players);
+        Assert.DoesNotContain("steam_", snapshot.GetRawText(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PromotionAcceptsExplicitlySupersededOlderRevisions()
     {
         var heartbeat = new ValheimTelemetryHeartbeatService();
@@ -502,5 +520,19 @@ public sealed class ValheimZdoAuthoritativeTelemetryTests
         TimestampUtc = DateTimeOffset.UtcNow.ToString("O"),
         Applied = applied,
         Acknowledged = acknowledged,
+    };
+
+    private static ValheimPeerInfoSubmission Submission(string connectionId, string playerName, long uid) => new()
+    {
+        WindowId = Window,
+        ConnectionId = connectionId,
+        Uid = uid,
+        Version = "0.221.12",
+        NetVersion = 36,
+        RefPos = new double[] { 9376, 105, 544 },
+        PlayerName = playerName,
+        HostName = "steam_76561198000000000",
+        PasswordHash = string.Empty,
+        TicketValid = true,
     };
 }
