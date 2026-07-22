@@ -133,6 +133,13 @@ recover to the pre-drill baseline manually:
    `docker-compose.promotion.yml` and `docker-compose.release.yml`. `-Finalize` does
    all of this and verifies every running image ID afterwards.
 
+   The final receipt takes `durable_pin` from that same finalize transaction. Do
+   not replace it with a second SSH read: on Windows/IAP the command can complete
+   remotely while stdout is lost, falsely recording an empty pin after a successful
+   durable promotion. If an older runner emits that warning, verify all four env
+   pins, absence of both override files, base-Compose image resolution, and all four
+   running image IDs before classifying the deployment.
+
    Retiring the overrides while leaving the three sibling variables at their
    pre-cutover values would silently resolve the reboot path back to whatever those
    still name — the same silent-revert this step exists to prevent, three services

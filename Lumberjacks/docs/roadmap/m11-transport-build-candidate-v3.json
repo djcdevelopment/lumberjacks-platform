@@ -1,0 +1,73 @@
+{
+  "schema": "comfy-p7-release/v3-candidate",
+  "release_id": "m11-transport-20260722-r1",
+  "captured_utc": "2026-07-22T22:30:00Z",
+  "source": {
+    "baseline_commit": "8f0e547069d10c8d9854e10baa1cecaf28397819",
+    "baseline_clean": true
+  },
+  "build_contract": {
+    "continuous_integration_build": true,
+    "deterministic": false,
+    "path_map": "fixed repository source roots",
+    "mod_repeatability": "Built after the source commit so the DLL and portable PDB embed baseline_commit. The exact DLL is carried in the bundle and promoted by SHA-256.",
+    "gateway_reproducibility": "The image payload is the reproducibility unit. Lumberjacks/.dockerignore excludes .git, and the authoritative image build compiles and tests the solution before publish.",
+    "sibling_reproducibility": "Eventlog, progression, and operatorapi use the same tested source stage and are promoted by image digest."
+  },
+  "mod": {
+    "version": "0.5.32.0",
+    "release_id": "m11-transport-20260722-r1",
+    "clean_build_sha256": "84ffbfc57f8ee578833119fdf124d54dc53f508c98eb726f74053662b2d9b9b8",
+    "frozen": false,
+    "build_command": "infra/gcp/p7/scripts/New-ReleaseCut.ps1 -ReleaseId m11-transport-20260722-r1"
+  },
+  "gateway": {
+    "image_id": "sha256:6b7587d9a97d7c62752326aba7a3d789403dee368cff1705adf5013e7a20c388",
+    "image_release_id": "m11-transport-20260722-r1",
+    "admitted_mod_release": "m11-transport-20260722-r1",
+    "release_label": "m11-transport-20260722-r1",
+    "revision_label": "8f0e547",
+    "identity_check": "Test-GatewayImageRelease.ps1 read /app/Game.Gateway.dll from the built image and confirmed it admits m11-transport-20260722-r1.",
+    "build_command": "infra/gcp/p7/scripts/New-ReleaseCut.ps1 -ReleaseId m11-transport-20260722-r1"
+  },
+  "eventlog": {
+    "image_id": "sha256:2b65e07f4c03d511e551a221be2a8ccc81febbe755f6d5b6339bfc84a9fbdd49",
+    "release_label": "m11-transport-20260722-r1",
+    "gate": "build+hash+pin",
+    "build_command": "docker build --target eventlog -t lumberjacks-eventlog:m11-transport-20260722-r1 Lumberjacks"
+  },
+  "progression": {
+    "image_id": "sha256:74a21e1001d06beda01dba44a3ff31c78fdfba1793309ea9bfa2d46ece00ac5e",
+    "release_label": "m11-transport-20260722-r1",
+    "gate": "build+hash+pin",
+    "build_command": "docker build --target progression -t lumberjacks-progression:m11-transport-20260722-r1 Lumberjacks"
+  },
+  "operatorapi": {
+    "image_id": "sha256:f80126d0d03739c87fddf06962fbe745df859c798cdd867674542caaeff03ff7",
+    "release_label": "m11-transport-20260722-r1",
+    "gate": "build+hash+pin",
+    "build_command": "docker build --target operatorapi -t lumberjacks-operatorapi:m11-transport-20260722-r1 Lumberjacks"
+  },
+  "runtime_config": {
+    "ValheimQueue__ProducerEmitsRecipients": "true",
+    "ValheimHandshake__SeatCapacity": "0",
+    "ValheimHandshake__AlphaSeatGateEnabled": "false",
+    "transport_boundary": "Lumberjacks owns authenticated HTTP/JSON ZDO delivery and acknowledgement. Native Valheim still owns peer transport, movement, simulation, non-ZDO RPCs, relevance, and receive/application semantics."
+  },
+  "toolchain": {
+    "mod_sdk": "8.0.422",
+    "gateway_sdk_digest": "sha256:24fe7c00719afc72e2b67cace264dea2ee39ae45f5b553bd59493fe3ddfc920f",
+    "gateway_aspnet_digest": "sha256:8b9f90e53d41154d42e537517aef22e8fe497baabd43e423d5f2edafd06f04f6"
+  },
+  "deployment": {
+    "world_tested": false,
+    "target": "comfy-lumberjacks-p7",
+    "method": "Validated release bundle promoted by exact image IDs and mod SHA-256."
+  },
+  "limitations": [
+    "This is a transport-boundary visibility release, not a full Lumberjacks netcode cutover.",
+    "Lumberjacks WebSocket and UDP lanes are not used by the live Valheim adapter in this release.",
+    "The transport fault switches are process-local alpha diagnostics and reset on restart.",
+    "World verification remains required after P7 and both Windows clients carry the same mod artifact."
+  ]
+}

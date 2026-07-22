@@ -201,6 +201,9 @@ printf 'durable_pin=%s\n' '$ImageReference'
     if (!$m.Success) { Fail "durable pin did not report a running image id for $svc" }
     if ($m.Groups[1].Value -ne $expected) { Fail "durable pin for $svc resolves to $($m.Groups[1].Value), expected $expected" }
   }
+  $pinMatch = [regex]::Match($output, '(?m)^durable_pin=(.+)$')
+  if (!$pinMatch.Success) { Fail 'finalize did not report the durable Gateway pin' }
+  return $pinMatch.Groups[1].Value.Trim()
 }
 
 function Set-GatewayImage([string] $ImageReference, [string] $ExpectedImageId, [string] $Label) {
@@ -483,13 +486,17 @@ Write-Receipt 'rollback-receipt.json' ([ordered]@{
 $restoredImage = Set-GatewayImage $candidateTag $candidateImageId 'restore'
 Deploy-CandidateMod 'restore'
 
-if ($Finalize) {
-  Set-DurablePin $candidateTag $candidateImageId
-}
 # Always recorded, never inferred: the running container proves nothing about what comes
 # back after a reboot. Phases 2-4 pin through docker-compose.promotion.yml, which compose
 # does not auto-load, so until the override is retired the durable pin is whatever it was.
-$durablePin = Get-DurablePin
+$durablePin = if ($Finalize) {
+  # Reuse the value emitted by the same transaction that rewrote the environment, removed
+  # both overrides, resolved base Compose, and verified all four running image IDs. A second
+  # IAP read can execute remotely yet lose stdout on Windows, producing a false blank pin.
+  Set-DurablePin $candidateTag $candidateImageId
+} else {
+  Get-DurablePin
+}
 $durablePinOk = ($durablePin -eq $candidateTag)
 
 $checks = @('gateway_health=ok', "gateway_image=$restoredImage", 'mod_runtime_hash=match', 'mod_fallback_hash=match')

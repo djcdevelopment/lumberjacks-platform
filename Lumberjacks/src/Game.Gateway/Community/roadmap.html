@@ -349,8 +349,8 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-22T13:28:13.178Z</span>
-        <span>ComfyNetworkSense 0.5.31</span>
+        <span>Updated 2026-07-22T13:55:30.835Z</span>
+        <span>ComfyNetworkSense 0.5.32</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
         <span>window p7-primary-v1</span>
@@ -364,7 +364,7 @@
           <article class="truth-card proved"><h3>Proved now</h3><p>One enrolled client closed the complete observed all-prefab ZDO window through Lumberjacks priority delivery with exact durable accounting.</p><p><a href="#proof">See the validated result ↓</a></p></article>
           <article class="truth-card not-yet"><h3>Not proved yet</h3><ul><li>Safe public credential transport and authoritative admission.</li><li>A clean no-hand-edit package for a non-developer.</li><li>Per-session and per-recipient retained proof.</li><li>Two simultaneous consumers with isolated pending and ACK state.</li><li>Lumberjacks-owned candidate relevance, simulation, or non-ZDO RPCs.</li></ul></article>
         </div>
-        <div class="truth-card" style="margin-top:16px"><h3 style="color:var(--blue)">Next actions</h3><ul class="focus-list"><li>COMPLETE · M0 RELEASE FREEZE — A1–A5 closed 2026-07-16: source frozen, candidate r2 reproducible from clean tagged checkouts, sanitized bundle and FieldLab catalog committed, promotion drill passed with artifact-only rollback, and the golden-proof evidence set published immutably with byte-verified hashes.</li><li>COMPLETE · PROMOTION FINALIZED — P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.</li><li>ACTIVE · M1 — Enrollment identity, the least-privilege capability split, the one-seat reservation, and a strict-admission roster gate keyed on the actual joining Steam account are deployed on P7; Gateway-only release m3-boundary-20260722-r1 is live and admits the frozen m5-recipients-20260720-r1 mod. The roster gate remains opt-in per window — the flag is in-memory and reverts to off on gateway restart, because a roster miss refuses a join. TLS/Caddy is live enough to reproduce the proxy-boundary risk: direct public /api/v0/enrollment denies anonymous with 401, while the same route through Caddy/TLS allows as private-plane Admin. Accepted only for the known-cohort alpha; stop-ship before widening.</li><li>LIVE (normal play) · AoI BAND-SHAPING — distance-band area-of-interest is armed permanently on P7 as of 2026-07-21 (near &lt;30m full rate · mid 30–64m thinned to 5Hz · far &gt;64m dropped · landmarks by granted reach), mod-side on the redirect producer (ADR 0011). It reshapes the eligible ZDO set upstream: at the densest single-player build ~85% of candidates drop, losslessly. Open before it earns full trust: the far→approach re-sync of a dropped static object, and multi-player density.</li><li>AFTER M1 · PARALLEL — Build M2&#39;s reversible guest package, M3&#39;s seal-before-reset per-run ledger and retained dashboards, and M4a&#39;s recipient isolation and producer loss safety.</li><li>WIDEN ONLY AFTER · M4b + M5 — Require the real two-client correctness packet and one exact-release invited-volunteer SYSTEM PROVEN receipt before admitting a cohort.</li></ul></div>
+        <div class="truth-card" style="margin-top:16px"><h3 style="color:var(--blue)">Next actions</h3><ul class="focus-list"><li>COMPLETE · M0 RELEASE FREEZE — A1–A5 closed 2026-07-16: source frozen, candidate r2 reproducible from clean tagged checkouts, sanitized bundle and FieldLab catalog committed, promotion drill passed with artifact-only rollback, and the golden-proof evidence set published immutably with byte-verified hashes.</li><li>COMPLETE · PROMOTION FINALIZED — P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.</li><li>ACTIVE · M1 — Release m11-transport-20260722-r1 is live on P7 with an always-visible transport boundary and alpha fault switches. Lumberjacks owns the authenticated HTTP/JSON ZDO delivery path; native Valheim still owns peer transport, movement, simulation, non-ZDO RPCs, relevance, and receive/application semantics. The roster gate remains opt-in per window. TLS/Caddy still reproduces the proxy-boundary risk and remains accepted only for the known-cohort alpha; stop-ship before widening.</li><li>LIVE (normal play) · AoI BAND-SHAPING — distance-band area-of-interest is armed permanently on P7 as of 2026-07-21 (near &lt;30m full rate · mid 30–64m thinned to 5Hz · far &gt;64m dropped · landmarks by granted reach), mod-side on the redirect producer (ADR 0011). It reshapes the eligible ZDO set upstream: at the densest single-player build ~85% of candidates drop, losslessly. Open before it earns full trust: the far→approach re-sync of a dropped static object, and multi-player density.</li><li>AFTER M1 · PARALLEL — Build M2&#39;s reversible guest package, M3&#39;s seal-before-reset per-run ledger and retained dashboards, and M4a&#39;s recipient isolation and producer loss safety.</li><li>WIDEN ONLY AFTER · M4b + M5 — Require the real two-client correctness packet and one exact-release invited-volunteer SYSTEM PROVEN receipt before admitting a cohort.</li></ul></div>
         <article class="primer">
           <div class="primer-head"><h3>What is being replaced in this test?</h3><p>Valheim still decides which world-object revisions a player should receive. The server mod redirects those eligible revisions through Lumberjacks, the Gateway stores and leases them, and the enrolled client mod applies them on Unity&#39;s main thread before acknowledging a terminal outcome.</p></div>
           <div class="denominator"><strong>The exact denominator</strong>100% means 83,220 of 83,220 eligible ZDO revisions observed in the declared strict one-client window closed through Lumberjacks, with zero eligible native ZDO sends. It does not mean 100% of Valheim networking.</div>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260722132813-expose-the-live-valheim-lumberjacks-transport-bo">
+        <div class="journal"><article class="journal-entry" id="note-20260722135530-promoted-the-transport-boundary-release-to-p7">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-22T13:55:30.835Z">2026-07-22T13:55:30.835Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Promoted the transport-boundary release to P7</h3>
+      <p><strong>Impact:</strong> P7 and OMEN now carry the exact 0.5.32 artifact; the dashboard reports the native-versus-Lumberjacks boundary, the full artifact rollback drill passed, and durable image pins were verified. The i5 artifact is staged but not installed.</p>
+      <details><summary>Verification (1)</summary><ul><li>Validated release bundle; cold-start, rollback, restore and image/hash checks passed; P7 heartbeat reports 0.5.32 ready.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/m11-transport-build-candidate-v3.json</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260722132813-expose-the-live-valheim-lumberjacks-transport-bo">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
