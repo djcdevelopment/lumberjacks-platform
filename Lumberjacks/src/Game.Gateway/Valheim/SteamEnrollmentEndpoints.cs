@@ -30,6 +30,21 @@ public static class SteamEnrollmentEndpoints
             return Results.Ok(new { ok = true, enrollment_id = enrollmentId });
         }).RequireRateLimiting("enrollment-admin");
 
+        // Admin rescue/update path for a known alpha tester whose browser invite/reissue flow is
+        // fighting them. This rotates the enrollment's client credential and streams the same
+        // personalized drop-in zip as /join/pack, without exposing a reusable bootstrap in Discord.
+        app.MapPost("/api/v0/enrollment/pack", (AdminPackRequest? body, HttpRequest request, SteamEnrollmentService service) =>
+        {
+            var admin = Environment.GetEnvironmentVariable("LUMBERJACKS_ADMIN_KEY");
+            if (!string.IsNullOrWhiteSpace(admin) && request.Headers["X-Lumberjacks-Admin-Key"] != admin) return Results.Unauthorized();
+
+            if (!service.TryIssueReplacementCredential(body?.EnrollmentId, body?.SteamId, out var issued, out var reason))
+                return Results.BadRequest(new { error = reason });
+
+            var pack = TryBuildPersonalizedPack(request, issued, out var error);
+            return pack is null ? error! : Results.File(pack, "application/zip", "Comfy-P7-Mods.zip");
+        }).RequireRateLimiting("enrollment-admin");
+
         // Pseudonymous self-view for the enrolled client (M2 preflight consumes this).
         app.MapGet("/api/v0/valheim/enrollment/me", (HttpContext context) =>
         {
@@ -102,28 +117,40 @@ public static class SteamEnrollmentEndpoints
             if (!service.TryConsumeBootstrap(token, out var issued, out var reason))
                 return Results.BadRequest(new { error = reason });
 
-            var templatePath = Environment.GetEnvironmentVariable("LUMBERJACKS_MODPACK_TEMPLATE");
-            if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
-                return Results.Problem(
-                    "mod pack template not configured (LUMBERJACKS_MODPACK_TEMPLATE)", statusCode: 503);
-
-            var gateway = Environment.GetEnvironmentVariable("LUMBERJACKS_PLAYER_GATEWAY_URL") ?? baseUrlFor(request);
-            byte[] pack;
-            try
-            {
-                pack = ModPackBuilder.BuildPersonalizedPack(
-                    File.ReadAllBytes(templatePath),
-                    gateway,
-                    issued.Enrollment.QueueWindowId,
-                    issued.Enrollment.EnrollmentId,
-                    issued.AccessToken);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Results.Problem(ex.Message, statusCode: 503);
-            }
-            return Results.File(pack, "application/zip", "Comfy-P7-Mods.zip");
+            var pack = TryBuildPersonalizedPack(request, issued, out var error);
+            return pack is null ? error! : Results.File(pack, "application/zip", "Comfy-P7-Mods.zip");
         }).RequireRateLimiting("join");
+    }
+
+    static byte[]? TryBuildPersonalizedPack(
+        HttpRequest request,
+        SteamEnrollmentService.EnrollmentIssued issued,
+        out IResult? error)
+    {
+        error = null;
+        var templatePath = Environment.GetEnvironmentVariable("LUMBERJACKS_MODPACK_TEMPLATE");
+        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        {
+            error = Results.Problem(
+                "mod pack template not configured (LUMBERJACKS_MODPACK_TEMPLATE)", statusCode: 503);
+            return null;
+        }
+
+        var gateway = Environment.GetEnvironmentVariable("LUMBERJACKS_PLAYER_GATEWAY_URL") ?? baseUrlFor(request);
+        try
+        {
+            return ModPackBuilder.BuildPersonalizedPack(
+                File.ReadAllBytes(templatePath),
+                gateway,
+                issued.Enrollment.QueueWindowId,
+                issued.Enrollment.EnrollmentId,
+                issued.AccessToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = Results.Problem(ex.Message, statusCode: 503);
+            return null;
+        }
     }
 
     static object ToResponse(SteamEnrollmentService.EnrollmentView view) => new
@@ -179,4 +206,7 @@ public static class SteamEnrollmentEndpoints
 
     public sealed record RevokeRequest(string? Reason);
     public sealed record BootstrapRequest(string? Token);
+    public sealed record AdminPackRequest(
+        [property: System.Text.Json.Serialization.JsonPropertyName("enrollment_id")] string? EnrollmentId,
+        [property: System.Text.Json.Serialization.JsonPropertyName("steam_id")] string? SteamId);
 }

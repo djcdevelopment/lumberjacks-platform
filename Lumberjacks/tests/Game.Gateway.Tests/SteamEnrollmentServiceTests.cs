@@ -252,6 +252,66 @@ public sealed class SteamEnrollmentServiceTests : IDisposable
     }
 
     [Fact]
+    public void ReplacementCredential_RotatesInstalledCredentialBySteamId()
+    {
+        var service = CreateService();
+        const string steamId = "76561198000000001";
+        Assert.True(service.TryRedeem(service.CreateInvite(TimeSpan.FromMinutes(5)).Token, steamId, out var issued, out _));
+        Assert.True(service.TryConsumeBootstrap(issued.BootstrapToken, out var installed, out _));
+        Assert.True(service.IsCredentialValid(installed.Enrollment.EnrollmentId, installed.AccessToken));
+
+        Assert.True(service.TryIssueReplacementCredential(null, steamId, out var replacement, out var reason));
+
+        Assert.Equal("ok", reason);
+        Assert.Equal(installed.Enrollment.EnrollmentId, replacement.Enrollment.EnrollmentId);
+        Assert.Equal(installed.Enrollment.RecipientId, replacement.Enrollment.RecipientId);
+        Assert.NotEqual(installed.AccessToken, replacement.AccessToken);
+        Assert.False(service.IsCredentialValid(installed.Enrollment.EnrollmentId, installed.AccessToken));
+        Assert.True(service.IsCredentialValid(replacement.Enrollment.EnrollmentId, replacement.AccessToken));
+    }
+
+    [Fact]
+    public void ReplacementCredential_RotatesPendingCredentialByEnrollmentId()
+    {
+        var service = CreateService();
+        Assert.True(service.TryRedeem(
+            service.CreateInvite(TimeSpan.FromMinutes(5)).Token,
+            "76561198000000001",
+            out var issued,
+            out _));
+
+        Assert.True(service.TryIssueReplacementCredential(issued.Enrollment.EnrollmentId, null, out var replacement, out _));
+
+        Assert.Equal(issued.Enrollment.EnrollmentId, replacement.Enrollment.EnrollmentId);
+        Assert.True(service.IsCredentialValid(replacement.Enrollment.EnrollmentId, replacement.AccessToken));
+        Assert.False(service.TryConsumeBootstrap(issued.BootstrapToken, out _, out var consumedReason));
+        Assert.Equal("bootstrap_consumed", consumedReason);
+    }
+
+    [Fact]
+    public void ReplacementCredential_RequiresExactlyOneSelectorAndActiveEnrollment()
+    {
+        var service = CreateService();
+        Assert.False(service.TryIssueReplacementCredential(null, null, out _, out var missing));
+        Assert.Equal("enrollment_or_steam_id_required", missing);
+
+        Assert.False(service.TryIssueReplacementCredential("enroll", "76561198000000001", out _, out var both));
+        Assert.Equal("choose_enrollment_id_or_steam_id", both);
+
+        Assert.False(service.TryIssueReplacementCredential(null, "76561190000000009", out _, out var unknown));
+        Assert.Equal("not_enrolled", unknown);
+
+        Assert.True(service.TryRedeem(
+            service.CreateInvite(TimeSpan.FromMinutes(5)).Token,
+            "76561198000000001",
+            out var issued,
+            out _));
+        Assert.True(service.Revoke(issued.Enrollment.EnrollmentId, "replacement test"));
+        Assert.False(service.TryIssueReplacementCredential(issued.Enrollment.EnrollmentId, null, out _, out var revoked));
+        Assert.Equal("enrollment_revoked", revoked);
+    }
+
+    [Fact]
     public void Store_NeverPersistsRawSecrets()
     {
         var service = CreateService();

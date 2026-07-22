@@ -129,6 +129,51 @@ that script copies a narrow source-file allowlist and rebuilds on the VM.
    accepted for the known-cohort alpha only and remains a stop-ship before
    widening.
 
+## Issue an admin rescue/update mod pack
+
+Use this when a known alpha tester is already enrolled but the Steam callback,
+reissue page, or old local config is blocking an update. The endpoint is on the
+admin enrollment surface and rotates the tester's client credential, so any
+previously installed config for that enrollment stops working after the new pack
+is issued.
+
+Prefer `steam_id` when the operator is repairing the tester's current active
+enrollment. Use `enrollment_id` only when selecting an exact enrollment record
+from the admin list.
+
+```powershell
+$admin = '<admin key>'
+$body = @{ steam_id = '<steam id 64>' } | ConvertTo-Json
+Invoke-WebRequest `
+  -Method POST `
+  -Uri 'https://comfy-p7.duckdns.org/api/v0/enrollment/pack' `
+  -Headers @{ 'X-Lumberjacks-Admin-Key' = $admin } `
+  -ContentType 'application/json' `
+  -Body $body `
+  -OutFile '.\Comfy-P7-Mods.zip'
+```
+
+Fallback through the direct player port is equivalent when TLS/Caddy is the
+thing being debugged:
+
+```powershell
+Invoke-WebRequest `
+  -Method POST `
+  -Uri 'http://8.231.129.249:42317/api/v0/enrollment/pack' `
+  -Headers @{ 'X-Lumberjacks-Admin-Key' = $admin } `
+  -ContentType 'application/json' `
+  -Body $body `
+  -OutFile '.\Comfy-P7-Mods.zip'
+```
+
+Operator checks:
+
+- The response must be a zip file, not a JSON error body.
+- The tester extracts the `Valheim` folder into the Steam Valheim install
+  directory and lets it merge.
+- Because the credential rotated, do not expect the tester's older install to
+  keep authenticating.
+
 ## Failure handling
 
 - `NETSDK1045` from a host command means the host SDK is too old; use the Docker

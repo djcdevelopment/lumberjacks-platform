@@ -200,6 +200,77 @@ public sealed class SteamEnrollmentService
     }
 
     /// <summary>
+    /// Operator rescue path for known alpha testers: mint a fresh access token for an
+    /// existing active enrollment without requiring the Steam browser callback to
+    /// succeed. This intentionally rotates the credential; any previously installed
+    /// config for the same enrollment stops verifying once the personalized pack is
+    /// downloaded.
+    /// </summary>
+    public bool TryIssueReplacementCredential(
+        string? enrollmentId,
+        string? steamId,
+        out EnrollmentIssued issued,
+        out string reason)
+    {
+        issued = null!;
+        reason = IssueReplacementCredentialLocked(enrollmentId, steamId, out issued);
+        if (reason != "ok")
+        {
+            Audit("replacement_credential_rejected", new { reason });
+            return false;
+        }
+        Audit("replacement_credential_issued", new
+        {
+            enrollment_id = issued.Enrollment.EnrollmentId,
+            steam_id = issued.Enrollment.SteamId,
+        });
+        return true;
+    }
+
+    string IssueReplacementCredentialLocked(string? enrollmentId, string? steamId, out EnrollmentIssued issued)
+    {
+        issued = null!;
+        var hasEnrollmentId = !string.IsNullOrWhiteSpace(enrollmentId);
+        var hasSteamId = !string.IsNullOrWhiteSpace(steamId);
+        if (!hasEnrollmentId && !hasSteamId) return "enrollment_or_steam_id_required";
+        if (hasEnrollmentId && hasSteamId) return "choose_enrollment_id_or_steam_id";
+
+        lock (_gate)
+        {
+            Enrollment? enrollment;
+            if (hasEnrollmentId)
+            {
+                if (!_enrollments.TryGetValue(enrollmentId!, out enrollment)) return "enrollment_unknown";
+            }
+            else
+            {
+                var matches = _enrollments.Values
+                    .Where(item => string.Equals(item.SteamId, steamId, StringComparison.Ordinal))
+                    .ToList();
+                if (matches.Count == 0) return "not_enrolled";
+                enrollment = matches.FirstOrDefault(item => item.Status == EnrollmentStatus.Active);
+                if (enrollment is null) return "enrollment_revoked";
+            }
+
+            if (enrollment.Status != EnrollmentStatus.Active) return "enrollment_revoked";
+
+            var accessToken = NewToken();
+            var credentialed = enrollment with { TokenHash = Hash(accessToken) };
+            _enrollments[credentialed.EnrollmentId] = credentialed;
+            foreach (var pair in _bootstraps
+                .Where(pair => string.Equals(pair.Value.EnrollmentId, credentialed.EnrollmentId, StringComparison.Ordinal) && !pair.Value.Used)
+                .ToList())
+            {
+                _bootstraps[pair.Key] = pair.Value with { Used = true, ConsumedUtc = DateTimeOffset.UtcNow };
+            }
+            Save();
+            issued = new EnrollmentIssued(View(credentialed), accessToken);
+        }
+
+        return "ok";
+    }
+
+    /// <summary>
     /// Self-serve bootstrap re-issue for a volunteer whose code expired (or was lost)
     /// before they installed. The caller must have Steam-authenticated the SteamID —
     /// this is the same identity root that created the enrollment, so no copyable
