@@ -13,6 +13,9 @@ tools\i5\Test-Wave0Readiness.ps1 -SummaryOnly -OutputJson captures\wave0-readine
 # Full live-gate orchestrator; exits WAIT until both clients are joined
 tools\wave0\Start-Wave0LiveGate.ps1 -OutputJson captures\wave0-live-gate\result.json
 
+# One-command pre-live audit; no movement, stops at the real-client boundary
+tools\wave0\Test-Wave0Prelive.ps1 -OutputDirectory captures\wave0-prelive-current
+
 # Attach Derek's visual observation without editing the machine receipt
 tools\wave0\Add-Wave0VisualObservation.ps1 `
   -ReceiptJson captures\wave0-live-gate\result.json `
@@ -31,6 +34,7 @@ tools\wave0\New-Wave0ReturnPacket.ps1 `
 
 Run order before asking for a live movement course:
 
+0. `Test-Wave0Prelive.ps1`
 1. `Test-Wave0SyntheticMotion.ps1`
 2. `Test-Wave0Readiness.ps1`
 3. two-client idle capture
@@ -41,6 +45,10 @@ If either non-human gate reports `FAIL` or `WAIT`, stop and use its receipt
 instead of repeating a live join/movement test. `WARN` is advisory: for example,
 after a new release it is normal to have no retained capture with the newest
 heartbeat-age fields until the next real two-client run creates one.
+
+`Test-Wave0Prelive.ps1` is the preferred unattended check before Derek returns.
+It runs readiness, fixture coverage, a no-client live-gate smoke, a two-machine
+bundle-lane smoke, and return-packet generation into one summary receipt.
 
 `Start-Wave0LiveGate.ps1` is the preferred live command once both clients are
 joined. It runs the two non-human gates, checks P7 peer count, starts the

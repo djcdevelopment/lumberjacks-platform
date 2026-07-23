@@ -1,0 +1,165 @@
+<#
+.SYNOPSIS
+Run the full non-human Wave 0 pre-live audit.
+
+.DESCRIPTION
+Collects the evidence needed before asking for another two-client Valheim join:
+
+- P7/OMEN/i5 release readiness.
+- Mock live-gate fixture coverage.
+- Real no-client live-gate smoke, proving the gate stops before motion.
+- Two-machine Companion capture/bundle smoke, proving OMEN+i5 evidence collection.
+- Return packet generation from the newest valid receipts.
+
+This script does not move players. It is safe to run while no clients are joined.
+#>
+[CmdletBinding()]
+param(
+    [string]$OutputDirectory = '',
+    [switch]$SkipSyntheticInNoClientGate
+)
+
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')
+if (-not $OutputDirectory) {
+    $OutputDirectory = "captures/wave0-prelive/$stamp"
+}
+$outRoot = if ([IO.Path]::IsPathRooted($OutputDirectory)) {
+    [IO.Path]::GetFullPath($OutputDirectory)
+} else {
+    [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputDirectory))
+}
+New-Item -ItemType Directory -Force -Path $outRoot | Out-Null
+
+function Invoke-Step {
+    param(
+        [string]$Name,
+        [string]$Script,
+        [string[]]$Arguments
+    )
+
+    Write-Host ("== {0}" -f $Name)
+    $started = [DateTimeOffset]::UtcNow
+    $output = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Script @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+    $finished = [DateTimeOffset]::UtcNow
+    [ordered]@{
+        name = $Name
+        ok = $exitCode -eq 0
+        exit_code = $exitCode
+        started_utc = $started.ToString('o')
+        finished_utc = $finished.ToString('o')
+        duration_ms = [math]::Round(($finished - $started).TotalMilliseconds, 0)
+        output_tail = @($output | Select-Object -Last 40)
+    }
+}
+
+function Read-JsonOrNull {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    try { return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json } catch { return $null }
+}
+
+$readinessPath = Join-Path $outRoot 'readiness.json'
+$fixturesRoot = Join-Path $outRoot 'fixtures'
+$noClientRoot = Join-Path $outRoot 'no-client-live-gate'
+$bundleSmokeRoot = Join-Path $outRoot 'bundle-smoke'
+$returnPacketRoot = Join-Path $outRoot 'return-packet'
+New-Item -ItemType Directory -Force -Path $fixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot | Out-Null
+
+$steps = @()
+$steps += Invoke-Step `
+    -Name 'readiness' `
+    -Script (Join-Path $repoRoot 'tools/i5/Test-Wave0Readiness.ps1') `
+    -Arguments @('-SummaryOnly', '-OutputJson', $readinessPath)
+
+$steps += Invoke-Step `
+    -Name 'live-gate-fixtures' `
+    -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0LiveGateFixtures.ps1') `
+    -Arguments @('-OutputDirectory', $fixturesRoot)
+
+$noClientArgs = @(
+    '-DesiredApplyClient', 'omen',
+    '-OutputJson', (Join-Path $noClientRoot 'result.json')
+)
+if ($SkipSyntheticInNoClientGate) { $noClientArgs += '-SkipSynthetic' }
+$steps += Invoke-Step `
+    -Name 'no-client-live-gate' `
+    -Script (Join-Path $repoRoot 'tools/wave0/Start-Wave0LiveGate.ps1') `
+    -Arguments $noClientArgs
+
+$steps += Invoke-Step `
+    -Name 'bundle-lane-smoke' `
+    -Script (Join-Path $repoRoot 'tools/i5/Start-TwoClientCapture.ps1') `
+    -Arguments @(
+        '-DurationSeconds', '5',
+        '-IntervalSeconds', '1',
+        '-Label', 'wave0-prelive-bundle-smoke',
+        '-BundleDirectory', (Join-Path $bundleSmokeRoot 'bundles'),
+        '-OutputJson', (Join-Path $bundleSmokeRoot 'result.json'),
+        '-SummaryOnly'
+    )
+
+$steps += Invoke-Step `
+    -Name 'return-packet' `
+    -Script (Join-Path $repoRoot 'tools/wave0/New-Wave0ReturnPacket.ps1') `
+    -Arguments @(
+        '-SyntheticReceipt', (Join-Path $noClientRoot 'synthetic-motion.json'),
+        '-ReadinessReceipt', $readinessPath,
+        '-LiveGateReceipt', (Join-Path $noClientRoot 'result.json'),
+        '-FixtureReceipt', (Join-Path $fixturesRoot 'summary.json'),
+        '-OutputJson', (Join-Path $returnPacketRoot 'packet.json'),
+        '-OutputMarkdown', (Join-Path $returnPacketRoot 'packet.md')
+    )
+
+$readiness = Read-JsonOrNull $readinessPath
+$fixtures = Read-JsonOrNull (Join-Path $fixturesRoot 'summary.json')
+$noClient = Read-JsonOrNull (Join-Path $noClientRoot 'result.json')
+$bundleSmoke = Read-JsonOrNull (Join-Path $bundleSmokeRoot 'result.json')
+$packet = Read-JsonOrNull (Join-Path $returnPacketRoot 'packet.json')
+
+$bundleCount = if ($bundleSmoke -and $bundleSmoke.bundles) { @($bundleSmoke.bundles).Count } else { 0 }
+$failedSteps = @($steps | Where-Object { -not $_.ok })
+$verdict =
+    if ($failedSteps.Count -gt 0) { 'prelive_audit_failed' }
+    elseif (-not $readiness -or [string]$readiness.verdict -ne 'ready_for_two_client_gate') { 'prelive_readiness_not_ready' }
+    elseif (-not $fixtures -or [string]$fixtures.verdict -ne 'wave0_live_gate_fixture_checks_passed') { 'prelive_fixtures_not_ready' }
+    elseif (-not $noClient -or [string]$noClient.verdict -ne 'wait_for_two_real_clients') { 'prelive_no_client_gate_unexpected' }
+    elseif (-not $bundleSmoke -or $bundleCount -lt 2) { 'prelive_bundle_collection_not_ready' }
+    elseif (-not $packet -or [string]$packet.verdict -ne 'ready_for_derek_two_client_join') { 'prelive_return_packet_not_ready' }
+    else { 'ready_for_derek_two_client_join' }
+
+$receipt = [ordered]@{
+    schema_version = 1
+    generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
+    verdict = $verdict
+    output_directory = $outRoot
+    expected_release = if ($readiness) { [string]$readiness.expected_release } else { $null }
+    p7_peer_count = if ($noClient -and $noClient.p7_peer_check) { $noClient.p7_peer_check.peer_count } else { $null }
+    bundle_count = $bundleCount
+    steps = $steps
+    receipts = [ordered]@{
+        readiness = $readinessPath
+        fixtures = Join-Path $fixturesRoot 'summary.json'
+        no_client_live_gate = Join-Path $noClientRoot 'result.json'
+        bundle_smoke = Join-Path $bundleSmokeRoot 'result.json'
+        return_packet_json = Join-Path $returnPacketRoot 'packet.json'
+        return_packet_markdown = Join-Path $returnPacketRoot 'packet.md'
+    }
+    next_action = if ($verdict -eq 'ready_for_derek_two_client_join') {
+        'Join OMEN and i5 to P7, then run Start-Wave0LiveGate.ps1 with DesiredApplyClient omen.'
+    } else {
+        'Inspect failed step output_tail and receipt paths before asking for a live join.'
+    }
+}
+
+$receiptPath = Join-Path $outRoot 'summary.json'
+$receipt | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $receiptPath -Encoding UTF8
+
+Write-Host ("Wave 0 prelive audit: {0}" -f $verdict)
+Write-Host ("Summary JSON: {0}" -f $receiptPath)
+Write-Host ("Return packet: {0}" -f $receipt.receipts.return_packet_markdown)
+if ($verdict -ne 'ready_for_derek_two_client_join') { exit 1 }
