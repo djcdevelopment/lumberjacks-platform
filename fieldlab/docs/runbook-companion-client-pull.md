@@ -28,6 +28,13 @@ cd C:\work\baseline\Lumberjacks
 ```
 
 Publish the resulting zip and its adjacent JSON SHA-256 manifest as immutable release artifacts.
+For the current private-alpha channel, this command creates the paired GitHub release assets:
+
+```powershell
+.\tools\companion\Publish-CompanionBootstrap.ps1 -ReleaseId companion-bootstrap-20260723-r1
+```
+
+Use `-DryRun` to generate and inspect the hash-recorded bundle without contacting GitHub.
 The tester extracts the zip and double-clicks
 `bootstrap\Start-LumberjacksCompanion.cmd`. The launcher finds the default Steam Valheim folder,
 starts Docker Desktop, starts the loopback-only Companion, and opens `http://127.0.0.1:8080`.

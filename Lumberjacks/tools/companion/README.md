@@ -55,6 +55,16 @@ cd C:\work\baseline\Lumberjacks
 The command writes a zip and adjacent SHA-256 manifest under `tools\companion\dist`. Publish
 those immutable artifacts through the chosen release channel; do not embed them in a Gateway image.
 
+For the current private-alpha GitHub release channel, build and publish both artifacts together:
+
+```powershell
+.\tools\companion\Publish-CompanionBootstrap.ps1 -ReleaseId companion-bootstrap-20260723-r1
+```
+
+Use `-DryRun` to inspect the generated package, hash manifest, and GitHub command first. GitHub
+release assets are the stable bootstrap download; frequent Valheim DLL/config updates remain on
+the authenticated Gateway client-pull lane.
+
 ## Current scope
 
 - Client-pulled package checks and installs use the existing installed enrollment credential.
