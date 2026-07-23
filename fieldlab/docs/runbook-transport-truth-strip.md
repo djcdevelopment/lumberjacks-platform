@@ -40,15 +40,31 @@ when the enrolled motion lane is connected, and MCP active only where the local 
 
 ## Updating a tester machine
 
-For an already-enrolled alpha tester, use the config-preserving update download:
+For an already-enrolled alpha tester, use the local Companion first. It keeps the update loop on
+`127.0.0.1:8080`, preserves the installed ComfyNetworkSense enrollment/config, hash-verifies the
+downloaded package, and leaves a rollback backup before replacing DLLs.
 
 ```text
-https://comfy-p7.duckdns.org/join/update
+http://127.0.0.1:8080
 ```
 
-Sign in with the same Steam account, download the update zip, extract it, and run
-`Install-LumberjacksMod.ps1`. The installer replaces DLL/mod files but restores the existing
-ComfyNetworkSense config so the enrollment credential is not rotated or erased.
+Expected Companion sequence:
+
+1. Confirm the green local readiness checks: Valheim folder, mod config, installed profile, and
+   Valheim closed.
+2. Click **Check for updates**.
+3. Review the release id and SHA-256 shown under **Update Valheim mods**.
+4. Click **Install latest**.
+5. Restart Valheim and expand the in-game `NET SHOW` transport strip.
+
+Use the browser zip at `https://comfy-p7.duckdns.org/join/update` only as a fallback bootstrap path.
+That page still preserves existing config, but the Companion is the primary alpha update lane.
+
+The Companion **Moving parts** panel should show the Gateway deployment, Valheim status, cutover
+state, and the `/live/valheim-motion` receive/relay counters. During a two-client movement test,
+use the Motion tile as the first read on whether Lumberjacks UDP/WebSocket motion frames are being
+observed at all; zero motion counters mean the visible player movement is still native Valheim
+presentation/interpolation for that run.
 
 ## Fault sequence and predicted evidence
 
