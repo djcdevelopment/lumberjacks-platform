@@ -86,15 +86,17 @@ static class EnrollmentPages
 
     static string ReleaseHistoryTable()
     {
-        var current = Environment.GetEnvironmentVariable("LUMBERJACKS_VERSION") ?? "unknown";
+        var currentGateway = Environment.GetEnvironmentVariable("LUMBERJACKS_VERSION") ?? "unknown";
+        RuntimeModpackRelease? currentModpack = null;
         var rows = new List<(string WhenUtc, string Release, string Mod, string Notes)>();
-        if (ModpackReleaseCatalog.TryGetCurrent(out var currentModpack, out _))
+        if (ModpackReleaseCatalog.TryGetCurrent(out var publishedModpack, out _))
         {
+            currentModpack = publishedModpack;
             rows.Add((
-                currentModpack.created_utc.ToUniversalTime().ToString("yyyy-MM-dd HH:mm'Z'"),
-                currentModpack.release,
-                currentModpack.mod_release,
-                currentModpack.notes ?? "Current runtime modpack published through the verified release pointer."));
+                publishedModpack.created_utc.ToUniversalTime().ToString("yyyy-MM-dd HH:mm'Z'"),
+                publishedModpack.release,
+                publishedModpack.mod_release,
+                publishedModpack.notes ?? "Current runtime modpack published through the verified release pointer."));
         }
 
         rows.AddRange(new (string WhenUtc, string Release, string Mod, string Notes)[]
@@ -107,12 +109,15 @@ static class EnrollmentPages
 
         var html =
             "<section class=\"release-box\"><h2>Recent alpha releases</h2>" +
-            "<p class=\"small\">This page is served by Gateway release <code>" + WebUtility.HtmlEncode(current) +
+            "<p class=\"small\">This page is served by Gateway release <code>" + WebUtility.HtmlEncode(currentGateway) +
             "</code>. If the table does not change after a refresh, the browser or proxy is serving stale HTML.</p>" +
             "<table class=\"releases\"><thead><tr><th>UTC</th><th>Release</th><th>Mod</th><th>Why it changed</th></tr></thead><tbody>";
         foreach (var row in rows.Take(5))
         {
-            var active = string.Equals(row.Release, current, StringComparison.Ordinal) ? " class=\"current\"" : string.Empty;
+            var active = string.Equals(row.Release, currentGateway, StringComparison.Ordinal) ||
+                         string.Equals(row.Release, currentModpack?.release, StringComparison.Ordinal)
+                ? " class=\"current\""
+                : string.Empty;
             html += "<tr" + active + "><td>" + WebUtility.HtmlEncode(row.WhenUtc) + "</td><td><code>" +
                 WebUtility.HtmlEncode(row.Release) + "</code></td><td>" + WebUtility.HtmlEncode(row.Mod) + "</td><td>" +
                 WebUtility.HtmlEncode(row.Notes) + "</td></tr>";
