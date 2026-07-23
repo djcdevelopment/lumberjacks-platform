@@ -36,6 +36,23 @@ no Valheim path at all. With it, Docker uses the same updater and persistent sta
 reliably observe the Windows Valheim process. Stop Valheim, then explicitly check **I have closed
 Valheim** before selecting **Install latest**.
 
+## Generic Windows bootstrap bundle
+
+This is the tester-facing Docker path: extract the published bundle, then double-click
+`bootstrap\Start-LumberjacksCompanion.cmd`. It finds the default Steam Valheim installation,
+starts Docker Desktop if needed, preserves an existing local compose override and Valheim config,
+then opens `http://127.0.0.1:8080`. It does not contain a credential or a personalized config.
+
+Build a release bundle from this checkout with:
+
+```powershell
+cd C:\work\baseline\Lumberjacks
+.\tools\companion\New-CompanionBootstrap.ps1 -ReleaseId companion-20260723-r1
+```
+
+The command writes a zip and adjacent SHA-256 manifest under `tools\companion\dist`. Publish
+those immutable artifacts through the chosen release channel; do not embed them in a Gateway image.
+
 ## Current scope
 
 - Client-pulled package checks and installs use the existing installed enrollment credential.

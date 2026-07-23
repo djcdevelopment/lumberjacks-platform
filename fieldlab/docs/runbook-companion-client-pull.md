@@ -17,6 +17,26 @@ The dashboard, boundary trace, roadmap, and telemetry remain available under the
 The update screen reads the installed ComfyNetworkSense enrollment config, so an ordinary update
 does not ask the tester to re-enter a Steam credential.
 
+## Bootstrap a tester Docker Companion
+
+The normal tester package is a generic zip, not a copied plugin folder and not an image-specific
+configuration bundle. Build it from the repository:
+
+```powershell
+cd C:\work\baseline\Lumberjacks
+.\tools\companion\New-CompanionBootstrap.ps1 -ReleaseId companion-20260723-r1
+```
+
+Publish the resulting zip and its adjacent JSON SHA-256 manifest as immutable release artifacts.
+The tester extracts the zip and double-clicks
+`bootstrap\Start-LumberjacksCompanion.cmd`. The launcher finds the default Steam Valheim folder,
+starts Docker Desktop, starts the loopback-only Companion, and opens `http://127.0.0.1:8080`.
+It never carries a Steam credential, access key, or machine-specific config. Their existing
+ComfyNetworkSense configuration remains in the Valheim install and is read locally.
+
+The launcher intentionally preserves an existing `docker-compose.valheim.yml` next to the
+extracted bundle, so a relaunch cannot silently replace a local override.
+
 ## Publish a mod/config package
 
 1. Build and test the package locally. Do not publish a package that has not been exercised on a
