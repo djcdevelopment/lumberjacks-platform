@@ -4,6 +4,9 @@ The Companion is the local alpha control plane. It preserves the familiar
 `http://127.0.0.1:8080` dashboard while adding a client-pulled, hash-verified mod update
 path. It never publishes a local port beyond loopback.
 
+For the full operator dashboard (including private boundary trace), start the P7 tunnel and set
+`LUMBERJACKS_COMPANION_GATEWAY_URL=http://host.docker.internal:14000` for the Docker service.
+
 ## Native Windows (preferred for OMEN and i5)
 
 ```powershell

@@ -5,6 +5,10 @@ services:
       dockerfile: src/Game.Companion/Dockerfile
     ports:
       - "127.0.0.1:8080:8080"
+    # Lets a local operator point Companion at the SSH/IAP tunnel on the host, preserving the
+    # operator-only dashboard surfaces without publishing them through the public Gateway.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       LUMBERJACKS_COMPANION_GATEWAY_URL: "${LUMBERJACKS_COMPANION_GATEWAY_URL:-https://comfy-p7.duckdns.org}"
       LUMBERJACKS_COMPANION_DATA: "/data"
