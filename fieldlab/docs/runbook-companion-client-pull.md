@@ -36,9 +36,12 @@ does not ask the tester to re-enter a Steam credential.
 Invoke-RestMethod https://comfy-p7.duckdns.org/api/v0/valheim/modpack/manifest
 ```
 
-4. On a test machine, stop Valheim, open `http://127.0.0.1:8080`, choose **Check for updates**,
-   then **Install latest**. The Companion verifies the package hash, preserves the personalized
-   ComfyNetworkSense config, and records a backup/receipt under its local data directory.
+4. On a test machine, stop Valheim and open `http://127.0.0.1:8080`. Confirm the three automatic
+   readiness checkboxes, explicitly check **I have closed Valheim**, choose **Check for updates**,
+   then **Install latest**. The explicit checkbox is required for Docker-backed Companion instances:
+   a container cannot reliably observe the Windows host game process. The Companion verifies the
+   package hash, preserves the personalized ComfyNetworkSense config, and records a backup/receipt
+   under its local data directory.
 
 ## Restart rules
 

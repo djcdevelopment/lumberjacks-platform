@@ -33,7 +33,8 @@ Start-Process http://127.0.0.1:8080
 
 Without the optional second compose file, Docker is a read-only local dashboard and can start with
 no Valheim path at all. With it, Docker uses the same updater and persistent state, but cannot
-reliably observe the Windows Valheim process; stop Valheim before selecting **Install latest**.
+reliably observe the Windows Valheim process. Stop Valheim, then explicitly check **I have closed
+Valheim** before selecting **Install latest**.
 
 ## Current scope
 
