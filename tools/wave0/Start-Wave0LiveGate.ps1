@@ -76,6 +76,15 @@ $outputPath = if ([IO.Path]::IsPathRooted($OutputJson)) {
 $outputDirectory = Split-Path -Parent $outputPath
 if ($outputDirectory) { New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null }
 
+if (-not $BundleDirectory) {
+    $BundleDirectory = Join-Path $outputDirectory 'bundles'
+}
+$bundlePath = if ([IO.Path]::IsPathRooted($BundleDirectory)) {
+    [IO.Path]::GetFullPath($BundleDirectory)
+} else {
+    [IO.Path]::GetFullPath((Join-Path $repoRoot $BundleDirectory))
+}
+
 if (-not $ObservationMarkdown) {
     $ObservationMarkdown = [IO.Path]::ChangeExtension($outputPath, '.observation.md')
 }
@@ -364,16 +373,9 @@ $captureArgs = @(
     '-IntervalSeconds', [string]$IntervalSeconds,
     '-Label', $runId,
     '-SummaryOnly',
-    '-OutputJson', $capturePath
+    '-OutputJson', $capturePath,
+    '-BundleDirectory', $bundlePath
 )
-if ($BundleDirectory) {
-    $bundlePath = if ([IO.Path]::IsPathRooted($BundleDirectory)) {
-        [IO.Path]::GetFullPath($BundleDirectory)
-    } else {
-        [IO.Path]::GetFullPath((Join-Path $repoRoot $BundleDirectory))
-    }
-    $captureArgs += @('-BundleDirectory', $bundlePath)
-}
 
 $captureJob = Start-Job -ScriptBlock {
     param($RepoRoot, $Args)

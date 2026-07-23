@@ -48,6 +48,10 @@ two-machine capture, sends one bounded Companion motion command, and writes a
 single receipt. If fewer than two peers are visible, it writes `wait_for_two_real_clients`
 and does not move either character.
 
+When the live course runs, capture bundles from OMEN and i5 are collected by
+default under `<receipt-dir>\bundles`. Pass `-BundleDirectory` only to override
+that location.
+
 After two peers are visible, the live gate sets the requested apply/observe
 split through the bounded Companion command lane, then performs a five-second
 role preflight before sending motion. By default OMEN is APPLY and i5 is
