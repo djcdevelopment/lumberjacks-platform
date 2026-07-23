@@ -136,8 +136,8 @@ $packet = [ordered]@{
         [ordered]@{
             step = 2
             actor = 'agent'
-            action = 'Run tools\wave0\Start-Wave0LiveGate.ps1 -OutputJson captures\wave0-live-gate\result.json'
-            expected = 'Machine receipt records non-human gates, peer count, capture, and bounded motion command.'
+            action = 'Run tools\wave0\Start-Wave0LiveGate.ps1 -DesiredApplyClient omen -OutputJson captures\wave0-live-gate\result.json'
+            expected = 'Machine receipt records role command, verified OMEN apply / i5 observe split, capture, and bounded motion command.'
         },
         [ordered]@{
             step = 3
@@ -154,7 +154,7 @@ $packet = [ordered]@{
         [ordered]@{
             step = 5
             actor = 'derek-plus-agent'
-            action = 'Reverse apply/observe roles and repeat steps 2-4.'
+            action = 'Run tools\wave0\Start-Wave0LiveGate.ps1 -DesiredApplyClient i5 -OutputJson captures\wave0-live-gate-reversal\result.json, then repeat steps 3-4.'
             expected = 'The visual result follows role selection rather than machine/account.'
         }
     )
@@ -167,7 +167,8 @@ $packet = [ordered]@{
         'Role reversal contradicts the first run.'
     )
     commands = [ordered]@{
-        precheck = 'tools\wave0\Start-Wave0LiveGate.ps1 -OutputJson captures\wave0-live-gate\result.json'
+        precheck = 'tools\wave0\Start-Wave0LiveGate.ps1 -DesiredApplyClient omen -OutputJson captures\wave0-live-gate\result.json'
+        role_reversal = 'tools\wave0\Start-Wave0LiveGate.ps1 -DesiredApplyClient i5 -OutputJson captures\wave0-live-gate-reversal\result.json'
         annotate_first_pass = 'tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson captures\wave0-live-gate\result.json -ApplyClient omen -ObserveClient i5 -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun no'
         annotate_role_reversal = 'tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson captures\wave0-live-gate-reversal\result.json -ApplyClient i5 -ObserveClient omen -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun yes'
     }
@@ -215,7 +216,10 @@ $markdownLines += ''
 $markdownLines += '# After observing the first pass, fill these values with what actually happened:'
 $markdownLines += $packet.commands.annotate_first_pass
 $markdownLines += ''
-$markdownLines += '# After role reversal:'
+$markdownLines += '# Role reversal live run:'
+$markdownLines += $packet.commands.role_reversal
+$markdownLines += ''
+$markdownLines += '# After observing role reversal:'
 $markdownLines += $packet.commands.annotate_role_reversal
 $markdownLines += '```'
 $markdownLines += ''
