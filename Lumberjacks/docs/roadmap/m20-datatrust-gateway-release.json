@@ -1,0 +1,40 @@
+{
+  "schema": "comfy-p7-gateway-release/v1",
+  "image_release_id": "m20-datatrust-20260723-r1",
+  "admitted_mod_release": "m15-hudrecover-20260723-r1",
+  "source_commit": "pending-release-commit",
+  "gateway_image": "sha256:8e42c2f393d4226cbff4259b79db3843af99d5500e22f0e598348aaa669a36d5",
+  "archive_sha256": "cd67e05067d222930e9e9e38b7572e6c2dcf2ba1a950d62cd9a5cd0b13e7fd65",
+  "archive_size_bytes": 96574464,
+  "mod": {
+    "version": "0.5.35",
+    "release_id": "m15-hudrecover-20260723-r1",
+    "changed": false
+  },
+  "verification": {
+    "tests": {
+      "contracts": 123,
+      "simulation": 250,
+      "gateway": 194,
+      "failed": 0
+    },
+    "image_admits_mod_release": "m15-hudrecover-20260723-r1",
+    "p7_gateway_health": 200,
+    "durable_gateway_pin_count": 1,
+    "running_gateway_image": "lumberjacks-gateway:m20-datatrust-20260723-r1",
+    "running_gateway_image_id": "sha256:8e42c2f393d4226cbff4259b79db3843af99d5500e22f0e598348aaa669a36d5",
+    "public_data_and_trust_page": 200,
+    "community_data_and_trust_link": true
+  },
+  "deployment": {
+    "target": "comfy-lumberjacks-p7",
+    "gateway_only": true,
+    "status": "deployed",
+    "promotion_method": "local docker save + archive SHA-256 + docker load + durable image pin + compose up --no-build --no-deps gateway",
+    "previous_gateway_image": "lumberjacks-gateway:m19-boundarytrace-20260723-r1",
+    "environment_backup": "/mnt/comfy-p7/backups/gateway-image-promote/20260723T124546Z/environment"
+  },
+  "limitations": [
+    "The page describes the current alpha telemetry contract and opt-out path; it is not a replacement for later identity, role, retention, or consent hardening."
+  ]
+}

@@ -54,6 +54,14 @@ static class EnrollmentPages
             "<li>Extract the <code>Valheim</code> folder from the zip into your Valheim install folder " +
             "(Steam &rarr; right-click Valheim &rarr; Manage &rarr; Browse local files), letting it merge.</li>" +
             "<li>Launch Valheim and join the server.</li></ol>" +
+            "<h2>Your data &amp; privacy</h2>" +
+            "<p>Capture is <strong>off by default</strong> and opt-in. See " +
+            "<a href=\"/data-and-trust\">Data &amp; trust</a> for exactly what's collected, where it " +
+            "goes, and how to turn it off.</p>" +
+            "<h2>If something breaks</h2>" +
+            "<p>Tell us the <strong>server time</strong> it happened, the <strong>quest name</strong> " +
+            "(if any), and attach your client log at <code>Valheim\\BepInEx\\LogOutput.log</code>. " +
+            "This is best-effort alpha — we sweep feedback weekly.</p>" +
             "<p class=\"warn\">This download is personal — it contains your access key. Don't share it.</p>" +
             "<p class=\"small\">The download works once. If it didn't start, " +
             "<a href=\"" + reissue + "\">get a fresh link</a>.</p>";

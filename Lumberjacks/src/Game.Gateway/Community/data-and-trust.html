@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumberjacks — Data &amp; Trust</title>
+<style>
+:root{--bg:#0f1115;--fg:#e2e8f0;--muted:#94a3b8;--panel:#171a21;--border:#262b36;--accent:#7dd3fc;--good:#4ade80;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55;}
+main{max-width:820px;margin:0 auto;padding:2rem 1.25rem 4rem;}
+a{color:var(--accent);}
+h1{font-size:1.9rem;margin:.2em 0;}
+h2{margin-top:1.8em;border-bottom:1px solid var(--border);padding-bottom:.3em;font-size:1.25rem;}
+.lead{color:var(--muted);}
+.nav{margin-bottom:1.5rem;font-size:.95rem;}
+.nav a{margin-right:1.1rem;}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.93rem;}
+th,td{border:1px solid var(--border);padding:.5rem .6rem;text-align:left;vertical-align:top;}
+th{background:var(--panel);}
+code{background:var(--panel);padding:.1em .35em;border-radius:4px;font-size:.9em;}
+.never{color:var(--good);font-weight:600;}
+.pill{display:inline-block;background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:.15em .6em;font-size:.8rem;color:var(--good);white-space:nowrap;}
+ul.tight li{margin:.3em 0;}
+.table-wrap{overflow-x:auto;}
+footer{margin-top:3rem;color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);padding-top:1rem;}
+</style>
+</head>
+<body>
+<main>
+<div class="nav"><a href="/community">&larr; Community view</a><a href="/roadmap">Volunteer roadmap</a></div>
+
+<h1>Data &amp; Trust</h1>
+<p class="lead">What the mod captures, where it goes, who can see it, and how to opt out. <span class="pill">capture ships OFF by default</span></p>
+
+<p>Announced capture is the pitch; discovered capture poisons trust. This tool doesn't exist to
+monitor you, and it isn't a verdict on how anyone plays. We use data to make it <em>cheaper to
+care</em> about the community &mdash; to celebrate what you build and keep this world running
+smoothly. You own your gameplay, which is why everything here is strictly opt-in and transparent.</p>
+
+<h2>What is captured</h2>
+<p><strong>Gameplay activity.</strong> If you turn capture on, combat emits events
+(<code>first_hit</code>, <code>killing_blow</code>, <code>weapon_used</code>) with the creature's
+category, your weapon-skill name, whether the attack was <code>ranged</code>, and your player id. A
+completed quest (<code>quest_completed</code>) also records the quest id, your guild, category, and
+bot command. Each event carries a UTC timestamp, a world id, a region id, and a non-identifying
+<code>detail</code> label.</p>
+<p><strong>Performance samples.</strong> Ping, jitter, framerate, frame timing, data rates, your game
+version, session id, and counts of what's loaded around you (<code>nearby_players</code>,
+<code>nearby_entities</code>, <code>nearby_build_pieces</code>, <code>danger_nearby</code>) &mdash;
+so we can keep the server smooth.</p>
+
+<h2>What is never captured</h2>
+<ul class="tight">
+<li><span class="never">No chat or voice content.</span></li>
+<li><span class="never">No world position or coordinates.</span> We count <em>how many</em> things are
+nearby, never <em>where</em> you are.</li>
+<li><span class="never">No keystrokes or free text.</span> The public label is always bounded, never
+something you typed.</li>
+</ul>
+
+<h2>Where it lives</h2>
+<ul class="tight">
+<li><strong>On your machine:</strong> local log files under
+<code>Valheim\BepInEx\config\comfy-network-sense\</code> &mdash; you own these.</li>
+<li><strong>The operator's server:</strong> a durable EventLog for community management.</li>
+<li><strong>The public:</strong> the aggregated, identity-stripped
+<code>/api/v0/telemetry/events</code> feed and this <a href="/community">/community</a> dashboard.</li>
+</ul>
+
+<h2>Who can see what</h2>
+<p>Privacy is enforced by construction. The public feed is delayed and <strong>never</strong> includes
+the acting player's identity.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>You (any player)</th><th>The operator (server)</th><th>The public / anyone</th></tr></thead>
+<tbody>
+<tr><td><strong>Gameplay activity</strong> (creature / weapon / quest)</td><td>your own local logs</td><td>full record, incl. your player id and quest payload</td><td>only delayed, non-identifying labels</td></tr>
+<tr><td><strong>Your player id &amp; name</strong></td><td>known to you</td><td>in the durable EventLog</td><td class="never">never visible</td></tr>
+<tr><td><strong>Performance samples</strong></td><td>your own local logs</td><td>to diagnose lag / desync / health</td><td class="never">never visible</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>How to opt out</h2>
+<p>You're in control. Gameplay capture ships <strong>OFF by default</strong> &mdash; to contribute
+data you must opt in. Toggle these anytime (hot-reloadable) in your BepInEx config under
+<code>[Gameplay]</code>:</p>
+<ul class="tight">
+<li><code>gameplayEventProducerEnabled</code> &mdash; combat and weapon events</li>
+<li><code>questEvaluatorEnabled</code> &mdash; quest-completion matching</li>
+</ul>
+<p>To stop all capture, remove the mod. And if the mod's gateway URL is left blank, nothing ever
+leaves your machine &mdash; only your local files are written.</p>
+
+<h2>Watch it being built</h2>
+<p>This system is built in the open. Integrations and coding happen live on stream.</p>
+<ul class="tight"><li>&lt;VOD links to be added&gt;</li></ul>
+
+<footer>Built in the open. Served by the Lumberjacks gateway at <code>/data-and-trust</code>; the
+canonical text lives in the repo at <code>docs/data-and-trust.md</code>.</footer>
+</main>
+</body>
+</html>
