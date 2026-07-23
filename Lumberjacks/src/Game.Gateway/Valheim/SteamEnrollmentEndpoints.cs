@@ -100,15 +100,14 @@ public static class SteamEnrollmentEndpoints
 
         app.MapGet("/join/update", (HttpRequest request) =>
         {
-            request.HttpContext.Response.Headers.CacheControl = "no-store, max-age=0";
-            request.HttpContext.Response.Headers.Pragma = "no-cache";
-            request.HttpContext.Response.Headers.Expires = "0";
+            NoStore(request);
             var login = SteamLoginUrl(request, "/join/update/steam-callback");
             return Results.Text(EnrollmentPages.UpdatePage(login), "text/html");
         }).RequireRateLimiting("join");
 
         app.MapGet("/join/update/steam-callback", async (HttpRequest request, SteamEnrollmentService service, IHttpClientFactory clients) =>
         {
+            NoStore(request);
             var (steamId, error) = await VerifySteamOpenId(request, clients);
             if (error is not null) return error;
 
@@ -125,7 +124,7 @@ public static class SteamEnrollmentEndpoints
             var pack = TryBuildConfigPreservingUpdatePack(out var packError);
             return pack is null
                 ? packError!
-                : Results.File(pack, "application/zip", $"Comfy-P7-Mods-update-{enrollment.EnrollmentId[..8]}.zip");
+                : Results.File(pack, "application/zip", UpdatePackFileName(enrollment.EnrollmentId));
         }).RequireRateLimiting("join");
 
         // Public by design: the bootstrap token is the only credential, it is
@@ -246,6 +245,34 @@ public static class SteamEnrollmentEndpoints
             error = Results.Problem(ex.Message, statusCode: 503);
             return null;
         }
+    }
+
+    static string UpdatePackFileName(string enrollmentId)
+    {
+        var gatewayRelease = SafeFileToken(Environment.GetEnvironmentVariable("LUMBERJACKS_VERSION") ?? "unknown");
+        var modRelease = SafeFileToken(ValheimReleaseIdentity.ExpectedModRelease ?? "unknown-mod");
+        var templatePath = Environment.GetEnvironmentVariable("LUMBERJACKS_MODPACK_TEMPLATE");
+        var hash = "nohash";
+        if (!string.IsNullOrWhiteSpace(templatePath) && File.Exists(templatePath))
+            hash = Sha256File(templatePath)[..12];
+        return $"Comfy-P7-Mods-update-{gatewayRelease}-mod-{modRelease}-{hash}-{enrollmentId[..8]}.zip";
+    }
+
+    static string SafeFileToken(string value)
+    {
+        var chars = value
+            .Trim()
+            .Select(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_' or '.' ? ch : '-')
+            .ToArray();
+        var token = new string(chars).Trim('-');
+        return string.IsNullOrWhiteSpace(token) ? "unknown" : token;
+    }
+
+    static void NoStore(HttpRequest request)
+    {
+        request.HttpContext.Response.Headers.CacheControl = "no-store, max-age=0";
+        request.HttpContext.Response.Headers.Pragma = "no-cache";
+        request.HttpContext.Response.Headers.Expires = "0";
     }
 
     static string Sha256File(string path)

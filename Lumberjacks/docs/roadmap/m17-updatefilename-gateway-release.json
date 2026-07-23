@@ -1,0 +1,36 @@
+{
+  "schema": "comfy-p7-gateway-release/v1",
+  "image_release_id": "m17-updatefilename-20260723-r1",
+  "admitted_mod_release": "m15-hudrecover-20260723-r1",
+  "source_commit": "pending-release-commit",
+  "gateway_image": "sha256:4565b1aab07ef18a6c9215324c3a0cef3649cf056aafee321dbbf0c5f41c86cb",
+  "mod": {
+    "version": "0.5.35",
+    "release_id": "m15-hudrecover-20260723-r1",
+    "sha256": "9a8ea06923d711f97f275506cbf14969ee06dc81376e97ad97493f53b32d26d2",
+    "changed": false
+  },
+  "verification": {
+    "tests": {
+      "contracts": 123,
+      "simulation": 250,
+      "gateway": 194,
+      "failed": 0
+    },
+    "image_admits_mod_release": "m15-hudrecover-20260723-r1",
+    "update_page_status": 200,
+    "update_page_cache_control": "no-store, max-age=0",
+    "manifest_endpoint_release": "m17-updatefilename-20260723-r1",
+    "manifest_endpoint_mod_release": "m15-hudrecover-20260723-r1",
+    "update_package_sha256": "c847ae5787b1a6b8b3f67072509c1422fbf43a79d1219f93628ba98fea462b76"
+  },
+  "deployment": {
+    "target": "comfy-lumberjacks-p7",
+    "gateway_only": true,
+    "backup": "/mnt/comfy-p7/backups/gateway-updatefilename-v2/20260723T092600Z"
+  },
+  "limitations": [
+    "The post-Steam callback requires a valid Steam OpenID assertion, so public smoke tests verify the page, manifest, and deterministic filename construction rather than spending a tester callback.",
+    "Chrome may still block the unsigned zip because it contains an installer script, but the filename now carries the served Gateway release, admitted mod release, package hash prefix, and enrollment prefix."
+  ]
+}
