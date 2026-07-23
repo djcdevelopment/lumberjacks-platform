@@ -249,6 +249,11 @@ function interpretationBlock(i){
   return '<p><strong class="'+level+'">'+esc(i.headline||'No interpretation recorded.')+'</strong><br>'+esc(i.next_action||'')+'<br><span class="muted">'+esc(i.evidence||'')+'</span></p>';
 }
 
+function commandBlock(title,command){
+  if(!command)return '';
+  return '<p><strong>'+esc(title)+'</strong></p><pre>'+esc(command)+'</pre>';
+}
+
 function paint(){
   let v=state.valheim,p=state.profile;
   setCheck('c-valheim',v.found);
@@ -390,11 +395,19 @@ async function wave0Status(){
     setWaveCheck('w-capture','wc-capture',!!cap,'wait');
     let command=w.commands?.prelive||'Run Test-Wave0Prelive.ps1 from OMEN.';
     let title='Recommended command';
+    let chain='';
     if(w.verdict==='ready_for_live_gate'||w.verdict==='motion_evidence_present'){
       command=w.commands?.live_omen_applies||command;
       title='First live-gate command';
+      chain=[
+        commandBlock('1. First live gate: OMEN applies',w.commands?.live_omen_applies),
+        commandBlock('2. Annotate first visual pass',w.commands?.annotate_omen_applies),
+        commandBlock('3. Role reversal: i5 applies',w.commands?.live_i5_applies),
+        commandBlock('4. Annotate reversal',w.commands?.annotate_i5_applies),
+        commandBlock('5. Seal visual evidence',w.commands?.seal_visual_evidence)
+      ].join('');
     }
-    q('#wave0-command').innerHTML='<strong>'+esc(title)+'</strong><pre>'+esc(command)+'</pre>'+(cap?'<p>Latest capture: <span class="release">'+esc(cap.run_id)+'</span> · '+esc(cap.verdict)+' · max peers '+esc(cap.max_peers)+'</p>':'<p class="muted">No recent capture surfaced yet.</p>');
+    q('#wave0-command').innerHTML='<strong>'+esc(title)+'</strong><pre>'+esc(command)+'</pre>'+chain+(cap?'<p>Latest capture: <span class="release">'+esc(cap.run_id)+'</span> · '+esc(cap.verdict)+' · max peers '+esc(cap.max_peers)+'</p>':'<p class="muted">No recent capture surfaced yet.</p>');
   }catch(e){
     q('#wave0-status').className='result bad';
     q('#wave0-status').textContent='Could not read Wave 0 status: '+JSON.stringify(e);
