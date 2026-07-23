@@ -521,7 +521,7 @@ sealed class ModpackInstaller(CompanionStateStore stateStore, ValheimLocator loc
     static string SafeToken(string value) => string.Concat(value.Select(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_' ? ch : '-'));
 }
 
-sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore stateStore)
+sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore stateStore, ValheimLocator locator)
 {
     static readonly JsonSerializerOptions JsonLineOptions = new(Json.Options) { WriteIndented = false };
 
@@ -561,7 +561,10 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             var valheim = await ReadEndpointAsync("/api/v0/telemetry/valheim", cancellationToken);
             var cutover = await ReadEndpointAsync("/api/v0/telemetry/cutover", cancellationToken);
             var motion = await ReadEndpointAsync("/live/valheim-motion", cancellationToken);
+            var localMotion = ReadLatestLocalMotion();
             var currentRead = CurrentRead(deployment, valheim, motion);
+            if (localMotion.HasValue)
+                currentRead = CurrentRead(deployment, valheim, motion, localMotion.Value);
             finalCurrentRead = currentRead;
 
             if (!deployment.ok || !valheim.ok || !cutover.ok || !motion.ok || !HasReadableHeartbeat(valheim)) badSamples++;
@@ -585,16 +588,24 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
                 firstPeers ??= peers;
                 lastPeers = peers;
                 foreach (var player in PlayerNames(valheim.body)) observedPlayers.Add(player);
-                var motionState = StringProperty(heartbeat, "motion_state");
+                var motionState = localMotion.HasValue
+                    ? StringProperty(localMotion.Value, "motion_state")
+                    : StringProperty(heartbeat, "motion_state");
                 if (!string.IsNullOrWhiteSpace(motionState))
                 {
                     firstMotionState ??= motionState;
                     lastMotionState = motionState;
                     observedMotionStates.Add(motionState);
                 }
-                finalMotionWebSocketConnected = BoolValue(heartbeat, "motion_websocket_connected");
-                finalMotionUdpReady = BoolValue(heartbeat, "motion_udp_ready");
-                finalMotionLastError = StringProperty(heartbeat, "motion_last_error");
+                finalMotionWebSocketConnected = localMotion.HasValue
+                    ? BoolValue(localMotion.Value, "motion_websocket_connected")
+                    : BoolValue(heartbeat, "motion_websocket_connected");
+                finalMotionUdpReady = localMotion.HasValue
+                    ? BoolValue(localMotion.Value, "motion_udp_ready")
+                    : BoolValue(heartbeat, "motion_udp_ready");
+                finalMotionLastError = localMotion.HasValue
+                    ? StringProperty(localMotion.Value, "motion_last_error")
+                    : StringProperty(heartbeat, "motion_last_error");
             }
             else
             {
@@ -628,7 +639,8 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
                 sampleIndex,
                 GatewayClient.GatewayUrl,
                 currentRead,
-                new TransportCaptureEndpoints(deployment, valheim, cutover, motion));
+                new TransportCaptureEndpoints(deployment, valheim, cutover, motion),
+                localMotion);
             await File.AppendAllTextAsync(samplesPath, JsonSerializer.Serialize(row, JsonLineOptions) + Environment.NewLine, cancellationToken);
             sampleIndex++;
 
@@ -751,6 +763,25 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         }
     }
 
+    JsonElement? ReadLatestLocalMotion()
+    {
+        try
+        {
+            var install = locator.Find();
+            if (install is null) return null;
+            var path = Path.Combine(install, "BepInEx", "config", "comfy-network-sense", "telemetry-client.jsonl");
+            if (!File.Exists(path)) return null;
+            var line = File.ReadLines(path).LastOrDefault(value => !string.IsNullOrWhiteSpace(value));
+            if (string.IsNullOrWhiteSpace(line)) return null;
+            using var document = JsonDocument.Parse(line);
+            return document.RootElement.Clone();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     static TransportCurrentRead CurrentRead(TransportCaptureEndpoint deployment, TransportCaptureEndpoint valheim, TransportCaptureEndpoint motion)
     {
         if (!deployment.ok) return new("bad", "Gateway telemetry unavailable; live network evidence is not trustworthy.");
@@ -775,6 +806,30 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         var peers = PeerCount(valheim.body);
         if (peers > 0) return new("wait", $"Valheim has {peers} peer(s), but Lumberjacks motion counters are zero; {stateText}. Visible player movement is native Valheim for this run.");
         return new("wait", $"P7 is up with no active peers; {stateText}. Join two clients, then watch Valheim peers and Motion counters change together.");
+    }
+
+    static TransportCurrentRead CurrentRead(TransportCaptureEndpoint deployment, TransportCaptureEndpoint valheim, TransportCaptureEndpoint motion, JsonElement localMotion)
+    {
+        if (!deployment.ok) return new("bad", "Gateway telemetry unavailable; live network evidence is not trustworthy.");
+        if (!valheim.ok) return new("bad", "Valheim heartbeat telemetry unavailable; this sample cannot establish client readiness.");
+        if (!motion.ok) return new("bad", "Motion telemetry unavailable; use the in-game strip and trace before interpreting movement.");
+
+        var state = StringProperty(localMotion, "motion_state") ?? "unknown";
+        var ws = ReadinessText(BoolValue(localMotion, "motion_websocket_connected"));
+        var udp = ReadinessText(BoolValue(localMotion, "motion_udp_ready"));
+        var error = StringProperty(localMotion, "motion_last_error");
+        var received = IntValue(motion.body, "received");
+        var stateText = $"client-local motion {state} (WS {ws}, UDP {udp})";
+        if (!string.IsNullOrWhiteSpace(error)) stateText += $"; error {error}";
+        var motionReady = string.Equals(state, "observing", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(state, "websocket", StringComparison.OrdinalIgnoreCase) ||
+            BoolValue(localMotion, "motion_websocket_connected") == true ||
+            BoolValue(localMotion, "motion_udp_ready") == true;
+        if (received > 0 && motionReady) return new("ok", $"Lumberjacks motion frames are arriving; {stateText}. Gateway counters are relay evidence.");
+        if (received > 0) return new("wait", $"Gateway counters advanced, but client-local motion was not ready; {stateText}.");
+        var peers = PeerCount(valheim.body);
+        if (peers > 0) return new("wait", $"Valheim has {peers} peer(s), but Gateway motion counters are zero; {stateText}.");
+        return new("wait", $"P7 is up with no active peers; {stateText}.");
     }
 
     static string Verdict(int badSamples, int maxPeers, int? firstMotionReceived, int? lastMotionReceived, IReadOnlyCollection<string>? motionStates = null)
@@ -986,7 +1041,7 @@ sealed record MotionTestRequest(string? action, string? pattern, int? duration_s
 sealed record TransportCurrentRead(string level, string text);
 sealed record TransportCaptureEndpoint(bool ok, string path, int? status, JsonElement? body, string? error);
 sealed record TransportCaptureEndpoints(TransportCaptureEndpoint deployment, TransportCaptureEndpoint valheim, TransportCaptureEndpoint cutover, TransportCaptureEndpoint motion);
-sealed record TransportCaptureSample(int schema_version, string event_type, DateTime timestamp_utc, string run_id, int sample_index, string base_url, TransportCurrentRead current_read, TransportCaptureEndpoints endpoints);
+sealed record TransportCaptureSample(int schema_version, string event_type, DateTime timestamp_utc, string run_id, int sample_index, string base_url, TransportCurrentRead current_read, TransportCaptureEndpoints endpoints, JsonElement? local_motion = null);
 sealed record TransportCaptureCounterRange(int first, int last, int delta);
 sealed record TransportCaptureCounterRanges(
     TransportCaptureCounterRange? peers,
