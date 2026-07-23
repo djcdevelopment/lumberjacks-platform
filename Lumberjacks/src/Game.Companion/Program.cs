@@ -178,6 +178,12 @@ app.MapGet("/api/v0/companion/diagnostics", async (CompanionStateStore state, Va
             c.counter_ranges,
             c.capture_identity,
             c.interpretation,
+            c.first_motion_state,
+            c.last_motion_state,
+            c.observed_motion_states,
+            c.final_motion_websocket_connected,
+            c.final_motion_udp_ready,
+            c.final_motion_last_error,
         }).ToList(),
     }, Json.Options);
 });
@@ -487,8 +493,12 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         int? firstAcknowledged = null, lastAcknowledged = null;
         int? firstApplied = null, lastApplied = null;
         int? firstMotionRelayed = null, lastMotionRelayed = null;
+        string? firstMotionState = null, lastMotionState = null;
+        bool? finalMotionWebSocketConnected = null, finalMotionUdpReady = null;
+        string? finalMotionLastError = null;
         var badSamples = 0;
         var observedPlayers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var observedMotionStates = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         TransportCaptureIdentity? captureIdentity = null;
         TransportCurrentRead? finalCurrentRead = null;
 
@@ -503,7 +513,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             var currentRead = CurrentRead(deployment, valheim, motion);
             finalCurrentRead = currentRead;
 
-            if (!deployment.ok || !valheim.ok || !cutover.ok || !motion.ok) badSamples++;
+            if (!deployment.ok || !valheim.ok || !cutover.ok || !motion.ok || !HasReadableHeartbeat(valheim)) badSamples++;
             captureIdentity = MergeIdentity(captureIdentity, deployment, valheim, cutover);
 
             if (motion.ok)
@@ -519,10 +529,27 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             if (valheim.ok)
             {
                 var peers = PeerCount(valheim.body);
+                var heartbeat = ObjectProperty(valheim.body, "heartbeat");
                 if (peers > maxPeers) maxPeers = peers;
                 firstPeers ??= peers;
                 lastPeers = peers;
                 foreach (var player in PlayerNames(valheim.body)) observedPlayers.Add(player);
+                var motionState = StringProperty(heartbeat, "motion_state");
+                if (!string.IsNullOrWhiteSpace(motionState))
+                {
+                    firstMotionState ??= motionState;
+                    lastMotionState = motionState;
+                    observedMotionStates.Add(motionState);
+                }
+                finalMotionWebSocketConnected = BoolValue(heartbeat, "motion_websocket_connected");
+                finalMotionUdpReady = BoolValue(heartbeat, "motion_udp_ready");
+                finalMotionLastError = StringProperty(heartbeat, "motion_last_error");
+            }
+            else
+            {
+                finalMotionWebSocketConnected = null;
+                finalMotionUdpReady = null;
+                finalMotionLastError = null;
             }
 
             if (cutover.ok)
@@ -591,7 +618,13 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             observedPlayers.ToList(),
             counterRanges,
             captureIdentity,
-            Interpret(verdict, badSamples, maxPeers, observedPlayers.Count, counterRanges));
+            Interpret(verdict, badSamples, maxPeers, observedPlayers.Count, counterRanges, observedMotionStates),
+            firstMotionState,
+            lastMotionState,
+            observedMotionStates.ToList(),
+            finalMotionWebSocketConnected,
+            finalMotionUdpReady,
+            finalMotionLastError);
         await File.WriteAllTextAsync(summaryPath, JsonSerializer.Serialize(summary, Json.Options), cancellationToken);
         return summary;
     }
@@ -670,12 +703,22 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
     static TransportCurrentRead CurrentRead(TransportCaptureEndpoint deployment, TransportCaptureEndpoint valheim, TransportCaptureEndpoint motion)
     {
         if (!deployment.ok) return new("bad", "Gateway telemetry unavailable; live network evidence is not trustworthy.");
+        if (!valheim.ok) return new("bad", "Valheim heartbeat telemetry unavailable; this sample cannot establish client readiness.");
         if (!motion.ok) return new("bad", "Motion telemetry unavailable; use the in-game strip and trace before interpreting movement.");
+        if (BoolValue(valheim.body, "stale") == true) return new("bad", "Valheim heartbeat is stale; this sample cannot establish client readiness.");
+        var heartbeat = ObjectProperty(valheim.body, "heartbeat");
+        if (heartbeat is null) return new("bad", "Valheim heartbeat payload is missing; this sample cannot establish client readiness.");
+        var state = StringProperty(heartbeat, "motion_state") ?? "unknown";
+        var ws = ReadinessText(BoolValue(heartbeat, "motion_websocket_connected"));
+        var udp = ReadinessText(BoolValue(heartbeat, "motion_udp_ready"));
+        var error = StringProperty(heartbeat, "motion_last_error");
         var received = IntValue(motion.body, "received");
-        if (received > 0) return new("ok", "Lumberjacks motion frames are arriving.");
+        var stateText = $"client motion {state} (WS {ws}, UDP {udp})";
+        if (!string.IsNullOrWhiteSpace(error)) stateText += $"; error {error}";
+        if (received > 0) return new("ok", $"Lumberjacks motion frames are arriving; {stateText}.");
         var peers = PeerCount(valheim.body);
-        if (peers > 0) return new("wait", $"Valheim has {peers} peer(s), but Lumberjacks motion counters are zero. Visible player movement is native Valheim for this run.");
-        return new("wait", "P7 is up with no active peers. Join two clients, then watch Valheim peers and Motion counters change together.");
+        if (peers > 0) return new("wait", $"Valheim has {peers} peer(s), but Lumberjacks motion counters are zero; {stateText}. Visible player movement is native Valheim for this run.");
+        return new("wait", $"P7 is up with no active peers; {stateText}. Join two clients, then watch Valheim peers and Motion counters change together.");
     }
 
     static string Verdict(int badSamples, int maxPeers, int? firstMotionReceived, int? lastMotionReceived)
@@ -707,7 +750,8 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
                 null,
                 null,
                 null),
-            interpretation = summary.interpretation ?? Interpret(verdict, summary.bad_sample_count, summary.max_peers, summary.observed_players?.Count ?? 0, summary.counter_ranges),
+            observed_motion_states = summary.observed_motion_states ?? [],
+            interpretation = summary.interpretation ?? Interpret(verdict, summary.bad_sample_count, summary.max_peers, summary.observed_players?.Count ?? 0, summary.counter_ranges, summary.observed_motion_states ?? []),
         };
     }
 
@@ -724,12 +768,14 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         int badSamples,
         int maxPeers,
         int observedPlayerCount,
-        TransportCaptureCounterRanges? counters)
+        TransportCaptureCounterRanges? counters,
+        IReadOnlyCollection<string>? motionStates = null)
     {
         var acknowledgedDelta = counters?.acknowledged?.delta ?? 0;
         var appliedDelta = counters?.applied?.delta ?? 0;
         var pendingDelta = counters?.pending?.delta ?? 0;
         var motionDelta = counters?.motion_received?.delta ?? 0;
+        var stateText = motionStates is { Count: > 0 } ? string.Join(",", motionStates) : "unknown";
 
         return verdict switch
         {
@@ -742,17 +788,17 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
                 "ok",
                 "Lumberjacks motion frames were observed during this capture.",
                 "Compare in-game movement feel against the motion counter deltas and samples.jsonl; this run can support motion-lane debugging.",
-                $"Motion received delta: {motionDelta}; max peers: {maxPeers}; observed players: {observedPlayerCount}."),
+                $"Motion received delta: {motionDelta}; max peers: {maxPeers}; observed players: {observedPlayerCount}; motion states: {stateText}."),
             "native_motion_only" => new(
                 "wait",
                 "Valheim peers were present, but Lumberjacks motion counters did not advance.",
                 "Treat visible player movement as native Valheim for this window. Use this as evidence that the remaining movement behavior is outside the Lumberjacks motion lane.",
-                $"Max peers: {maxPeers}; acknowledged delta: {acknowledgedDelta}; applied delta: {appliedDelta}; pending delta: {pendingDelta}."),
+                $"Max peers: {maxPeers}; motion states: {stateText}; acknowledged delta: {acknowledgedDelta}; applied delta: {appliedDelta}; pending delta: {pendingDelta}."),
             _ => new(
                 "wait",
                 "No active peer window was captured.",
                 "Start capture before joining or moving two clients. The useful run begins when peer count rises above zero.",
-                "All peer and motion counters stayed at zero."),
+                $"All peer and motion counters stayed at zero; motion states: {stateText}."),
         };
     }
 
@@ -767,6 +813,28 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             _ => fallback,
         };
     }
+
+    static bool? BoolValue(JsonElement? element, string name)
+    {
+        if (element is null || element.Value.ValueKind != JsonValueKind.Object) return null;
+        if (!element.Value.TryGetProperty(name, out var property)) return null;
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => null,
+        };
+    }
+
+    static string ReadinessText(bool? value) => value switch
+    {
+        true => "up",
+        false => "down",
+        _ => "unknown",
+    };
+
+    static bool HasReadableHeartbeat(TransportCaptureEndpoint endpoint) =>
+        endpoint.ok && BoolValue(endpoint.body, "stale") != true && ObjectProperty(endpoint.body, "heartbeat") is not null;
 
     static int PeerCount(JsonElement? valheim) =>
         IntValue(valheim, "peers",
@@ -873,7 +941,7 @@ sealed record TransportCaptureIdentity(
     string? cutover_mode,
     string? enrollment_manifest_id);
 sealed record TransportCaptureInterpretation(string level, string headline, string next_action, string evidence);
-sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null, TransportCaptureIdentity? capture_identity = null, TransportCaptureInterpretation? interpretation = null);
+sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null, TransportCaptureIdentity? capture_identity = null, TransportCaptureInterpretation? interpretation = null, string? first_motion_state = null, string? last_motion_state = null, List<string>? observed_motion_states = null, bool? final_motion_websocket_connected = null, bool? final_motion_udp_ready = null, string? final_motion_last_error = null);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
 sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
 sealed class CompanionState

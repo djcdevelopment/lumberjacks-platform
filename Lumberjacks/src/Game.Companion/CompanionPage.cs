@@ -332,7 +332,8 @@ async function movingParts(){
     live.motion_received=received;
     live.motion_relayed=relayed;
     const state=live.motion_state||'unknown';
-    const controls='client '+state+' / WS '+(live.motion_ws?'up':'down')+' / UDP '+(live.motion_udp?'up':'down');
+    const readiness=value=>value===true?'up':value===false?'down':'unknown';
+    const controls='client '+state+' / WS '+readiness(live.motion_ws)+' / UDP '+readiness(live.motion_udp);
     const details='recv '+received+' (UDP '+(m.received_udp||0)+' / WS '+(m.received_websocket||0)+') / relay '+relayed;
     const error=live.motion_error?' / error '+live.motion_error:'';
     const text=received>0?'LJ motion observed / '+controls+' / '+details+error:controls+' / '+details+error;
@@ -389,6 +390,13 @@ function setCaptureButtons(disabled){
   for(const id of ['capture-smoke','capture-burst','capture','capture-long'])q('#'+id).disabled=disabled;
 }
 
+function captureMotionLine(c){
+  const states=(c.observed_motion_states||[]).join(', ')||'unknown';
+  const readiness=value=>value===true?'up':value===false?'down':'unknown';
+  const error=c.final_motion_last_error?' / error '+c.final_motion_last_error:'';
+  return 'client '+states+' / WS '+readiness(c.final_motion_websocket_connected)+' / UDP '+readiness(c.final_motion_udp_ready)+error;
+}
+
 async function captureTransport(seconds,interval,label){
   setCaptureButtons(true);
   q('#capture-result').textContent='Capturing for '+seconds+' seconds at '+interval+'s intervals ('+label+'). Move both clients now; leave this browser tab open.';
@@ -403,6 +411,7 @@ async function captureTransport(seconds,interval,label){
     const counters=counterLine(d.counter_ranges)||'no counters';
     q('#capture-result').innerHTML='<strong>Capture complete: '+esc(d.verdict||'unknown')+'</strong><p>'+esc(d.final_current_read?.text||'No final read recorded.')+'</p><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>'+esc(identityLine(d.capture_identity))+'</p><p>Players: '+esc(players)+'</p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · '+esc(counters)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
     q('#capture-result').insertAdjacentHTML('beforeend','<p><a class="btn secondary" href="'+base+'bundle.zip">Download evidence bundle</a></p>');
+    q('#capture-result').insertAdjacentHTML('afterbegin','<p>'+esc(captureMotionLine(d))+'</p>');
     if(d.interpretation)q('#capture-result').insertAdjacentHTML('afterbegin',interpretationBlock(d.interpretation));
     await captureHistory();
   }catch(e){
@@ -432,6 +441,8 @@ async function captureHistory(){
       return '<p><span class="release">'+esc(c.run_id)+'</span> <a class="btn secondary" href="'+base+'bundle.zip">Download evidence bundle</a></p>';
     }).join('');
     if(bundles)q('#capture-history').insertAdjacentHTML('beforeend','<strong>Evidence bundles</strong>'+bundles);
+    const readiness=captures.map(c=>'<p><span class="release">'+esc(c.run_id)+'</span> '+esc(captureMotionLine(c))+'</p>').join('');
+    if(readiness)q('#capture-history').insertAdjacentHTML('beforeend','<strong>Motion readiness</strong>'+readiness);
     const interpreted=captures.filter(c=>c.interpretation).map(c=>'<p><span class="release">'+esc(c.run_id)+'</span>'+interpretationBlock(c.interpretation)+'</p>').join('');
     if(interpreted)q('#capture-history').insertAdjacentHTML('beforeend','<strong>Recent interpretations</strong>'+interpreted);
   }catch(e){
