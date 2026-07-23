@@ -80,6 +80,29 @@ presentation/interpolation for that run.
 The first HTTP-off experiment may falsify the predicted shape. Preserve that result; the point of
 the switch is to reveal coupling, not to make the table come true.
 
+## Capture the window
+
+Before a two-client movement or fault test, start a short Companion-backed capture from OMEN:
+
+```powershell
+& C:\work\baseline\fieldlab\scripts\Capture-TransportTruth.ps1 `
+  -DurationSeconds 120 `
+  -IntervalSeconds 5 `
+  -Label two-client-motion
+```
+
+The script samples the same live surfaces as the Companion home page and writes:
+
+```text
+fieldlab\runs\transport-truth\<timestamp>-<label>\samples.jsonl
+fieldlab\runs\transport-truth\<timestamp>-<label>\summary.json
+```
+
+Use the summary fields first: `max_peers`, `first_motion_received`, `last_motion_received`, and
+`motion_received_delta`. If `max_peers` is positive and `motion_received_delta` is zero, the run
+observed Valheim peers without Lumberjacks motion frames. That is evidence that visible player
+movement was still native Valheim for that window.
+
 ## Local evidence
 
 The client appends switch rows under:
