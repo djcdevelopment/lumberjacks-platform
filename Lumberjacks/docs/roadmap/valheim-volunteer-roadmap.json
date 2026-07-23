@@ -2,21 +2,21 @@
   "schema_version": 2,
   "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-23T08:03:31.651Z",
+  "updated_at": "2026-07-23T08:29:06.179Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
   "current_release": {
-    "release_id": "m12-motion-20260722-r1",
-    "mod": "ComfyNetworkSense 0.5.33",
-    "mod_sha256": "5b4a19fd12751d04aec7622fd83eca91fd07ed96e382a07ec218813d4af7df67",
-    "gateway_image": "sha256:9a64656971151987af409676921fc8b476a852dbfea0f8b24e784e338dff3fd4",
-    "gateway_image_release_id": "m13-portal-20260723-r1",
+    "release_id": "m14-hudtoggle-20260723-r1",
+    "mod": "ComfyNetworkSense 0.5.34",
+    "mod_sha256": "a357cbd4feb1a889c82b05205e73d5309bb63dfad78a868e325f5c3bfa74ad39",
+    "gateway_image": "sha256:ed0cb99039ab76437e3d53d359ebe9935b992c6362510b2c8d799210bcc2f0f5",
+    "gateway_image_release_id": "m14-hudtoggle-20260723-r1",
     "deployment": "comfy-lumberjacks-p7",
     "window": "p7-primary-v1",
     "authoritative_consumer_ceiling": 2,
     "ceiling_enforcement": "Alpha target is two simultaneous testers. The temporary Gateway one-seat reservation is disabled on P7 via VALHEIM_HANDSHAKE_SEAT_CAPACITY=0; native Valheim max-player enforcement still applies. N-seat Gateway admission remains deferred until per-holder liveness exists.",
-    "gateway_admits_mod_release": "m12-motion-20260722-r1"
+    "gateway_admits_mod_release": "m14-hudtoggle-20260723-r1"
   },
   "claim": "The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.",
   "primer": {
@@ -190,7 +190,7 @@
   "current_focus": [
     "COMPLETE · M0 RELEASE FREEZE — A1–A5 closed 2026-07-16: source frozen, candidate r2 reproducible from clean tagged checkouts, sanitized bundle and FieldLab catalog committed, promotion drill passed with artifact-only rollback, and the golden-proof evidence set published immutably with byte-verified hashes.",
     "COMPLETE · PROMOTION FINALIZED — P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.",
-    "ACTIVE · M1 — Mod release m12-motion-20260722-r1 is live on P7 with an always-visible transport boundary, alpha fault switches, and an observe-first player-motion lane over token-bound UDP with binary WebSocket fallback. Public TLS preserved an enrolled recipient through WebSocket setup and accepted an exact 50-byte UDP motion fixture with zero invalid, unauthorized, or stale drops. Native Valheim remains connected and still owns simulation, ownership, non-ZDO RPCs, relevance, and presentation unless a tester explicitly enables local motion apply. Distinct-recipient fan-out remains a two-account canary gate. TLS/Caddy still gives anonymous requests private-socket capability and remains accepted only for the known-cohort alpha; stop-ship before widening.",
+    "ACTIVE · M1 — Mod release m14-hudtoggle-20260723-r1 is live on P7 with the transport boundary collapsed by default, a side NET SHOW/HIDE tab for low-resolution clients, alpha fault switches, self-service Steam update downloads, and an observe-first player-motion lane over token-bound UDP with binary WebSocket fallback. Public TLS preserves enrolled recipients through WebSocket setup and exposes a config-preserving update package; native Valheim still owns simulation, ownership, non-ZDO RPCs, relevance, and presentation unless a tester explicitly enables local motion apply. Distinct-recipient fan-out remains a two-account canary gate. TLS/Caddy still gives anonymous requests private-socket capability and remains accepted only for the known-cohort alpha; stop-ship before widening.",
     "LIVE (normal play) · AoI BAND-SHAPING — distance-band area-of-interest is armed permanently on P7 as of 2026-07-21 (near <30m full rate · mid 30–64m thinned to 5Hz · far >64m dropped · landmarks by granted reach), mod-side on the redirect producer (ADR 0011). It reshapes the eligible ZDO set upstream: at the densest single-player build ~85% of candidates drop, losslessly. Open before it earns full trust: the far→approach re-sync of a dropped static object, and multi-player density.",
     "AFTER M1 · PARALLEL — Build M2's reversible guest package, M3's seal-before-reset per-run ledger and retained dashboards, and M4a's recipient isolation and producer loss safety.",
     "WIDEN ONLY AFTER · M4b + M5 — Require the real two-client correctness packet and one exact-release invited-volunteer SYSTEM PROVEN receipt before admitting a cohort."

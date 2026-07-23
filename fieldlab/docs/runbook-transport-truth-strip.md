@@ -14,8 +14,8 @@ The current P7 result is a Lumberjacks ZDO-delivery cutover, not a full netcode 
 | Declared ZDO ordering, durable queue, delivery, ACK | Lumberjacks HTTP/JSON |
 | ZDO receive/application semantics | ComfyNetworkSense through Valheim `RPC_ZDOData` |
 | Non-ZDO RPCs and movement presentation/interpolation | Valheim |
-| Lumberjacks reliable WebSocket lane | Implemented platform capability; unused by live Valheim adapter |
-| Lumberjacks UDP datagram lane | Implemented platform capability; unused by live Valheim adapter |
+| Lumberjacks reliable WebSocket lane | Enrolled alpha motion session and binary fallback; observe-first unless local motion apply is enabled |
+| Lumberjacks UDP datagram lane | Enrolled alpha motion datagram lane; token-bound and observe-first unless local motion apply is enabled |
 | MCP/Raven | Local builder sidecar on `127.0.0.1:8720`; not gameplay transport |
 
 ## Start observation
@@ -28,15 +28,31 @@ docker compose -f C:\work\baseline\Lumberjacks\tools\omen-dashboard\docker-compo
 Start-Process http://127.0.0.1:8080/community
 ```
 
-Join P7 with the matching ComfyNetworkSense release. The strip should show native Valheim and LJ
-ZDO active, HTTP/JSON active, WebSocket/UDP unused, and MCP active only where the local helper is
-running.
+Join P7 with the matching ComfyNetworkSense release. As of `m14-hudtoggle-20260723-r1`, the
+transport strip starts collapsed so it does not cover lower-resolution menu buttons. Use the side
+`NET SHOW` tab to expand it after joining; `NET HIDE` collapses it again. The tab side is controlled
+by `[HUD] transportStripToggleSide = Right|Left`.
+
+The strip should show native Valheim and LJ ZDO active, HTTP/JSON active, WebSocket/UDP motion status
+when the enrolled motion lane is connected, and MCP active only where the local helper is running.
+
+## Updating a tester machine
+
+For an already-enrolled alpha tester, use the config-preserving update download:
+
+```text
+https://comfy-p7.duckdns.org/join/update
+```
+
+Sign in with the same Steam account, download the update zip, extract it, and run
+`Install-LumberjacksMod.ps1`. The installer replaces DLL/mod files but restores the existing
+ComfyNetworkSense config so the enrollment credential is not rotated or erased.
 
 ## Fault sequence and predicted evidence
 
 | Action | In-game prediction | Dashboard prediction |
 |---|---|---|
-| Join | `Native Valheim [x]`, then `LJ ZDO [x]`; state becomes `polling`/`draining` | player appears; ZDO receipts/apply/ACK advance |
+| Join | side tab visible; after `NET SHOW`, `Native Valheim [x]`, then `LJ ZDO [x]`; state becomes `polling`/`draining` | player appears; ZDO receipts/apply/ACK advance |
 | Click `HTTP [x]` | HTTP/JSON and LJ ZDO go off; native Valheim stays connected; state becomes `fault-paused` | `transport_control_changed: lumberjacks_http=off via native_valheim_rpc`; queue/pending grows or world delivery stops advancing |
 | Move while HTTP is off | local movement may continue; remote/world state can become stale | no client poll/ACK progress; native peer remains visible |
 | Click `HTTP [ ]` | HTTP/JSON and LJ ZDO return; consumer drains backlog | matching `lumberjacks_http=on` trace; poll/apply/ACK resume |
