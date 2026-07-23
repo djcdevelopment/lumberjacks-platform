@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-23T21:17:39.796Z</span>
+        <span>Updated 2026-07-23T21:21:28.021Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -960,7 +960,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260723211739-deploy-heartbeat-age-release-to-p7-and-omen">
+        <div class="journal"><article class="journal-entry" id="note-20260723212128-smoke-m29-telemetry-without-players">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-23T21:21:28.021Z">2026-07-23T21:21:28.021Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Smoke m29 telemetry without players</h3>
+      <p><strong>Impact:</strong> A post-deployment no-player smoke capture against P7 m29 verified that the public telemetry endpoints, local Companion diagnostics, and transport-capture writer are live after the heartbeat-age deployment. The rebuilt OMEN Companion emits final_local_motion.server_ping_age_ms and server_ping_age_jitter_ms; the run remains INCONCLUSIVE for movement because no peer window was present.</p>
+      <details><summary>Verification (4)</summary><ul><li>Companion diagnostics reported local installed_release m29-heartbeatage-20260723-r1 and public Gateway m29-heartbeatage-20260723-r1</li><li>Transport capture 20260723-212034-m29-post-companion-rebuild-smoke returned bad_sample_count=0, verdict no_peer_window, and capture_identity.gateway_version m29-heartbeatage-20260723-r1</li><li>The same capture emitted final_local_motion.server_ping_age_ms and server_ping_age_jitter_ms instead of legacy-only rtt/jitter names</li><li>i5 remained offline, so no two-client or i5 install proof was attempted</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260723211739-deploy-heartbeat-age-release-to-p7-and-omen">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
