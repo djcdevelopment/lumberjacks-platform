@@ -76,7 +76,9 @@ static class CompanionPage
   <h2>Capture transport evidence</h2>
   <p class="muted">Start this before a two-client movement test. Companion records Gateway, Valheim, cutover, and motion counters into local JSONL evidence.</p>
   <p>
-    <button id="capture" onclick="captureTransport()">Capture 60 seconds</button>
+    <button id="capture-smoke" onclick="captureTransport(15,'smoke')">15s smoke</button>
+    <button id="capture" onclick="captureTransport(60,'movement')">60s movement</button>
+    <button id="capture-long" onclick="captureTransport(180,'session')">180s session</button>
   </p>
   <div id="capture-result" class="result">No capture yet.</div>
   <div id="capture-history" class="result">Loading recent captures...</div>
@@ -335,12 +337,15 @@ async function rollback(){
   await status();
 }
 
-async function captureTransport(){
-  const button=q('#capture');
-  button.disabled=true;
-  q('#capture-result').textContent='Capturing for 60 seconds. Move both clients now; leave this browser tab open.';
+function setCaptureButtons(disabled){
+  for(const id of ['capture-smoke','capture','capture-long'])q('#'+id).disabled=disabled;
+}
+
+async function captureTransport(seconds,label){
+  setCaptureButtons(true);
+  q('#capture-result').textContent='Capturing for '+seconds+' seconds ('+label+'). Move both clients now; leave this browser tab open.';
   try{
-    let r=await fetch('/api/v0/companion/transport-capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({duration_seconds:60,interval_seconds:5,label:'companion-ui'})});
+    let r=await fetch('/api/v0/companion/transport-capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({duration_seconds:seconds,interval_seconds:5,label:'companion-ui-'+label})});
     let d=await r.json();
     if(!r.ok)throw d;
     const level=levelClass(d.interpretation?.level||(d.bad_sample_count>0?'wait':(d.motion_received_delta>0?'ok':'wait')));
@@ -355,7 +360,7 @@ async function captureTransport(){
     q('#capture-result').className='result bad';
     q('#capture-result').textContent='Capture failed: '+JSON.stringify(e);
   }finally{
-    button.disabled=false;
+    setCaptureButtons(false);
   }
 }
 
