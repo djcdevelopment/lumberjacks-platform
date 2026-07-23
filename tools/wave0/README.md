@@ -46,6 +46,12 @@ two-machine capture, sends one bounded Companion motion command, and writes a
 single receipt. If fewer than two peers are visible, it writes `wait_for_two_real_clients`
 and does not move either character.
 
+Every live-gate run also writes an observation worksheet next to the receipt
+(`*.observation.md` by default). That file is the operator-facing checklist:
+apply client, observe client, visual result, straight/stutter movement quality,
+role-reversal state, and ready-to-run annotation commands. Use it during the
+live pass instead of reconstructing expected fields from chat history.
+
 After the live course, use `Add-Wave0VisualObservation.ps1` instead of editing
 the receipt. It writes a sidecar `*.visual-observation.json` and a derived
 `*.annotated.json` projection while preserving the original machine receipt.

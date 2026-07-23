@@ -36,6 +36,8 @@ param(
 
     [string]$OutputJson,
 
+    [string]$ObservationMarkdown,
+
     [string]$BundleDirectory,
 
     [switch]$SkipSynthetic,
@@ -63,13 +65,80 @@ $outputPath = if ([IO.Path]::IsPathRooted($OutputJson)) {
 $outputDirectory = Split-Path -Parent $outputPath
 if ($outputDirectory) { New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null }
 
+if (-not $ObservationMarkdown) {
+    $ObservationMarkdown = [IO.Path]::ChangeExtension($outputPath, '.observation.md')
+}
+$observationPath = if ([IO.Path]::IsPathRooted($ObservationMarkdown)) {
+    [IO.Path]::GetFullPath($ObservationMarkdown)
+} else {
+    [IO.Path]::GetFullPath((Join-Path $repoRoot $ObservationMarkdown))
+}
+$observationDirectory = Split-Path -Parent $observationPath
+if ($observationDirectory) { New-Item -ItemType Directory -Force -Path $observationDirectory | Out-Null }
+
+function Write-ObservationTemplate {
+    param($Receipt)
+
+    $peerCount = if ($Receipt.p7_peer_check) { [string]$Receipt.p7_peer_check.peer_count } else { 'not_checked' }
+    $players = @()
+    if ($Receipt.p7_peer_check -and $Receipt.p7_peer_check.players) {
+        $players = @($Receipt.p7_peer_check.players | ForEach-Object { [string]$_ })
+    }
+    $playerText = if ($players.Count -gt 0) { $players -join ', ' } else { 'none_recorded' }
+
+    $lines = @()
+    $lines += '# Wave 0 live visual observation'
+    $lines += ''
+    $lines += "- Run ID: $($Receipt.run_id)"
+    $lines += "- Machine verdict: $($Receipt.verdict)"
+    $lines += "- Pattern: $($Receipt.pattern)"
+    $lines += "- Motion duration seconds: $($Receipt.motion_duration_seconds)"
+    $lines += "- Capture duration seconds: $($Receipt.capture_duration_seconds)"
+    $lines += "- P7 peer count at gate: $peerCount"
+    $lines += "- P7 players at gate: $playerText"
+    $lines += "- Machine receipt: $outputPath"
+    $lines += ''
+    $lines += '## Fill during the live pass'
+    $lines += ''
+    $lines += '| Field | Allowed values | Observed value |'
+    $lines += '|---|---|---|'
+    $lines += '| Apply client | omen / i5 / unknown |  |'
+    $lines += '| Observe client | omen / i5 / unknown |  |'
+    $lines += '| Visual result | followed_role / did_not_follow_role / inconclusive / not_observed |  |'
+    $lines += '| Straight movement | smooth / glidey / teleporting / mixed / not_tested |  |'
+    $lines += '| Stutter movement | smooth / glidey / teleporting / mixed / not_tested |  |'
+    $lines += '| Role reversal run | yes / no / not_run |  |'
+    $lines += '| Notes | free text |  |'
+    $lines += ''
+    $lines += '## Annotation commands'
+    $lines += ''
+    $lines += 'First pass example:'
+    $lines += ''
+    $lines += '```powershell'
+    $lines += "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson $outputPath -ApplyClient omen -ObserveClient i5 -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun no"
+    $lines += '```'
+    $lines += ''
+    $lines += 'Role reversal example:'
+    $lines += ''
+    $lines += '```powershell'
+    $lines += "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson $outputPath -ApplyClient i5 -ObserveClient omen -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun yes"
+    $lines += '```'
+    $lines += ''
+    $lines += 'Rules: do not edit the machine receipt. Use the annotation command to write the immutable sidecar.'
+
+    [IO.File]::WriteAllText($observationPath, (($lines -join [Environment]::NewLine) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+}
+
 function Write-Receipt {
     param($Receipt, [int]$ExitCode)
 
+    $Receipt['observation_markdown'] = $observationPath
     $json = $Receipt | ConvertTo-Json -Depth 14
     [IO.File]::WriteAllText($outputPath, $json + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+    Write-ObservationTemplate $Receipt
     Write-Host ("Wave 0 live gate: {0}" -f $Receipt.verdict)
     Write-Host ("Receipt JSON: {0}" -f $outputPath)
+    Write-Host ("Observation Markdown: {0}" -f $observationPath)
     if ($Receipt.next_action) { Write-Host ("Next: {0}" -f $Receipt.next_action) }
     exit $ExitCode
 }
