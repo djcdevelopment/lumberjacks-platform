@@ -96,6 +96,7 @@ static class CompanionPage
   <h2>Companion application</h2>
   <p class="muted">Local updater version: <span id="companion-version" class="release">Checking...</span></p>
   <p class="notice" id="companion-note">Checking Companion release status...</p>
+  <p><a class="btn secondary" href="/api/v0/companion/diagnostics" download="lumberjacks-companion-diagnostics.json">Download redacted diagnostics</a></p>
 </section>
 
 <details><summary>Technical details</summary><pre id="technical">Loading...</pre></details>

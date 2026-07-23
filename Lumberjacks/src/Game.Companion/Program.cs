@@ -110,6 +110,78 @@ app.MapGet("/api/v0/companion/release/check", async (GatewayClient gateway, Canc
     });
 });
 
+app.MapGet("/api/v0/companion/diagnostics", async (CompanionStateStore state, ValheimLocator locator, GatewayClient gateway, TransportTruthCaptureService capture, CancellationToken cancellationToken) =>
+{
+    var install = locator.Find();
+    var saved = state.Read();
+    CompanionConfig.TryReadCredentials(install is null ? null : ValheimLocator.ConfigPath(install), out var discovered);
+    var profile = saved.profile ?? (discovered is null ? null : new CompanionProfile(discovered.enrollment_id, null));
+    var latestModpack = await gateway.GetJson("/api/v0/valheim/modpack/manifest", cancellationToken);
+    var latestBootstrap = await gateway.GetJson("/api/v0/companion/bootstrap/manifest", cancellationToken);
+    var deployment = await gateway.GetJson("/api/v0/telemetry/deployment", cancellationToken);
+    var valheim = await gateway.GetJson("/api/v0/telemetry/valheim", cancellationToken);
+    var cutover = await gateway.GetJson("/api/v0/telemetry/cutover", cancellationToken);
+    var motion = await gateway.GetJson("/live/valheim-motion", cancellationToken);
+
+    return Results.Json(new
+    {
+        schema_version = 1,
+        generated_utc = DateTimeOffset.UtcNow,
+        companion = new
+        {
+            version = CompanionVersion.Value,
+            bootstrap_release = CompanionVersion.BootstrapRelease,
+            gateway_url = GatewayClient.GatewayUrl,
+        },
+        local = new
+        {
+            valheim_found = install is not null,
+            valheim_running = ValheimLocator.IsRunning(),
+            config_found = install is not null && File.Exists(ValheimLocator.ConfigPath(install)),
+            installed_release = saved.installed is null ? null : new
+            {
+                saved.installed.release,
+                saved.installed.mod_release,
+                saved.installed.package_sha256,
+                saved.installed.installed_utc,
+                changed_file_count = saved.installed.changed_files.Count,
+            },
+            saved.last_error,
+        },
+        profile = new
+        {
+            linked = profile is not null,
+            enrollment_id_hash = HashShort(profile?.enrollment_id),
+            linked_utc = profile?.linked_utc,
+        },
+        public_gateway = new
+        {
+            modpack_manifest = latestModpack,
+            companion_bootstrap = latestBootstrap,
+            deployment,
+            valheim,
+            cutover,
+            motion,
+        },
+        recent_captures = capture.ListCaptures(5).Select(c => new
+        {
+            c.run_id,
+            c.label,
+            c.started_utc,
+            c.finished_utc,
+            c.verdict,
+            c.sample_count,
+            c.bad_sample_count,
+            c.max_peers,
+            c.motion_received_delta,
+            c.observed_players,
+            c.counter_ranges,
+            c.capture_identity,
+            c.interpretation,
+        }).ToList(),
+    }, Json.Options);
+});
+
 app.MapPost("/api/v0/companion/transport-capture", async (TransportCaptureRequest? request, TransportTruthCaptureService capture, CancellationToken cancellationToken) =>
 {
     var duration = Math.Clamp(request?.duration_seconds ?? 60, 5, 300);
@@ -162,6 +234,13 @@ app.MapGet("/live/{**tail}", (HttpContext context, GatewayClient gateway, Cancel
 app.MapGet("/", () => Results.Content(CompanionPage.Html, "text/html"));
 app.Run();
 
+static string? HashShort(string? value)
+{
+    if (string.IsNullOrWhiteSpace(value)) return null;
+    var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value));
+    return Convert.ToHexString(hash).ToLowerInvariant()[..12];
+}
+
 static class CompanionVersion
 {
     public static string Value => typeof(CompanionVersion).Assembly.GetName().Version?.ToString(3) ?? "0.1.0";
@@ -186,6 +265,22 @@ sealed class GatewayClient(HttpClient client)
         if (!response.IsSuccessStatusCode) return null;
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         return await JsonSerializer.DeserializeAsync<CompanionBootstrapManifest>(stream, Json.Options, cancellationToken);
+    }
+
+    public async Task<JsonElement?> GetJson(string path, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await client.GetAsync(GatewayUrl + path, cancellationToken);
+            if (!response.IsSuccessStatusCode) return null;
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var parsed = await JsonSerializer.DeserializeAsync<JsonElement>(stream, Json.Options, cancellationToken);
+            return parsed.Clone();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
     }
 
     public async Task<byte[]?> GetPackage(ModpackCredentials credentials, CancellationToken cancellationToken)
