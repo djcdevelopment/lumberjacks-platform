@@ -72,6 +72,10 @@ installation, start `bootstrap\Start-LumberjacksCompanion.ps1` with
 
 1. Build and test the package locally. Do not publish a package that has not been exercised on a
    disposable local Valheim install.
+   If the running Gateway is intentionally pinned to an already-admitted mod release, keep
+   `-ModRelease` equal to the DLL's baked `ComfyNetworkSense.ReleaseId` and use `-ReleaseId` only as
+   the package pointer id. This allows frequent client-pull package updates without forcing a
+   Gateway image restart or changing release-admission compatibility.
 2. Run:
 
 ```powershell
