@@ -15,18 +15,17 @@ This is the verified alpha path. It uses the repository's .NET 9 SDK container, 
 not need a matching .NET SDK installed.
 
 ```powershell
-$env:LUMBERJACKS_VALHEIM_HOST_PATH = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim'
-Copy-Item C:\work\baseline\Lumberjacks\tools\companion\docker-compose.valheim.yml.example `
-  C:\work\baseline\Lumberjacks\tools\companion\docker-compose.valheim.yml
-docker compose -f C:\work\baseline\Lumberjacks\tools\companion\docker-compose.yml `
-  -f C:\work\baseline\Lumberjacks\tools\companion\docker-compose.valheim.yml up --build -d
+cd C:\work\baseline\Lumberjacks
+.\tools\companion\Start-LocalCompanion.ps1
 Start-Process http://127.0.0.1:8080
 ```
 
-Without the optional second compose file, Docker is a read-only local dashboard and can start with
-no Valheim path at all. With it, Docker uses the same updater and persistent state, but cannot
-reliably observe the Windows Valheim process. Stop Valheim, then explicitly check **I have closed
-Valheim** before selecting **Install latest**.
+`Start-LocalCompanion.ps1` starts the canonical `lumberjacks-companion` compose project with the
+Valheim mount and retires the known legacy read-only project named `companion` when it was created
+from this same compose file. Without the Valheim compose override, Docker is a read-only local
+dashboard and can start with no Valheim path at all. With it, Docker uses the same updater and
+persistent state, but cannot reliably observe the Windows Valheim process. Stop Valheim, then
+explicitly check **I have closed Valheim** before selecting **Install latest**.
 
 For the i5 laptop, do not hand-copy files. Use the documented tailnet deploy lane from
 `C:\work\baseline`:
