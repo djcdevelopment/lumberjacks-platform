@@ -7,6 +7,7 @@ Collects the evidence needed before asking for another two-client Valheim join:
 
 - P7/OMEN/i5 release readiness.
 - Mock live-gate fixture coverage.
+- Mock visual-seal fixture coverage.
 - Real no-client live-gate smoke, proving the gate stops before motion.
 - Two-machine Companion capture/bundle smoke, proving OMEN+i5 evidence collection.
 - Return packet generation from the newest valid receipts.
@@ -65,10 +66,11 @@ function Read-JsonOrNull {
 
 $readinessPath = Join-Path $outRoot 'readiness.json'
 $fixturesRoot = Join-Path $outRoot 'fixtures'
+$sealFixturesRoot = Join-Path $outRoot 'seal-fixtures'
 $noClientRoot = Join-Path $outRoot 'no-client-live-gate'
 $bundleSmokeRoot = Join-Path $outRoot 'bundle-smoke'
 $returnPacketRoot = Join-Path $outRoot 'return-packet'
-New-Item -ItemType Directory -Force -Path $fixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $fixturesRoot, $sealFixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot | Out-Null
 
 $steps = @()
 $steps += Invoke-Step `
@@ -80,6 +82,11 @@ $steps += Invoke-Step `
     -Name 'live-gate-fixtures' `
     -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0LiveGateFixtures.ps1') `
     -Arguments @('-OutputDirectory', $fixturesRoot)
+
+$steps += Invoke-Step `
+    -Name 'visual-seal-fixtures' `
+    -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0SealFixtures.ps1') `
+    -Arguments @('-OutputDirectory', $sealFixturesRoot)
 
 $noClientArgs = @(
     '-DesiredApplyClient', 'omen',
@@ -117,6 +124,7 @@ $steps += Invoke-Step `
 
 $readiness = Read-JsonOrNull $readinessPath
 $fixtures = Read-JsonOrNull (Join-Path $fixturesRoot 'summary.json')
+$sealFixtures = Read-JsonOrNull (Join-Path $sealFixturesRoot 'summary.json')
 $noClient = Read-JsonOrNull (Join-Path $noClientRoot 'result.json')
 $bundleSmoke = Read-JsonOrNull (Join-Path $bundleSmokeRoot 'result.json')
 $packet = Read-JsonOrNull (Join-Path $returnPacketRoot 'packet.json')
@@ -127,6 +135,7 @@ $verdict =
     if ($failedSteps.Count -gt 0) { 'prelive_audit_failed' }
     elseif (-not $readiness -or [string]$readiness.verdict -ne 'ready_for_two_client_gate') { 'prelive_readiness_not_ready' }
     elseif (-not $fixtures -or [string]$fixtures.verdict -ne 'wave0_live_gate_fixture_checks_passed') { 'prelive_fixtures_not_ready' }
+    elseif (-not $sealFixtures -or [string]$sealFixtures.verdict -ne 'wave0_visual_seal_fixture_checks_passed') { 'prelive_visual_seal_fixtures_not_ready' }
     elseif (-not $noClient -or [string]$noClient.verdict -ne 'wait_for_two_real_clients') { 'prelive_no_client_gate_unexpected' }
     elseif (-not $bundleSmoke -or $bundleCount -lt 2) { 'prelive_bundle_collection_not_ready' }
     elseif (-not $packet -or [string]$packet.verdict -ne 'ready_for_derek_two_client_join') { 'prelive_return_packet_not_ready' }
@@ -144,6 +153,7 @@ $receipt = [ordered]@{
     receipts = [ordered]@{
         readiness = $readinessPath
         fixtures = Join-Path $fixturesRoot 'summary.json'
+        visual_seal_fixtures = Join-Path $sealFixturesRoot 'summary.json'
         no_client_live_gate = Join-Path $noClientRoot 'result.json'
         bundle_smoke = Join-Path $bundleSmokeRoot 'result.json'
         return_packet_json = Join-Path $returnPacketRoot 'packet.json'

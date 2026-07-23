@@ -26,6 +26,12 @@ tools\wave0\Add-Wave0VisualObservation.ps1 `
   -StutterMovement mixed `
   -RoleReversalRun no
 
+# Seal both annotated directions into one visual-evidence index
+tools\wave0\Seal-Wave0VisualEvidence.ps1 `
+  -FirstAnnotatedJson captures\wave0-live-gate\result.annotated.json `
+  -ReversalAnnotatedJson captures\wave0-live-gate-reversal\result.annotated.json `
+  -OutputJson captures\wave0-live-seal\visual-seal.json
+
 # Generate the concise return packet from current receipts
 tools\wave0\New-Wave0ReturnPacket.ps1 `
   -OutputJson captures\wave0-return-packet.json `
@@ -40,6 +46,7 @@ Run order before asking for a live movement course:
 3. two-client idle capture
 4. one bounded apply/observe course
 5. role reversal
+6. seal the two annotated visual projections
 
 If either non-human gate reports `FAIL` or `WAIT`, stop and use its receipt
 instead of repeating a live join/movement test. `WARN` is advisory: for example,
@@ -100,6 +107,15 @@ tools\wave0\Start-Wave0LiveGate.ps1 `
 After the live course, use `Add-Wave0VisualObservation.ps1` instead of editing
 the receipt. It writes a sidecar `*.visual-observation.json` and a derived
 `*.annotated.json` projection while preserving the original machine receipt.
+After both directions are annotated, use `Seal-Wave0VisualEvidence.ps1` to
+verify that the visual evidence is complete, roles reversed, source receipts are
+distinct, and both annotations point at allowed live-gate verdicts. The seal is
+a derived index, not a replacement for the two immutable machine receipts.
+The seal verifier has fixture coverage:
+
+```powershell
+tools\wave0\Test-Wave0SealFixtures.ps1
+```
 
 `New-Wave0ReturnPacket.ps1` is the handoff generator. It summarizes the current
 non-human receipts, emits the commands to run when both clients are back, and
