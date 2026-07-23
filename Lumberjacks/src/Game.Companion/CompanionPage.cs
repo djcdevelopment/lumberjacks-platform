@@ -8,7 +8,7 @@ static class CompanionPage
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Lumberjacks Companion</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{max-width:1040px;margin:36px auto;padding:0 18px;background:#101319;color:#e8edf4;font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}h1{font-size:2.2rem;color:#43a6ff;margin:0}h2{margin:0 0 10px}p{margin:8px 0}.muted{color:#a7b1c2}.shell{display:flex;justify-content:space-between;gap:18px;align-items:start;margin-bottom:20px}.links a{display:inline-block;margin:0 0 6px 6px}.card{background:#191e27;border:1px solid #303846;border-radius:12px;padding:22px;margin:16px 0}.hero{border-color:#2d69a5;background:linear-gradient(135deg,#172635,#191e27)}.next{font-size:1.1rem;font-weight:700}.parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}.part{background:#0c0f14;border:1px solid #303846;border-radius:8px;padding:12px}.part strong{display:block;color:#a7b1c2;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}.part span{display:block;margin-top:5px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.part.ok{border-color:#297a4f}.part.wait{border-color:#8b6c2a}.part.bad{border-color:#8b3a2f}.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px;margin:14px 0 2px}.check{display:flex;align-items:center;gap:9px;background:#11161e;border:1px solid #8b6c2a;border-radius:8px;padding:11px 12px;color:#ffcf6b;font-weight:650}.check.ok{border-color:#297a4f;color:#77dc9b}.check input{appearance:none;width:19px;height:19px;margin:0;border:2px solid #d29336;border-radius:4px;background:#241c0d;flex:0 0 auto}.check input:checked{border-color:#55d780;background:#217747}.check input:checked::after{content:'\2713';display:block;color:#fff;font-size:14px;line-height:15px;text-align:center}.check input:disabled{opacity:1}.check.manual{cursor:pointer}.check.manual input{cursor:pointer}.ok{color:#77dc9b}.wait{color:#ffcf6b}.bad{color:#ff9877}button,a.btn{display:inline-block;background:#3479c7;color:#fff;border:0;border-radius:8px;padding:11px 16px;text-decoration:none;font:inherit;font-weight:650;cursor:pointer}button:hover,a.btn:hover{background:#4a8ddd}button:disabled{background:#384455;color:#9eaaba;cursor:not-allowed}.secondary{background:transparent;border:1px solid #586577;color:#dce6f5}.result{margin-top:13px;padding:13px;border-radius:8px;background:#0c0f14;border:1px solid #28303c}.result.ok{border-color:#297a4f}.result.wait{border-color:#8b6c2a}.result.bad{border-color:#8b3a2f}.release{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:#b8d8ff}.notice{padding:12px 14px;border-radius:8px;background:#123a26;border:1px solid #1f6b41;color:#b8f2ce}details{margin-top:16px}pre{white-space:pre-wrap;overflow:auto;background:#0c0f14;padding:12px;border-radius:8px;font-size:.84rem}@media(max-width:650px){.shell{display:block}.links a{margin:10px 8px 0 0}}
+:root{color-scheme:dark}*{box-sizing:border-box}body{max-width:1040px;margin:36px auto;padding:0 18px;background:#101319;color:#e8edf4;font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}h1{font-size:2.2rem;color:#43a6ff;margin:0}h2{margin:0 0 10px}p{margin:8px 0}.muted{color:#a7b1c2}.shell{display:flex;justify-content:space-between;gap:18px;align-items:start;margin-bottom:20px}.links a{display:inline-block;margin:0 0 6px 6px}.card{background:#191e27;border:1px solid #303846;border-radius:12px;padding:22px;margin:16px 0}.hero{border-color:#2d69a5;background:linear-gradient(135deg,#172635,#191e27)}.next{font-size:1.1rem;font-weight:700}.parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}.part{background:#0c0f14;border:1px solid #303846;border-radius:8px;padding:12px}.part strong{display:block;color:#a7b1c2;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}.part span{display:block;margin-top:5px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.part.ok{border-color:#297a4f}.part.wait{border-color:#8b6c2a}.part.bad{border-color:#8b3a2f}.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;margin-top:13px}.metric{background:#0c0f14;border:1px solid #28303c;border-radius:8px;padding:10px}.metric strong{display:block;color:#a7b1c2;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}.metric span{display:block;margin-top:4px;font:700 1rem ui-monospace,SFMono-Regular,Consolas,monospace;color:#e8edf4;overflow-wrap:anywhere}.metric.ok{border-color:#297a4f}.metric.wait{border-color:#8b6c2a}.metric.bad{border-color:#8b3a2f}.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px;margin:14px 0 2px}.check{display:flex;align-items:center;gap:9px;background:#11161e;border:1px solid #8b6c2a;border-radius:8px;padding:11px 12px;color:#ffcf6b;font-weight:650}.check.ok{border-color:#297a4f;color:#77dc9b}.check input{appearance:none;width:19px;height:19px;margin:0;border:2px solid #d29336;border-radius:4px;background:#241c0d;flex:0 0 auto}.check input:checked{border-color:#55d780;background:#217747}.check input:checked::after{content:'\2713';display:block;color:#fff;font-size:14px;line-height:15px;text-align:center}.check input:disabled{opacity:1}.check.manual{cursor:pointer}.check.manual input{cursor:pointer}.ok{color:#77dc9b}.wait{color:#ffcf6b}.bad{color:#ff9877}button,a.btn{display:inline-block;background:#3479c7;color:#fff;border:0;border-radius:8px;padding:11px 16px;text-decoration:none;font:inherit;font-weight:650;cursor:pointer}button:hover,a.btn:hover{background:#4a8ddd}button:disabled{background:#384455;color:#9eaaba;cursor:not-allowed}.secondary{background:transparent;border:1px solid #586577;color:#dce6f5}.result{margin-top:13px;padding:13px;border-radius:8px;background:#0c0f14;border:1px solid #28303c}.result.ok{border-color:#297a4f}.result.wait{border-color:#8b6c2a}.result.bad{border-color:#8b3a2f}.release{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:#b8d8ff}.notice{padding:12px 14px;border-radius:8px;background:#123a26;border:1px solid #1f6b41;color:#b8f2ce}details{margin-top:16px}pre{white-space:pre-wrap;overflow:auto;background:#0c0f14;padding:12px;border-radius:8px;font-size:.84rem}@media(max-width:650px){.shell{display:block}.links a{margin:10px 8px 0 0}}
 </style>
 </head>
 <body>
@@ -40,6 +40,14 @@ static class CompanionPage
     <div class="part wait" id="part-motion"><strong>Motion</strong><span>checking...</span></div>
     <div class="part wait" id="part-cutover"><strong>Cutover</strong><span>checking...</span></div>
     <div class="part wait" id="part-local"><strong>Local install</strong><span>checking...</span></div>
+  </div>
+  <div class="readout" id="live-readout">
+    <div class="metric wait" id="metric-peers"><strong>Peers</strong><span>?</span></div>
+    <div class="metric wait" id="metric-players"><strong>Players</strong><span>none</span></div>
+    <div class="metric wait" id="metric-motion"><strong>LJ motion</strong><span>0 / 0</span></div>
+    <div class="metric wait" id="metric-cutover"><strong>Cutover</strong><span>unknown</span></div>
+    <div class="metric wait" id="metric-queue"><strong>Queue</strong><span>pending ?</span></div>
+    <div class="metric wait" id="metric-apply"><strong>Ack / apply</strong><span>? / ?</span></div>
   </div>
   <div id="evidence" class="result wait">Current read: waiting for live telemetry.</div>
 </section>
@@ -111,6 +119,13 @@ function part(id,text,level='ok'){
   el.querySelector('span').textContent=text;
 }
 
+function metric(id,text,level='wait'){
+  const el=q('#metric-'+id);
+  if(!el)return;
+  el.className='metric '+level;
+  el.querySelector('span').textContent=text;
+}
+
 function evidence(text,level='wait'){
   const el=q('#evidence');
   el.className='result '+level;
@@ -151,6 +166,17 @@ function signalFrom(live){
     acknowledged: live.acknowledged,
     applied: live.applied
   };
+}
+
+function paintReadout(live){
+  const motionReceived=live.motion_received??0;
+  const motionRelayed=live.motion_relayed??0;
+  metric('peers',String(live.peers??0),(live.peers??0)>0?'ok':'wait');
+  metric('players',live.players||'none',(live.peers??0)>0?'ok':'wait');
+  metric('motion',motionReceived+' recv / '+motionRelayed+' relay',motionReceived>0?'ok':((live.peers??0)>0?'wait':'wait'));
+  metric('cutover',live.cutover||'unknown',live.gateway?'ok':'bad');
+  metric('queue','pending '+(live.cutover_pending??'?')+' / consumers '+(live.active_consumers??'?'),(live.cutover_pending??0)>0?'wait':'ok');
+  metric('apply',(live.acknowledged??'?')+' ack / '+(live.applied??'?')+' applied',live.gateway?'ok':'bad');
 }
 
 function diffSignal(next){
@@ -292,6 +318,8 @@ async function movingParts(){
     const text=received>0?'LJ motion observed / '+details:'native motion only / '+details;
     part('motion',text,received>0?'ok':'wait');
   }catch(e){part('motion','motion telemetry unavailable','bad')}
+
+  paintReadout(live);
 
   if(!live.gateway){
     evidence('Gateway telemetry is unavailable; local update checks may still work, but live network evidence is not trustworthy.','bad');
