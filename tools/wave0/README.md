@@ -9,6 +9,9 @@ tools\wave0\Test-Wave0SyntheticMotion.ps1 -OutputJson captures\wave0-synthetic-m
 
 # Runtime release/readiness alignment across P7, OMEN, and i5
 tools\i5\Test-Wave0Readiness.ps1 -SummaryOnly -OutputJson captures\wave0-readiness.json
+
+# Full live-gate orchestrator; exits WAIT until both clients are joined
+tools\wave0\Start-Wave0LiveGate.ps1 -OutputJson captures\wave0-live-gate\result.json
 ```
 
 Run order before asking for a live movement course:
@@ -21,3 +24,9 @@ Run order before asking for a live movement course:
 
 If either non-human gate fails, stop and use its receipt instead of repeating a
 live join/movement test.
+
+`Start-Wave0LiveGate.ps1` is the preferred live command once both clients are
+joined. It runs the two non-human gates, checks P7 peer count, starts the
+two-machine capture, sends one bounded Companion motion command, and writes a
+single receipt. If fewer than two peers are visible, it writes `wait_for_two_real_clients`
+and does not move either character.

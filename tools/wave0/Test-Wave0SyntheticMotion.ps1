@@ -95,7 +95,11 @@ $receipt = [ordered]@{
 }
 
 if ($OutputJson) {
-    $path = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputJson))
+    $path = if ([IO.Path]::IsPathRooted($OutputJson)) {
+        [IO.Path]::GetFullPath($OutputJson)
+    } else {
+        [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputJson))
+    }
     $dir = Split-Path -Parent $path
     if ($dir) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
     $json = $receipt | ConvertTo-Json -Depth 8
