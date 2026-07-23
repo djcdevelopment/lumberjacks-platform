@@ -457,6 +457,15 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         }
 
         var finishedUtc = DateTimeOffset.UtcNow;
+        var verdict = Verdict(badSamples, maxPeers, firstMotionReceived, lastMotionReceived);
+        var counterRanges = new TransportCaptureCounterRanges(
+            CounterRange(firstPeers, lastPeers),
+            CounterRange(firstMotionReceived, lastMotionReceived),
+            CounterRange(firstMotionRelayed, lastMotionRelayed),
+            CounterRange(firstPending, lastPending),
+            CounterRange(firstActiveConsumers, lastActiveConsumers),
+            CounterRange(firstAcknowledged, lastAcknowledged),
+            CounterRange(firstApplied, lastApplied));
         var summary = new TransportCaptureSummary(
             1,
             runId,
@@ -472,20 +481,14 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             firstMotionReceived,
             lastMotionReceived,
             firstMotionReceived.HasValue && lastMotionReceived.HasValue ? lastMotionReceived.Value - firstMotionReceived.Value : null,
-            Verdict(badSamples, maxPeers, firstMotionReceived, lastMotionReceived),
+            verdict,
             finalCurrentRead,
             samplesPath,
             summaryPath,
             observedPlayers.ToList(),
-            new TransportCaptureCounterRanges(
-                CounterRange(firstPeers, lastPeers),
-                CounterRange(firstMotionReceived, lastMotionReceived),
-                CounterRange(firstMotionRelayed, lastMotionRelayed),
-                CounterRange(firstPending, lastPending),
-                CounterRange(firstActiveConsumers, lastActiveConsumers),
-                CounterRange(firstAcknowledged, lastAcknowledged),
-                CounterRange(firstApplied, lastApplied)),
-            captureIdentity);
+            counterRanges,
+            captureIdentity,
+            Interpret(verdict, badSamples, maxPeers, observedPlayers.Count, counterRanges));
         await File.WriteAllTextAsync(summaryPath, JsonSerializer.Serialize(summary, Json.Options), cancellationToken);
         return summary;
     }
@@ -586,6 +589,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
                 null,
                 null,
                 null),
+            interpretation = summary.interpretation ?? Interpret(verdict, summary.bad_sample_count, summary.max_peers, summary.observed_players?.Count ?? 0, summary.counter_ranges),
         };
     }
 
@@ -596,6 +600,43 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         "native_motion_only" => new("wait", $"Valheim had up to {maxPeers} peer(s), but Lumberjacks motion counters did not advance. Visible player movement was native Valheim for this capture."),
         _ => new("wait", "No active peer window was captured."),
     };
+
+    static TransportCaptureInterpretation Interpret(
+        string verdict,
+        int badSamples,
+        int maxPeers,
+        int observedPlayerCount,
+        TransportCaptureCounterRanges? counters)
+    {
+        var acknowledgedDelta = counters?.acknowledged?.delta ?? 0;
+        var appliedDelta = counters?.applied?.delta ?? 0;
+        var pendingDelta = counters?.pending?.delta ?? 0;
+        var motionDelta = counters?.motion_received?.delta ?? 0;
+
+        return verdict switch
+        {
+            "incomplete_telemetry" => new(
+                "bad",
+                "Telemetry was incomplete during this capture.",
+                "Do not use this run as a transport verdict. Re-run capture after Gateway, Valheim, cutover, and motion tiles are all readable.",
+                $"Bad samples: {badSamples}."),
+            "lumberjacks_motion_observed" => new(
+                "ok",
+                "Lumberjacks motion frames were observed during this capture.",
+                "Compare in-game movement feel against the motion counter deltas and samples.jsonl; this run can support motion-lane debugging.",
+                $"Motion received delta: {motionDelta}; max peers: {maxPeers}; observed players: {observedPlayerCount}."),
+            "native_motion_only" => new(
+                "wait",
+                "Valheim peers were present, but Lumberjacks motion counters did not advance.",
+                "Treat visible player movement as native Valheim for this window. Use this as evidence that the remaining movement behavior is outside the Lumberjacks motion lane.",
+                $"Max peers: {maxPeers}; acknowledged delta: {acknowledgedDelta}; applied delta: {appliedDelta}; pending delta: {pendingDelta}."),
+            _ => new(
+                "wait",
+                "No active peer window was captured.",
+                "Start capture before joining or moving two clients. The useful run begins when peer count rises above zero.",
+                "All peer and motion counters stayed at zero."),
+        };
+    }
 
     static int IntValue(JsonElement? element, string name, int fallback = 0)
     {
@@ -713,7 +754,8 @@ sealed record TransportCaptureIdentity(
     string? valheim_server_state,
     string? cutover_mode,
     string? enrollment_manifest_id);
-sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null, TransportCaptureIdentity? capture_identity = null);
+sealed record TransportCaptureInterpretation(string level, string headline, string next_action, string evidence);
+sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null, TransportCaptureIdentity? capture_identity = null, TransportCaptureInterpretation? interpretation = null);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
 sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
 sealed class CompanionState

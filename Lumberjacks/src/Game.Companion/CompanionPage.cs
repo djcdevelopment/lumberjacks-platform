@@ -189,6 +189,16 @@ function identityLine(identity){
   return parts.join(' · ')||'identity unknown';
 }
 
+function levelClass(level){
+  return ['ok','wait','bad'].includes(level)?level:'wait';
+}
+
+function interpretationBlock(i){
+  if(!i)return '';
+  const level=levelClass(i.level);
+  return '<p><strong class="'+level+'">'+esc(i.headline||'No interpretation recorded.')+'</strong><br>'+esc(i.next_action||'')+'<br><span class="muted">'+esc(i.evidence||'')+'</span></p>';
+}
+
 function paint(){
   let v=state.valheim,p=state.profile;
   setCheck('c-valheim',v.found);
@@ -333,12 +343,13 @@ async function captureTransport(){
     let r=await fetch('/api/v0/companion/transport-capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({duration_seconds:60,interval_seconds:5,label:'companion-ui'})});
     let d=await r.json();
     if(!r.ok)throw d;
-    const level=d.bad_sample_count>0?'wait':(d.motion_received_delta>0?'ok':'wait');
+    const level=levelClass(d.interpretation?.level||(d.bad_sample_count>0?'wait':(d.motion_received_delta>0?'ok':'wait')));
     q('#capture-result').className='result '+level;
     const base='/api/v0/companion/transport-capture/'+encodeURIComponent(d.run_id)+'/';
     const players=(d.observed_players||[]).join(', ')||'none';
     const counters=counterLine(d.counter_ranges)||'no counters';
     q('#capture-result').innerHTML='<strong>Capture complete: '+esc(d.verdict||'unknown')+'</strong><p>'+esc(d.final_current_read?.text||'No final read recorded.')+'</p><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>'+esc(identityLine(d.capture_identity))+'</p><p>Players: '+esc(players)+'</p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · '+esc(counters)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
+    if(d.interpretation)q('#capture-result').insertAdjacentHTML('afterbegin',interpretationBlock(d.interpretation));
     await captureHistory();
   }catch(e){
     q('#capture-result').className='result bad';
@@ -362,6 +373,8 @@ async function captureHistory(){
       const counters=counterLine(c.counter_ranges)||('peers '+c.max_peers+' · motion delta '+c.motion_received_delta);
       return '<p><strong>'+esc(c.verdict||'unknown')+'</strong> · <span class="release">'+esc(c.run_id)+'</span><br>'+esc(c.final_current_read?.text||'No final read recorded.')+'<br>'+esc(identityLine(c.capture_identity))+'<br>players '+esc(players)+'<br>'+esc(counters)+' · samples '+esc(c.sample_count)+'<br><a href="'+base+'summary.json">summary</a> · <a href="'+base+'samples.jsonl">samples</a></p>';
     }).join('');
+    const interpreted=captures.filter(c=>c.interpretation).map(c=>'<p><span class="release">'+esc(c.run_id)+'</span>'+interpretationBlock(c.interpretation)+'</p>').join('');
+    if(interpreted)q('#capture-history').insertAdjacentHTML('beforeend','<strong>Recent interpretations</strong>'+interpreted);
   }catch(e){
     q('#capture-history').className='result bad';
     q('#capture-history').textContent='Could not load recent captures: '+JSON.stringify(e);
