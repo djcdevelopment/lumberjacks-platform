@@ -908,8 +908,8 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             IntValue(element, "motion_player_index_lookup_hits"),
             IntValue(element, "motion_player_index_rebuilds"),
             IntValue(element, "motion_player_index_size"),
-            DoubleValue(element, "rtt_ms"),
-            DoubleValue(element, "jitter_ms"));
+            DoubleValue(element, "server_ping_age_ms") ?? DoubleValue(element, "rtt_ms"),
+            DoubleValue(element, "server_ping_age_jitter_ms") ?? DoubleValue(element, "jitter_ms"));
 
     static TransportCaptureInterpretation Interpret(
         string verdict,
@@ -1113,7 +1113,7 @@ sealed record TransportCaptureIdentity(
     string? cutover_mode,
     string? enrollment_manifest_id);
 sealed record TransportCaptureInterpretation(string level, string headline, string next_action, string evidence);
-sealed record TransportLocalMotionSnapshot(bool? apply_enabled, int received, int applied, int unknown_zdos, int direct_lookup_hits, int zdo_object_lookup_hits, int player_index_lookup_hits, int player_index_rebuilds, int player_index_size, double? rtt_ms, double? jitter_ms);
+sealed record TransportLocalMotionSnapshot(bool? apply_enabled, int received, int applied, int unknown_zdos, int direct_lookup_hits, int zdo_object_lookup_hits, int player_index_lookup_hits, int player_index_rebuilds, int player_index_size, double? server_ping_age_ms, double? server_ping_age_jitter_ms);
 sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null, TransportCaptureIdentity? capture_identity = null, TransportCaptureInterpretation? interpretation = null, string? first_motion_state = null, string? last_motion_state = null, List<string>? observed_motion_states = null, bool? final_motion_websocket_connected = null, bool? final_motion_udp_ready = null, string? final_motion_last_error = null, TransportLocalMotionSnapshot? final_local_motion = null);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
 sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
