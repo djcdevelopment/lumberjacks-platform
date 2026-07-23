@@ -82,11 +82,12 @@ static class CompanionPage
 
 <section class="card">
   <h2>Capture transport evidence</h2>
-  <p class="muted">Start this before a two-client movement test. Companion records Gateway, Valheim, cutover, and motion counters into local JSONL evidence.</p>
+  <p class="muted">Start this before a two-client movement test. Companion records Gateway, Valheim, cutover, and motion counters into local JSONL evidence. Use burst mode for sprint/stutter-step tests.</p>
   <p>
-    <button id="capture-smoke" onclick="captureTransport(15,'smoke')">15s smoke</button>
-    <button id="capture" onclick="captureTransport(60,'movement')">60s movement</button>
-    <button id="capture-long" onclick="captureTransport(180,'session')">180s session</button>
+    <button id="capture-smoke" onclick="captureTransport(15,5,'smoke')">15s smoke</button>
+    <button id="capture-burst" onclick="captureTransport(30,1,'movement-burst')">30s burst / 1s</button>
+    <button id="capture" onclick="captureTransport(60,5,'movement')">60s movement</button>
+    <button id="capture-long" onclick="captureTransport(180,5,'session')">180s session</button>
   </p>
   <div id="capture-result" class="result">No capture yet.</div>
   <div id="capture-history" class="result">Loading recent captures...</div>
@@ -376,14 +377,14 @@ async function rollback(){
 }
 
 function setCaptureButtons(disabled){
-  for(const id of ['capture-smoke','capture','capture-long'])q('#'+id).disabled=disabled;
+  for(const id of ['capture-smoke','capture-burst','capture','capture-long'])q('#'+id).disabled=disabled;
 }
 
-async function captureTransport(seconds,label){
+async function captureTransport(seconds,interval,label){
   setCaptureButtons(true);
-  q('#capture-result').textContent='Capturing for '+seconds+' seconds ('+label+'). Move both clients now; leave this browser tab open.';
+  q('#capture-result').textContent='Capturing for '+seconds+' seconds at '+interval+'s intervals ('+label+'). Move both clients now; leave this browser tab open.';
   try{
-    let r=await fetch('/api/v0/companion/transport-capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({duration_seconds:seconds,interval_seconds:5,label:'companion-ui-'+label})});
+    let r=await fetch('/api/v0/companion/transport-capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({duration_seconds:seconds,interval_seconds:interval,label:'companion-ui-'+label})});
     let d=await r.json();
     if(!r.ok)throw d;
     const level=levelClass(d.interpretation?.level||(d.bad_sample_count>0?'wait':(d.motion_received_delta>0?'ok':'wait')));
