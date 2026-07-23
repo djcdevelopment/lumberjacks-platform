@@ -35,6 +35,7 @@ static class EnrollmentPages
         "<h1>Download the latest mod files</h1>" +
         "<p>Sign in with Steam and download the current alpha pack. Installed clients keep their " +
         "existing ComfyNetworkSense config and access key; recovery is a separate operator action.</p>" +
+        ReleaseHistoryTable() +
         "<p><a class=\"btn\" href=\"" + WebUtility.HtmlEncode(loginUrl) + "\">Sign in with Steam</a></p>",
         withStatus: true);
 
@@ -73,6 +74,33 @@ static class EnrollmentPages
             "<body><main class=\"card\">" + banner + inner + "</main>" + script + "</body></html>";
     }
 
+    static string ReleaseHistoryTable()
+    {
+        var current = Environment.GetEnvironmentVariable("LUMBERJACKS_VERSION") ?? "unknown";
+        var rows = new (string WhenUtc, string Release, string Mod, string Notes)[]
+        {
+            ("2026-07-23 09:11Z", "m16-updatehistory-20260723-r1", "0.5.35", "This pre-signin page adds release history and no-store cache headers; admits m15 mod."),
+            ("2026-07-23 08:47Z", "m15-hudrecover-20260723-r1", "0.5.35", "Recovery tab remains visible even when an older config disabled the strip."),
+            ("2026-07-23 08:22Z", "m14-hudtoggle-20260723-r1", "0.5.34", "Transport strip starts collapsed; side NET SHOW/HIDE tab added."),
+            ("2026-07-23 08:03Z", "m13-portal-20260723-r1", "0.5.33", "Steam-authenticated latest-update download page deployed."),
+            ("2026-07-23 06:45Z", "m12-motionauthws-20260722-r1", "0.5.33", "Gateway WebSocket motion admission fix; admitted m12 client mod."),
+        };
+
+        var html =
+            "<section class=\"release-box\"><h2>Recent alpha releases</h2>" +
+            "<p class=\"small\">This page is served by Gateway release <code>" + WebUtility.HtmlEncode(current) +
+            "</code>. If the table does not change after a refresh, the browser or proxy is serving stale HTML.</p>" +
+            "<table class=\"releases\"><thead><tr><th>UTC</th><th>Release</th><th>Mod</th><th>Why it changed</th></tr></thead><tbody>";
+        foreach (var row in rows)
+        {
+            var active = string.Equals(row.Release, current, StringComparison.Ordinal) ? " class=\"current\"" : string.Empty;
+            html += "<tr" + active + "><td>" + WebUtility.HtmlEncode(row.WhenUtc) + "</td><td><code>" +
+                WebUtility.HtmlEncode(row.Release) + "</code></td><td>" + WebUtility.HtmlEncode(row.Mod) + "</td><td>" +
+                WebUtility.HtmlEncode(row.Notes) + "</td></tr>";
+        }
+        return html + "</tbody></table></section>";
+    }
+
     // Polls the public, un-rate-limited cutover snapshot and flips the banner. `stale===false` means a
     // heartbeat arrived within the last 15s — the server is reporting and joinable; anything else
     // (stale, or fetch failure = VM down / network) is treated as offline.
@@ -97,6 +125,9 @@ static class EnrollmentPages
         "padding:26px 30px;box-shadow:0 10px 40px rgba(0,0,0,.35)}" +
         "h1{margin:.1em 0 .4em;font-size:1.5rem}h2{font-size:1rem;margin:1.4em 0 .4em;color:#aab2c0}" +
         "p{margin:.6em 0}code{background:#0f1115;border:1px solid #2a2f3a;border-radius:6px;padding:1px 6px;font-size:.9em}" +
+        "table{width:100%;border-collapse:collapse;margin:.7em 0 1em;font-size:.82em}th,td{border-top:1px solid #2a2f3a;padding:7px 6px;text-align:left;vertical-align:top}" +
+        "th{color:#aab2c0;font-weight:700}.release-box{margin:18px 0;padding:12px;border:1px solid #2a2f3a;border-radius:10px;background:#12151b}" +
+        ".release-box h2{margin:0 0 .4em}.releases tr.current{background:#123a26}.releases tr.current td:first-child:before{content:'current ';color:#7ee2a8;font-weight:700}" +
         "a{color:#7aa2ff}ol{padding-left:1.2em}" +
         ".btn{display:inline-block;font-weight:600;cursor:pointer;background:#3b82f6;color:#fff;border:0;text-decoration:none;" +
         "border-radius:10px;padding:12px 20px;margin:6px 0}.btn:hover{background:#2f6fe0}" +

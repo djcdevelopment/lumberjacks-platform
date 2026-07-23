@@ -100,6 +100,9 @@ public static class SteamEnrollmentEndpoints
 
         app.MapGet("/join/update", (HttpRequest request) =>
         {
+            request.HttpContext.Response.Headers.CacheControl = "no-store, max-age=0";
+            request.HttpContext.Response.Headers.Pragma = "no-cache";
+            request.HttpContext.Response.Headers.Expires = "0";
             var login = SteamLoginUrl(request, "/join/update/steam-callback");
             return Results.Text(EnrollmentPages.UpdatePage(login), "text/html");
         }).RequireRateLimiting("join");

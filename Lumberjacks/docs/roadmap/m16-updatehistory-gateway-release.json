@@ -1,0 +1,35 @@
+{
+  "schema": "comfy-p7-gateway-release/v1",
+  "image_release_id": "m16-updatehistory-20260723-r1",
+  "admitted_mod_release": "m15-hudrecover-20260723-r1",
+  "source_commit": "pending-release-commit",
+  "gateway_image": "sha256:03ffa83951c0fed7273b143acfe3e97b7c41148b506c546cc8cdc9296283ba0e",
+  "mod": {
+    "version": "0.5.35",
+    "release_id": "m15-hudrecover-20260723-r1",
+    "sha256": "9a8ea06923d711f97f275506cbf14969ee06dc81376e97ad97493f53b32d26d2",
+    "changed": false
+  },
+  "verification": {
+    "tests": {
+      "contracts": 123,
+      "simulation": 250,
+      "gateway": 194,
+      "failed": 0
+    },
+    "image_admits_mod_release": "m15-hudrecover-20260723-r1",
+    "update_page_status": 200,
+    "update_page_cache_control": "no-store, max-age=0",
+    "manifest_endpoint_release": "m16-updatehistory-20260723-r1",
+    "manifest_endpoint_mod_release": "m15-hudrecover-20260723-r1"
+  },
+  "deployment": {
+    "target": "comfy-lumberjacks-p7",
+    "gateway_only": true,
+    "backup": "/mnt/comfy-p7/backups/gateway-updatehistory/20260723T091331Z"
+  },
+  "limitations": [
+    "The release history table is currently a small static operator-maintained list in the Gateway page renderer.",
+    "The update zip still requires Steam OpenID and Chrome may block repeated unsigned PowerShell zip downloads until the operator allows the download."
+  ]
+}
