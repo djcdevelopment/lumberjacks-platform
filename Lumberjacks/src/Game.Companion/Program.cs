@@ -413,7 +413,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
 
             if (valheim.ok)
             {
-                var peers = IntValue(valheim.body, "peers", IntValue(valheim.body, "peer_count"));
+                var peers = PeerCount(valheim.body);
                 if (peers > maxPeers) maxPeers = peers;
                 firstPeers ??= peers;
                 lastPeers = peers;
@@ -549,7 +549,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         if (!motion.ok) return new("bad", "Motion telemetry unavailable; use the in-game strip and trace before interpreting movement.");
         var received = IntValue(motion.body, "received");
         if (received > 0) return new("ok", "Lumberjacks motion frames are arriving.");
-        var peers = IntValue(valheim.body, "peers", IntValue(valheim.body, "peer_count"));
+        var peers = PeerCount(valheim.body);
         if (peers > 0) return new("wait", $"Valheim has {peers} peer(s), but Lumberjacks motion counters are zero. Visible player movement is native Valheim for this run.");
         return new("wait", "P7 is up with no active peers. Join two clients, then watch Valheim peers and Motion counters change together.");
     }
@@ -595,6 +595,11 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             _ => fallback,
         };
     }
+
+    static int PeerCount(JsonElement? valheim) =>
+        IntValue(valheim, "peers",
+            IntValue(valheim, "peer_count",
+                IntValue(ObjectProperty(valheim, "heartbeat"), "peer_count")));
 
     static JsonElement? ObjectProperty(JsonElement? element, string name)
     {

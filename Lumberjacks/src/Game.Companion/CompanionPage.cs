@@ -128,6 +128,14 @@ function playerNames(valheim){
   return players.map(p=>p.name||p.player_name||p.character_name||p.steam_name||p.id||'unknown').join(', ');
 }
 
+function peerCount(valheim){
+  return valheim?.peers??valheim?.peer_count??valheim?.heartbeat?.peer_count??0;
+}
+
+function valheimStatus(valheim){
+  return valheim?.status??valheim?.server_state??valheim?.heartbeat?.server_state??'unknown';
+}
+
 function signalFrom(live){
   return {
     gateway: live.gateway_version||'unknown',
@@ -234,9 +242,9 @@ async function movingParts(){
   try{
     const v=await get('/api/v0/telemetry/valheim');
     live.valheim=!v.stale;
-    live.peers=v.peers??0;
+    live.peers=peerCount(v);
     live.players=playerNames(v)||'none';
-    const text=(v.status||'unknown')+' / '+(v.peers??0)+' peers';
+    const text=valheimStatus(v)+' / '+live.peers+' peers';
     part('valheim',text,v.stale?'wait':'ok');
   }catch(e){part('valheim','heartbeat unavailable','bad')}
 
