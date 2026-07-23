@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-23T07:49:39.360Z</span>
+        <span>Updated 2026-07-23T08:03:31.651Z</span>
         <span>ComfyNetworkSense 0.5.33</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -843,7 +843,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260723074939-added-steam-bound-latest-mod-update-downloads-th">
+        <div class="journal"><article class="journal-entry" id="note-20260723080331-deployed-the-steam-bound-portal-update-gateway-i">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-23T08:03:31.651Z">2026-07-23T08:03:31.651Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M2</span>
+      </div>
+      <h3>Deployed the Steam-bound portal update Gateway image to P7.</h3>
+      <p><strong>Impact:</strong> P7 now serves the latest modpack manifest and Steam-authenticated update download from m13-portal while continuing to admit the frozen m12-motion client mod.</p>
+      <details><summary>Verification (1)</summary><ul><li>P7 health returned ok, the running Gateway image matched sha256:9a64656971151987af409676921fc8b476a852dbfea0f8b24e784e338dff3fd4, /join/update returned 200, and /api/v0/valheim/modpack/manifest reported release m13-portal-20260723-r1.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/roadmap/m13-portal-gateway-release.json</code> <code>infra/gcp/p7/docker-compose.yml</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260723074939-added-steam-bound-latest-mod-update-downloads-th">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

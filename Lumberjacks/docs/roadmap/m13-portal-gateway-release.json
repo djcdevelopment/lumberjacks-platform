@@ -1,0 +1,37 @@
+{
+  "schema": "comfy-p7-gateway-release/v1",
+  "image_release_id": "m13-portal-20260723-r1",
+  "admitted_mod_release": "m12-motion-20260722-r1",
+  "source_commit": "8a13839",
+  "gateway_image": "sha256:9a64656971151987af409676921fc8b476a852dbfea0f8b24e784e338dff3fd4",
+  "oci_archive_sha256": "d967c7ffd822e5c239ee6a28705832633cbc05aa734516a614393b64866bd15b",
+  "mod": {
+    "version": "0.5.33.0",
+    "sha256": "5b4a19fd12751d04aec7622fd83eca91fd07ed96e382a07ec218813d4af7df67",
+    "changed": false
+  },
+  "verification": {
+    "tests": {
+      "contracts": 123,
+      "simulation": 250,
+      "gateway": 194,
+      "failed": 0
+    },
+    "image_admits_mod_release": "m12-motion-20260722-r1",
+    "manifest_endpoint_release": "m13-portal-20260723-r1",
+    "update_page_status": 200
+  },
+  "deployment": {
+    "target": "comfy-lumberjacks-p7",
+    "gateway_only": true,
+    "health": "ok",
+    "backup": "/mnt/comfy-p7/backups/gateway-portal/20260723T080103Z",
+    "seat_gate": "disabled",
+    "compatibility_seat_capacity": 0
+  },
+  "limitations": [
+    "The mod pack template hash is reported by the live Gateway manifest and remains a separate artifact from the Gateway image.",
+    "The update download requires Steam OpenID in a browser; pull-updater automation is still future work.",
+    "Anonymous traffic through Caddy still inherits private-socket capabilities and is stop-ship before widening."
+  ]
+}

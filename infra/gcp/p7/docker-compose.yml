@@ -6,6 +6,7 @@ x-lumberjacks-telemetry: &lumberjacks-telemetry
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
   OTEL_METRIC_EXPORT_INTERVAL: "10000"
   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=gcp-p7,service.namespace=lumberjacks"
+  LUMBERJACKS_VERSION: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
   OTEL_SERVICE_VERSION: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
   COMFY_NETWORKSENSE_VERSION: "${COMFY_NETWORKSENSE_VERSION:-unknown}"
   VALHEIM_TELEMETRY_KEY: "${VALHEIM_TELEMETRY_KEY:-}"
@@ -63,6 +64,7 @@ services:
       BoundaryEvents__FlushIntervalMilliseconds: "${BOUNDARY_EVENTS_FLUSH_INTERVAL_MS:-1000}"
       BoundaryEvents__Release: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
       BoundaryEvents__Instance: "${HOSTNAME:-p7-gateway}"
+      LUMBERJACKS_ROADMAP_HTML: "${LUMBERJACKS_ROADMAP_HTML:-/var/lib/lumberjacks/roadmap/roadmap.html}"
       # Preferred operator-facing switch for the temporary alpha reservation gate. `disabled` means
       # known testers are not artificially capped by Gateway before Valheim admits them; `one-seat`
       # restores the original conservative reservation. Blank means "use the numeric fallback below."
@@ -90,6 +92,7 @@ services:
       - /mnt/comfy-p7/lumberjacks/enrollment:/var/lib/lumberjacks/enrollment
       - /mnt/comfy-p7/lumberjacks/boundary-events:/var/lib/lumberjacks/boundary-events
       - /mnt/comfy-p7/lumberjacks/modpack:/var/lib/lumberjacks/modpack:ro
+      - /mnt/comfy-p7/lumberjacks/roadmap:/var/lib/lumberjacks/roadmap:ro
     depends_on:
       postgres:
         condition: service_healthy
