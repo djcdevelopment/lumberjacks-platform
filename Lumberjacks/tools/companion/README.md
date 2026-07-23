@@ -64,8 +64,26 @@ For the current private-alpha GitHub release channel, build and publish both art
 ```
 
 Use `-DryRun` to inspect the generated package, hash manifest, and GitHub command first. GitHub
-release assets are the stable bootstrap download; frequent Valheim DLL/config updates remain on
-the authenticated Gateway client-pull lane.
+release assets are the operator archive; private GitHub releases are not a clean alpha-tester
+download path.
+
+Publish the same credential-free zip to P7 for testers:
+
+```powershell
+cd C:\work\baseline
+.\infra\gcp\p7\scripts\Publish-CompanionBootstrap.ps1 -ReleaseId companion-bootstrap-20260723-r11
+```
+
+That writes a hash-verified runtime pointer under the existing Gateway artifact mount, without
+embedding the zip in a Gateway image. Once a Gateway image with the public bootstrap endpoints is
+deployed, testers use:
+
+- `/join/update` for the human-facing download box.
+- `/api/v0/companion/bootstrap/manifest` for the public manifest.
+- `/api/v0/companion/bootstrap/package` for the public zip.
+
+Frequent Valheim DLL/config updates remain on the authenticated Gateway client-pull lane inside
+Companion.
 
 `latest-bootstrap.json` is the stable machine-readable pointer for the current tester bootstrap.
 `Publish-CompanionBootstrap.ps1` rewrites it after a successful upload with the immutable release

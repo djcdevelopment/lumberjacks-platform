@@ -51,6 +51,24 @@ public static class SteamEnrollmentEndpoints
             return manifest is null ? error! : Results.Ok(manifest);
         });
 
+        // Public by design: this is the generic Docker Companion bootstrap. It contains no Steam
+        // credential, Valheim access key, or machine-specific config. Serving it through the same
+        // runtime artifact mount as the modpack gives testers a no-GitHub-auth download while
+        // keeping the package out of the Gateway image.
+        app.MapGet("/api/v0/companion/bootstrap/manifest", (HttpRequest request) =>
+        {
+            var manifest = TryBuildCompanionBootstrapManifest(request, out var error);
+            return manifest is null ? error! : Results.Ok(manifest);
+        });
+
+        app.MapGet("/api/v0/companion/bootstrap/package", () =>
+        {
+            if (!CompanionBootstrapCatalog.TryGetCurrent(out var release, out var catalogError))
+                return Results.Problem(catalogError, statusCode: 503);
+            var fileName = $"Lumberjacks-Companion-{SafeFileToken(release.release)}-{release.package_sha256[..12]}.zip";
+            return Results.File(File.OpenRead(release.package_file), "application/zip", fileName, enableRangeProcessing: true);
+        });
+
         // The Companion's client-pull lane. The access middleware gates this exact route as
         // Consumer, so an installed client presents its existing enrollment/key and downloads the
         // current immutable artifact. The file is read at request time: publishing a new pointer
@@ -207,6 +225,17 @@ public static class SteamEnrollmentEndpoints
             return null;
         }
         return ModpackReleaseCatalog.ToPublicManifest(release, PublicBaseUrl(request));
+    }
+
+    static object? TryBuildCompanionBootstrapManifest(HttpRequest request, out IResult? error)
+    {
+        error = null;
+        if (!CompanionBootstrapCatalog.TryGetCurrent(out var release, out var catalogError))
+        {
+            error = Results.Problem(catalogError, statusCode: 503);
+            return null;
+        }
+        return CompanionBootstrapCatalog.ToPublicManifest(release, PublicBaseUrl(request));
     }
 
     static byte[]? TryBuildConfigPreservingUpdatePack(out IResult? error)

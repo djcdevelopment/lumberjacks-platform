@@ -35,6 +35,7 @@ static class EnrollmentPages
         "<h1>Download the latest mod files</h1>" +
         "<p>Sign in with Steam and download the current alpha pack. Installed clients keep their " +
         "existing ComfyNetworkSense config and access key; recovery is a separate operator action.</p>" +
+        CompanionBootstrapBox() +
         ReleaseHistoryTable() +
         "<p><a class=\"btn\" href=\"" + WebUtility.HtmlEncode(loginUrl) + "\">Sign in with Steam</a></p>",
         withStatus: true);
@@ -107,6 +108,28 @@ static class EnrollmentPages
                 WebUtility.HtmlEncode(row.Notes) + "</td></tr>";
         }
         return html + "</tbody></table></section>";
+    }
+
+    static string CompanionBootstrapBox()
+    {
+        var available = CompanionBootstrapCatalog.TryGetCurrent(out var release, out var error);
+        var html = "<section class=\"release-box\"><h2>Companion local dashboard</h2>";
+        if (!available)
+        {
+            return html + "<p class=\"small\">Companion bootstrap is not published yet: " +
+                WebUtility.HtmlEncode(error ?? "unknown") + ".</p></section>";
+        }
+
+        return html +
+            "<p>New machine? Download the public Companion bootstrap first. It contains no Steam " +
+            "credential or Valheim access key; it starts the local <code>127.0.0.1:8080</code> dashboard, " +
+            "then the dashboard pulls authenticated mod updates using your installed config.</p>" +
+            "<p><a class=\"btn\" href=\"/api/v0/companion/bootstrap/package\">Download Companion bootstrap</a> " +
+            "<a href=\"/api/v0/companion/bootstrap/manifest\">manifest</a></p>" +
+            "<p class=\"small\">Current bootstrap <code>" + WebUtility.HtmlEncode(release.release) +
+            "</code> · sha256 <code>" + WebUtility.HtmlEncode(release.package_sha256[..12]) +
+            "…</code> · entrypoint <code>" + WebUtility.HtmlEncode(release.entrypoint) +
+            "</code>.</p></section>";
     }
 
     // Polls the public, un-rate-limited cutover snapshot and flips the banner. `stale===false` means a
