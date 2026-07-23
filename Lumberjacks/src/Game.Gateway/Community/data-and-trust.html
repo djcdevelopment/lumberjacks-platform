@@ -41,7 +41,8 @@ smoothly. You own your gameplay, which is why everything here is strictly opt-in
 <h2>What is captured</h2>
 <p><strong>Gameplay activity.</strong> If you turn capture on, combat emits events
 (<code>first_hit</code>, <code>killing_blow</code>, <code>weapon_used</code>) with the creature's
-category, your weapon-skill name, whether the attack was <code>ranged</code>, and your player id. A
+category, your weapon-skill name, whether the attack was <code>ranged</code>, and your player id
+(sent as <code>actor_id</code>). A
 completed quest (<code>quest_completed</code>) also records the quest id, your guild, category, and
 bot command. Each event carries a UTC timestamp, a world id, a region id, and a non-identifying
 <code>detail</code> label.</p>

@@ -1,0 +1,36 @@
+{
+  "schema": "comfy-p7-gateway-release/v1",
+  "image_release_id": "m21-datatrustcopy-20260723-r1",
+  "admitted_mod_release": "m15-hudrecover-20260723-r1",
+  "source_commit": "pending-release-commit",
+  "gateway_image": "sha256:6541a9a909a45bdeb275d4e758d9e9909af3df4399fdde5092c3916754c6d477",
+  "archive_sha256": "5b730c6c83cab526f4395cb82eea645b06d1533f280f882b3d7bb87e962a0427",
+  "archive_size_bytes": 96574976,
+  "mod": {
+    "version": "0.5.35",
+    "release_id": "m15-hudrecover-20260723-r1",
+    "changed": false
+  },
+  "verification": {
+    "tests": {
+      "contracts": 123,
+      "simulation": 250,
+      "gateway": 194,
+      "failed": 0
+    },
+    "image_admits_mod_release": "m15-hudrecover-20260723-r1",
+    "p7_gateway_health": 200,
+    "durable_gateway_pin_count": 1,
+    "running_gateway_image": "lumberjacks-gateway:m21-datatrustcopy-20260723-r1",
+    "running_gateway_image_id": "sha256:6541a9a909a45bdeb275d4e758d9e9909af3df4399fdde5092c3916754c6d477",
+    "public_data_and_trust_actor_id_wording": true
+  },
+  "deployment": {
+    "target": "comfy-lumberjacks-p7",
+    "gateway_only": true,
+    "status": "deployed",
+    "promotion_method": "local docker save + archive SHA-256 + docker load + durable image pin + compose up --no-build --no-deps gateway",
+    "previous_gateway_image": "lumberjacks-gateway:m20-datatrust-20260723-r1",
+    "environment_backup": "/mnt/comfy-p7/backups/gateway-image-promote/20260723T124845Z/environment"
+  }
+}
