@@ -1,0 +1,34 @@
+{
+  "schema": "comfy-p7-gateway-release/v1",
+  "image_release_id": "m18-companion-20260723-r1",
+  "admitted_mod_release": "m15-hudrecover-20260723-r1",
+  "source_commit": "pending-release-commit",
+  "gateway_image": "sha256:69b133ca19828e0cee8c0a39f61501018f6730241bff2f10f6f4560f3ac2a33a",
+  "mod": {
+    "version": "0.5.35",
+    "release_id": "m15-hudrecover-20260723-r1",
+    "sha256": "9a8ea06923d711f97f275506cbf14969ee06dc81376e97ad97493f53b32d26d2",
+    "changed": false
+  },
+  "verification": {
+    "tests": {
+      "contracts": 123,
+      "simulation": 250,
+      "gateway": 194,
+      "failed": 0
+    },
+    "image_admits_mod_release": "m15-hudrecover-20260723-r1",
+    "companion_health": 200,
+    "companion_status": 200,
+    "runtime_manifest_behavior": "Gateway reads current.json and verifies the referenced package hash for every manifest or package request."
+  },
+  "deployment": {
+    "target": "comfy-lumberjacks-p7",
+    "gateway_only": true,
+    "status": "pending_p7_ssh_recovery"
+  },
+  "limitations": [
+    "P7 SSH/IAP failed to connect to port 22 during this cut, so this record describes a verified local release artifact, not a deployed P7 release.",
+    "First-install Steam enrollment remains browser based; the Companion claims an already-installed local enrollment and uses it for ordinary client-pull updates."
+  ]
+}

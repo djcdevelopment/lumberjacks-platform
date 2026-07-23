@@ -58,6 +58,10 @@ public static class ValheimAccessPolicy
         // client (consumer+telemetry) must not be able to inject/spoof gameplay events.
         ("POST", "/valheim/events", ValheimCapability.Producer),
         ("GET", "/api/v0/valheim/enrollment/me", ValheimCapability.Consumer),
+        // Companion client-pull update package. It is not public: the installed enrollment
+        // credential is the standing authorization, so ordinary updates never require another
+        // Steam browser round-trip or expose the alpha package as an anonymous download.
+        ("GET", "/api/v0/valheim/modpack/package", ValheimCapability.Consumer),
         // Per-enrollment telemetry snapshot; self-scoped inside the endpoint.
         ("GET", "/api/v0/valheim/enrollment/", ValheimCapability.Consumer),
         ("POST", "/api/v0/enrollment/invites", ValheimCapability.Admin),
@@ -69,6 +73,7 @@ public static class ValheimAccessPolicy
     public static bool IsGated(HttpContext context) =>
         context.WebSockets.IsWebSocketRequest ||
         context.Request.Path.StartsWithSegments("/valheim") ||
+        context.Request.Path.StartsWithSegments("/api/v0/valheim/modpack/package") ||
         context.Request.Path.StartsWithSegments("/api/v0/valheim/enrollment") ||
         context.Request.Path.StartsWithSegments("/api/v0/enrollment");
 

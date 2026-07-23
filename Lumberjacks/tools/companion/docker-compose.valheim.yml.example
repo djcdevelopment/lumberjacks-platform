@@ -1,0 +1,9 @@
+# Copy to docker-compose.valheim.yml (which is ignored locally) when this Docker Companion is
+# allowed to install into a local Valheim directory. Stop Valheim first: Docker Desktop cannot
+# reliably see the Windows Valheim process.
+services:
+  companion:
+    environment:
+      LUMBERJACKS_VALHEIM_PATH: "/valheim"
+    volumes:
+      - "${LUMBERJACKS_VALHEIM_HOST_PATH:?set LUMBERJACKS_VALHEIM_HOST_PATH to the Valheim directory}:/valheim"

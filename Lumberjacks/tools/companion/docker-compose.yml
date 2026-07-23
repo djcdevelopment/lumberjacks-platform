@@ -1,0 +1,16 @@
+services:
+  companion:
+    build:
+      context: ../..
+      dockerfile: src/Game.Companion/Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      LUMBERJACKS_COMPANION_GATEWAY_URL: "${LUMBERJACKS_COMPANION_GATEWAY_URL:-https://comfy-p7.duckdns.org}"
+      LUMBERJACKS_COMPANION_DATA: "/data"
+    volumes:
+      - companion-data:/data
+    restart: unless-stopped
+
+volumes:
+  companion-data:

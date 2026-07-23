@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy Ã— Valheim â€” Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-23T09:27:18.175Z",
+  "updated_at": "2026-07-23T10:06:19.158Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -192,6 +192,7 @@
     "COMPLETE Â· PROMOTION FINALIZED â€” P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.",
     "ACTIVE · M1 — Mod release m15-hudrecover-20260723-r1 is live on P7 with the transport boundary collapsed by default, a side NET SHOW/HIDE recovery tab that remains visible even if an older local config disabled the strip, alpha fault switches, self-service Steam update downloads, and an observe-first player-motion lane over token-bound UDP with binary WebSocket fallback. Public TLS preserves enrolled recipients through WebSocket setup and exposes a config-preserving update package; native Valheim still owns simulation, ownership, non-ZDO RPCs, relevance, and presentation unless a tester explicitly enables local motion apply. Distinct-recipient fan-out remains a two-account canary gate. TLS/Caddy still gives anonymous requests private-socket capability and remains accepted only for the known-cohort alpha; stop-ship before widening.",
     "LIVE (normal play) Â· AoI BAND-SHAPING â€” distance-band area-of-interest is armed permanently on P7 as of 2026-07-21 (near <30m full rate Â· mid 30â€“64m thinned to 5Hz Â· far >64m dropped Â· landmarks by granted reach), mod-side on the redirect producer (ADR 0011). It reshapes the eligible ZDO set upstream: at the densest single-player build ~85% of candidates drop, losslessly. Open before it earns full trust: the farâ†’approach re-sync of a dropped static object, and multi-player density.",
+    "PENDING DEPLOYMENT · M1 — Gateway image m18-companion-20260723-r1 is locally verified and adds the local Companion plus runtime client-pull package pointer. Publishing a hash-verified mod/config artifact will not require a Gateway restart after this image reaches P7; P7 SSH/IAP was unavailable during the cut, so this is not yet live.",
     "AFTER M1 Â· PARALLEL â€” Build M2's reversible guest package, M3's seal-before-reset per-run ledger and retained dashboards, and M4a's recipient isolation and producer loss safety.",
     "WIDEN ONLY AFTER Â· M4b + M5 â€” Require the real two-client correctness packet and one exact-release invited-volunteer SYSTEM PROVEN receipt before admitting a cohort."
   ],

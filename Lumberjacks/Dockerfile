@@ -15,6 +15,7 @@ COPY src/Game.Simulation/Game.Simulation.csproj src/Game.Simulation/
 COPY src/Game.EventLog/Game.EventLog.csproj src/Game.EventLog/
 COPY src/Game.Progression/Game.Progression.csproj src/Game.Progression/
 COPY src/Game.OperatorApi/Game.OperatorApi.csproj src/Game.OperatorApi/
+COPY src/Game.Companion/Game.Companion.csproj src/Game.Companion/
 COPY tests/Game.Contracts.Tests/Game.Contracts.Tests.csproj tests/Game.Contracts.Tests/
 COPY tests/Game.Simulation.Tests/Game.Simulation.Tests.csproj tests/Game.Simulation.Tests/
 COPY tests/Game.Gateway.Tests/Game.Gateway.Tests.csproj tests/Game.Gateway.Tests/
@@ -39,6 +40,7 @@ RUN dotnet publish src/Game.Simulation -c Release -o /app/simulation --no-restor
 RUN dotnet publish src/Game.EventLog -c Release -o /app/eventlog --no-restore
 RUN dotnet publish src/Game.Progression -c Release -o /app/progression --no-restore
 RUN dotnet publish src/Game.OperatorApi -c Release -o /app/operatorapi --no-restore
+RUN dotnet publish src/Game.Companion -c Release -o /app/companion --no-restore
 
 # --- Gateway release identity (M1 risk 9) -------------------------------------------------------
 # The Gateway bakes the mod release it admits into its own assembly, so the expected value travels
@@ -111,3 +113,11 @@ COPY --from=build /app/operatorapi .
 ENV ASPNETCORE_URLS=http://+:4004
 EXPOSE 4004
 ENTRYPOINT ["dotnet", "Game.OperatorApi.dll"]
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS companion
+WORKDIR /app
+COPY --from=build /app/companion .
+ENV ASPNETCORE_URLS=http://+:8080
+ENV LUMBERJACKS_COMPANION_DATA=/data
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "Lumberjacks.Companion.dll"]

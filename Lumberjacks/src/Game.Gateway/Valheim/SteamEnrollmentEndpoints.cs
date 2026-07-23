@@ -51,6 +51,18 @@ public static class SteamEnrollmentEndpoints
             return manifest is null ? error! : Results.Ok(manifest);
         });
 
+        // The Companion's client-pull lane. The access middleware gates this exact route as
+        // Consumer, so an installed client presents its existing enrollment/key and downloads the
+        // current immutable artifact. The file is read at request time: publishing a new pointer
+        // under the mounted modpack directory requires no Gateway image rollout or restart.
+        app.MapGet("/api/v0/valheim/modpack/package", () =>
+        {
+            if (!ModpackReleaseCatalog.TryGetCurrent(out var release, out var catalogError))
+                return Results.Problem(catalogError, statusCode: 503);
+            var fileName = $"Comfy-P7-Mods-{SafeFileToken(release.release)}-{release.package_sha256[..12]}.zip";
+            return Results.File(File.OpenRead(release.package_file), "application/zip", fileName, enableRangeProcessing: true);
+        });
+
         // Pseudonymous self-view for the enrolled client (M2 preflight consumes this).
         app.MapGet("/api/v0/valheim/enrollment/me", (HttpContext context) =>
         {
@@ -163,11 +175,9 @@ public static class SteamEnrollmentEndpoints
         out IResult? error)
     {
         error = null;
-        var templatePath = Environment.GetEnvironmentVariable("LUMBERJACKS_MODPACK_TEMPLATE");
-        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        if (!ModpackReleaseCatalog.TryGetCurrent(out var release, out var catalogError))
         {
-            error = Results.Problem(
-                "mod pack template not configured (LUMBERJACKS_MODPACK_TEMPLATE)", statusCode: 503);
+            error = Results.Problem(catalogError, statusCode: 503);
             return null;
         }
 
@@ -175,7 +185,7 @@ public static class SteamEnrollmentEndpoints
         try
         {
             return ModPackBuilder.BuildPersonalizedPack(
-                File.ReadAllBytes(templatePath),
+                File.ReadAllBytes(release.package_file),
                 gateway,
                 issued.Enrollment.QueueWindowId,
                 issued.Enrollment.EnrollmentId,
@@ -191,54 +201,26 @@ public static class SteamEnrollmentEndpoints
     static object? TryBuildModpackManifest(HttpRequest request, out IResult? error)
     {
         error = null;
-        var templatePath = Environment.GetEnvironmentVariable("LUMBERJACKS_MODPACK_TEMPLATE");
-        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        if (!ModpackReleaseCatalog.TryGetCurrent(out var release, out var catalogError))
         {
-            error = Results.Problem(
-                "mod pack template not configured (LUMBERJACKS_MODPACK_TEMPLATE)", statusCode: 503);
+            error = Results.Problem(catalogError, statusCode: 503);
             return null;
         }
-
-        var info = new FileInfo(templatePath);
-        return new
-        {
-            schema_version = 1,
-            release = Environment.GetEnvironmentVariable("LUMBERJACKS_VERSION") ?? "unknown",
-            mod_release = ValheimReleaseIdentity.ExpectedModRelease,
-            package = new
-            {
-                kind = "comfy_p7_alpha_modpack",
-                sha256 = Sha256File(templatePath),
-                size_bytes = info.Length,
-            },
-            downloads = new
-            {
-                first_install = PublicBaseUrl(request) + "/join",
-                latest_update = PublicBaseUrl(request) + "/join/update",
-            },
-            install_policy = new
-            {
-                ordinary_update_rotates_credential = false,
-                update_preserves_config = true,
-                recovery_rotates_credential = true,
-            },
-        };
+        return ModpackReleaseCatalog.ToPublicManifest(release, PublicBaseUrl(request));
     }
 
     static byte[]? TryBuildConfigPreservingUpdatePack(out IResult? error)
     {
         error = null;
-        var templatePath = Environment.GetEnvironmentVariable("LUMBERJACKS_MODPACK_TEMPLATE");
-        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        if (!ModpackReleaseCatalog.TryGetCurrent(out var release, out var catalogError))
         {
-            error = Results.Problem(
-                "mod pack template not configured (LUMBERJACKS_MODPACK_TEMPLATE)", statusCode: 503);
+            error = Results.Problem(catalogError, statusCode: 503);
             return null;
         }
 
         try
         {
-            return ModPackBuilder.BuildConfigPreservingUpdatePack(File.ReadAllBytes(templatePath));
+            return ModPackBuilder.BuildConfigPreservingUpdatePack(File.ReadAllBytes(release.package_file));
         }
         catch (InvalidOperationException ex)
         {
@@ -249,13 +231,9 @@ public static class SteamEnrollmentEndpoints
 
     static string UpdatePackFileName(string enrollmentId)
     {
-        var gatewayRelease = SafeFileToken(Environment.GetEnvironmentVariable("LUMBERJACKS_VERSION") ?? "unknown");
-        var modRelease = SafeFileToken(ValheimReleaseIdentity.ExpectedModRelease ?? "unknown-mod");
-        var templatePath = Environment.GetEnvironmentVariable("LUMBERJACKS_MODPACK_TEMPLATE");
-        var hash = "nohash";
-        if (!string.IsNullOrWhiteSpace(templatePath) && File.Exists(templatePath))
-            hash = Sha256File(templatePath)[..12];
-        return $"Comfy-P7-Mods-update-{gatewayRelease}-mod-{modRelease}-{hash}-{enrollmentId[..8]}.zip";
+        if (!ModpackReleaseCatalog.TryGetCurrent(out var release, out _))
+            return $"Comfy-P7-Mods-update-unknown-{enrollmentId[..8]}.zip";
+        return $"Comfy-P7-Mods-update-{SafeFileToken(release.release)}-mod-{SafeFileToken(release.mod_release)}-{release.package_sha256[..12]}-{enrollmentId[..8]}.zip";
     }
 
     static string SafeFileToken(string value)

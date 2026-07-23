@@ -86,6 +86,10 @@ services:
       # streams from POST /join/pack, and the Valheim connect address the status banner advertises.
       # The template is mounted read-only below and MUST be kept in sync with the shipped mod build.
       LUMBERJACKS_MODPACK_TEMPLATE: "${LUMBERJACKS_MODPACK_TEMPLATE:-/var/lib/lumberjacks/modpack/Comfy-P7-Alpha-Mods.zip}"
+      # A current.json published beside the package overrides the legacy template identity at
+      # request time. This is the client-pull release pointer: publishing a mod/config package no
+      # longer means changing the Gateway image or restarting the Gateway container.
+      LUMBERJACKS_MODPACK_MANIFEST: "${LUMBERJACKS_MODPACK_MANIFEST:-/var/lib/lumberjacks/modpack/current.json}"
       LUMBERJACKS_VALHEIM_CONNECT: "${LUMBERJACKS_VALHEIM_CONNECT:-8.231.129.249:2456}"
     volumes:
       - /mnt/comfy-p7/lumberjacks/zdo-queue:/var/lib/lumberjacks/zdo-queue

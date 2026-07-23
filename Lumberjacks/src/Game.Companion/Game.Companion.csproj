@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Lumberjacks.Companion</AssemblyName>
+    <RootNamespace>Lumberjacks.Companion</RootNamespace>
+  </PropertyGroup>
+</Project>
