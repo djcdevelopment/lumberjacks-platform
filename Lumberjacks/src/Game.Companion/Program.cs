@@ -207,22 +207,35 @@ app.MapPost("/api/v0/companion/motion-test", (MotionTestRequest? request, Valhei
     if (!File.Exists(ValheimLocator.ConfigPath(install))) return Results.BadRequest(new { error = "mod_config_not_found" });
 
     var action = (request?.action ?? "").Trim().ToLowerInvariant();
-    if (action is not ("start" or "stop")) return Results.BadRequest(new { error = "action_not_allowed" });
+    if (action is not ("start" or "stop" or "set_apply")) return Results.BadRequest(new { error = "action_not_allowed" });
     var id = string.IsNullOrWhiteSpace(request?.id) ? "companion-motion" : request!.id!.Trim();
     if (!MotionTestValidation.IsSafeToken(id)) return Results.BadRequest(new { error = "id_not_allowed" });
     var pattern = (request?.pattern ?? "straight_north").Trim().ToLowerInvariant();
     if (action == "start" && pattern is not ("straight_north" or "straight_east" or "stutter_north" or "circle"))
         return Results.BadRequest(new { error = "pattern_not_allowed" });
+    if (action == "set_apply" && request?.motion_apply_enabled is null)
+        return Results.BadRequest(new { error = "motion_apply_enabled_required" });
     var duration = Math.Clamp(request?.duration_seconds ?? 10, 1, 60);
 
     var directory = MotionTestFiles.Directory(install);
     Directory.CreateDirectory(directory);
     var commandPath = MotionTestFiles.CommandPath(install);
     var temporary = commandPath + ".tmp";
-    var line = string.Join("|", id, action, pattern, duration.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    var line = action == "set_apply"
+        ? string.Join("|", id, action, request!.motion_apply_enabled!.Value ? "true" : "false")
+        : string.Join("|", id, action, pattern, duration.ToString(System.Globalization.CultureInfo.InvariantCulture));
     File.WriteAllText(temporary, line + Environment.NewLine);
     File.Move(temporary, commandPath, true);
-    return Results.Ok(new { ok = true, id, action, pattern, duration_seconds = duration, command_path = commandPath });
+    return Results.Ok(new
+    {
+        ok = true,
+        id,
+        action,
+        pattern = action == "set_apply" ? null : pattern,
+        duration_seconds = action == "set_apply" ? (int?)null : duration,
+        motion_apply_enabled = action == "set_apply" ? request!.motion_apply_enabled : null,
+        command_path = commandPath
+    });
 });
 
 app.MapGet("/api/v0/companion/motion-test/status", (ValheimLocator locator) =>
@@ -1088,7 +1101,7 @@ sealed record CompanionBootstrapPackage(string? kind, string sha256, long size_b
 sealed record CompanionBootstrapDownloads(string? package, string? manifest, string? latest_update);
 sealed record GameClosedConfirmation(bool game_closed_confirmed);
 sealed record TransportCaptureRequest(int? duration_seconds, int? interval_seconds, string? label);
-sealed record MotionTestRequest(string? action, string? pattern, int? duration_seconds, string? id);
+sealed record MotionTestRequest(string? action, string? pattern, int? duration_seconds, string? id, bool? motion_apply_enabled = null);
 sealed record TransportCurrentRead(string level, string text);
 sealed record TransportCaptureEndpoint(bool ok, string path, int? status, JsonElement? body, string? error);
 sealed record TransportCaptureEndpoints(TransportCaptureEndpoint deployment, TransportCaptureEndpoint valheim, TransportCaptureEndpoint cutover, TransportCaptureEndpoint motion);

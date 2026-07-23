@@ -46,12 +46,15 @@ two-machine capture, sends one bounded Companion motion command, and writes a
 single receipt. If fewer than two peers are visible, it writes `wait_for_two_real_clients`
 and does not move either character.
 
-After two peers are visible, the live gate performs a five-second role preflight
-before sending motion. It reads each client's `final_local_motion.apply_enabled`
-from Companion capture evidence and blocks with `blocked_by_ambiguous_apply_roles`
-unless exactly one client is apply-enabled. This prevents a live pass where both
-screens are accidentally in the same presentation mode and the role-reversal
-result cannot be trusted.
+After two peers are visible, the live gate sets the requested apply/observe
+split through the bounded Companion command lane, then performs a five-second
+role preflight before sending motion. By default OMEN is APPLY and i5 is
+OBSERVE ONLY; pass `-DesiredApplyClient i5` for the reversal, or
+`-DesiredApplyClient preserve` to verify the existing manual state without
+changing it. The preflight reads each client's
+`final_local_motion.apply_enabled` from Companion capture evidence and blocks
+with `blocked_by_ambiguous_apply_roles` unless exactly one client is
+apply-enabled.
 
 Every live-gate run also writes an observation worksheet next to the receipt
 (`*.observation.md` by default). That file is the operator-facing checklist:
@@ -67,14 +70,14 @@ tools\wave0\Test-Wave0LiveGateFixtures.ps1
 
 # Expected: blocked_by_ambiguous_apply_roles, no movement command
 tools\wave0\Start-Wave0LiveGate.ps1 `
-  -SkipSynthetic -SkipReadiness `
+  -SkipSynthetic -SkipReadiness -DesiredApplyClient preserve `
   -MockValheimTelemetryJson tools\wave0\fixtures\valheim-two-peers.json `
   -MockRolePreflightJson tools\wave0\fixtures\role-preflight-both-apply.json `
   -OutputJson captures\wave0-mock-ambiguous-roles\result.json
 
 # Expected: role_preflight_passed_stopped_before_motion, no movement command
 tools\wave0\Start-Wave0LiveGate.ps1 `
-  -SkipSynthetic -SkipReadiness -StopAfterRolePreflight `
+  -SkipSynthetic -SkipReadiness -StopAfterRolePreflight -DesiredApplyClient preserve `
   -MockValheimTelemetryJson tools\wave0\fixtures\valheim-two-peers.json `
   -MockRolePreflightJson tools\wave0\fixtures\role-preflight-omen-apply.json `
   -OutputJson captures\wave0-mock-valid-roles\result.json

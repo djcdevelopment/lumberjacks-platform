@@ -40,6 +40,9 @@ param(
 
     [string]$BundleDirectory,
 
+    [ValidateSet('omen','i5','preserve')]
+    [string]$DesiredApplyClient = 'omen',
+
     [string]$MockValheimTelemetryJson,
 
     [string]$MockRolePreflightJson,
@@ -104,6 +107,7 @@ function Write-ObservationTemplate {
     $lines += "- Run ID: $($Receipt.run_id)"
     $lines += "- Machine verdict: $($Receipt.verdict)"
     $lines += "- Pattern: $($Receipt.pattern)"
+    $lines += "- Desired apply client: $($Receipt.desired_apply_client)"
     $lines += "- Motion duration seconds: $($Receipt.motion_duration_seconds)"
     $lines += "- Capture duration seconds: $($Receipt.capture_duration_seconds)"
     $lines += "- P7 peer count at gate: $peerCount"
@@ -184,6 +188,7 @@ function Resolve-UnderRepo {
 
 $syntheticPath = Join-Path $outputDirectory 'synthetic-motion.json'
 $readinessPath = Join-Path $outputDirectory 'readiness.json'
+$applyRolePath = Join-Path $outputDirectory 'apply-role-command.json'
 $rolePreflightPath = Join-Path $outputDirectory 'role-preflight.json'
 $capturePath = Join-Path $outputDirectory 'capture.json'
 $motionPath = Join-Path $outputDirectory 'motion-command.json'
@@ -193,6 +198,7 @@ $receipt = [ordered]@{
     run_id = $runId
     generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
     pattern = $Pattern
+    desired_apply_client = $DesiredApplyClient
     motion_duration_seconds = $MotionDurationSeconds
     capture_duration_seconds = $CaptureDurationSeconds
     interval_seconds = $IntervalSeconds
@@ -201,6 +207,7 @@ $receipt = [ordered]@{
     next_action = $null
     non_human_gates = [ordered]@{}
     p7_peer_check = $null
+    apply_role_command = $null
     role_preflight = $null
     capture = $null
     motion_command = $null
@@ -271,6 +278,22 @@ if ($peerCount -lt 2) {
     $receipt.verdict = 'wait_for_two_real_clients'
     $receipt.next_action = 'Join both OMEN and i5 clients, wait for peer_count >= 2, then rerun this command.'
     Write-Receipt $receipt 0
+}
+
+if ($DesiredApplyClient -ne 'preserve' -and -not $MockRolePreflightJson) {
+    $applyRole = Invoke-JsonScript `
+        -ScriptPath (Join-Path $repoRoot 'tools\i5\Set-TwoClientApplyRoles.ps1') `
+        -Arguments @('-ApplyClient', $DesiredApplyClient, '-Id', $runId, '-OutputJson', $applyRolePath)
+    $receipt.apply_role_command = [ordered]@{
+        exit_code = $applyRole.exit_code
+        receipt_path = $applyRolePath
+        receipt = Get-JsonFile $applyRolePath
+    }
+    if ($applyRole.exit_code -ne 0) {
+        $receipt.verdict = 'blocked_by_apply_role_command'
+        $receipt.next_action = 'Fix the Companion apply-role command lane before running a live movement course.'
+        Write-Receipt $receipt 1
+    }
 }
 
 if (-not $SkipRolePreflight) {
