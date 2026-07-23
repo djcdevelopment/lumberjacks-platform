@@ -159,7 +159,8 @@ async function movingParts(){
   try{
     const m=await get('/live/valheim-motion');
     const received=(m.received||0), relayed=(m.relayed_udp||0)+(m.relayed_websocket||0);
-    const text='recv '+received+' (UDP '+(m.received_udp||0)+' / WS '+(m.received_websocket||0)+') / relay '+relayed;
+    const details='recv '+received+' (UDP '+(m.received_udp||0)+' / WS '+(m.received_websocket||0)+') / relay '+relayed;
+    const text=received>0?'LJ motion observed / '+details:'native motion only / '+details;
     part('motion',text,received>0?'ok':'wait');
   }catch(e){part('motion','motion telemetry unavailable','bad')}
 }
