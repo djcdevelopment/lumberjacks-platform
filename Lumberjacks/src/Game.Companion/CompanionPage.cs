@@ -178,6 +178,17 @@ function counterLine(ranges){
   return parts.join(' · ');
 }
 
+function identityLine(identity){
+  if(!identity)return 'identity unknown';
+  const parts=[];
+  if(identity.gateway_version)parts.push('Gateway '+identity.gateway_version);
+  if(identity.valheim_mod_version)parts.push('mod '+identity.valheim_mod_version);
+  if(identity.valheim_instance_id)parts.push('server '+identity.valheim_instance_id);
+  if(identity.cutover_mode)parts.push('cutover '+identity.cutover_mode);
+  if(identity.bootstrap_release)parts.push('Companion '+identity.bootstrap_release);
+  return parts.join(' · ')||'identity unknown';
+}
+
 function paint(){
   let v=state.valheim,p=state.profile;
   setCheck('c-valheim',v.found);
@@ -327,7 +338,7 @@ async function captureTransport(){
     const base='/api/v0/companion/transport-capture/'+encodeURIComponent(d.run_id)+'/';
     const players=(d.observed_players||[]).join(', ')||'none';
     const counters=counterLine(d.counter_ranges)||'no counters';
-    q('#capture-result').innerHTML='<strong>Capture complete: '+esc(d.verdict||'unknown')+'</strong><p>'+esc(d.final_current_read?.text||'No final read recorded.')+'</p><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>Players: '+esc(players)+'</p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · '+esc(counters)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
+    q('#capture-result').innerHTML='<strong>Capture complete: '+esc(d.verdict||'unknown')+'</strong><p>'+esc(d.final_current_read?.text||'No final read recorded.')+'</p><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>'+esc(identityLine(d.capture_identity))+'</p><p>Players: '+esc(players)+'</p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · '+esc(counters)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
     await captureHistory();
   }catch(e){
     q('#capture-result').className='result bad';
@@ -349,7 +360,7 @@ async function captureHistory(){
       const base='/api/v0/companion/transport-capture/'+encodeURIComponent(c.run_id)+'/';
       const players=(c.observed_players||[]).join(', ')||'none';
       const counters=counterLine(c.counter_ranges)||('peers '+c.max_peers+' · motion delta '+c.motion_received_delta);
-      return '<p><strong>'+esc(c.verdict||'unknown')+'</strong> · <span class="release">'+esc(c.run_id)+'</span><br>'+esc(c.final_current_read?.text||'No final read recorded.')+'<br>players '+esc(players)+'<br>'+esc(counters)+' · samples '+esc(c.sample_count)+'<br><a href="'+base+'summary.json">summary</a> · <a href="'+base+'samples.jsonl">samples</a></p>';
+      return '<p><strong>'+esc(c.verdict||'unknown')+'</strong> · <span class="release">'+esc(c.run_id)+'</span><br>'+esc(c.final_current_read?.text||'No final read recorded.')+'<br>'+esc(identityLine(c.capture_identity))+'<br>players '+esc(players)+'<br>'+esc(counters)+' · samples '+esc(c.sample_count)+'<br><a href="'+base+'summary.json">summary</a> · <a href="'+base+'samples.jsonl">samples</a></p>';
     }).join('');
   }catch(e){
     q('#capture-history').className='result bad';

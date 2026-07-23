@@ -386,6 +386,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         int? firstMotionRelayed = null, lastMotionRelayed = null;
         var badSamples = 0;
         var observedPlayers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        TransportCaptureIdentity? captureIdentity = null;
         TransportCurrentRead? finalCurrentRead = null;
 
         while (true)
@@ -400,6 +401,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             finalCurrentRead = currentRead;
 
             if (!deployment.ok || !valheim.ok || !cutover.ok || !motion.ok) badSamples++;
+            captureIdentity = MergeIdentity(captureIdentity, deployment, valheim, cutover);
 
             if (motion.ok)
             {
@@ -482,7 +484,8 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
                 CounterRange(firstPending, lastPending),
                 CounterRange(firstActiveConsumers, lastActiveConsumers),
                 CounterRange(firstAcknowledged, lastAcknowledged),
-                CounterRange(firstApplied, lastApplied)));
+                CounterRange(firstApplied, lastApplied)),
+            captureIdentity);
         await File.WriteAllTextAsync(summaryPath, JsonSerializer.Serialize(summary, Json.Options), cancellationToken);
         return summary;
     }
@@ -573,6 +576,16 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             verdict = verdict,
             final_current_read = finalRead,
             observed_players = summary.observed_players ?? [],
+            capture_identity = summary.capture_identity ?? new TransportCaptureIdentity(
+                CompanionVersion.Value,
+                CompanionVersion.BootstrapRelease,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null),
         };
     }
 
@@ -607,6 +620,25 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         return element.Value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.Object ? property : null;
     }
 
+    static TransportCaptureIdentity MergeIdentity(
+        TransportCaptureIdentity? prior,
+        TransportCaptureEndpoint deployment,
+        TransportCaptureEndpoint valheim,
+        TransportCaptureEndpoint cutover)
+    {
+        var heartbeat = ObjectProperty(valheim.body, "heartbeat");
+        return new TransportCaptureIdentity(
+            CompanionVersion.Value,
+            CompanionVersion.BootstrapRelease,
+            StringProperty(deployment.body, "lumberjacks_version") ?? prior?.gateway_version,
+            StringProperty(deployment.body, "environment") ?? prior?.gateway_environment,
+            StringProperty(heartbeat, "mod_version") ?? StringProperty(valheim.body, "mod_version") ?? prior?.valheim_mod_version,
+            StringProperty(heartbeat, "instance_id") ?? StringProperty(valheim.body, "instance_id") ?? prior?.valheim_instance_id,
+            StringProperty(heartbeat, "server_state") ?? StringProperty(valheim.body, "server_state") ?? prior?.valheim_server_state,
+            StringProperty(cutover.body, "mode") ?? StringProperty(cutover.body, "state") ?? prior?.cutover_mode,
+            StringProperty(cutover.body, "enrollment_manifest_id") ?? StringProperty(heartbeat, "enrollment_manifest_id") ?? prior?.enrollment_manifest_id);
+    }
+
     static IReadOnlyList<string> PlayerNames(JsonElement? element)
     {
         var players = ArrayProperty(ObjectProperty(element, "heartbeat"), "players") ?? ArrayProperty(element, "players");
@@ -635,6 +667,9 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(name, out var property)) return null;
         return property.ValueKind == JsonValueKind.String ? property.GetString() : property.ToString();
     }
+
+    static string? StringProperty(JsonElement? element, string name) =>
+        element is null ? null : StringProperty(element.Value, name);
 
     static TransportCaptureCounterRange? CounterRange(int? first, int? last) =>
         first.HasValue && last.HasValue ? new(first.Value, last.Value, last.Value - first.Value) : null;
@@ -668,7 +703,17 @@ sealed record TransportCaptureCounterRanges(
     TransportCaptureCounterRange? active_consumers,
     TransportCaptureCounterRange? acknowledged,
     TransportCaptureCounterRange? applied);
-sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null);
+sealed record TransportCaptureIdentity(
+    string companion_version,
+    string bootstrap_release,
+    string? gateway_version,
+    string? gateway_environment,
+    string? valheim_mod_version,
+    string? valheim_instance_id,
+    string? valheim_server_state,
+    string? cutover_mode,
+    string? enrollment_manifest_id);
+sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null, TransportCaptureIdentity? capture_identity = null);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
 sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
 sealed class CompanionState
