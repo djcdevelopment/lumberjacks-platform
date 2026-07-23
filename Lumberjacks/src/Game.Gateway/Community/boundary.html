@@ -30,6 +30,9 @@
     main { padding: 18px 20px 28px; }
     .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
     .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px; min-width: 0; }
+    .panel.secondary { display: none; }
+    .panel.trace-panel { order: -1; border-color: #285b83; padding: 16px; }
+    .panel.trace-panel h2 { color: var(--blue); }
     .span-3 { grid-column: span 3; }
     .span-4 { grid-column: span 4; }
     .span-6 { grid-column: span 6; }
@@ -94,90 +97,91 @@
         <div class="label">private socket plus public forwarded claim</div>
       </div>
 
-      <div class="panel span-3">
+      <div class="panel secondary span-3">
         <h2>ZDO Queued</h2>
         <div class="metric" id="zdoQueued">--</div>
         <div class="label">accepted / request bytes</div>
       </div>
-      <div class="panel span-3">
+      <div class="panel secondary span-3">
         <h2>ZDO Polled</h2>
         <div class="metric" id="zdoPolled">--</div>
         <div class="label">consumer-visible envelopes</div>
       </div>
-      <div class="panel span-3">
+      <div class="panel secondary span-3">
         <h2>ZDO Acked</h2>
         <div class="metric" id="zdoAcked">--</div>
         <div class="label" id="zdoAckLabel">unknown ack count</div>
       </div>
-      <div class="panel span-3">
+      <div class="panel secondary span-3">
         <h2>ZDO Applied</h2>
         <div class="metric" id="zdoApplied">--</div>
         <div class="label" id="zdoAppliedLabel">superseded / pending</div>
       </div>
 
-      <div class="panel span-4">
+      <div class="panel secondary span-4">
         <h2>Event Families</h2>
         <div id="eventTypes"></div>
       </div>
-      <div class="panel span-4">
+      <div class="panel secondary span-4">
         <h2>Identity Resolution</h2>
         <div id="identity"></div>
       </div>
-      <div class="panel span-4">
+      <div class="panel secondary span-4">
         <h2>Authorization Result / Reason</h2>
         <div id="auth"></div>
       </div>
 
-      <div class="panel span-6">
+      <div class="panel secondary span-6">
         <h2>Required -> Granted Capabilities</h2>
         <div id="caps"></div>
       </div>
-      <div class="panel span-6">
+      <div class="panel secondary span-6">
         <h2>Socket / Forwarded Classes</h2>
         <div id="proxy"></div>
       </div>
 
-      <div class="panel span-4">
+      <div class="panel secondary span-4">
         <h2>ZDO Operations</h2>
         <div id="zdoOps"></div>
       </div>
-      <div class="panel span-4">
+      <div class="panel secondary span-4">
         <h2>ZDO Windows</h2>
         <div id="zdoWindows"></div>
       </div>
-      <div class="panel span-4">
+      <div class="panel secondary span-4">
         <h2>ZDO Consumer Results</h2>
         <div id="zdoResults"></div>
       </div>
 
-      <div class="panel span-4">
+      <div class="panel secondary span-4">
         <h2>ZDO Queue Duration</h2>
         <div id="zdoQueueDuration"></div>
       </div>
-      <div class="panel span-4">
+      <div class="panel secondary span-4">
         <h2>ZDO Poll Duration</h2>
         <div id="zdoPollDuration"></div>
       </div>
-      <div class="panel span-4">
+      <div class="panel secondary span-4">
         <h2>ZDO Ack Duration</h2>
         <div id="zdoAckDuration"></div>
       </div>
 
-      <div class="panel span-8">
+      <div class="panel secondary span-8">
         <h2>Recent Authorization Decisions</h2>
         <div class="scroll" id="recent"></div>
       </div>
-      <div class="panel span-4">
+      <div class="panel secondary span-4">
         <h2>Request Status by Route</h2>
         <div class="scroll" id="routes"></div>
       </div>
 
-      <div class="panel span-12">
-        <h2>Recent Raw Event Rows</h2>
+      <div class="panel span-12 trace-panel">
+        <h2>Live evidence stream</h2>
+        <div class="sub">Newest normalized append-only rows. This is the first place to look after you flip a switch or join a server.</div>
         <div class="scroll" id="recentEvents"></div>
       </div>
 
-      <div class="panel span-12">
+      <div class="panel secondary span-12">
         <h2>Segments</h2>
         <div id="segments"></div>
       </div>
@@ -222,9 +226,11 @@
         const writerBad = (data.writer_dropped_rows || 0) + (data.writer_faults || 0);
         setMetric('writer', writerBad, writerBad ? 'bad' : 'ok');
         document.getElementById('writerLabel').textContent = `${fmt.format(data.writer_dropped_rows || 0)} dropped / ${fmt.format(data.writer_faults || 0)} faults`;
-        const parseBad = (data.malformed_rows || 0) + (data.truncated_rows || 0);
+        // An active .open.jsonl can end mid-write while this reader samples it. That is an
+        // informative open-tail condition, not the same thing as a malformed closed record.
+        const parseBad = data.malformed_rows || 0;
         setMetric('parse', parseBad, parseBad ? 'warn' : 'ok');
-        document.getElementById('parseLabel').textContent = `${fmt.format(data.malformed_rows || 0)} malformed / ${fmt.format(data.truncated_rows || 0)} truncated`;
+        document.getElementById('parseLabel').textContent = `${fmt.format(data.malformed_rows || 0)} malformed / ${fmt.format(data.truncated_rows || 0)} open tail`;
         setMetric('proxyWarnings', data.proxy_boundary_warnings || 0, data.proxy_boundary_warnings ? 'bad' : 'ok');
         const z = data.zdo_totals || {};
         setMetric('zdoQueued', z.queued_envelopes || 0, '');
@@ -251,7 +257,7 @@
         const recent = data.recent_authorization || [];
         document.getElementById('recent').innerHTML = recent.length ? `<table><thead><tr><th>UTC</th><th>Policy</th><th>Result</th><th>Reason</th><th>Caps</th></tr></thead><tbody>${recent.map(r => `<tr><td>${cell(r.timestamp_utc)}</td><td>${cell(r.policy)}</td><td><span class="pill ${r.result === 'allow' ? 'ok' : 'bad'}">${cell(r.result)}</span></td><td>${cell(r.reason)}</td><td>${cell(r.required_capabilities)} -> ${cell(r.granted_capabilities)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">no authorization decisions</div>';
         const raw = data.recent_events || [];
-        document.getElementById('recentEvents').innerHTML = raw.length ? `<table><thead><tr><th>UTC</th><th>Event</th><th>Route</th><th>Window</th><th>Recipient</th><th>Result</th><th>Reason</th><th class="num">Count</th></tr></thead><tbody>${raw.map(r => `<tr><td>${cell(r.timestamp_utc)}</td><td>${cell(r.event_type)}</td><td>${cell(r.route)}</td><td>${cell(r.window_id)}</td><td>${cell(r.recipient_id)}</td><td>${cell(r.result)}</td><td>${cell(r.reason)}</td><td class="num">${cell(r.count)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">no event rows</div>';
+        document.getElementById('recentEvents').innerHTML = raw.length ? `<table><thead><tr><th>UTC</th><th>Event</th><th>Outcome</th><th>Where / who</th><th class="num">Count</th></tr></thead><tbody>${raw.map(r => `<tr><td>${cell(r.timestamp_utc)}</td><td><strong>${cell(r.event_type)}</strong></td><td>${cell(r.result)}${r.reason ? ` <span class="pill">${cell(r.reason)}</span>` : ''}</td><td>${cell(r.route || r.window_id)}${r.recipient_id ? ` <span class="pill">${cell(r.recipient_id)}</span>` : ''}</td><td class="num">${cell(r.count)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">No events yet. Join the server, make a request, or change a test switch; the resulting boundary evidence will appear here.</div>';
 
         const files = data.files || [];
         document.getElementById('segments').innerHTML = files.length ? `<table><thead><tr><th>Name</th><th class="num">Bytes</th><th>State</th><th>Last Write UTC</th></tr></thead><tbody>${files.map(f => `<tr><td>${cell(f.name)}</td><td class="num">${fmt.format(f.bytes)}</td><td><span class="pill ${f.open ? 'warn' : 'ok'}">${f.open ? 'open' : 'closed'}</span></td><td>${cell(f.last_write_utc)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">no segment files</div>';
