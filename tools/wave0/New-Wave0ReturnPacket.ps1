@@ -10,10 +10,10 @@ profile or diagnostic details.
 #>
 [CmdletBinding()]
 param(
-    [string]$SyntheticReceipt = 'captures/synthetic-motion.json',
-    [string]$ReadinessReceipt = 'captures/readiness.json',
-    [string]$LiveGateReceipt = 'captures/wave0-live-gate-full-nopeer-smoke.json',
-    [string]$FixtureReceipt = 'captures/wave0-live-gate-fixtures/summary.json',
+    [string]$SyntheticReceipt = '',
+    [string]$ReadinessReceipt = '',
+    [string]$LiveGateReceipt = '',
+    [string]$FixtureReceipt = '',
     [string]$OutputJson = 'captures/wave0-return-packet.json',
     [string]$OutputMarkdown = 'captures/wave0-return-packet.md'
 )
@@ -51,6 +51,35 @@ function Read-Receipt {
     }
 }
 
+function Find-LatestReceipt {
+    param(
+        [string]$Label,
+        [scriptblock]$Predicate
+    )
+
+    $capturesRoot = Resolve-UnderRepo 'captures'
+    if (-not (Test-Path -LiteralPath $capturesRoot -PathType Container)) {
+        return ''
+    }
+
+    $files = Get-ChildItem -LiteralPath $capturesRoot -Recurse -File -Filter '*.json' |
+        Sort-Object LastWriteTimeUtc -Descending
+
+    foreach ($file in $files) {
+        try {
+            $body = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
+        } catch {
+            continue
+        }
+        if (& $Predicate $body) {
+            Write-Host ("{0}: {1}" -f $Label, $file.FullName)
+            return $file.FullName
+        }
+    }
+
+    return ''
+}
+
 function Check-State {
     param(
         [string]$Name,
@@ -74,6 +103,33 @@ function MdEscape {
 
     if ($null -eq $Value) { return '' }
     return $Value.Replace('|', '\|')
+}
+
+if (-not $SyntheticReceipt) {
+    $SyntheticReceipt = Find-LatestReceipt 'synthetic receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'synthetic_motion_gate_passed' -and [bool]$Body.ok
+    }
+}
+if (-not $ReadinessReceipt) {
+    $ReadinessReceipt = Find-LatestReceipt 'readiness receipt' {
+        param($Body)
+        $null -ne $Body.ready_for_derek -and [string]$Body.verdict -in @('ready_for_two_client_gate', 'waiting_for_optional_i5_or_real_clients', 'blocked_by_failed_preflight')
+    }
+}
+if (-not $LiveGateReceipt) {
+    $LiveGateReceipt = Find-LatestReceipt 'live gate wait receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wait_for_two_real_clients' -and
+            $null -ne $Body.non_human_gates.synthetic_motion -and
+            $null -ne $Body.non_human_gates.readiness
+    }
+}
+if (-not $FixtureReceipt) {
+    $FixtureReceipt = Find-LatestReceipt 'fixture summary receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_live_gate_fixture_checks_passed'
+    }
 }
 
 $synthetic = Read-Receipt $SyntheticReceipt
