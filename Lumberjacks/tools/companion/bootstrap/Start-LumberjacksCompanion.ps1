@@ -19,6 +19,7 @@ $bundleRoot = Split-Path -Parent $PSScriptRoot
 $compose = Join-Path $bundleRoot 'tools\companion\docker-compose.yml'
 $overrideTemplate = Join-Path $bundleRoot 'tools\companion\docker-compose.valheim.yml.example'
 $override = Join-Path $bundleRoot 'tools\companion\docker-compose.valheim.yml'
+$bootstrapReleaseFile = Join-Path $bundleRoot 'tools\companion\bootstrap-release.json'
 $dockerCandidates = @(
     'C:\Program Files\Docker\Docker\resources\bin\docker.exe',
     (Get-Command docker.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue)
@@ -83,6 +84,15 @@ if (-not (Test-Path -LiteralPath $override)) {
     Copy-Item -LiteralPath $overrideTemplate -Destination $override
 }
 $env:LUMBERJACKS_VALHEIM_HOST_PATH = $valheimPath
+if (Test-Path -LiteralPath $bootstrapReleaseFile) {
+    try {
+        $bootstrapRelease = Get-Content -LiteralPath $bootstrapReleaseFile -Raw | ConvertFrom-Json
+        if ($bootstrapRelease.release) { $env:LUMBERJACKS_COMPANION_BOOTSTRAP_RELEASE = $bootstrapRelease.release }
+    }
+    catch {
+        Write-Warning "Could not read Companion bootstrap release metadata: $($_.Exception.Message)"
+    }
+}
 Push-Location (Join-Path $bundleRoot 'tools\companion')
 try {
     & $docker compose -p lumberjacks-companion -f docker-compose.yml -f docker-compose.valheim.yml up --build -d

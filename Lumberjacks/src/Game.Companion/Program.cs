@@ -85,13 +85,30 @@ app.MapPost("/api/v0/companion/update/rollback", (GameClosedConfirmation? confir
     return result.ok ? Results.Ok(result) : Results.BadRequest(result);
 });
 
-app.MapGet("/api/v0/companion/release/check", () => Results.Ok(new
+app.MapGet("/api/v0/companion/release/check", async (GatewayClient gateway, CancellationToken cancellationToken) =>
 {
-    schema_version = 1,
-    installed_version = CompanionVersion.Value,
-    update_available = false,
-    note = "Companion self-update is the next slice; modpack updates are live now.",
-}));
+    CompanionBootstrapManifest? latest = null;
+    string? error = null;
+    try { latest = await gateway.GetCompanionBootstrapManifest(cancellationToken); }
+    catch (Exception ex) when (ex is not OperationCanceledException) { error = ex.Message; }
+
+    var local = CompanionVersion.BootstrapRelease;
+    var updateAvailable = latest is not null &&
+        (string.Equals(local, "unknown", StringComparison.OrdinalIgnoreCase) ||
+         !string.Equals(local, latest.release, StringComparison.Ordinal));
+    return Results.Ok(new
+    {
+        schema_version = 1,
+        companion_version = CompanionVersion.Value,
+        bootstrap_release = local,
+        latest_bootstrap = latest,
+        update_available = updateAvailable,
+        error,
+        note = updateAvailable
+            ? "A newer public Companion bootstrap is available. Download it, extract over or beside the old bundle, then run Start-LumberjacksCompanion.cmd."
+            : "This Companion bootstrap matches the public P7 bootstrap lane.",
+    });
+});
 
 app.MapPost("/api/v0/companion/transport-capture", async (TransportCaptureRequest? request, TransportTruthCaptureService capture, CancellationToken cancellationToken) =>
 {
@@ -140,6 +157,7 @@ app.Run();
 static class CompanionVersion
 {
     public static string Value => typeof(CompanionVersion).Assembly.GetName().Version?.ToString(3) ?? "0.1.0";
+    public static string BootstrapRelease => Environment.GetEnvironmentVariable("LUMBERJACKS_COMPANION_BOOTSTRAP_RELEASE") ?? "unknown";
 }
 
 sealed class GatewayClient(HttpClient client)
@@ -152,6 +170,14 @@ sealed class GatewayClient(HttpClient client)
         if (!response.IsSuccessStatusCode) return null;
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         return await JsonSerializer.DeserializeAsync<ModpackManifest>(stream, Json.Options, cancellationToken);
+    }
+
+    public async Task<CompanionBootstrapManifest?> GetCompanionBootstrapManifest(CancellationToken cancellationToken)
+    {
+        using var response = await client.GetAsync(GatewayUrl + "/api/v0/companion/bootstrap/manifest", cancellationToken);
+        if (!response.IsSuccessStatusCode) return null;
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        return await JsonSerializer.DeserializeAsync<CompanionBootstrapManifest>(stream, Json.Options, cancellationToken);
     }
 
     public async Task<byte[]?> GetPackage(ModpackCredentials credentials, CancellationToken cancellationToken)
@@ -537,6 +563,9 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
 
 sealed record ModpackManifest(int schema_version, string? release, string? mod_release, ModpackPackage? package);
 sealed record ModpackPackage(string? kind, string sha256, long size_bytes);
+sealed record CompanionBootstrapManifest(int schema_version, string release, DateTime? created_utc, CompanionBootstrapPackage? package, CompanionBootstrapDownloads? downloads);
+sealed record CompanionBootstrapPackage(string? kind, string sha256, long size_bytes, string? entrypoint);
+sealed record CompanionBootstrapDownloads(string? package, string? manifest, string? latest_update);
 sealed record GameClosedConfirmation(bool game_closed_confirmed);
 sealed record TransportCaptureRequest(int? duration_seconds, int? interval_seconds, string? label);
 sealed record TransportCurrentRead(string level, string text);

@@ -140,8 +140,15 @@ async function status(){
 async function companionRelease(){
   try{
     let r=await get('/api/v0/companion/release/check');
-    q('#companion-version').textContent=r.installed_version;
-    q('#companion-note').textContent=r.note;
+    const latest=r.latest_bootstrap;
+    q('#companion-version').textContent='app '+(r.companion_version||'unknown')+' / bootstrap '+(r.bootstrap_release||'unknown');
+    if(r.update_available&&latest?.downloads?.package){
+      q('#companion-note').innerHTML='<strong>New Companion bootstrap available.</strong><br>Local: <span class="release">'+esc(r.bootstrap_release||'unknown')+'</span><br>Latest: <span class="release">'+esc(latest.release)+'</span><br><a class="btn secondary" href="'+esc(latest.downloads.package)+'">Download latest bootstrap</a> <a href="'+esc(latest.downloads.manifest||'#')+'">manifest</a>';
+    }else if(latest){
+      q('#companion-note').innerHTML='<strong>Companion bootstrap current.</strong><br><span class="release">'+esc(latest.release)+'</span> · sha256 '+esc((latest.package?.sha256||'').slice(0,12))+'...';
+    }else{
+      q('#companion-note').textContent=r.error?'Could not check public Companion bootstrap: '+r.error:r.note;
+    }
   }catch(e){
     q('#companion-version').textContent='Unknown';
     q('#companion-note').textContent='Could not check Companion release status.';

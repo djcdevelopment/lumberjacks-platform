@@ -42,6 +42,12 @@ try {
         Copy-Item -LiteralPath (Join-Path $lumberjacksRoot "tools\companion\$file") -Destination $bundleTools
     }
     Copy-Item -LiteralPath (Join-Path $lumberjacksRoot 'tools\companion\bootstrap') -Destination $bundleTools -Recurse
+    $bootstrapRelease = [ordered]@{
+        schema_version = 1
+        release = $safeRelease
+        created_utc = [DateTime]::UtcNow.ToString('O')
+    }
+    [IO.File]::WriteAllText((Join-Path $bundleTools 'bootstrap-release.json'), ($bootstrapRelease | ConvertTo-Json -Depth 3), [Text.UTF8Encoding]::new($false))
 
     if (Test-Path -LiteralPath $packagePath) { Remove-Item -LiteralPath $packagePath -Force }
     Get-ChildItem -LiteralPath $bundleRoot -Force | Compress-Archive -DestinationPath $packagePath -CompressionLevel Optimal

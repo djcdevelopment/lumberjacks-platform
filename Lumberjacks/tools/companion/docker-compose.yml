@@ -12,6 +12,7 @@ services:
     environment:
       LUMBERJACKS_COMPANION_GATEWAY_URL: "${LUMBERJACKS_COMPANION_GATEWAY_URL:-https://comfy-p7.duckdns.org}"
       LUMBERJACKS_COMPANION_DATA: "/data"
+      LUMBERJACKS_COMPANION_BOOTSTRAP_RELEASE: "${LUMBERJACKS_COMPANION_BOOTSTRAP_RELEASE:-unknown}"
     volumes:
       - companion-data:/data
     restart: unless-stopped
