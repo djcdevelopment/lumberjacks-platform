@@ -13,6 +13,7 @@ param(
     [string]$SyntheticReceipt = 'captures/synthetic-motion.json',
     [string]$ReadinessReceipt = 'captures/readiness.json',
     [string]$LiveGateReceipt = 'captures/wave0-live-gate-full-nopeer-smoke.json',
+    [string]$FixtureReceipt = 'captures/wave0-live-gate-fixtures/summary.json',
     [string]$OutputJson = 'captures/wave0-return-packet.json',
     [string]$OutputMarkdown = 'captures/wave0-return-packet.md'
 )
@@ -78,6 +79,7 @@ function MdEscape {
 $synthetic = Read-Receipt $SyntheticReceipt
 $readiness = Read-Receipt $ReadinessReceipt
 $liveGate = Read-Receipt $LiveGateReceipt
+$fixtures = Read-Receipt $FixtureReceipt
 
 $checks = @()
 $checks += Check-State `
@@ -98,6 +100,12 @@ $checks += Check-State `
     -Detail ($(if ($liveGate.present) { "verdict=$($liveGate.body.verdict) peer_count=$($liveGate.body.p7_peer_check.peer_count)" } else { 'missing live gate smoke receipt' })) `
     -ReceiptPath $liveGate.path `
     -ReceiptSha256 $liveGate.sha256
+$checks += Check-State `
+    -Name 'live_gate_fixture_roles' `
+    -Ok ($fixtures.present -and [string]$fixtures.body.verdict -eq 'wave0_live_gate_fixture_checks_passed') `
+    -Detail ($(if ($fixtures.present) { "verdict=$($fixtures.body.verdict) cases=$(@($fixtures.body.cases).Count)" } else { 'missing live gate fixture summary' })) `
+    -ReceiptPath $fixtures.path `
+    -ReceiptSha256 $fixtures.sha256
 
 $failed = @($checks | Where-Object { -not $_.ok })
 $expectedRelease = if ($readiness.present) { [string]$readiness.body.expected_release } else { '' }
