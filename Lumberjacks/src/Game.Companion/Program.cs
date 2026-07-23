@@ -378,7 +378,14 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         int? firstMotionReceived = null;
         int? lastMotionReceived = null;
         var maxPeers = 0;
+        int? firstPeers = null, lastPeers = null;
+        int? firstPending = null, lastPending = null;
+        int? firstActiveConsumers = null, lastActiveConsumers = null;
+        int? firstAcknowledged = null, lastAcknowledged = null;
+        int? firstApplied = null, lastApplied = null;
+        int? firstMotionRelayed = null, lastMotionRelayed = null;
         var badSamples = 0;
+        var observedPlayers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         TransportCurrentRead? finalCurrentRead = null;
 
         while (true)
@@ -399,12 +406,35 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
                 var received = IntValue(motion.body, "received");
                 firstMotionReceived ??= received;
                 lastMotionReceived = received;
+                var relayed = IntValue(motion.body, "relayed_udp") + IntValue(motion.body, "relayed_websocket");
+                firstMotionRelayed ??= relayed;
+                lastMotionRelayed = relayed;
             }
 
             if (valheim.ok)
             {
                 var peers = IntValue(valheim.body, "peers", IntValue(valheim.body, "peer_count"));
                 if (peers > maxPeers) maxPeers = peers;
+                firstPeers ??= peers;
+                lastPeers = peers;
+                foreach (var player in PlayerNames(valheim.body)) observedPlayers.Add(player);
+            }
+
+            if (cutover.ok)
+            {
+                var window = ObjectProperty(cutover.body, "authoritative_window");
+                var pending = IntValue(window, "pending", IntValue(window, "consumer_pending"));
+                var activeConsumers = IntValue(window, "active_consumers");
+                var acknowledged = IntValue(window, "consumer_acknowledged", IntValue(window, "acknowledged"));
+                var applied = IntValue(window, "applied");
+                firstPending ??= pending;
+                lastPending = pending;
+                firstActiveConsumers ??= activeConsumers;
+                lastActiveConsumers = activeConsumers;
+                firstAcknowledged ??= acknowledged;
+                lastAcknowledged = acknowledged;
+                firstApplied ??= applied;
+                lastApplied = applied;
             }
 
             var row = new TransportCaptureSample(
@@ -443,7 +473,16 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             Verdict(badSamples, maxPeers, firstMotionReceived, lastMotionReceived),
             finalCurrentRead,
             samplesPath,
-            summaryPath);
+            summaryPath,
+            observedPlayers.ToList(),
+            new TransportCaptureCounterRanges(
+                CounterRange(firstPeers, lastPeers),
+                CounterRange(firstMotionReceived, lastMotionReceived),
+                CounterRange(firstMotionRelayed, lastMotionRelayed),
+                CounterRange(firstPending, lastPending),
+                CounterRange(firstActiveConsumers, lastActiveConsumers),
+                CounterRange(firstAcknowledged, lastAcknowledged),
+                CounterRange(firstApplied, lastApplied)));
         await File.WriteAllTextAsync(summaryPath, JsonSerializer.Serialize(summary, Json.Options), cancellationToken);
         return summary;
     }
@@ -529,7 +568,12 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             ? Verdict(summary.bad_sample_count, summary.max_peers, summary.first_motion_received, summary.last_motion_received)
             : summary.verdict;
         var finalRead = summary.final_current_read ?? ReadFromVerdict(verdict, summary.max_peers);
-        return summary with { verdict = verdict, final_current_read = finalRead };
+        return summary with
+        {
+            verdict = verdict,
+            final_current_read = finalRead,
+            observed_players = summary.observed_players ?? [],
+        };
     }
 
     static TransportCurrentRead ReadFromVerdict(string verdict, int maxPeers) => verdict switch
@@ -552,6 +596,44 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         };
     }
 
+    static JsonElement? ObjectProperty(JsonElement? element, string name)
+    {
+        if (element is null || element.Value.ValueKind != JsonValueKind.Object) return null;
+        return element.Value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.Object ? property : null;
+    }
+
+    static IReadOnlyList<string> PlayerNames(JsonElement? element)
+    {
+        var players = ArrayProperty(ObjectProperty(element, "heartbeat"), "players") ?? ArrayProperty(element, "players");
+        if (players is null) return [];
+        var names = new List<string>();
+        foreach (var player in players.Value.EnumerateArray())
+        {
+            var name = StringProperty(player, "name") ??
+                StringProperty(player, "player_name") ??
+                StringProperty(player, "character_name") ??
+                StringProperty(player, "steam_name") ??
+                StringProperty(player, "id");
+            if (!string.IsNullOrWhiteSpace(name)) names.Add(name);
+        }
+        return names;
+    }
+
+    static JsonElement? ArrayProperty(JsonElement? element, string name)
+    {
+        if (element is null || element.Value.ValueKind != JsonValueKind.Object) return null;
+        return element.Value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.Array ? property : null;
+    }
+
+    static string? StringProperty(JsonElement element, string name)
+    {
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(name, out var property)) return null;
+        return property.ValueKind == JsonValueKind.String ? property.GetString() : property.ToString();
+    }
+
+    static TransportCaptureCounterRange? CounterRange(int? first, int? last) =>
+        first.HasValue && last.HasValue ? new(first.Value, last.Value, last.Value - first.Value) : null;
+
     static string SafeToken(string value)
     {
         var token = string.Concat(value.Select(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_' ? ch : '-')).Trim('-');
@@ -572,7 +654,16 @@ sealed record TransportCurrentRead(string level, string text);
 sealed record TransportCaptureEndpoint(bool ok, string path, int? status, JsonElement? body, string? error);
 sealed record TransportCaptureEndpoints(TransportCaptureEndpoint deployment, TransportCaptureEndpoint valheim, TransportCaptureEndpoint cutover, TransportCaptureEndpoint motion);
 sealed record TransportCaptureSample(int schema_version, string event_type, DateTime timestamp_utc, string run_id, int sample_index, string base_url, TransportCurrentRead current_read, TransportCaptureEndpoints endpoints);
-sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path);
+sealed record TransportCaptureCounterRange(int first, int last, int delta);
+sealed record TransportCaptureCounterRanges(
+    TransportCaptureCounterRange? peers,
+    TransportCaptureCounterRange? motion_received,
+    TransportCaptureCounterRange? motion_relayed,
+    TransportCaptureCounterRange? pending,
+    TransportCaptureCounterRange? active_consumers,
+    TransportCaptureCounterRange? acknowledged,
+    TransportCaptureCounterRange? applied);
+sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
 sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
 sealed class CompanionState

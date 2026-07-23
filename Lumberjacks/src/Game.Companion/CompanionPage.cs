@@ -160,6 +160,16 @@ function diffSignal(next){
   }
 }
 
+function counterLine(ranges){
+  if(!ranges)return '';
+  const parts=[];
+  for(const key of ['peers','motion_received','motion_relayed','pending','active_consumers','acknowledged','applied']){
+    const r=ranges[key];
+    if(r)parts.push(key+' '+r.first+'→'+r.last+' ('+(r.delta>=0?'+':'')+r.delta+')');
+  }
+  return parts.join(' · ');
+}
+
 function paint(){
   let v=state.valheim,p=state.profile;
   setCheck('c-valheim',v.found);
@@ -307,7 +317,9 @@ async function captureTransport(){
     const level=d.bad_sample_count>0?'wait':(d.motion_received_delta>0?'ok':'wait');
     q('#capture-result').className='result '+level;
     const base='/api/v0/companion/transport-capture/'+encodeURIComponent(d.run_id)+'/';
-    q('#capture-result').innerHTML='<strong>Capture complete: '+esc(d.verdict||'unknown')+'</strong><p>'+esc(d.final_current_read?.text||'No final read recorded.')+'</p><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · motion delta: '+esc(d.motion_received_delta)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
+    const players=(d.observed_players||[]).join(', ')||'none';
+    const counters=counterLine(d.counter_ranges)||'no counters';
+    q('#capture-result').innerHTML='<strong>Capture complete: '+esc(d.verdict||'unknown')+'</strong><p>'+esc(d.final_current_read?.text||'No final read recorded.')+'</p><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>Players: '+esc(players)+'</p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · '+esc(counters)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
     await captureHistory();
   }catch(e){
     q('#capture-result').className='result bad';
@@ -327,7 +339,9 @@ async function captureHistory(){
     }
     q('#capture-history').innerHTML='<strong>Recent captures</strong>'+captures.map(c=>{
       const base='/api/v0/companion/transport-capture/'+encodeURIComponent(c.run_id)+'/';
-      return '<p><strong>'+esc(c.verdict||'unknown')+'</strong> · <span class="release">'+esc(c.run_id)+'</span><br>'+esc(c.final_current_read?.text||'No final read recorded.')+'<br>peers '+esc(c.max_peers)+' · motion delta '+esc(c.motion_received_delta)+' · samples '+esc(c.sample_count)+'<br><a href="'+base+'summary.json">summary</a> · <a href="'+base+'samples.jsonl">samples</a></p>';
+      const players=(c.observed_players||[]).join(', ')||'none';
+      const counters=counterLine(c.counter_ranges)||('peers '+c.max_peers+' · motion delta '+c.motion_received_delta);
+      return '<p><strong>'+esc(c.verdict||'unknown')+'</strong> · <span class="release">'+esc(c.run_id)+'</span><br>'+esc(c.final_current_read?.text||'No final read recorded.')+'<br>players '+esc(players)+'<br>'+esc(counters)+' · samples '+esc(c.sample_count)+'<br><a href="'+base+'summary.json">summary</a> · <a href="'+base+'samples.jsonl">samples</a></p>';
     }).join('');
   }catch(e){
     q('#capture-history').className='result bad';
