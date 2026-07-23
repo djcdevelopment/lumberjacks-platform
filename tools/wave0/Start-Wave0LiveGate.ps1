@@ -150,7 +150,13 @@ function Write-ObservationTemplate {
     $lines += "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson $outputPath -ApplyClient i5 -ObserveClient omen -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun yes"
     $lines += '```'
     $lines += ''
-    $lines += 'Rules: do not edit the machine receipt. Use the annotation command to write the immutable sidecar.'
+    $lines += 'After both directions are annotated, seal the visual evidence:'
+    $lines += ''
+    $lines += '```powershell'
+    $lines += 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Seal-Wave0VisualEvidence.ps1 -FirstAnnotatedJson captures\wave0-live-gate\result.annotated.json -ReversalAnnotatedJson captures\wave0-live-gate-reversal\result.annotated.json -OutputJson captures\wave0-live-seal\visual-seal.json'
+    $lines += '```'
+    $lines += ''
+    $lines += 'Rules: do not edit the machine receipt. Use the annotation command to write immutable sidecars; use the seal command to write the derived two-direction index.'
 
     [IO.File]::WriteAllText($observationPath, (($lines -join [Environment]::NewLine) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
 }

@@ -212,6 +212,12 @@ $packet = [ordered]@{
             actor = 'derek-plus-agent'
             action = 'Run tools\wave0\Start-Wave0LiveGate.ps1 -DesiredApplyClient i5 -OutputJson captures\wave0-live-gate-reversal\result.json, then repeat steps 3-4.'
             expected = 'The visual result follows role selection rather than machine/account.'
+        },
+        [ordered]@{
+            step = 6
+            actor = 'agent'
+            action = 'Run tools\wave0\Seal-Wave0VisualEvidence.ps1 against the two annotated projections.'
+            expected = 'One derived seal receipt verifies both directions, role reversal, distinct source receipts, and allowed live-gate verdicts.'
         }
     )
     stop_conditions = @(
@@ -227,6 +233,7 @@ $packet = [ordered]@{
         role_reversal = 'tools\wave0\Start-Wave0LiveGate.ps1 -DesiredApplyClient i5 -OutputJson captures\wave0-live-gate-reversal\result.json'
         annotate_first_pass = 'tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson captures\wave0-live-gate\result.json -ApplyClient omen -ObserveClient i5 -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun no'
         annotate_role_reversal = 'tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson captures\wave0-live-gate-reversal\result.json -ApplyClient i5 -ObserveClient omen -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun yes'
+        seal_visual_evidence = 'tools\wave0\Seal-Wave0VisualEvidence.ps1 -FirstAnnotatedJson captures\wave0-live-gate\result.annotated.json -ReversalAnnotatedJson captures\wave0-live-gate-reversal\result.annotated.json -OutputJson captures\wave0-live-seal\visual-seal.json'
     }
 }
 
@@ -277,9 +284,12 @@ $markdownLines += $packet.commands.role_reversal
 $markdownLines += ''
 $markdownLines += '# After observing role reversal:'
 $markdownLines += $packet.commands.annotate_role_reversal
+$markdownLines += ''
+$markdownLines += '# Seal both annotated visual projections:'
+$markdownLines += $packet.commands.seal_visual_evidence
 $markdownLines += '```'
 $markdownLines += ''
-$markdownLines += 'The original machine receipts remain immutable. Visual observations are sidecars and derived projections.'
+$markdownLines += 'The original machine receipts remain immutable. Visual observations are sidecars, and the seal is a derived index over both directions.'
 
 $jsonPath = Resolve-UnderRepo $OutputJson
 $mdPath = Resolve-UnderRepo $OutputMarkdown
