@@ -87,21 +87,30 @@ static class EnrollmentPages
     static string ReleaseHistoryTable()
     {
         var current = Environment.GetEnvironmentVariable("LUMBERJACKS_VERSION") ?? "unknown";
-        var rows = new (string WhenUtc, string Release, string Mod, string Notes)[]
+        var rows = new List<(string WhenUtc, string Release, string Mod, string Notes)>();
+        if (ModpackReleaseCatalog.TryGetCurrent(out var currentModpack, out _))
         {
-            ("2026-07-23 15:32Z", "m17-motionstate-20260723-r1", "0.5.35", "Observe-first motion state and WebSocket/UDP readiness are exposed in the client heartbeat; package preserves the existing config and admitted mod identity."),
+            rows.Add((
+                currentModpack.created_utc.ToUniversalTime().ToString("yyyy-MM-dd HH:mm'Z'"),
+                currentModpack.release,
+                currentModpack.mod_release,
+                currentModpack.notes ?? "Current runtime modpack published through the verified release pointer."));
+        }
+
+        rows.AddRange(new (string WhenUtc, string Release, string Mod, string Notes)[]
+        {
             ("2026-07-23 09:21Z", "m17-updatefilename-20260723-r1", "0.5.35", "Post-Steam update zip filename includes Gateway release, admitted mod release, and package hash; callback sends no-store."),
             ("2026-07-23 09:11Z", "m16-updatehistory-20260723-r1", "0.5.35", "This pre-signin page adds release history and no-store cache headers; admits m15 mod."),
             ("2026-07-23 08:47Z", "m15-hudrecover-20260723-r1", "0.5.35", "Recovery tab remains visible even when an older config disabled the strip."),
             ("2026-07-23 08:22Z", "m14-hudtoggle-20260723-r1", "0.5.34", "Transport strip starts collapsed; side NET SHOW/HIDE tab added."),
-        };
+        });
 
         var html =
             "<section class=\"release-box\"><h2>Recent alpha releases</h2>" +
             "<p class=\"small\">This page is served by Gateway release <code>" + WebUtility.HtmlEncode(current) +
             "</code>. If the table does not change after a refresh, the browser or proxy is serving stale HTML.</p>" +
             "<table class=\"releases\"><thead><tr><th>UTC</th><th>Release</th><th>Mod</th><th>Why it changed</th></tr></thead><tbody>";
-        foreach (var row in rows)
+        foreach (var row in rows.Take(5))
         {
             var active = string.Equals(row.Release, current, StringComparison.Ordinal) ? " class=\"current\"" : string.Empty;
             html += "<tr" + active + "><td>" + WebUtility.HtmlEncode(row.WhenUtc) + "</td><td><code>" +

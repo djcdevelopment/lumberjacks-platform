@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy Ã— Valheim â€” Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-23T16:02:55.633Z",
+  "updated_at": "2026-07-23T16:06:34.671Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -10,8 +10,8 @@
     "release_id": "m17-motionstate-20260723-r1",
     "mod": "ComfyNetworkSense 0.5.35",
     "mod_sha256": "5e45c7132c69338196ee377cb27a258a9c94bdbe97f837be0a366b65afef4a5e",
-    "gateway_image": "m26-releasehistory-20260723-r1",
-    "gateway_image_release_id": "m26-releasehistory-20260723-r1",
+    "gateway_image": "m27-dynamichistory-20260723-r1",
+    "gateway_image_release_id": "m27-dynamichistory-20260723-r1",
     "deployment": "comfy-lumberjacks-p7",
     "window": "p7-primary-v1",
     "authoritative_consumer_ceiling": 2,
@@ -188,7 +188,7 @@
     }
   ],
   "current_focus": [
-    "CURRENT - 2026-07-23 - P7 runs Gateway m26-releasehistory-20260723-r1 and modpack m17-motionstate-20260723-r1; Companion bootstrap r25 is published and verified on OMEN and i5. The public update table now includes the current package before the four prior releases. Per-run transport capture records motion state plus WebSocket/UDP readiness and treats stale or missing Valheim heartbeat telemetry as incomplete evidence. Connected two-client fan-out and motion behavior remain gated for live proof.",
+    "CURRENT - 2026-07-23 - P7 runs Gateway m27-dynamichistory-20260723-r1 and modpack m17-motionstate-20260723-r1; Companion bootstrap r25 is published and verified on OMEN and i5. The public update table derives its current row from the verified runtime package pointer before the four prior releases. Per-run transport capture records motion state plus WebSocket/UDP readiness and treats stale or missing Valheim heartbeat telemetry as incomplete evidence. Connected two-client fan-out and motion behavior remain gated for live proof.",
     "COMPLETE Â· M0 RELEASE FREEZE â€” A1â€“A5 closed 2026-07-16: source frozen, candidate r2 reproducible from clean tagged checkouts, sanitized bundle and FieldLab catalog committed, promotion drill passed with artifact-only rollback, and the golden-proof evidence set published immutably with byte-verified hashes.",
     "COMPLETE Â· PROMOTION FINALIZED â€” P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.",
     "ACTIVE · M1 — Mod release m15-hudrecover-20260723-r1 is live on P7 with the transport boundary collapsed by default, a side NET SHOW/HIDE recovery tab that remains visible even if an older local config disabled the strip, alpha fault switches, self-service Steam update downloads, and an observe-first player-motion lane over token-bound UDP with binary WebSocket fallback. Public TLS preserves enrolled recipients through WebSocket setup and exposes a config-preserving update package; native Valheim still owns simulation, ownership, non-ZDO RPCs, relevance, and presentation unless a tester explicitly enables local motion apply. Distinct-recipient fan-out remains a two-account canary gate. TLS/Caddy still gives anonymous requests private-socket capability and remains accepted only for the known-cohort alpha; stop-ship before widening.",
