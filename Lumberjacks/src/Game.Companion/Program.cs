@@ -442,7 +442,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             try
             {
                 var summary = JsonSerializer.Deserialize<TransportCaptureSummary>(File.ReadAllText(summaryPath), Json.Options);
-                if (summary is not null) captures.Add(summary);
+                if (summary is not null) captures.Add(NormalizeSummary(summary));
             }
             catch
             {
@@ -496,6 +496,23 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         if (maxPeers > 0) return "native_motion_only";
         return "no_peer_window";
     }
+
+    static TransportCaptureSummary NormalizeSummary(TransportCaptureSummary summary)
+    {
+        var verdict = string.IsNullOrWhiteSpace(summary.verdict)
+            ? Verdict(summary.bad_sample_count, summary.max_peers, summary.first_motion_received, summary.last_motion_received)
+            : summary.verdict;
+        var finalRead = summary.final_current_read ?? ReadFromVerdict(verdict, summary.max_peers);
+        return summary with { verdict = verdict, final_current_read = finalRead };
+    }
+
+    static TransportCurrentRead ReadFromVerdict(string verdict, int maxPeers) => verdict switch
+    {
+        "incomplete_telemetry" => new("bad", "Capture had incomplete telemetry; use samples.jsonl before interpreting movement."),
+        "lumberjacks_motion_observed" => new("ok", "Lumberjacks motion frames arrived during this capture."),
+        "native_motion_only" => new("wait", $"Valheim had up to {maxPeers} peer(s), but Lumberjacks motion counters did not advance. Visible player movement was native Valheim for this capture."),
+        _ => new("wait", "No active peer window was captured."),
+    };
 
     static int IntValue(JsonElement? element, string name, int fallback = 0)
     {
