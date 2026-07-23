@@ -10,13 +10,12 @@ Valheim installation, writes a local compose override, and opens the loopback da
 #>
 [CmdletBinding()]
 param(
+    [string]$ValheimPath,
     [switch]$NoBrowser
 )
 
 $ErrorActionPreference = 'Stop'
 $bundleRoot = Split-Path -Parent $PSScriptRoot
-$valheimPath = Join-Path ${env:ProgramFiles(x86)} 'Steam\steamapps\common\Valheim'
-$valheimExe = Join-Path $valheimPath 'valheim.exe'
 $compose = Join-Path $bundleRoot 'tools\companion\docker-compose.yml'
 $overrideTemplate = Join-Path $bundleRoot 'tools\companion\docker-compose.valheim.yml.example'
 $override = Join-Path $bundleRoot 'tools\companion\docker-compose.valheim.yml'
@@ -25,8 +24,38 @@ $dockerCandidates = @(
     (Get-Command docker.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue)
 ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
 
-if (-not (Test-Path -LiteralPath $valheimExe)) {
-    throw "Valheim was not found at $valheimPath. Install Valheim through Steam before starting Companion."
+function Find-ValheimPath {
+    param([string]$RequestedPath)
+
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    if ($RequestedPath) { $candidates.Add($RequestedPath) }
+    if ($env:LUMBERJACKS_VALHEIM_PATH) { $candidates.Add($env:LUMBERJACKS_VALHEIM_PATH) }
+
+    $steamRoot = Join-Path ${env:ProgramFiles(x86)} 'Steam'
+    if ($steamRoot) {
+        $candidates.Add((Join-Path $steamRoot 'steamapps\common\Valheim'))
+        $libraryFile = Join-Path $steamRoot 'steamapps\libraryfolders.vdf'
+        if (Test-Path -LiteralPath $libraryFile) {
+            # Steam records each installed library as a VDF "path" value. The launcher does
+            # not parse its entire format: a discovered path is accepted only if valheim.exe
+            # exists at the expected location.
+            foreach ($match in [regex]::Matches((Get-Content -LiteralPath $libraryFile -Raw), '"path"\s+"(?<path>(?:\\.|[^"\\])*)"')) {
+                $library = $match.Groups['path'].Value -replace '\\\\', '\\'
+                if ($library) { $candidates.Add((Join-Path $library 'steamapps\common\Valheim')) }
+            }
+        }
+    }
+
+    foreach ($candidate in $candidates | Select-Object -Unique) {
+        $full = [IO.Path]::GetFullPath($candidate)
+        if (Test-Path -LiteralPath (Join-Path $full 'valheim.exe') -PathType Leaf) { return $full }
+    }
+    return $null
+}
+
+$valheimPath = Find-ValheimPath -RequestedPath $ValheimPath
+if (-not $valheimPath) {
+    throw 'Valheim was not found in the default or configured Steam libraries. Install it through Steam, or run the launcher with -ValheimPath C:\path\to\Valheim.'
 }
 if (-not (Test-Path -LiteralPath $compose) -or -not (Test-Path -LiteralPath $overrideTemplate)) {
     throw 'This Companion bundle is incomplete. Download and extract a fresh release bundle.'

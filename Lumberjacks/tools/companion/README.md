@@ -42,6 +42,8 @@ This is the tester-facing Docker path: extract the published bundle, then double
 `bootstrap\Start-LumberjacksCompanion.cmd`. It finds the default Steam Valheim installation,
 starts Docker Desktop if needed, preserves an existing local compose override and Valheim config,
 then opens `http://127.0.0.1:8080`. It does not contain a credential or a personalized config.
+It also scans Steam's additional libraries. If Valheim is installed somewhere unusual, launch the
+PowerShell entry point with `-ValheimPath C:\path\to\Valheim`.
 
 Build a release bundle from this checkout with:
 

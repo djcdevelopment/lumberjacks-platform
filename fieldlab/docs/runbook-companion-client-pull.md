@@ -36,6 +36,9 @@ ComfyNetworkSense configuration remains in the Valheim install and is read local
 
 The launcher intentionally preserves an existing `docker-compose.valheim.yml` next to the
 extracted bundle, so a relaunch cannot silently replace a local override.
+It searches the default Steam install plus Steam's configured extra libraries. For an unusual
+installation, start `bootstrap\Start-LumberjacksCompanion.ps1` with
+`-ValheimPath C:\path\to\Valheim`.
 
 ## Publish a mod/config package
 
