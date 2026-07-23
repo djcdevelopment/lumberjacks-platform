@@ -243,7 +243,7 @@ async function captureTransport(){
     const level=d.bad_sample_count>0?'wait':(d.motion_received_delta>0?'ok':'wait');
     q('#capture-result').className='result '+level;
     const base='/api/v0/companion/transport-capture/'+encodeURIComponent(d.run_id)+'/';
-    q('#capture-result').innerHTML='<strong>Capture complete</strong><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · motion delta: '+esc(d.motion_received_delta)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
+    q('#capture-result').innerHTML='<strong>Capture complete: '+esc(d.verdict||'unknown')+'</strong><p>'+esc(d.final_current_read?.text||'No final read recorded.')+'</p><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · motion delta: '+esc(d.motion_received_delta)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
     await captureHistory();
   }catch(e){
     q('#capture-result').className='result bad';
@@ -263,7 +263,7 @@ async function captureHistory(){
     }
     q('#capture-history').innerHTML='<strong>Recent captures</strong>'+captures.map(c=>{
       const base='/api/v0/companion/transport-capture/'+encodeURIComponent(c.run_id)+'/';
-      return '<p><span class="release">'+esc(c.run_id)+'</span> · peers '+esc(c.max_peers)+' · motion delta '+esc(c.motion_received_delta)+' · samples '+esc(c.sample_count)+'<br><a href="'+base+'summary.json">summary</a> · <a href="'+base+'samples.jsonl">samples</a></p>';
+      return '<p><strong>'+esc(c.verdict||'unknown')+'</strong> · <span class="release">'+esc(c.run_id)+'</span><br>'+esc(c.final_current_read?.text||'No final read recorded.')+'<br>peers '+esc(c.max_peers)+' · motion delta '+esc(c.motion_received_delta)+' · samples '+esc(c.sample_count)+'<br><a href="'+base+'summary.json">summary</a> · <a href="'+base+'samples.jsonl">samples</a></p>';
     }).join('');
   }catch(e){
     q('#capture-history').className='result bad';

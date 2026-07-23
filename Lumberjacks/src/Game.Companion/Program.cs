@@ -353,6 +353,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         int? lastMotionReceived = null;
         var maxPeers = 0;
         var badSamples = 0;
+        TransportCurrentRead? finalCurrentRead = null;
 
         while (true)
         {
@@ -363,6 +364,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             var cutover = await ReadEndpointAsync("/api/v0/telemetry/cutover", cancellationToken);
             var motion = await ReadEndpointAsync("/live/valheim-motion", cancellationToken);
             var currentRead = CurrentRead(deployment, valheim, motion);
+            finalCurrentRead = currentRead;
 
             if (!deployment.ok || !valheim.ok || !cutover.ok || !motion.ok) badSamples++;
 
@@ -412,6 +414,8 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             firstMotionReceived,
             lastMotionReceived,
             firstMotionReceived.HasValue && lastMotionReceived.HasValue ? lastMotionReceived.Value - firstMotionReceived.Value : null,
+            Verdict(badSamples, maxPeers, firstMotionReceived, lastMotionReceived),
+            finalCurrentRead,
             samplesPath,
             summaryPath);
         await File.WriteAllTextAsync(summaryPath, JsonSerializer.Serialize(summary, Json.Options), cancellationToken);
@@ -485,6 +489,14 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         return new("wait", "P7 is up with no active peers. Join two clients, then watch Valheim peers and Motion counters change together.");
     }
 
+    static string Verdict(int badSamples, int maxPeers, int? firstMotionReceived, int? lastMotionReceived)
+    {
+        if (badSamples > 0) return "incomplete_telemetry";
+        if (firstMotionReceived.HasValue && lastMotionReceived.HasValue && lastMotionReceived.Value > firstMotionReceived.Value) return "lumberjacks_motion_observed";
+        if (maxPeers > 0) return "native_motion_only";
+        return "no_peer_window";
+    }
+
     static int IntValue(JsonElement? element, string name, int fallback = 0)
     {
         if (element is null || element.Value.ValueKind != JsonValueKind.Object) return fallback;
@@ -514,7 +526,7 @@ sealed record TransportCurrentRead(string level, string text);
 sealed record TransportCaptureEndpoint(bool ok, string path, int? status, JsonElement? body, string? error);
 sealed record TransportCaptureEndpoints(TransportCaptureEndpoint deployment, TransportCaptureEndpoint valheim, TransportCaptureEndpoint cutover, TransportCaptureEndpoint motion);
 sealed record TransportCaptureSample(int schema_version, string event_type, DateTime timestamp_utc, string run_id, int sample_index, string base_url, TransportCurrentRead current_read, TransportCaptureEndpoints endpoints);
-sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string samples_path, string summary_path);
+sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
 sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
 sealed class CompanionState

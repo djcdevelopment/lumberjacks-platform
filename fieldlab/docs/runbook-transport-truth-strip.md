@@ -103,10 +103,10 @@ fieldlab\runs\transport-truth\<timestamp>-<label>\samples.jsonl
 fieldlab\runs\transport-truth\<timestamp>-<label>\summary.json
 ```
 
-Use the summary fields first: `max_peers`, `first_motion_received`, `last_motion_received`, and
-`motion_received_delta`. If `max_peers` is positive and `motion_received_delta` is zero, the run
-observed Valheim peers without Lumberjacks motion frames. That is evidence that visible player
-movement was still native Valheim for that window.
+Use the summary fields first: `verdict`, `final_current_read`, `max_peers`,
+`first_motion_received`, `last_motion_received`, and `motion_received_delta`. A
+`native_motion_only` verdict means the run observed Valheim peers without Lumberjacks motion frames.
+That is evidence that visible player movement was still native Valheim for that window.
 
 ## Local evidence
 

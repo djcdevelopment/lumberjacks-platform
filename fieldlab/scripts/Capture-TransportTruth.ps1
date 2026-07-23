@@ -103,6 +103,15 @@ function Get-CurrentRead($Valheim, $Motion, $Deployment) {
     }
 }
 
+function Get-Verdict([int]$BadSamples, [int]$MaxPeers, $FirstMotionReceived, $LastMotionReceived) {
+    if ($BadSamples -gt 0) { return 'incomplete_telemetry' }
+    if ($null -ne $FirstMotionReceived -and $null -ne $LastMotionReceived -and $LastMotionReceived -gt $FirstMotionReceived) {
+        return 'lumberjacks_motion_observed'
+    }
+    if ($MaxPeers -gt 0) { return 'native_motion_only' }
+    'no_peer_window'
+}
+
 $startedUtc = [DateTimeOffset]::UtcNow
 $runId = ('{0}-{1}' -f $startedUtc.ToString('yyyyMMdd-HHmmss'), (New-SafeName $Label))
 $runDirectory = Join-Path $OutputDirectory $runId
@@ -116,6 +125,7 @@ $firstMotionReceived = $null
 $lastMotionReceived = $null
 $maxPeers = 0
 $badSamples = 0
+$finalCurrentRead = $null
 
 Write-Host "capture -> $samplesPath"
 Write-Host "base_url=$BaseUrl duration=${DurationSeconds}s interval=${IntervalSeconds}s"
@@ -127,6 +137,7 @@ while ($true) {
     $cutover = Invoke-JsonEndpoint '/api/v0/telemetry/cutover'
     $motion = Invoke-JsonEndpoint '/live/valheim-motion'
     $currentRead = Get-CurrentRead $valheim $motion $deployment
+    $finalCurrentRead = $currentRead
 
     if (-not $deployment.ok -or -not $valheim.ok -or -not $cutover.ok -or -not $motion.ok) {
         $badSamples++
@@ -184,6 +195,8 @@ $summary = [pscustomobject]@{
     first_motion_received = $firstMotionReceived
     last_motion_received = $lastMotionReceived
     motion_received_delta = if ($null -ne $firstMotionReceived -and $null -ne $lastMotionReceived) { $lastMotionReceived - $firstMotionReceived } else { $null }
+    verdict = Get-Verdict -BadSamples $badSamples -MaxPeers $maxPeers -FirstMotionReceived $firstMotionReceived -LastMotionReceived $lastMotionReceived
+    final_current_read = $finalCurrentRead
     samples_path = (Resolve-Path -LiteralPath $samplesPath).Path
 }
 
