@@ -89,11 +89,11 @@ static class EnrollmentPages
         var current = Environment.GetEnvironmentVariable("LUMBERJACKS_VERSION") ?? "unknown";
         var rows = new (string WhenUtc, string Release, string Mod, string Notes)[]
         {
+            ("2026-07-23 15:32Z", "m17-motionstate-20260723-r1", "0.5.35", "Observe-first motion state and WebSocket/UDP readiness are exposed in the client heartbeat; package preserves the existing config and admitted mod identity."),
             ("2026-07-23 09:21Z", "m17-updatefilename-20260723-r1", "0.5.35", "Post-Steam update zip filename includes Gateway release, admitted mod release, and package hash; callback sends no-store."),
             ("2026-07-23 09:11Z", "m16-updatehistory-20260723-r1", "0.5.35", "This pre-signin page adds release history and no-store cache headers; admits m15 mod."),
             ("2026-07-23 08:47Z", "m15-hudrecover-20260723-r1", "0.5.35", "Recovery tab remains visible even when an older config disabled the strip."),
             ("2026-07-23 08:22Z", "m14-hudtoggle-20260723-r1", "0.5.34", "Transport strip starts collapsed; side NET SHOW/HIDE tab added."),
-            ("2026-07-23 08:03Z", "m13-portal-20260723-r1", "0.5.33", "Steam-authenticated latest-update download page deployed."),
         };
 
         var html =
