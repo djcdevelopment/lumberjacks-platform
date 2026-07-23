@@ -38,6 +38,7 @@ $ToolRoot = $PSScriptRoot
 $RepoRoot = Resolve-Path (Join-Path $ToolRoot '..\..')
 $ComposeFile = Resolve-Path (Join-Path $ToolRoot 'docker-compose.yml')
 $ValheimComposeFile = Resolve-Path (Join-Path $ToolRoot 'docker-compose.valheim.yml')
+$LatestBootstrapFile = Join-Path $ToolRoot 'latest-bootstrap.json'
 $ProjectName = 'lumberjacks-companion'
 $LegacyProjectName = 'companion'
 
@@ -129,6 +130,16 @@ Assert-PortAvailableOrOwnedByProject
 
 Set-Location $RepoRoot
 $composeArgs = @('compose', '-p', $ProjectName, '-f', $ComposeFile.Path)
+if (Test-Path -LiteralPath $LatestBootstrapFile) {
+    try {
+        $latestBootstrap = Get-Content -LiteralPath $LatestBootstrapFile -Raw | ConvertFrom-Json
+        if ($latestBootstrap.release) {
+            $env:LUMBERJACKS_COMPANION_BOOTSTRAP_RELEASE = $latestBootstrap.release
+        }
+    } catch {
+        Write-Host "could not read latest bootstrap pointer: $($_.Exception.Message)"
+    }
+}
 if ($ReadOnly) {
     Write-Host 'starting read-only Companion: /valheim will not be mounted and mod updates will not work'
 } else {
