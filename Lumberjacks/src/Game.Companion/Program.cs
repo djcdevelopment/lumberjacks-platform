@@ -224,7 +224,10 @@ sealed class ModpackInstaller(CompanionStateStore stateStore, ValheimLocator loc
             {
                 if (string.IsNullOrEmpty(entry.Name)) continue;
                 var relative = ArchiveRelativePath(entry.FullName);
-                if (relative is null) return InstallResult.Fail("package_layout_invalid", entry.FullName);
+                // The modpack carries a root README for humans. It is package metadata, not a
+                // Valheim payload; skip it rather than treating a valid package as malformed.
+                // Only Valheim/ entries can ever reach the local game directory.
+                if (relative is null) continue;
                 if (relative.EndsWith("djcdevelopment.valheim.comfynetworksense.cfg", StringComparison.OrdinalIgnoreCase)) continue;
                 var target = Path.GetFullPath(Path.Combine(valheimPath, relative));
                 if (!target.StartsWith(Path.GetFullPath(valheimPath) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
