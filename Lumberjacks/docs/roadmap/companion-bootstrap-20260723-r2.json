@@ -1,0 +1,23 @@
+{
+  "schema": "lumberjacks-companion-bootstrap-release/v1",
+  "release": "companion-bootstrap-20260723-r2",
+  "created_utc": "2026-07-23T12:57:15Z",
+  "package_file": "Lumberjacks-Companion-companion-bootstrap-20260723-r2.zip",
+  "package_sha256": "a6379f78558521b499d54bb5bc750780a96befa8c033e78ed06627ac0c994c39",
+  "package_size_bytes": 17026,
+  "manifest_file": "Lumberjacks-Companion-companion-bootstrap-20260723-r2.json",
+  "manifest_asset_sha256": "232d48b37c7d08cd69504e4f3905d6b4513dacc1d3ab7fe6a1548eeb6441b436",
+  "entrypoint": "bootstrap/Start-LumberjacksCompanion.cmd",
+  "contains_credentials": false,
+  "verification": {
+    "release_is_draft": false,
+    "release_is_prerelease": false,
+    "package_asset_state": "uploaded",
+    "manifest_asset_state": "uploaded",
+    "package_digest_matches_manifest": true
+  },
+  "notes": [
+    "This refresh carries the Companion moving-parts panel and /trace fallback behavior.",
+    "Release channel URL is intentionally omitted from the public roadmap receipt."
+  ]
+}
