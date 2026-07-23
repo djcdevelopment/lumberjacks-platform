@@ -30,8 +30,10 @@ Start-Process http://127.0.0.1:8080/community
 
 Join P7 with the matching ComfyNetworkSense release. As of `m14-hudtoggle-20260723-r1`, the
 transport strip starts collapsed so it does not cover lower-resolution menu buttons. Use the side
-`NET SHOW` tab to expand it after joining; `NET HIDE` collapses it again. The tab side is controlled
-by `[HUD] transportStripToggleSide = Right|Left`.
+`NET SHOW` tab to expand it after joining; `NET HIDE` collapses it again. As of
+`m15-hudrecover-20260723-r1`, the side tab remains visible even when an older local config has
+`transportStripEnabled = false`; clicking `NET SHOW` re-enables the strip for that process. The tab
+side is controlled by `[HUD] transportStripToggleSide = Right|Left`.
 
 The strip should show native Valheim and LJ ZDO active, HTTP/JSON active, WebSocket/UDP motion status
 when the enrolled motion lane is connected, and MCP active only where the local helper is running.

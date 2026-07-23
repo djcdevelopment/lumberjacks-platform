@@ -1,22 +1,22 @@
 {
   "schema_version": 2,
-  "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
-  "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-23T08:29:06.179Z",
+  "title": "Comfy Ã— Valheim â€” Lumberjacks Volunteer Roadmap",
+  "headline": "M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY",
+  "updated_at": "2026-07-23T08:52:00.950Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
   "current_release": {
-    "release_id": "m14-hudtoggle-20260723-r1",
-    "mod": "ComfyNetworkSense 0.5.34",
-    "mod_sha256": "a357cbd4feb1a889c82b05205e73d5309bb63dfad78a868e325f5c3bfa74ad39",
-    "gateway_image": "sha256:ed0cb99039ab76437e3d53d359ebe9935b992c6362510b2c8d799210bcc2f0f5",
-    "gateway_image_release_id": "m14-hudtoggle-20260723-r1",
+    "release_id": "m15-hudrecover-20260723-r1",
+    "mod": "ComfyNetworkSense 0.5.35",
+    "mod_sha256": "9a8ea06923d711f97f275506cbf14969ee06dc81376e97ad97493f53b32d26d2",
+    "gateway_image": "sha256:e900277a885ff904444b5787ecaaf0f844ca2a2897d86031fd70117c9379c0a1",
+    "gateway_image_release_id": "m15-hudrecover-20260723-r1",
     "deployment": "comfy-lumberjacks-p7",
     "window": "p7-primary-v1",
     "authoritative_consumer_ceiling": 2,
     "ceiling_enforcement": "Alpha target is two simultaneous testers. The temporary Gateway one-seat reservation is disabled on P7 via VALHEIM_HANDSHAKE_SEAT_CAPACITY=0; native Valheim max-player enforcement still applies. N-seat Gateway admission remains deferred until per-holder liveness exists.",
-    "gateway_admits_mod_release": "m14-hudtoggle-20260723-r1"
+    "gateway_admits_mod_release": "m15-hudrecover-20260723-r1"
   },
   "claim": "The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.",
   "primer": {
@@ -25,31 +25,31 @@
     "denominator": "100% means 83,220 of 83,220 eligible ZDO revisions observed in the declared strict one-client window closed through Lumberjacks, with zero eligible native ZDO sends. It does not mean 100% of Valheim networking.",
     "dataflow": [
       {
-        "stage": "1 · SELECT",
+        "stage": "1 Â· SELECT",
         "owner": "Native Valheim",
         "action": "Build the peer-specific list of world-object revisions.",
         "boundary": "Candidate relevance and inference remain native today."
       },
       {
-        "stage": "2 · REDIRECT",
+        "stage": "2 Â· REDIRECT",
         "owner": "Lumberjacks server adapter",
         "action": "Intercept eligible revisions, attach stable ordering metadata, and redirect the declared ZDO delivery path.",
         "boundary": "Producer loss safety and per-peer readiness are M4a work."
       },
       {
-        "stage": "3 · STORE AND LEASE",
+        "stage": "3 Â· STORE AND LEASE",
         "owner": "Lumberjacks Gateway",
         "action": "Durably record envelopes and make pending work available to the authenticated consumer.",
         "boundary": "The current queue is safe only at the one-consumer ceiling; recipient isolation is M4a."
       },
       {
-        "stage": "4 · APPLY",
+        "stage": "4 Â· APPLY",
         "owner": "Lumberjacks client adapter",
         "action": "Poll in the background, marshal onto Unity's main thread, invoke RPC_ZDOData, and validate the outcome.",
         "boundary": "Unity remains the game engine and compatibility target."
       },
       {
-        "stage": "5 · ACKNOWLEDGE",
+        "stage": "5 Â· ACKNOWLEDGE",
         "owner": "Lumberjacks client and Gateway",
         "action": "Acknowledge only an applied or safely superseded terminal outcome and retain the accounting result.",
         "boundary": "Per-run retained volunteer proof is M3 work."
@@ -188,12 +188,12 @@
     }
   ],
   "current_focus": [
-    "COMPLETE · M0 RELEASE FREEZE — A1–A5 closed 2026-07-16: source frozen, candidate r2 reproducible from clean tagged checkouts, sanitized bundle and FieldLab catalog committed, promotion drill passed with artifact-only rollback, and the golden-proof evidence set published immutably with byte-verified hashes.",
-    "COMPLETE · PROMOTION FINALIZED — P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.",
-    "ACTIVE · M1 — Mod release m14-hudtoggle-20260723-r1 is live on P7 with the transport boundary collapsed by default, a side NET SHOW/HIDE tab for low-resolution clients, alpha fault switches, self-service Steam update downloads, and an observe-first player-motion lane over token-bound UDP with binary WebSocket fallback. Public TLS preserves enrolled recipients through WebSocket setup and exposes a config-preserving update package; native Valheim still owns simulation, ownership, non-ZDO RPCs, relevance, and presentation unless a tester explicitly enables local motion apply. Distinct-recipient fan-out remains a two-account canary gate. TLS/Caddy still gives anonymous requests private-socket capability and remains accepted only for the known-cohort alpha; stop-ship before widening.",
-    "LIVE (normal play) · AoI BAND-SHAPING — distance-band area-of-interest is armed permanently on P7 as of 2026-07-21 (near <30m full rate · mid 30–64m thinned to 5Hz · far >64m dropped · landmarks by granted reach), mod-side on the redirect producer (ADR 0011). It reshapes the eligible ZDO set upstream: at the densest single-player build ~85% of candidates drop, losslessly. Open before it earns full trust: the far→approach re-sync of a dropped static object, and multi-player density.",
-    "AFTER M1 · PARALLEL — Build M2's reversible guest package, M3's seal-before-reset per-run ledger and retained dashboards, and M4a's recipient isolation and producer loss safety.",
-    "WIDEN ONLY AFTER · M4b + M5 — Require the real two-client correctness packet and one exact-release invited-volunteer SYSTEM PROVEN receipt before admitting a cohort."
+    "COMPLETE Â· M0 RELEASE FREEZE â€” A1â€“A5 closed 2026-07-16: source frozen, candidate r2 reproducible from clean tagged checkouts, sanitized bundle and FieldLab catalog committed, promotion drill passed with artifact-only rollback, and the golden-proof evidence set published immutably with byte-verified hashes.",
+    "COMPLETE Â· PROMOTION FINALIZED â€” P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.",
+    "ACTIVE · M1 — Mod release m15-hudrecover-20260723-r1 is live on P7 with the transport boundary collapsed by default, a side NET SHOW/HIDE recovery tab that remains visible even if an older local config disabled the strip, alpha fault switches, self-service Steam update downloads, and an observe-first player-motion lane over token-bound UDP with binary WebSocket fallback. Public TLS preserves enrolled recipients through WebSocket setup and exposes a config-preserving update package; native Valheim still owns simulation, ownership, non-ZDO RPCs, relevance, and presentation unless a tester explicitly enables local motion apply. Distinct-recipient fan-out remains a two-account canary gate. TLS/Caddy still gives anonymous requests private-socket capability and remains accepted only for the known-cohort alpha; stop-ship before widening.",
+    "LIVE (normal play) Â· AoI BAND-SHAPING â€” distance-band area-of-interest is armed permanently on P7 as of 2026-07-21 (near <30m full rate Â· mid 30â€“64m thinned to 5Hz Â· far >64m dropped Â· landmarks by granted reach), mod-side on the redirect producer (ADR 0011). It reshapes the eligible ZDO set upstream: at the densest single-player build ~85% of candidates drop, losslessly. Open before it earns full trust: the farâ†’approach re-sync of a dropped static object, and multi-player density.",
+    "AFTER M1 Â· PARALLEL â€” Build M2's reversible guest package, M3's seal-before-reset per-run ledger and retained dashboards, and M4a's recipient isolation and producer loss safety.",
+    "WIDEN ONLY AFTER Â· M4b + M5 â€” Require the real two-client correctness packet and one exact-release invited-volunteer SYSTEM PROVEN receipt before admitting a cohort."
   ],
   "tracks": [
     {
@@ -449,9 +449,9 @@
         "M4b",
         "M5"
       ],
-      "owns": "Evidence-backed promotion from the proven two-client model and volunteer journey to 2–4 and then 5–8 real-player cohorts.",
+      "owns": "Evidence-backed promotion from the proven two-client model and volunteer journey to 2â€“4 and then 5â€“8 real-player cohorts.",
       "does_not_own": "Lumberjacks relevance/inference authority or claims extrapolated solely from synthetic clients.",
-      "summary": "Move from the owned two-account gate to 2–4 and then 5–8 invited players only when correctness and capacity evidence permit.",
+      "summary": "Move from the owned two-account gate to 2â€“4 and then 5â€“8 invited players only when correctness and capacity evidence permit.",
       "work": [
         "Measure join-to-first/priority/full-load, queue age/slope, frame hitches, Gateway latency, WAL, CPU, memory, disk, and egress.",
         "Exercise same-zone contention, separated regions, reconnects, restarts, and normal play.",
@@ -459,8 +459,8 @@
         "Automatically stop widening on any correctness failure."
       ],
       "exit_criteria": [
-        "The 2–4-player wave closes independently for every recipient with bounded queues, healthy persistence, and no correctness failure.",
-        "The 5–8-player soak meets the predeclared QoL and capacity envelope recorded in its run packet.",
+        "The 2â€“4-player wave closes independently for every recipient with bounded queues, healthy persistence, and no correctness failure.",
+        "The 5â€“8-player soak meets the predeclared QoL and capacity envelope recorded in its run packet.",
         "Published capacity limits are supported by real-player queue, compute, memory, disk, egress, and experience evidence rather than synthetic extrapolation."
       ],
       "inputs": [
@@ -505,7 +505,7 @@
       "name": "One external volunteer",
       "status": "not_ready",
       "requirements": [
-        "M0–M3 pass.",
+        "M0â€“M3 pass.",
         "Strict capacity remains one.",
         "Owner passes the same clean-package flow immediately beforehand.",
         "Host preflight and rollback drill are green.",
@@ -527,7 +527,7 @@
     }
   ],
   "volunteer_success": {
-    "headline": "INVITED → INFORMED → READY → TESTING → PARTICIPATION COMPLETE",
+    "headline": "INVITED â†’ INFORMED â†’ READY â†’ TESTING â†’ PARTICIPATION COMPLETE",
     "definition": "A volunteer succeeds by completing or attempting the assigned work and returning a usable evidence packet. Finding a networking defect is valuable successful participation; it does not require the system test itself to pass.",
     "catalog_revision": "draft-v1",
     "availability": "Planned for the first canary; invitations are not open until M0-M3 close.",
@@ -539,7 +539,7 @@
       {
         "phase": "Setup and preflight",
         "commitment": "required",
-        "duration": "target ≤10 min",
+        "duration": "target â‰¤10 min",
         "detail": "Redeem the invite, install the exact package, pass preflight, choose a backed-up character, and reach READY TO JOIN."
       },
       {
@@ -563,22 +563,22 @@
     ],
     "journey": [
       {
-        "stage": "1 · INVITE",
+        "stage": "1 Â· INVITE",
         "title": "Know the work before accepting",
         "done_when": "The page states the experiment, assigned test cards, expected time, risks, captured data, support, and recovery path."
       },
       {
-        "stage": "2 · READY",
+        "stage": "2 Â· READY",
         "title": "Install and preflight without hand edits",
         "done_when": "Steam enrollment, exact release, BepInEx, TLS, Gateway, server, capacity, readiness, and rollback checks are green."
       },
       {
-        "stage": "3 · TESTING",
+        "stage": "3 Â· TESTING",
         "title": "See Lumberjacks and the next action",
         "done_when": "The personal dashboard shows LUMBERJACKS ACTIVE, current card instructions, and fresh received/applied/acknowledged traffic."
       },
       {
-        "stage": "4 · RECEIPT",
+        "stage": "4 Â· RECEIPT",
         "title": "Know that participation counted",
         "done_when": "A retained pseudonymous receipt separates participation completion from the networking verdict and includes the submitted observations."
       }
@@ -590,8 +590,8 @@
         "duration": "~10 min",
         "exercise": "Redeem, install, preflight, choose a backed-up character, and join.",
         "observe": "Confusing, manual, failed, or unexpectedly slow steps.",
-        "proof": "Enrollment → readiness → admission → first apply.",
-        "availability": "planned first pilot · required"
+        "proof": "Enrollment â†’ readiness â†’ admission â†’ first apply.",
+        "availability": "planned first pilot Â· required"
       },
       {
         "id": "T02",
@@ -600,7 +600,7 @@
         "exercise": "Remain in the portal/building area until visually usable.",
         "observe": "Missing art/buildings, severe pop-in, freezes, or corruption.",
         "proof": "Priority-playable/full-drain time and frame hitches.",
-        "availability": "planned first pilot · required"
+        "availability": "planned first pilot Â· required"
       },
       {
         "id": "T03",
@@ -609,7 +609,7 @@
         "exercise": "Fly rapidly into a direction not previously visited.",
         "observe": "Tree/terrain pop-in, stalls, and movement responsiveness.",
         "proof": "Priority rate, queue slope/age, and first-useful delivery.",
-        "availability": "planned first pilot · required"
+        "availability": "planned first pilot Â· required"
       },
       {
         "id": "T04",
@@ -627,7 +627,7 @@
         "exercise": "Stop in wilderness and wait without teleporting.",
         "observe": "Late pop-in, pauses, disconnects, or unexpected activity.",
         "proof": "Backlog drain, oldest age, idle state, and conservation.",
-        "availability": "planned first pilot · required"
+        "availability": "planned first pilot Â· required"
       },
       {
         "id": "T06",
@@ -736,7 +736,7 @@
   "golden_proof": {
     "label": "Validated, hash-recorded P7 authoritative priority ZDO baseline",
     "captured_at": "2026-07-16 UTC",
-    "scope": "One enrolled client · persistent all-prefab ZDO redirect",
+    "scope": "One enrolled client Â· persistent all-prefab ZDO redirect",
     "denominator": {
       "eligible": 83220,
       "redirected": 83220,
@@ -786,17 +786,17 @@
         "0 / 0 / 0"
       ],
       [
-        "Peer-ready → first apply",
+        "Peer-ready â†’ first apply",
         "6.721 s"
       ],
       [
-        "Peer-ready → complete",
+        "Peer-ready â†’ complete",
         "102.114 s"
       ]
     ],
     "publication": {
       "status": "published",
-      "detail": "The sanitized publication set is public and immutable at https://github.com/djcdevelopment/comfy/blob/433f1cc33605561ae1287db9cd8f37125d795c5d/fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover/PUBLICATION.md — pushed 2026-07-16 after the A4 promotion drill passed (receipt: docs/roadmap/m0-a4-promotion-drill-receipt.json, evidence public at Comfy e6a1402). Published bytes re-verified against the recorded SHA-256 hashes after push."
+      "detail": "The sanitized publication set is public and immutable at https://github.com/djcdevelopment/comfy/blob/433f1cc33605561ae1287db9cd8f37125d795c5d/fieldlab/evidence/p7-gold-run-20260716-011112-authoritative-priority-cutover/PUBLICATION.md â€” pushed 2026-07-16 after the A4 promotion drill passed (receipt: docs/roadmap/m0-a4-promotion-drill-receipt.json, evidence public at Comfy e6a1402). Published bytes re-verified against the recorded SHA-256 hashes after push."
     }
   },
   "authority_planes": [

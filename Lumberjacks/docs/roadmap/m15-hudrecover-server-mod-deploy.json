@@ -1,0 +1,43 @@
+﻿{
+    "schema":  "comfy-p7-release/v1",
+    "captured_utc":  "2026-07-23T08:47:06.1208841Z",
+    "target":  "comfy-p7",
+    "source_revision":  "pending-release-commit-built-from-parent-6896073a592e43e6367e419c84586b976f6577a0",
+    "release_id":  "m15-hudrecover-20260723-r1",
+    "plugin":  {
+                   "version":  "0.5.35",
+                   "sha256":  "9a8ea06923d711f97f275506cbf14969ee06dc81376e97ad97493f53b32d26d2",
+                   "runtime_sha256":  "9a8ea06923d711f97f275506cbf14969ee06dc81376e97ad97493f53b32d26d2",
+                   "cold_start_sha256":  "9a8ea06923d711f97f275506cbf14969ee06dc81376e97ad97493f53b32d26d2"
+               },
+    "assembly_inputs":  [
+                            {
+                                "path":  "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Valheim\\BepInEx\\core\\BepInEx.dll",
+                                "sha256":  "e9ac3a950e91e71b13df5480b36ce06af27e981a688f0e62125b674d03a0713a"
+                            },
+                            {
+                                "path":  "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Valheim\\valheim_Data\\Managed\\assembly_valheim.dll",
+                                "sha256":  "3b26c8512778f6e0664b5af2a26f3c30993a00f584c1e76d9123a742b67e2004"
+                            },
+                            {
+                                "path":  "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Valheim\\valheim_Data\\Managed\\UnityEngine.CoreModule.dll",
+                                "sha256":  "0594a377dc22a168a4ae1ca70dded5d571a415a959e0c4aa6159095cd58bdd83"
+                            }
+                        ],
+    "backup_path":  "/mnt/comfy-p7/backups/comfynetworksense/20260723T084359Z",
+    "gateway_image":  "sha256:e900277a885ff904444b5787ecaaf0f844ca2a2897d86031fd70117c9379c0a1",
+    "gateway_image_release_id":  "m15-hudrecover-20260723-r1",
+    "gateway_admits_mod_release":  "m15-hudrecover-20260723-r1",
+    "modpack":  {
+                    "sha256":  "c847ae5787b1a6b8b3f67072509c1422fbf43a79d1219f93628ba98fea462b76",
+                    "size_bytes":  892275,
+                    "backup_path":  "/mnt/comfy-p7/backups/modpack/20260723T084747Z"
+                },
+    "verification":  [
+                         "New-ReleaseCut.ps1 built the 0.5.35 mod and gateway image and confirmed both carry m15-hudrecover-20260723-r1.",
+                         "Gateway Docker build ran the release test suite successfully: 123 contract tests, 250 simulation tests, and 194 gateway tests passed.",
+                         "P7 Valheim runtime and cold-start DLL copies matched sha256:9a8ea06923d711f97f275506cbf14969ee06dc81376e97ad97493f53b32d26d2 and the server reported ready.",
+                         "Public TLS modpack manifest reported release m15-hudrecover-20260723-r1, admitted mod m15-hudrecover-20260723-r1, and package sha256:c847ae5787b1a6b8b3f67072509c1422fbf43a79d1219f93628ba98fea462b76."
+                     ],
+    "container":  "comfy-lumberjacks-p7-valheim-server-1"
+}
