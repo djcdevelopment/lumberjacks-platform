@@ -197,6 +197,44 @@ app.MapPost("/api/v0/companion/transport-capture", async (TransportCaptureReques
     return Results.Ok(summary);
 });
 
+// Dev-only local control for the installed mod. The command surface is intentionally allow-listed
+// and bounded; it is not a general console or shell bridge. The mod consumes the command on its
+// Unity main thread and appends a receipt beside its existing NetworkSense JSONL.
+app.MapPost("/api/v0/companion/motion-test", (MotionTestRequest? request, ValheimLocator locator) =>
+{
+    var install = locator.Find();
+    if (install is null) return Results.BadRequest(new { error = "valheim_not_found" });
+    if (!File.Exists(ValheimLocator.ConfigPath(install))) return Results.BadRequest(new { error = "mod_config_not_found" });
+
+    var action = (request?.action ?? "").Trim().ToLowerInvariant();
+    if (action is not ("start" or "stop")) return Results.BadRequest(new { error = "action_not_allowed" });
+    var id = string.IsNullOrWhiteSpace(request?.id) ? "companion-motion" : request!.id!.Trim();
+    if (!MotionTestValidation.IsSafeToken(id)) return Results.BadRequest(new { error = "id_not_allowed" });
+    var pattern = (request?.pattern ?? "straight_north").Trim().ToLowerInvariant();
+    if (action == "start" && pattern is not ("straight_north" or "straight_east" or "stutter_north" or "circle"))
+        return Results.BadRequest(new { error = "pattern_not_allowed" });
+    var duration = Math.Clamp(request?.duration_seconds ?? 10, 1, 60);
+
+    var directory = MotionTestFiles.Directory(install);
+    Directory.CreateDirectory(directory);
+    var commandPath = MotionTestFiles.CommandPath(install);
+    var temporary = commandPath + ".tmp";
+    var line = string.Join("|", id, action, pattern, duration.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    File.WriteAllText(temporary, line + Environment.NewLine);
+    File.Move(temporary, commandPath, true);
+    return Results.Ok(new { ok = true, id, action, pattern, duration_seconds = duration, command_path = commandPath });
+});
+
+app.MapGet("/api/v0/companion/motion-test/status", (ValheimLocator locator) =>
+{
+    var install = locator.Find();
+    if (install is null) return Results.Ok(new { found = false, pending = false, last_receipt = (string?)null });
+    var command = MotionTestFiles.CommandPath(install);
+    var receipts = MotionTestFiles.ReceiptPath(install);
+    var last = File.Exists(receipts) ? File.ReadLines(receipts).LastOrDefault() : null;
+    return Results.Ok(new { found = true, pending = File.Exists(command), last_receipt = last });
+});
+
 app.MapGet("/api/v0/companion/transport-capture", (TransportTruthCaptureService capture) =>
     Results.Ok(new
     {
@@ -373,6 +411,19 @@ sealed class ValheimLocator
 
     public static string ConfigPath(string valheimPath) => Path.Combine(valheimPath, "BepInEx", "config", "djcdevelopment.valheim.comfynetworksense.cfg");
     public static bool IsRunning() => Process.GetProcessesByName("valheim").Length > 0 || Process.GetProcessesByName("valheim_server").Length > 0;
+}
+
+static class MotionTestFiles
+{
+    public static string Directory(string valheimPath) => Path.Combine(valheimPath, "BepInEx", "config", "comfy-network-sense");
+    public static string CommandPath(string valheimPath) => Path.Combine(Directory(valheimPath), "companion-motion.command");
+    public static string ReceiptPath(string valheimPath) => Path.Combine(Directory(valheimPath), "companion-motion-receipts.jsonl");
+}
+
+static class MotionTestValidation
+{
+    public static bool IsSafeToken(string value) => value.Length <= 80 &&
+        value.All(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_' or '.');
 }
 
 sealed class ModpackInstaller(CompanionStateStore stateStore, ValheimLocator locator)
@@ -587,7 +638,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         }
 
         var finishedUtc = DateTimeOffset.UtcNow;
-        var verdict = Verdict(badSamples, maxPeers, firstMotionReceived, lastMotionReceived);
+        var verdict = Verdict(badSamples, maxPeers, firstMotionReceived, lastMotionReceived, observedMotionStates);
         var counterRanges = new TransportCaptureCounterRanges(
             CounterRange(firstPeers, lastPeers),
             CounterRange(firstMotionReceived, lastMotionReceived),
@@ -715,16 +766,24 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         var received = IntValue(motion.body, "received");
         var stateText = $"client motion {state} (WS {ws}, UDP {udp})";
         if (!string.IsNullOrWhiteSpace(error)) stateText += $"; error {error}";
-        if (received > 0) return new("ok", $"Lumberjacks motion frames are arriving; {stateText}.");
+        var motionReady = string.Equals(state, "observing", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(state, "websocket", StringComparison.OrdinalIgnoreCase) ||
+            BoolValue(heartbeat, "motion_websocket_connected") == true ||
+            BoolValue(heartbeat, "motion_udp_ready") == true;
+        if (received > 0 && motionReady) return new("ok", $"Lumberjacks motion frames are arriving; {stateText}.");
+        if (received > 0) return new("wait", $"Lumberjacks counters advanced without an active motion lane; {stateText}. Treat this as ZDO/relay activity, not motion proof.");
         var peers = PeerCount(valheim.body);
         if (peers > 0) return new("wait", $"Valheim has {peers} peer(s), but Lumberjacks motion counters are zero; {stateText}. Visible player movement is native Valheim for this run.");
         return new("wait", $"P7 is up with no active peers; {stateText}. Join two clients, then watch Valheim peers and Motion counters change together.");
     }
 
-    static string Verdict(int badSamples, int maxPeers, int? firstMotionReceived, int? lastMotionReceived)
+    static string Verdict(int badSamples, int maxPeers, int? firstMotionReceived, int? lastMotionReceived, IReadOnlyCollection<string>? motionStates = null)
     {
         if (badSamples > 0) return "incomplete_telemetry";
-        if (firstMotionReceived.HasValue && lastMotionReceived.HasValue && lastMotionReceived.Value > firstMotionReceived.Value) return "lumberjacks_motion_observed";
+        var activeState = motionStates?.Any(state => string.Equals(state, "observing", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(state, "websocket", StringComparison.OrdinalIgnoreCase)) == true;
+        if (firstMotionReceived.HasValue && lastMotionReceived.HasValue && lastMotionReceived.Value > firstMotionReceived.Value)
+            return activeState ? "lumberjacks_motion_observed" : "motion_counter_only";
         if (maxPeers > 0) return "native_motion_only";
         return "no_peer_window";
     }
@@ -732,7 +791,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
     static TransportCaptureSummary NormalizeSummary(TransportCaptureSummary summary)
     {
         var verdict = string.IsNullOrWhiteSpace(summary.verdict)
-            ? Verdict(summary.bad_sample_count, summary.max_peers, summary.first_motion_received, summary.last_motion_received)
+            ? Verdict(summary.bad_sample_count, summary.max_peers, summary.first_motion_received, summary.last_motion_received, summary.observed_motion_states)
             : summary.verdict;
         var finalRead = summary.final_current_read ?? ReadFromVerdict(verdict, summary.max_peers);
         return summary with
@@ -759,6 +818,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
     {
         "incomplete_telemetry" => new("bad", "Capture had incomplete telemetry; use samples.jsonl before interpreting movement."),
         "lumberjacks_motion_observed" => new("ok", "Lumberjacks motion frames arrived during this capture."),
+        "motion_counter_only" => new("wait", "Counters advanced, but the motion lane never reported active readiness; this is not motion proof."),
         "native_motion_only" => new("wait", $"Valheim had up to {maxPeers} peer(s), but Lumberjacks motion counters did not advance. Visible player movement was native Valheim for this capture."),
         _ => new("wait", "No active peer window was captured."),
     };
@@ -789,6 +849,11 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
                 "Lumberjacks motion frames were observed during this capture.",
                 "Compare in-game movement feel against the motion counter deltas and samples.jsonl; this run can support motion-lane debugging.",
                 $"Motion received delta: {motionDelta}; max peers: {maxPeers}; observed players: {observedPlayerCount}; motion states: {stateText}."),
+            "motion_counter_only" => new(
+                "wait",
+                "Lumberjacks counters advanced without an active motion lane.",
+                "Do not attribute visible movement to Lumberjacks motion. Inspect the motion connection/readiness path; the advancing counter is likely ZDO or relay activity.",
+                $"Counter delta: {motionDelta}; max peers: {maxPeers}; motion states: {stateText}; acknowledged delta: {acknowledgedDelta}; applied delta: {appliedDelta}."),
             "native_motion_only" => new(
                 "wait",
                 "Valheim peers were present, but Lumberjacks motion counters did not advance.",
@@ -917,6 +982,7 @@ sealed record CompanionBootstrapPackage(string? kind, string sha256, long size_b
 sealed record CompanionBootstrapDownloads(string? package, string? manifest, string? latest_update);
 sealed record GameClosedConfirmation(bool game_closed_confirmed);
 sealed record TransportCaptureRequest(int? duration_seconds, int? interval_seconds, string? label);
+sealed record MotionTestRequest(string? action, string? pattern, int? duration_seconds, string? id);
 sealed record TransportCurrentRead(string level, string text);
 sealed record TransportCaptureEndpoint(bool ok, string path, int? status, JsonElement? body, string? error);
 sealed record TransportCaptureEndpoints(TransportCaptureEndpoint deployment, TransportCaptureEndpoint valheim, TransportCaptureEndpoint cutover, TransportCaptureEndpoint motion);
@@ -944,6 +1010,7 @@ sealed record TransportCaptureInterpretation(string level, string headline, stri
 sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null, TransportCaptureIdentity? capture_identity = null, TransportCaptureInterpretation? interpretation = null, string? first_motion_state = null, string? last_motion_state = null, List<string>? observed_motion_states = null, bool? final_motion_websocket_connected = null, bool? final_motion_udp_ready = null, string? final_motion_last_error = null);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
 sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
+
 sealed class CompanionState
 {
     public int schema_version { get; set; } = 1;
