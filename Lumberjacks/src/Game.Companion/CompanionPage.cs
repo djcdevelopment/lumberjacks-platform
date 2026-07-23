@@ -404,7 +404,8 @@ async function wave0Status(){
         commandBlock('2. Annotate first visual pass',w.commands?.annotate_omen_applies),
         commandBlock('3. Role reversal: i5 applies',w.commands?.live_i5_applies),
         commandBlock('4. Annotate reversal',w.commands?.annotate_i5_applies),
-        commandBlock('5. Seal visual evidence',w.commands?.seal_visual_evidence)
+        commandBlock('5. Seal visual evidence',w.commands?.seal_visual_evidence),
+        commandBlock('Fallback: retain named defect packet if seal fails',w.commands?.retain_named_defect)
       ].join('');
     }
     q('#wave0-command').innerHTML='<strong>'+esc(title)+'</strong><pre>'+esc(command)+'</pre>'+chain+(cap?'<p>Latest capture: <span class="release">'+esc(cap.run_id)+'</span> · '+esc(cap.verdict)+' · max peers '+esc(cap.max_peers)+'</p>':'<p class="muted">No recent capture surfaced yet.</p>');

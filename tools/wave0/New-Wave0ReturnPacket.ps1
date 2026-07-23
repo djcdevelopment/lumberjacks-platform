@@ -234,6 +234,7 @@ $packet = [ordered]@{
         annotate_first_pass = 'tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson captures\wave0-live-gate\result.json -ApplyClient omen -ObserveClient i5 -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun no'
         annotate_role_reversal = 'tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson captures\wave0-live-gate-reversal\result.json -ApplyClient i5 -ObserveClient omen -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun yes'
         seal_visual_evidence = 'tools\wave0\Seal-Wave0VisualEvidence.ps1 -FirstAnnotatedJson captures\wave0-live-gate\result.annotated.json -ReversalAnnotatedJson captures\wave0-live-gate-reversal\result.annotated.json -OutputJson captures\wave0-live-seal\visual-seal.json'
+        retain_named_defect = 'tools\wave0\New-Wave0DefectPacket.ps1 -DefectId wave0-visual-proof-not-sealed -DefectKind visual_inconclusive -Summary "Visual proof could not be sealed; inspect annotations and seal failure." -FirstReceiptJson captures\wave0-live-gate\result.json -ReversalReceiptJson captures\wave0-live-gate-reversal\result.json -FirstAnnotatedJson captures\wave0-live-gate\result.annotated.json -ReversalAnnotatedJson captures\wave0-live-gate-reversal\result.annotated.json -SealJson captures\wave0-live-seal\visual-seal.json'
     }
 }
 
@@ -287,6 +288,9 @@ $markdownLines += $packet.commands.annotate_role_reversal
 $markdownLines += ''
 $markdownLines += '# Seal both annotated visual projections:'
 $markdownLines += $packet.commands.seal_visual_evidence
+$markdownLines += ''
+$markdownLines += '# If the seal fails or visual proof is inconclusive, retain a named defect packet:'
+$markdownLines += $packet.commands.retain_named_defect
 $markdownLines += '```'
 $markdownLines += ''
 $markdownLines += 'The original machine receipts remain immutable. Visual observations are sidecars, and the seal is a derived index over both directions.'
