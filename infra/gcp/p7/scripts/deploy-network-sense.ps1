@@ -2,13 +2,16 @@
 param(
   [string] $SshTarget = "comfy-p7",
   [string] $Container = "comfy-lumberjacks-p7-valheim-server-1",
-  [string] $Project = "$PSScriptRoot\..\..\..\..\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj",
+  [string] $Project,
   [string] $Configuration = "Release",
   [int] $ReadyTimeoutSeconds = 360,
   [string] $ManifestPath
 )
 
 $ErrorActionPreference = "Stop"
+if ([string]::IsNullOrWhiteSpace($Project)) {
+  $Project = Join-Path $PSScriptRoot "..\..\..\..\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj"
+}
 $projectPath = [IO.Path]::GetFullPath($Project)
 $projectDir = Split-Path $projectPath
 $dll = Join-Path $projectDir "bin\$Configuration\ComfyNetworkSense.dll"
