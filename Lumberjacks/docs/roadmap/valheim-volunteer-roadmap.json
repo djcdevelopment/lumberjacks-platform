@@ -2,20 +2,21 @@
   "schema_version": 2,
   "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-22T15:33:29.787Z",
+  "updated_at": "2026-07-23T06:45:52.427Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
   "current_release": {
-    "release_id": "m11-transport-20260722-r1",
-    "mod": "ComfyNetworkSense 0.5.32",
-    "mod_sha256": "84ffbfc57f8ee578833119fdf124d54dc53f508c98eb726f74053662b2d9b9b8",
-    "gateway_image": "sha256:6b7587d9a97d7c62752326aba7a3d789403dee368cff1705adf5013e7a20c388",
+    "release_id": "m12-motion-20260722-r1",
+    "mod": "ComfyNetworkSense 0.5.33",
+    "mod_sha256": "5b4a19fd12751d04aec7622fd83eca91fd07ed96e382a07ec218813d4af7df67",
+    "gateway_image": "sha256:dc195688ad9787ff897c9edf71468113966821dda267bf5c2a7c59ab31eb164e",
+    "gateway_image_release_id": "m12-motionauthws-20260722-r1",
     "deployment": "comfy-lumberjacks-p7",
     "window": "p7-primary-v1",
     "authoritative_consumer_ceiling": 2,
     "ceiling_enforcement": "Alpha target is two simultaneous testers. The temporary Gateway one-seat reservation is disabled on P7 via VALHEIM_HANDSHAKE_SEAT_CAPACITY=0; native Valheim max-player enforcement still applies. N-seat Gateway admission remains deferred until per-holder liveness exists.",
-    "gateway_admits_mod_release": "m11-transport-20260722-r1"
+    "gateway_admits_mod_release": "m12-motion-20260722-r1"
   },
   "claim": "The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.",
   "primer": {
@@ -189,7 +190,7 @@
   "current_focus": [
     "COMPLETE · M0 RELEASE FREEZE — A1–A5 closed 2026-07-16: source frozen, candidate r2 reproducible from clean tagged checkouts, sanitized bundle and FieldLab catalog committed, promotion drill passed with artifact-only rollback, and the golden-proof evidence set published immutably with byte-verified hashes.",
     "COMPLETE · PROMOTION FINALIZED — P7 runs under a durable image pin: the temporary compose override is retired, the base compose resolves LUMBERJACKS_GATEWAY_IMAGE from the host environment across reboots, and VM-side gateway rebuilds fail closed. The path proved out on r2 and has since carried m1-clean-20260717-r1.",
-    "ACTIVE · M1 — Release m11-transport-20260722-r1 is live on P7 with an always-visible transport boundary and alpha fault switches. Lumberjacks owns the authenticated HTTP/JSON ZDO delivery path; native Valheim still owns peer transport, movement, simulation, non-ZDO RPCs, relevance, and receive/application semantics. The roster gate remains opt-in per window. TLS/Caddy still reproduces the proxy-boundary risk and remains accepted only for the known-cohort alpha; stop-ship before widening.",
+    "ACTIVE · M1 — Mod release m12-motion-20260722-r1 is live on P7 with an always-visible transport boundary, alpha fault switches, and an observe-first player-motion lane over token-bound UDP with binary WebSocket fallback. Public TLS preserved an enrolled recipient through WebSocket setup and accepted an exact 50-byte UDP motion fixture with zero invalid, unauthorized, or stale drops. Native Valheim remains connected and still owns simulation, ownership, non-ZDO RPCs, relevance, and presentation unless a tester explicitly enables local motion apply. Distinct-recipient fan-out remains a two-account canary gate. TLS/Caddy still gives anonymous requests private-socket capability and remains accepted only for the known-cohort alpha; stop-ship before widening.",
     "LIVE (normal play) · AoI BAND-SHAPING — distance-band area-of-interest is armed permanently on P7 as of 2026-07-21 (near <30m full rate · mid 30–64m thinned to 5Hz · far >64m dropped · landmarks by granted reach), mod-side on the redirect producer (ADR 0011). It reshapes the eligible ZDO set upstream: at the densest single-player build ~85% of candidates drop, losslessly. Open before it earns full trust: the far→approach re-sync of a dropped static object, and multi-player density.",
     "AFTER M1 · PARALLEL — Build M2's reversible guest package, M3's seal-before-reset per-run ledger and retained dashboards, and M4a's recipient isolation and producer loss safety.",
     "WIDEN ONLY AFTER · M4b + M5 — Require the real two-client correctness packet and one exact-release invited-volunteer SYSTEM PROVEN receipt before admitting a cohort."
@@ -703,33 +704,33 @@
     ]
   },
   "latest_observation": {
-    "id": "boundary-events-p7-20260722T0957Z",
+    "id": "motion-ingress-p7-20260722",
     "kind": "OWNER OBSERVATION",
-    "label": "Boundary event stream live on P7; Caddy private-plane inheritance reproduced",
-    "captured_at": "2026-07-22 09:49-09:57 UTC",
-    "scope": "P7 Gateway-only release m3-boundary-20260722-r1; Gateway image admits frozen mod release m5-recipients-20260720-r1; boundary-event storage mounted at /mnt/comfy-p7/lumberjacks/boundary-events.",
+    "label": "Enrolled TLS session reached the token-bound Lumberjacks UDP motion lane",
+    "captured_at": "2026-07-23 06:42-06:45 UTC",
+    "scope": "P7 Gateway-only image m12-motionauthws-20260722-r1 admitting frozen mod release m12-motion-20260722-r1; public TLS WebSocket plus UDP 4005.",
     "delivery_result": "FLOWING",
     "system_verdict": "INCONCLUSIVE",
     "conservation": {
       "eligible": 1,
-      "durable": 1,
+      "durable": 0,
       "applied": 0,
       "superseded": 0,
       "acknowledged": 0,
       "pending": 0,
       "native": 0
     },
-    "verdict_reason": "The deployment and telemetry substrate are live, not a sealed game-run proof. A throwaway synthetic ZDO batch queued once on a non-player canary window and was reset immediately. The boundary-event analyzer validated a complete-row snapshot with 3,586 rows, zero malformed rows, zero truncated rows, and all four event families present.",
-    "milestone_effect": "M3 now has append-only boundary evidence in production. M1 keeps a stop-ship condition before widening: direct public access to the admin enrollment route denied anonymous with 401, while the same route through Caddy/TLS allowed as private-plane Admin, confirming reverse-proxy source-address capability inheritance is real on P7.",
-    "operational_observation": "Running Gateway image sha256:a2bf1856f5e5c7c2e9fae7e969746d4c724138a9bebf915c80429389a1a4c5f5 is durably pinned as lumberjacks-gateway:m3-boundary-20260722-r1; /health reports ok; boundary-event rows show allow/enrollment, allow/private_socket, deny/anonymous, request.completed, and zdo.batch.queued.",
+    "verdict_reason": "This is a transport-ingress canary, not a sealed game run. One valid enrolled session received valheim_motion_available=true, advertised UDP port 4005, and sent the exact 50-byte fixture. Gateway telemetry advanced received and received_udp once with zero invalid, unauthorized, or stale drops. Relay remained zero because no second distinct enrolled recipient was connected; same-recipient echo is intentionally suppressed.",
+    "milestone_effect": "M1 now preserves enrollment identity through public TLS WebSocket setup, and M7 has its first real Lumberjacks-owned player-motion transport slice. Distinct-recipient fan-out, WebSocket fallback, and opt-in presentation remain the two-account canary gate. Anonymous Caddy traffic still inherits private-socket capabilities and remains stop-ship before widening.",
+    "operational_observation": "Gateway image sha256:dc195688ad9787ff897c9edf71468113966821dda267bf5c2a7c59ab31eb164e was pinned as m12-motionauthws-20260722-r1 and admits frozen mod m12-motion-20260722-r1. Health was good; TCP 42317 and UDP 4005 were published; the alpha seat gate remained disabled with the compatibility capacity value present exactly once.",
     "informs": [
       "M1",
-      "M3"
+      "M7"
     ],
     "evidence": {
       "status": "local_only",
-      "label": "Gateway-only P7 boundary-event rollout and proxy canary",
-      "detail": "Documented in docs/build-release-runbook.md; no Steam identities, credentials, or private URLs are included in the public roadmap."
+      "label": "P7 enrolled WebSocket and UDP motion ingress canary",
+      "detail": "Documented in infra/gcp/p7/VALHEIM-MOTION-CANARY.md; no enrollment identifiers, credentials, or private diagnostic URLs are included in the public roadmap."
     }
   },
   "golden_proof": {
@@ -825,6 +826,11 @@
       "Client poller applies and validates on Unity's main thread before ACK."
     ],
     [
+      "Player-motion transport",
+      "Observe-first Lumberjacks canary",
+      "Enrolled clients can carry measured motion over token-bound UDP with binary WebSocket fallback; native presentation remains the default until a tester opts into apply."
+    ],
+    [
       "Ownership / simulation / non-ZDO RPC",
       "Native",
       "Later authority-plane work."
@@ -840,9 +846,9 @@
     "Redirect readiness is not yet bound to the exact joining peer.",
     "Native peer bookkeeping advances before durable Gateway acceptance, leaving a producer-side loss window.",
     "Live enrollment does not yet exclusively gate Valheim admission.",
-    "Consumer authorization is broader than the least-privilege target.",
-    "The public volunteer client path is plain HTTP today.",
-    "The existing guest handoff is stale prose, not a verified immutable package.",
+    "Anonymous requests through Caddy still inherit private-socket capabilities; accepted only for the known-cohort alpha and stop-ship before widening.",
+    "The self-service personalized package is live, but clean-machine install, upgrade, and uninstall still need an external volunteer proof.",
+    "The Lumberjacks motion lane has only passed single-recipient ingress; distinct-recipient fan-out, fallback, and opt-in presentation remain unproved live.",
     "Current dashboard proof is aggregate and resettable rather than per-run and per-recipient; the 2026-07-16 owner observation saw the empty-server reset erase 81,241 live receipt records two seconds after disconnect.",
     "Acceptance telemetry defaults are too large for volunteers."
   ],

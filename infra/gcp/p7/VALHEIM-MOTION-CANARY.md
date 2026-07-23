@@ -6,7 +6,8 @@ the entire canary and `FULL NETCODE` remains `NO`.
 
 ## Preconditions
 
-- P7 Gateway and both clients carry the same promoted release identity.
+- Both clients carry the same promoted mod release. A Gateway-only hotfix may have
+  a different image release ID, but its baked admitted-mod release must match the clients.
 - TCP `42317` and UDP `4005` are published by the Gateway host; both GCP firewall
   rules use `lumberjacks_player_source_ranges`.
 - Each player has their own enrollment ID and access key in the local BepInEx config.
@@ -65,3 +66,33 @@ gcloud compute ssh comfy-lumberjacks-p7 --zone us-west1-b --tunnel-through-iap `
 If WebSocket fallback never advances, inspect the client's BepInEx log and Gateway
 container log for the release-admission or enrollment decision; never paste access
 keys into Discord or a public issue.
+
+## Public ingress proof before asking two people to join
+
+The transport proof has two separate gates:
+
+1. One enrolled TLS/WebSocket session must receive `session_started` with
+   `valheim_motion_available=true`, then its token-prefixed 50-byte UDP fixture must
+   increment `received` and `received_udp` with no drop counter increase.
+2. A *different enrolled recipient* in the same region must make `relayed_udp` or
+   `relayed_websocket` advance. Two sockets using one enrollment are deliberately not
+   a substitute: the relay suppresses same-recipient echo.
+
+On the Gateway, confirm the first gate without exposing credentials:
+
+```powershell
+Invoke-RestMethod https://comfy-p7.duckdns.org/live/valheim-motion
+```
+
+The first gate was exercised on 2026-07-22 against the public TLS endpoint:
+`valheim_motion_available=true`, UDP port `4005`, one 50-byte packet received over
+UDP, and zero invalid, unauthorized, or stale drops. Relay remained zero because a
+second distinct enrolled recipient was not connected.
+
+If an enrolled `/api/v0/valheim/enrollment/me` request succeeds but
+`valheim_motion_available` is false, inspect middleware ordering before changing
+credentials. `UseWebSockets()` must run before `ValheimClientAccessMiddleware`:
+ASP.NET does not populate `HttpContext.WebSockets.IsWebSocketRequest` until the
+WebSocket feature is installed. Putting the identity gate first makes an upgrade
+look like an ungated ordinary GET and leaves the session without an enrollment
+principal.

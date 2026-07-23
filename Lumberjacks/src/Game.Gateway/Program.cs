@@ -168,8 +168,11 @@ catch (Exception ex)
 app.MapServiceDefaults();
 app.UseMiddleware<BoundaryRequestMiddleware>();
 app.UseRateLimiter();
-app.UseMiddleware<ValheimClientAccessMiddleware>();
+// Install IHttpWebSocketFeature before the access gate inspects IsWebSocketRequest. Reversing
+// these two calls makes every upgrade look like an ordinary ungated GET, so no enrolled
+// principal reaches GameWebSocketMiddleware (and anonymous upgrades bypass the consumer gate).
 app.UseWebSockets();
+app.UseMiddleware<ValheimClientAccessMiddleware>();
 app.UseMiddleware<GameWebSocketMiddleware>();
 
 // Expose simulation HTTP endpoints (for admin/debugging and legacy clients)

@@ -1,6 +1,7 @@
 using System.Net;
 using Game.Gateway.Valheim;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 
@@ -152,6 +153,23 @@ public sealed class ValheimClientAccessMiddlewareTests : IDisposable
         Assert.False(principal.Has(ValheimCapability.Admin));
     }
 
+    [Fact]
+    public async Task WebSocketUpgrade_WithInstalledFeature_ResolvesEnrollment()
+    {
+        var (service, issued) = CreateEnrolledService();
+        var context = Request("GET", "/ws", PrivateAddress,
+            ("X-Lumberjacks-Enrollment-Id", issued.Enrollment.EnrollmentId),
+            ("X-Lumberjacks-Client-Key", issued.AccessToken));
+        context.Features.Set<IHttpWebSocketFeature>(new UpgradeFeature());
+
+        Assert.True(context.WebSockets.IsWebSocketRequest);
+        Assert.True(await Invoke(context, service));
+        var principal = ValheimPrincipal.From(context);
+        Assert.NotNull(principal);
+        Assert.Equal("enrollment", principal!.Kind);
+        Assert.Equal(issued.Enrollment.RecipientId, principal.Enrollment!.RecipientId);
+    }
+
     (SteamEnrollmentService Service, SteamEnrollmentService.EnrollmentIssued Issued) CreateEnrolledService()
     {
         Directory.CreateDirectory(_directory);
@@ -189,6 +207,14 @@ public sealed class ValheimClientAccessMiddlewareTests : IDisposable
         var middleware = new ValheimClientAccessMiddleware(_ => { reachedNext = true; return Task.CompletedTask; }, config);
         await middleware.InvokeAsync(context, service);
         return reachedNext;
+    }
+
+    sealed class UpgradeFeature : IHttpWebSocketFeature
+    {
+        public bool IsWebSocketRequest => true;
+
+        public Task<System.Net.WebSockets.WebSocket> AcceptAsync(WebSocketAcceptContext context) =>
+            throw new NotSupportedException("The access-policy test never accepts the socket.");
     }
 
     public void Dispose()
