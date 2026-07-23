@@ -40,6 +40,12 @@ param(
 
     [string]$BundleDirectory,
 
+    [string]$MockValheimTelemetryJson,
+
+    [string]$MockRolePreflightJson,
+
+    [switch]$StopAfterRolePreflight,
+
     [switch]$SkipSynthetic,
 
     [switch]$SkipReadiness,
@@ -169,6 +175,13 @@ function Get-JsonFile {
     return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
+function Resolve-UnderRepo {
+    param([string]$Path)
+
+    if ([IO.Path]::IsPathRooted($Path)) { return [IO.Path]::GetFullPath($Path) }
+    return [IO.Path]::GetFullPath((Join-Path $repoRoot $Path))
+}
+
 $syntheticPath = Join-Path $outputDirectory 'synthetic-motion.json'
 $readinessPath = Join-Path $outputDirectory 'readiness.json'
 $rolePreflightPath = Join-Path $outputDirectory 'role-preflight.json'
@@ -231,7 +244,14 @@ if (-not $SkipReadiness) {
 }
 
 $gatewayRoot = $GatewayUrl.TrimEnd('/')
-$valheim = Invoke-RestMethod -Uri "$gatewayRoot/api/v0/telemetry/valheim" -Method Get -Headers @{ 'Cache-Control' = 'no-cache' }
+$valheim = if ($MockValheimTelemetryJson) {
+    $mockPath = Resolve-UnderRepo $MockValheimTelemetryJson
+    $mock = Get-JsonFile $mockPath
+    if (-not $mock) { throw "mock Valheim telemetry not found or invalid: $mockPath" }
+    $mock
+} else {
+    Invoke-RestMethod -Uri "$gatewayRoot/api/v0/telemetry/valheim" -Method Get -Headers @{ 'Cache-Control' = 'no-cache' }
+}
 $players = @($valheim.heartbeat.players)
 $peerCount = [int]$valheim.heartbeat.peer_count
 $receipt.p7_peer_check = [ordered]@{
@@ -254,20 +274,33 @@ if ($peerCount -lt 2) {
 }
 
 if (-not $SkipRolePreflight) {
-    $rolePreflightArgs = @(
-        '-DurationSeconds', '5',
-        '-IntervalSeconds', '1',
-        '-Label', "$runId-role-preflight",
-        '-SummaryOnly',
-        '-OutputJson', $rolePreflightPath
-    )
-    $rolePreflight = Invoke-JsonScript `
-        -ScriptPath (Join-Path $repoRoot 'tools\i5\Start-TwoClientCapture.ps1') `
-        -Arguments $rolePreflightArgs
-    $rolePreflightReceipt = Get-JsonFile $rolePreflightPath
+    if ($MockRolePreflightJson) {
+        $mockRolePath = Resolve-UnderRepo $MockRolePreflightJson
+        $rolePreflightReceipt = Get-JsonFile $mockRolePath
+        if (-not $rolePreflightReceipt) { throw "mock role preflight receipt not found or invalid: $mockRolePath" }
+        Copy-Item -LiteralPath $mockRolePath -Destination $rolePreflightPath -Force
+        $rolePreflight = [ordered]@{
+            exit_code = 0
+            stdout = "mock role preflight: $mockRolePath"
+            stderr = ''
+        }
+    } else {
+        $rolePreflightArgs = @(
+            '-DurationSeconds', '5',
+            '-IntervalSeconds', '1',
+            '-Label', "$runId-role-preflight",
+            '-SummaryOnly',
+            '-OutputJson', $rolePreflightPath
+        )
+        $rolePreflight = Invoke-JsonScript `
+            -ScriptPath (Join-Path $repoRoot 'tools\i5\Start-TwoClientCapture.ps1') `
+            -Arguments $rolePreflightArgs
+        $rolePreflightReceipt = Get-JsonFile $rolePreflightPath
+    }
     $receipt.role_preflight = [ordered]@{
         exit_code = $rolePreflight.exit_code
         receipt_path = $rolePreflightPath
+        source = if ($MockRolePreflightJson) { 'mock' } else { 'live_capture' }
         receipt = $rolePreflightReceipt
     }
 
@@ -295,6 +328,12 @@ if (-not $SkipRolePreflight) {
 
     $receipt.human_observation_required['apply_client'] = $receipt.role_preflight.summary.apply_client
     $receipt.human_observation_required['observe_client'] = $receipt.role_preflight.summary.observe_client
+
+    if ($StopAfterRolePreflight) {
+        $receipt.verdict = 'role_preflight_passed_stopped_before_motion'
+        $receipt.next_action = 'Role preflight passed. Rerun without -StopAfterRolePreflight to start capture and bounded motion.'
+        Write-Receipt $receipt 0
+    }
 }
 
 $captureArgs = @(

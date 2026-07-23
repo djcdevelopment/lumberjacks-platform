@@ -59,6 +59,27 @@ apply client, observe client, visual result, straight/stutter movement quality,
 role-reversal state, and ready-to-run annotation commands. Use it during the
 live pass instead of reconstructing expected fields from chat history.
 
+The role-preflight branch can be smoke-tested without live clients:
+
+```powershell
+# One-command fixture gate; writes receipts under captures/wave0-live-gate-fixtures
+tools\wave0\Test-Wave0LiveGateFixtures.ps1
+
+# Expected: blocked_by_ambiguous_apply_roles, no movement command
+tools\wave0\Start-Wave0LiveGate.ps1 `
+  -SkipSynthetic -SkipReadiness `
+  -MockValheimTelemetryJson tools\wave0\fixtures\valheim-two-peers.json `
+  -MockRolePreflightJson tools\wave0\fixtures\role-preflight-both-apply.json `
+  -OutputJson captures\wave0-mock-ambiguous-roles\result.json
+
+# Expected: role_preflight_passed_stopped_before_motion, no movement command
+tools\wave0\Start-Wave0LiveGate.ps1 `
+  -SkipSynthetic -SkipReadiness -StopAfterRolePreflight `
+  -MockValheimTelemetryJson tools\wave0\fixtures\valheim-two-peers.json `
+  -MockRolePreflightJson tools\wave0\fixtures\role-preflight-omen-apply.json `
+  -OutputJson captures\wave0-mock-valid-roles\result.json
+```
+
 After the live course, use `Add-Wave0VisualObservation.ps1` instead of editing
 the receipt. It writes a sidecar `*.visual-observation.json` and a derived
 `*.annotated.json` projection while preserving the original machine receipt.

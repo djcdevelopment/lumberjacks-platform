@@ -1,0 +1,12 @@
+{
+  "stale": false,
+  "heartbeat": {
+    "server_state": "ready",
+    "peer_count": 2,
+    "players": [
+      "fixture-omen",
+      "fixture-i5"
+    ],
+    "motion_state": "observing"
+  }
+}

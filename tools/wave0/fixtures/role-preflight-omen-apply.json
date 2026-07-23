@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "comparison": {
+    "level": "ok",
+    "omen": {
+      "final_local_motion": {
+        "apply_enabled": true
+      }
+    },
+    "i5": {
+      "final_local_motion": {
+        "apply_enabled": false
+      }
+    }
+  }
+}
