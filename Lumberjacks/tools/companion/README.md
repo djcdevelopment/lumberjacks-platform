@@ -34,7 +34,7 @@ For the i5 laptop, do not hand-copy files. Use the documented tailnet deploy lan
 ```powershell
 .\tools\i5\Test-I5Link.ps1
 .\tools\i5\Deploy-ToI5.ps1 -Path .\Lumberjacks\src\Game.Companion\CompanionPage.cs -Dest C:/deploy/baseline/i5-companion/src/Game.Companion
-ssh -o BatchMode=yes i5 'powershell.exe -NoProfile -Command "Set-Location C:\deploy\baseline\i5-companion; docker compose -p lumberjacks-companion -f .\tools\companion\docker-compose.yml up -d --build"'
+.\tools\i5\Start-I5Companion.ps1
 ```
 
 ## Native Windows (only when .NET 9 SDK is installed)
