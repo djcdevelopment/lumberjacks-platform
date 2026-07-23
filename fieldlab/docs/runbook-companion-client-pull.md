@@ -17,6 +17,16 @@ The dashboard, boundary trace, roadmap, and telemetry remain available under the
 The update screen reads the installed ComfyNetworkSense enrollment config, so an ordinary update
 does not ask the tester to re-enter a Steam credential.
 
+The home page's **Moving parts** panel is also the first transport sanity check. Its **Current read**
+line intentionally translates live counters into an operator conclusion:
+
+- `P7 is up with no active peers` means the server is ready for a join test.
+- `Valheim has N peer(s), but Lumberjacks motion counters are zero` means visible player movement is
+  still native Valheim for that run.
+- `Lumberjacks motion frames are arriving` means the UDP/WebSocket motion lane is carrying frames
+  and the in-game movement result should be compared against the Motion tile and trace.
+- `Motion telemetry is unavailable` means the dashboard cannot safely answer the transport question.
+
 ## Bootstrap a tester Docker Companion
 
 The normal tester package is a generic zip, not a copied plugin folder and not an image-specific
