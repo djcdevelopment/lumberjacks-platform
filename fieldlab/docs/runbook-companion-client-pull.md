@@ -52,6 +52,10 @@ For the current private-alpha channel, this command creates the paired GitHub re
 ```
 
 Use `-DryRun` to generate and inspect the hash-recorded bundle without contacting GitHub.
+After a real publish, `Lumberjacks/tools/companion/latest-bootstrap.json` is rewritten as the stable
+pointer to the current tester bootstrap. It records the release URL, zip URL, manifest URL, SHA-256,
+size, and entrypoint. Treat that file as the canonical answer to "which Companion zip should a tester
+download?"
 The tester extracts the zip and double-clicks
 `bootstrap\Start-LumberjacksCompanion.cmd`. The launcher finds the default Steam Valheim folder,
 starts Docker Desktop, starts the loopback-only Companion, and opens `http://127.0.0.1:8080`.

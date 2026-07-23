@@ -67,6 +67,12 @@ Use `-DryRun` to inspect the generated package, hash manifest, and GitHub comman
 release assets are the stable bootstrap download; frequent Valheim DLL/config updates remain on
 the authenticated Gateway client-pull lane.
 
+`latest-bootstrap.json` is the stable machine-readable pointer for the current tester bootstrap.
+`Publish-CompanionBootstrap.ps1` rewrites it after a successful upload with the immutable release
+URL, zip URL, manifest URL, SHA-256, size, and entrypoint. If a tester asks "which Companion zip do
+I download?", use that file first; if it points at an older release, publish a new bootstrap or
+commit the corrected pointer.
+
 ## Current scope
 
 - Client-pulled package checks and installs use the existing installed enrollment credential.

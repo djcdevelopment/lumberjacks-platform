@@ -73,11 +73,31 @@ if ($LASTEXITCODE -eq 0) { throw "GitHub release '$ReleaseId' already exists in 
 & gh @arguments
 if ($LASTEXITCODE -ne 0) { throw 'GitHub release publish failed.' }
 
+$packageName = Split-Path -Leaf $artifact.package
+$manifestName = Split-Path -Leaf $artifact.manifest
+$releaseUrl = "https://github.com/$Repository/releases/tag/$ReleaseId"
+$latest = [ordered]@{
+    schema_version = 1
+    release = $ReleaseId
+    repository = $Repository
+    published_utc = [DateTime]::UtcNow.ToString('O')
+    release_url = $releaseUrl
+    package_url = "https://github.com/$Repository/releases/download/$ReleaseId/$packageName"
+    manifest_url = "https://github.com/$Repository/releases/download/$ReleaseId/$manifestName"
+    package_file = $packageName
+    package_sha256 = $artifact.sha256
+    package_size_bytes = (Get-Item -LiteralPath $artifact.package).Length
+    entrypoint = 'bootstrap/Start-LumberjacksCompanion.cmd'
+}
+$latestPath = Join-Path $PSScriptRoot 'latest-bootstrap.json'
+[IO.File]::WriteAllText($latestPath, ($latest | ConvertTo-Json -Depth 4), [Text.UTF8Encoding]::new($false))
+
 [pscustomobject]@{
     repository = $Repository
     release = $ReleaseId
     package = $artifact.package
     manifest = $artifact.manifest
     sha256 = $artifact.sha256
-    url = "https://github.com/$Repository/releases/tag/$ReleaseId"
+    url = $releaseUrl
+    latest_manifest = $latestPath
 }
