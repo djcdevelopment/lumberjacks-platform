@@ -1,13 +1,15 @@
 {
     "schema_version":  1,
-    "release":  "companion-bootstrap-20260723-r10",
-    "repository":  "djcdevelopment/baseline",
-    "published_utc":  "2026-07-23T13:33:54.5324004Z",
-    "release_url":  "https://github.com/djcdevelopment/baseline/releases/tag/companion-bootstrap-20260723-r10",
-    "package_url":  "https://github.com/djcdevelopment/baseline/releases/download/companion-bootstrap-20260723-r10/Lumberjacks-Companion-companion-bootstrap-20260723-r10.zip",
-    "manifest_url":  "https://github.com/djcdevelopment/baseline/releases/download/companion-bootstrap-20260723-r10/Lumberjacks-Companion-companion-bootstrap-20260723-r10.json",
-    "package_file":  "Lumberjacks-Companion-companion-bootstrap-20260723-r10.zip",
-    "package_sha256":  "3fea7f0c405388f8d5c0c7dc165683311d36cece55eba6e2bf6d20a566b1dfb3",
-    "package_size_bytes":  21364,
-    "entrypoint":  "bootstrap/Start-LumberjacksCompanion.cmd"
+    "release":  "companion-bootstrap-20260723-r11",
+    "channel":  "p7-public-gateway",
+    "published_utc":  "2026-07-23T13:42:17.9870860Z",
+    "release_url":  "https://comfy-p7.duckdns.org/join/update",
+    "package_url":  "https://comfy-p7.duckdns.org/api/v0/companion/bootstrap/package",
+    "manifest_url":  "https://comfy-p7.duckdns.org/api/v0/companion/bootstrap/manifest",
+    "package_file":  "Lumberjacks-Companion-companion-bootstrap-20260723-r11.zip",
+    "package_sha256":  "ee967e647baa9add648ab8cba46ed5295279111a667a6e87ec36371559a47b29",
+    "package_size_bytes":  24835,
+    "entrypoint":  "bootstrap/Start-LumberjacksCompanion.cmd",
+    "contains_credential":  false,
+    "requires_github_auth":  false
 }

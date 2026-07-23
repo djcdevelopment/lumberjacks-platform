@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory)] [ValidatePattern('^companion-bootstrap-[0-9]{8}-r[0-9]+$')] [string] $ReleaseId,
     [string] $SshTarget = 'comfy-p7',
     [string] $RemoteRoot = '/mnt/comfy-p7/lumberjacks/modpack/companion-bootstrap',
+    [string] $PublicBaseUrl = 'https://comfy-p7.duckdns.org',
     [string] $Notes = 'public credential-free Companion bootstrap'
 )
 
@@ -66,6 +67,24 @@ printf 'published companion bootstrap %s %s\n' "$release" "$actual_hash"
     & ssh $SshTarget "echo $encodedRemoteScript | base64 -d | sudo bash -s -- '$RemoteRoot' '$ReleaseId' '$temporaryPackage' '$temporaryRemoteManifest' '$($package.Name)' '$hash'"
     if ($LASTEXITCODE -ne 0) { throw 'remote publish failed' }
 
+    $latest = [ordered]@{
+        schema_version = 1
+        release = $ReleaseId
+        channel = 'p7-public-gateway'
+        published_utc = [DateTime]::UtcNow.ToString('O')
+        release_url = $PublicBaseUrl.TrimEnd('/') + '/join/update'
+        package_url = $PublicBaseUrl.TrimEnd('/') + '/api/v0/companion/bootstrap/package'
+        manifest_url = $PublicBaseUrl.TrimEnd('/') + '/api/v0/companion/bootstrap/manifest'
+        package_file = $package.Name
+        package_sha256 = $hash
+        package_size_bytes = $package.Length
+        entrypoint = 'bootstrap/Start-LumberjacksCompanion.cmd'
+        contains_credential = $false
+        requires_github_auth = $false
+    }
+    $latestPath = Join-Path $lumberjacksRoot 'tools\companion\latest-bootstrap.json'
+    [System.IO.File]::WriteAllText($latestPath, ($latest | ConvertTo-Json -Depth 4), [System.Text.UTF8Encoding]::new($false))
+
     [pscustomobject]@{
         release = $ReleaseId
         package_sha256 = $hash
@@ -73,6 +92,7 @@ printf 'published companion bootstrap %s %s\n' "$release" "$actual_hash"
         remote_manifest = "$RemoteRoot/current.json"
         gateway_restart_required = $false
         package = $package.FullName
+        latest_manifest = $latestPath
     }
 }
 finally {

@@ -86,10 +86,11 @@ Frequent Valheim DLL/config updates remain on the authenticated Gateway client-p
 Companion.
 
 `latest-bootstrap.json` is the stable machine-readable pointer for the current tester bootstrap.
-`Publish-CompanionBootstrap.ps1` rewrites it after a successful upload with the immutable release
-URL, zip URL, manifest URL, SHA-256, size, and entrypoint. If a tester asks "which Companion zip do
-I download?", use that file first; if it points at an older release, publish a new bootstrap or
-commit the corrected pointer.
+The P7 publisher rewrites it after a successful public upload with the `/join/update` page, public
+zip URL, public manifest URL, SHA-256, size, and entrypoint. The GitHub publisher still writes the
+same shape for operator archives, but private GitHub URLs are not the tester path. If a tester asks
+"which Companion zip do I download?", use that file first; if it points at an older release, publish
+a new bootstrap or commit the corrected pointer.
 
 ## Current scope
 
