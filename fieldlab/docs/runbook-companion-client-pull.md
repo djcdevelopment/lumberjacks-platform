@@ -31,7 +31,8 @@ The **Capture transport evidence** card is the no-shell path for builders. Click
 seconds** before moving two clients. Companion keeps polling while the button is disabled, then shows
 `sample_count`, `max_peers`, and `motion_received_delta` with direct downloads for `summary.json`
 and `samples.jsonl`. Use those downloads when sharing a run in Discord or attaching evidence to a
-future issue.
+future issue. The card also lists recent local captures after refresh, so a tester can recover the
+download links without finding the Docker volume path.
 
 ## Bootstrap a tester Docker Companion
 

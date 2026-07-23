@@ -73,6 +73,7 @@ static class CompanionPage
     <button id="capture" onclick="captureTransport()">Capture 60 seconds</button>
   </p>
   <div id="capture-result" class="result">No capture yet.</div>
+  <div id="capture-history" class="result">Loading recent captures...</div>
 </section>
 
 <section class="card">
@@ -243,6 +244,7 @@ async function captureTransport(){
     q('#capture-result').className='result '+level;
     const base='/api/v0/companion/transport-capture/'+encodeURIComponent(d.run_id)+'/';
     q('#capture-result').innerHTML='<strong>Capture complete</strong><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · motion delta: '+esc(d.motion_received_delta)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
+    await captureHistory();
   }catch(e){
     q('#capture-result').className='result bad';
     q('#capture-result').textContent='Capture failed: '+JSON.stringify(e);
@@ -251,9 +253,28 @@ async function captureTransport(){
   }
 }
 
+async function captureHistory(){
+  try{
+    const d=await get('/api/v0/companion/transport-capture');
+    const captures=d.captures||[];
+    if(captures.length===0){
+      q('#capture-history').textContent='No saved captures yet.';
+      return;
+    }
+    q('#capture-history').innerHTML='<strong>Recent captures</strong>'+captures.map(c=>{
+      const base='/api/v0/companion/transport-capture/'+encodeURIComponent(c.run_id)+'/';
+      return '<p><span class="release">'+esc(c.run_id)+'</span> · peers '+esc(c.max_peers)+' · motion delta '+esc(c.motion_received_delta)+' · samples '+esc(c.sample_count)+'<br><a href="'+base+'summary.json">summary</a> · <a href="'+base+'samples.jsonl">samples</a></p>';
+    }).join('');
+  }catch(e){
+    q('#capture-history').className='result bad';
+    q('#capture-history').textContent='Could not load recent captures: '+JSON.stringify(e);
+  }
+}
+
 status();
 companionRelease();
 movingParts();
+captureHistory();
 setInterval(movingParts,5000);
 </script>
 </body>

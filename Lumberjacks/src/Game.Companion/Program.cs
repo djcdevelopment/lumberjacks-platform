@@ -102,6 +102,13 @@ app.MapPost("/api/v0/companion/transport-capture", async (TransportCaptureReques
     return Results.Ok(summary);
 });
 
+app.MapGet("/api/v0/companion/transport-capture", (TransportTruthCaptureService capture) =>
+    Results.Ok(new
+    {
+        schema_version = 1,
+        captures = capture.ListCaptures(10),
+    }));
+
 app.MapGet("/api/v0/companion/transport-capture/{runId}/{file}", (string runId, string file, TransportTruthCaptureService capture) =>
 {
     var path = capture.ResolveCaptureFile(runId, file);
@@ -419,6 +426,30 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         var path = Path.GetFullPath(Path.Combine(root, runId, file));
         var normalizedRoot = Path.GetFullPath(root) + Path.DirectorySeparatorChar;
         return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase) && File.Exists(path) ? path : null;
+    }
+
+    public IReadOnlyList<TransportCaptureSummary> ListCaptures(int limit)
+    {
+        var root = Path.Combine(stateStore.DataDirectory, "captures", "transport-truth");
+        if (!Directory.Exists(root)) return [];
+        var captures = new List<TransportCaptureSummary>();
+        foreach (var summaryPath in Directory.EnumerateFiles(root, "summary.json", SearchOption.AllDirectories))
+        {
+            try
+            {
+                var summary = JsonSerializer.Deserialize<TransportCaptureSummary>(File.ReadAllText(summaryPath), Json.Options);
+                if (summary is not null) captures.Add(summary);
+            }
+            catch
+            {
+                // Ignore malformed local capture summaries; they should not break the dashboard.
+            }
+        }
+
+        return captures
+            .OrderByDescending(capture => capture.started_utc)
+            .Take(Math.Clamp(limit, 1, 50))
+            .ToList();
     }
 
     async Task<TransportCaptureEndpoint> ReadEndpointAsync(string path, CancellationToken cancellationToken)
