@@ -548,6 +548,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         bool? finalMotionWebSocketConnected = null, finalMotionUdpReady = null;
         string? finalMotionLastError = null;
         var localMotionReady = false;
+        var localMotionApplied = false;
         TransportLocalMotionSnapshot? finalLocalMotion = null;
         var badSamples = 0;
         var observedPlayers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -572,6 +573,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
                     || string.Equals(state, "websocket", StringComparison.OrdinalIgnoreCase)
                     || BoolValue(localMotion.Value, "motion_websocket_connected") == true
                     || BoolValue(localMotion.Value, "motion_udp_ready") == true;
+                localMotionApplied |= IntValue(localMotion.Value, "motion_applied") > 0;
             }
             var currentRead = CurrentRead(deployment, valheim, motion);
             if (localMotion.HasValue)
@@ -661,7 +663,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         }
 
         var finishedUtc = DateTimeOffset.UtcNow;
-        var verdict = Verdict(badSamples, maxPeers, firstMotionReceived, lastMotionReceived, observedMotionStates, localMotionReady);
+        var verdict = Verdict(badSamples, maxPeers, firstMotionReceived, lastMotionReceived, observedMotionStates, localMotionReady, localMotionApplied);
         var counterRanges = new TransportCaptureCounterRanges(
             CounterRange(firstPeers, lastPeers),
             CounterRange(firstMotionReceived, lastMotionReceived),
@@ -844,13 +846,14 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         return new("wait", $"P7 is up with no active peers; {stateText}.");
     }
 
-    static string Verdict(int badSamples, int maxPeers, int? firstMotionReceived, int? lastMotionReceived, IReadOnlyCollection<string>? motionStates = null, bool localMotionReady = false)
+    static string Verdict(int badSamples, int maxPeers, int? firstMotionReceived, int? lastMotionReceived, IReadOnlyCollection<string>? motionStates = null, bool localMotionReady = false, bool localMotionApplied = false)
     {
         if (badSamples > 0) return "incomplete_telemetry";
         var activeState = motionStates?.Any(state => string.Equals(state, "observing", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(state, "websocket", StringComparison.OrdinalIgnoreCase)) == true;
         if (firstMotionReceived.HasValue && lastMotionReceived.HasValue && lastMotionReceived.Value > firstMotionReceived.Value)
             return activeState ? "lumberjacks_motion_observed" : "motion_counter_only";
+        if (maxPeers > 0 && localMotionApplied) return "motion_applied_no_gateway_delta";
         if (maxPeers > 0 && (localMotionReady || activeState)) return "motion_ready_no_gateway_delta";
         if (maxPeers > 0) return "native_motion_only";
         return "no_peer_window";
@@ -888,6 +891,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         "lumberjacks_motion_observed" => new("ok", "Lumberjacks motion frames arrived during this capture."),
         "motion_counter_only" => new("wait", "Counters advanced, but the motion lane never reported active readiness; this is not motion proof."),
         "motion_ready_no_gateway_delta" => new("wait", $"Valheim had up to {maxPeers} peer(s), and the client-local motion lane was ready, but the Gateway motion counter did not advance. This is a transport/relay boundary result, not native-motion proof."),
+        "motion_applied_no_gateway_delta" => new("ok", "The client-local motion lane applied snapshots while the Gateway motion counter stayed flat. This proves local presentation activity; use local counters and relay samples to explain the aggregate delta."),
         "native_motion_only" => new("wait", $"Valheim had up to {maxPeers} peer(s), but Lumberjacks motion counters did not advance. Visible player movement was native Valheim for this capture."),
         _ => new("wait", "No active peer window was captured."),
     };
@@ -942,6 +946,11 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
                 "wait",
                 "The client-local motion lane was ready, but no Gateway motion delta was observed.",
                 "Do not call this native-only. Inspect publish, recipient binding, and Gateway relay evidence before changing interpolation.",
+                $"Max peers: {maxPeers}; motion states: {stateText}; motion delta: {motionDelta}; acknowledged delta: {acknowledgedDelta}; applied delta: {appliedDelta}."),
+            "motion_applied_no_gateway_delta" => new(
+                "ok",
+                "Client-local motion snapshots were applied while the Gateway motion delta stayed flat.",
+                "Treat local apply counters as presentation proof and Gateway counters as aggregate relay evidence; do not infer failure from a flat aggregate window.",
                 $"Max peers: {maxPeers}; motion states: {stateText}; motion delta: {motionDelta}; acknowledged delta: {acknowledgedDelta}; applied delta: {appliedDelta}."),
             "native_motion_only" => new(
                 "wait",
