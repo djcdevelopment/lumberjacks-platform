@@ -77,6 +77,19 @@ public sealed class ValheimTelemetryHeartbeatService
                     zdo_authoritative_duplicates = _latest.ZdoAuthoritativeDuplicates,
                     zdo_authoritative_retried = _latest.ZdoAuthoritativeRetried,
                     zdo_authoritative_pending = _latest.ZdoAuthoritativePending,
+                    motion_state = _latest.MotionState,
+                    motion_websocket_connected = _latest.MotionWebsocketConnected,
+                    motion_udp_ready = _latest.MotionUdpReady,
+                    motion_apply_enabled = _latest.MotionApplyEnabled,
+                    motion_sent_udp = _latest.MotionSentUdp,
+                    motion_sent_websocket = _latest.MotionSentWebsocket,
+                    motion_received_udp = _latest.MotionReceivedUdp,
+                    motion_received_websocket = _latest.MotionReceivedWebsocket,
+                    motion_applied = _latest.MotionApplied,
+                    motion_stale_fallbacks = _latest.MotionStaleFallbacks,
+                    motion_unknown_zdos = _latest.MotionUnknownZdos,
+                    motion_remote_entities = _latest.MotionRemoteEntities,
+                    motion_last_error = _latest.MotionLastError,
                     sample_timestamp_utc = _latest.TimestampUtc,
                 },
             };
@@ -273,4 +286,17 @@ public sealed record ValheimTelemetryHeartbeat
     public long? ZdoAuthoritativePending { get; init; }
     public long? ZdoProbeRecvCalls { get; init; }
     public long? ZdoProbeCreateSyncCalls { get; init; }
+    public string? MotionState { get; init; }
+    public bool? MotionWebsocketConnected { get; init; }
+    public bool? MotionUdpReady { get; init; }
+    public bool? MotionApplyEnabled { get; init; }
+    public long? MotionSentUdp { get; init; }
+    public long? MotionSentWebsocket { get; init; }
+    public long? MotionReceivedUdp { get; init; }
+    public long? MotionReceivedWebsocket { get; init; }
+    public long? MotionApplied { get; init; }
+    public long? MotionStaleFallbacks { get; init; }
+    public long? MotionUnknownZdos { get; init; }
+    public int? MotionRemoteEntities { get; init; }
+    public string? MotionLastError { get; init; }
 }
