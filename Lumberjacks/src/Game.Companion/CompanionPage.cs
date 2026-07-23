@@ -45,6 +45,12 @@ static class CompanionPage
 </section>
 
 <section class="card">
+  <h2>Live signal stream</h2>
+  <p class="muted">A compact rolling log of changes from the public telemetry path. If nothing is moving, this stays quiet.</p>
+  <div id="signal-stream" class="result">Waiting for the first sample...</div>
+</section>
+
+<section class="card">
   <h2>Ready to update</h2>
   <p class="muted">Your access key stays in your local Valheim config and is never shown here.</p>
   <div class="checks">
@@ -85,7 +91,7 @@ static class CompanionPage
 <details><summary>Technical details</summary><pre id="technical">Loading...</pre></details>
 
 <script>
-let state=null,manifest=null;
+let state=null,manifest=null,lastSignal=null,signalRows=[];
 const q=s=>document.querySelector(s);
 
 function esc(v){return String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
@@ -107,6 +113,51 @@ function evidence(text,level='wait'){
   const el=q('#evidence');
   el.className='result '+level;
   el.textContent='Current read: '+text;
+}
+
+function stamp(){return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+
+function emitSignal(text,level='wait'){
+  signalRows.unshift({at:stamp(),text,level});
+  signalRows=signalRows.slice(0,18);
+  q('#signal-stream').innerHTML=signalRows.map(row=>'<div class="'+row.level+'"><span class="release">'+esc(row.at)+'</span> '+esc(row.text)+'</div>').join('');
+}
+
+function playerNames(valheim){
+  const players=valheim?.heartbeat?.players||valheim?.players||[];
+  return players.map(p=>p.name||p.player_name||p.character_name||p.steam_name||p.id||'unknown').join(', ');
+}
+
+function signalFrom(live){
+  return {
+    gateway: live.gateway_version||'unknown',
+    peers: live.peers||0,
+    players: live.players||'none',
+    motion_received: live.motion_received,
+    motion_relayed: live.motion_relayed,
+    cutover: live.cutover||'unknown',
+    pending: live.cutover_pending,
+    active_consumers: live.active_consumers,
+    acknowledged: live.acknowledged,
+    applied: live.applied
+  };
+}
+
+function diffSignal(next){
+  if(!lastSignal){
+    lastSignal=next;
+    emitSignal('baseline: gateway '+next.gateway+'; peers '+next.peers+' ('+next.players+'); cutover '+next.cutover+'; motion recv '+next.motion_received+'; pending '+next.pending,'wait');
+    return;
+  }
+  const changes=[];
+  for(const key of Object.keys(next)){
+    if(next[key]!==lastSignal[key])changes.push(key+' '+lastSignal[key]+' → '+next[key]);
+  }
+  if(changes.length>0){
+    const level=changes.some(c=>c.startsWith('motion_received')||c.startsWith('motion_relayed'))?'ok':'wait';
+    emitSignal(changes.join('; '),level);
+    lastSignal=next;
+  }
 }
 
 function paint(){
@@ -156,7 +207,7 @@ async function companionRelease(){
 }
 
 async function movingParts(){
-  const live={gateway:false,valheim:false,peers:0,motion_received:null,motion_relayed:null,cutover:'unknown',cutover_pending:null};
+  const live={gateway:false,gateway_version:null,valheim:false,peers:0,players:'none',motion_received:null,motion_relayed:null,cutover:'unknown',cutover_pending:null,active_consumers:null,acknowledged:null,applied:null};
   try{
     const m=await get('/api/v0/companion/update/check');
     manifest=manifest||m;
@@ -166,6 +217,7 @@ async function movingParts(){
   try{
     const d=await get('/api/v0/telemetry/deployment');
     live.gateway=true;
+    live.gateway_version=d.lumberjacks_version||'unknown';
     part('gateway',(d.environment||'gateway')+' / '+(d.lumberjacks_version||'unknown'),'ok');
   }catch(e){part('gateway','deployment telemetry unavailable','bad')}
 
@@ -173,6 +225,7 @@ async function movingParts(){
     const v=await get('/api/v0/telemetry/valheim');
     live.valheim=!v.stale;
     live.peers=v.peers??0;
+    live.players=playerNames(v)||'none';
     const text=(v.status||'unknown')+' / '+(v.peers??0)+' peers';
     part('valheim',text,v.stale?'wait':'ok');
   }catch(e){part('valheim','heartbeat unavailable','bad')}
@@ -182,6 +235,9 @@ async function movingParts(){
     const a=c.authoritative_window||{};
     live.cutover=c.mode||c.state||'unknown';
     live.cutover_pending=a.pending??a.consumer_pending??0;
+    live.active_consumers=a.active_consumers??0;
+    live.acknowledged=a.consumer_acknowledged??a.acknowledged??0;
+    live.applied=a.applied??0;
     const text=(c.mode||c.state||'unknown')+' / pending '+(a.pending??a.consumer_pending??0)+' / active '+(a.active_consumers??0);
     part('cutover',text,c.stale?'wait':'ok');
   }catch(e){part('cutover','cutover telemetry unavailable','bad')}
@@ -209,6 +265,7 @@ async function movingParts(){
   }else{
     evidence('Waiting for Valheim heartbeat before interpreting the transport path.','wait');
   }
+  diffSignal(signalFrom(live));
 }
 
 async function check(){
