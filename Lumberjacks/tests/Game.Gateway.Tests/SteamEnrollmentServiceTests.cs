@@ -160,6 +160,30 @@ public sealed class SteamEnrollmentServiceTests : IDisposable
     }
 
     [Fact]
+    public void TryGetActiveBySteamId_ReportsPendingVersusInstalledWithoutCredential()
+    {
+        var service = CreateService();
+        const string steamId = "76561198000000001";
+        Assert.True(service.TryRedeem(
+            service.CreateInvite(TimeSpan.FromMinutes(5)).Token,
+            steamId,
+            out var issued,
+            out _));
+
+        Assert.True(service.TryGetActiveBySteamId(steamId, out var pending, out var pendingInstalled, out var pendingReason));
+        Assert.Equal("ok", pendingReason);
+        Assert.Equal(issued.Enrollment.EnrollmentId, pending.EnrollmentId);
+        Assert.False(pendingInstalled);
+
+        Assert.True(service.TryConsumeBootstrap(issued.BootstrapToken, out _, out _));
+
+        Assert.True(service.TryGetActiveBySteamId(steamId, out var installed, out var installedCredential, out var installedReason));
+        Assert.Equal("ok", installedReason);
+        Assert.Equal(issued.Enrollment.EnrollmentId, installed.EnrollmentId);
+        Assert.True(installedCredential);
+    }
+
+    [Fact]
     public void Reissue_RefusesUnknownAndRevoked()
     {
         var service = CreateService(reissueCooldownMinutes: 0);

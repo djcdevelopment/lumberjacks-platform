@@ -30,6 +30,14 @@ static class EnrollmentPages
         "<p><a class=\"btn\" href=\"" + WebUtility.HtmlEncode(loginUrl) + "\">Sign in with Steam</a></p>",
         withStatus: true);
 
+    public static string UpdatePage(string loginUrl) => Shell(
+        "Lumberjacks - latest update",
+        "<h1>Download the latest mod files</h1>" +
+        "<p>Sign in with Steam and download the current alpha pack. Installed clients keep their " +
+        "existing ComfyNetworkSense config and access key; recovery is a separate operator action.</p>" +
+        "<p><a class=\"btn\" href=\"" + WebUtility.HtmlEncode(loginUrl) + "\">Sign in with Steam</a></p>",
+        withStatus: true);
+
     public static string DownloadPage(string steamId, string bootstrapToken, string baseUrl)
     {
         var trimmed = baseUrl.TrimEnd('/');

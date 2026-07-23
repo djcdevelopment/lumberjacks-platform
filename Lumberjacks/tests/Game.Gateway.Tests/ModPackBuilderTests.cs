@@ -102,6 +102,26 @@ public sealed class ModPackBuilderTests
         Assert.Contains(ModPackBuilder.ConfigEntrySuffix, ex.Message);
     }
 
+    [Fact]
+    public void BuildConfigPreservingUpdatePack_OmitsConfigAndAddsInstaller()
+    {
+        var template = BuildTemplateZip(new()
+        {
+            ["Valheim\\BepInEx\\config\\djcdevelopment.valheim.comfynetworksense.cfg"] = BaseCfg,
+            ["Valheim\\BepInEx\\plugins\\ComfyNetworkSense.dll"] = "DLL",
+        });
+
+        var pack = ModPackBuilder.BuildConfigPreservingUpdatePack(template);
+
+        var entries = ReadZip(pack);
+        Assert.DoesNotContain(
+            "Valheim\\BepInEx\\config\\djcdevelopment.valheim.comfynetworksense.cfg",
+            entries.Keys);
+        Assert.Equal("DLL", entries["Valheim\\BepInEx\\plugins\\ComfyNetworkSense.dll"]);
+        Assert.Contains(ModPackBuilder.UpdateInstallerEntry, entries.Keys);
+        Assert.Contains("Existing ComfyNetworkSense config preserved", entries[ModPackBuilder.UpdateInstallerEntry]);
+    }
+
     // Opt-in real-template smoke: runs only when MODPACK_TEMPLATE_SMOKE points at an actual
     // Comfy-P7-Alpha-Mods.zip (backslash paths, directory entries, binary DLLs). Skipped in CI.
     [Fact]

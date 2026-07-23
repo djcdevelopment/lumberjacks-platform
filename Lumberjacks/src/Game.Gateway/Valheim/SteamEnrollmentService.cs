@@ -449,6 +449,41 @@ public sealed class SteamEnrollmentService
         lock (_gate) return _enrollments.TryGetValue(enrollmentId, out var item) ? View(item) : null;
     }
 
+    public bool TryGetActiveBySteamId(string? steamId, out EnrollmentView view, out bool credentialInstalled, out string reason)
+    {
+        view = null!;
+        credentialInstalled = false;
+        if (string.IsNullOrWhiteSpace(steamId))
+        {
+            reason = "not_enrolled";
+            return false;
+        }
+
+        lock (_gate)
+        {
+            var matches = _enrollments.Values
+                .Where(item => string.Equals(item.SteamId, steamId, StringComparison.Ordinal))
+                .ToList();
+            if (matches.Count == 0)
+            {
+                reason = "not_enrolled";
+                return false;
+            }
+
+            var active = matches.FirstOrDefault(item => item.Status == EnrollmentStatus.Active);
+            if (active is null)
+            {
+                reason = "enrollment_revoked";
+                return false;
+            }
+
+            view = View(active);
+            credentialInstalled = !string.IsNullOrEmpty(active.TokenHash);
+            reason = "ok";
+            return true;
+        }
+    }
+
     public bool Revoke(string enrollmentId, string reason)
     {
         lock (_gate)

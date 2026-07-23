@@ -156,13 +156,33 @@ that script copies a narrow source-file allowlist and rebuilds on the VM.
    accepted for the known-cohort alpha only and remains a stop-ship before
    widening.
 
-## Issue an admin rescue/update mod pack
+## Download the current player mod pack
+
+Ordinary player updates are Steam-bound and do not rotate the installed access key:
+
+```text
+https://comfy-p7.duckdns.org/join/update
+```
+
+The same surface exposes a secret-free machine-readable manifest for dashboards and
+pull updaters:
+
+```text
+https://comfy-p7.duckdns.org/api/v0/valheim/modpack/manifest
+```
+
+The update zip omits `djcdevelopment.valheim.comfynetworksense.cfg` and includes
+`Install-LumberjacksMod.ps1`, which preserves the local config while copying the
+latest files. This is the path for OMEN, i5, and alpha testers who already completed
+first install.
+
+## Issue an admin rescue mod pack
 
 Use this when a known alpha tester is already enrolled but the Steam callback,
-reissue page, or old local config is blocking an update. The endpoint is on the
+reissue page, or old local config is blocking recovery. The endpoint is on the
 admin enrollment surface and rotates the tester's client credential, so any
-previously installed config for that enrollment stops working after the new pack
-is issued.
+previously installed config for that enrollment stops working after the new pack is
+issued. Do not use it for ordinary updates.
 
 Prefer `steam_id` when the operator is repairing the tester's current active
 enrollment. Use `enrollment_id` only when selecting an exact enrollment record
@@ -201,11 +221,8 @@ Operator checks:
 - Because the credential rotated, do not expect the tester's older install to
   keep authenticating.
 
-For normal self-service, use the Steam-bound flow instead of the admin rescue path:
-send the tester an invite URL, or have an already-enrolled tester open
-`/join/reissue`, sign in with Steam, and press **Download my mod pack**. That path
-uses the same `ModPackBuilder` and streams a config-personalized zip without a
-Discord key/hash paste loop.
+For first install, send the tester an invite URL. If the bootstrap expires before
+install, `/join/reissue` redoes Steam sign-in and mints a fresh one-use download.
 
 ## Failure handling
 

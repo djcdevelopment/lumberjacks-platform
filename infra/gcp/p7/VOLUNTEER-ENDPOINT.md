@@ -12,14 +12,16 @@ admin on OMEN
   -> volunteer opens the returned link
   -> Steam OpenID verifies the Steam account
   -> Gateway redeems the invite once
-  -> Gateway issues enrollment id + per-player access token
-  -> volunteer configures ComfyNetworkSense
+  -> Gateway issues a one-use bootstrap
+  -> volunteer downloads a personalized mod pack
+  -> installer/download mints the per-player access token exactly once
   -> mod authenticates redirect/poll/ack/telemetry requests to GCP :42317
 ```
 
 The admin key is read and used on GCP; it is not returned to OMEN. The invite token
-is not a client credential and cannot be redeemed twice. Enrollment data is persisted
-under `/mnt/comfy-p7/lumberjacks/enrollment/`.
+is not a client credential and cannot be redeemed twice. The reusable access token is
+not stored by the Gateway after install; only its hash is retained. Enrollment data is
+persisted under `/mnt/comfy-p7/lumberjacks/enrollment/`.
 
 ## Administrator: generate one invite
 
@@ -30,16 +32,17 @@ under `/mnt/comfy-p7/lumberjacks/enrollment/`.
 Send only the newly returned `invite_url` to the intended player. It expires after 24
 hours and is single-use. Generate a separate invite for every Steam account.
 
-## Player: redeem and configure
+## Player: first install
 
 1. Open the invite URL.
 2. Select **Sign in with Steam** and complete Steam's OpenID prompt.
-3. Copy the returned `[Lumberjacks]` block into
-   `Valheim\BepInEx\config\djcdevelopment.valheim.comfynetworksense.cfg`.
-4. Ensure `zdoAuthoritativeConsumerEnabled = true` under `[Lumberjacks]`.
+3. Press **Download my mod pack**.
+4. Extract the `Valheim` folder from the zip into the local Valheim install folder,
+   letting it merge.
 5. Close and restart Valheim so BepInEx reloads the config and plugin.
 
-The result has this shape; every `<issued ...>` value is private to that player:
+The generated config has this shape; every `<issued ...>` value is private to that
+player:
 
 ```ini
 [Lumberjacks]
@@ -53,6 +56,36 @@ zdoAuthoritativeConsumerEnabled = true
 Do not publish the callback response, commit the config, or include the access token in
 screenshots, reports, logs, or chat. If it is exposed, issue a new enrollment and
 remove/revoke the old record before using that account again.
+
+## Player: ordinary update
+
+An already-installed tester opens:
+
+```text
+https://comfy-p7.duckdns.org/join/update
+```
+
+or the equivalent direct Gateway URL while TLS is not in use:
+
+```text
+http://8.231.129.249:42317/join/update
+```
+
+After Steam sign-in, the Gateway streams the current alpha update zip. This download
+does not rotate the credential. The zip intentionally omits
+`djcdevelopment.valheim.comfynetworksense.cfg` and includes `Install-LumberjacksMod.ps1`,
+which copies the mod files while preserving the existing config.
+
+The machine-readable package manifest is public and secret-free:
+
+```text
+http://8.231.129.249:42317/api/v0/valheim/modpack/manifest
+```
+
+It reports the current release identity, package hash, package size, and the public
+first-install/update URLs. Do not use `/api/v0/enrollment/pack` for ordinary updates:
+that endpoint is an admin recovery path and deliberately rotates the player's access
+token.
 
 ## Preflight and launch
 

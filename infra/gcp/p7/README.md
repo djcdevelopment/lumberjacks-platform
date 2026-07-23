@@ -232,8 +232,9 @@ container image, health, source hashes, and empty queue manually after it return
 ```
 
 The script authenticates locally on GCP over SSH and returns a one-use, 24-hour URL.
-The player follows the link, signs in with Steam OpenID, and copies the returned four
-Lumberjacks values into the local BepInEx config. See
+The player follows the link, signs in with Steam OpenID, and downloads the
+personalized mod pack. For already-installed testers, use `/join/update`; that path
+downloads the latest mod files without rotating the existing access key. See
 [VOLUNTEER-ENDPOINT.md](VOLUNTEER-ENDPOINT.md).
 
 ### 7. Establish the preflight baseline

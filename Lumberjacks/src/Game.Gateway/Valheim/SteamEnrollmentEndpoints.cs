@@ -45,6 +45,12 @@ public static class SteamEnrollmentEndpoints
             return pack is null ? error! : Results.File(pack, "application/zip", "Comfy-P7-Mods.zip");
         }).RequireRateLimiting("enrollment-admin");
 
+        app.MapGet("/api/v0/valheim/modpack/manifest", (HttpRequest request) =>
+        {
+            var manifest = TryBuildModpackManifest(request, out var error);
+            return manifest is null ? error! : Results.Ok(manifest);
+        });
+
         // Pseudonymous self-view for the enrolled client (M2 preflight consumes this).
         app.MapGet("/api/v0/valheim/enrollment/me", (HttpContext context) =>
         {
@@ -90,6 +96,33 @@ public static class SteamEnrollmentEndpoints
             if (!service.TryReissueBootstrap(steamId!, out var issued, out var reason))
                 return Results.BadRequest(new { error = reason });
             return Results.Text(EnrollmentPages.DownloadPage(issued.Enrollment.SteamId, issued.BootstrapToken, PublicBaseUrl(request)), "text/html");
+        }).RequireRateLimiting("join");
+
+        app.MapGet("/join/update", (HttpRequest request) =>
+        {
+            var login = SteamLoginUrl(request, "/join/update/steam-callback");
+            return Results.Text(EnrollmentPages.UpdatePage(login), "text/html");
+        }).RequireRateLimiting("join");
+
+        app.MapGet("/join/update/steam-callback", async (HttpRequest request, SteamEnrollmentService service, IHttpClientFactory clients) =>
+        {
+            var (steamId, error) = await VerifySteamOpenId(request, clients);
+            if (error is not null) return error;
+
+            if (!service.TryGetActiveBySteamId(steamId, out var enrollment, out var credentialInstalled, out var reason))
+                return Results.BadRequest(new { error = reason });
+
+            if (!credentialInstalled)
+            {
+                if (!service.TryReissueBootstrap(steamId!, out var issued, out var reissueReason))
+                    return Results.BadRequest(new { error = reissueReason });
+                return Results.Text(EnrollmentPages.DownloadPage(issued.Enrollment.SteamId, issued.BootstrapToken, PublicBaseUrl(request)), "text/html");
+            }
+
+            var pack = TryBuildConfigPreservingUpdatePack(out var packError);
+            return pack is null
+                ? packError!
+                : Results.File(pack, "application/zip", $"Comfy-P7-Mods-update-{enrollment.EnrollmentId[..8]}.zip");
         }).RequireRateLimiting("join");
 
         // Public by design: the bootstrap token is the only credential, it is
@@ -151,6 +184,71 @@ public static class SteamEnrollmentEndpoints
             error = Results.Problem(ex.Message, statusCode: 503);
             return null;
         }
+    }
+
+    static object? TryBuildModpackManifest(HttpRequest request, out IResult? error)
+    {
+        error = null;
+        var templatePath = Environment.GetEnvironmentVariable("LUMBERJACKS_MODPACK_TEMPLATE");
+        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        {
+            error = Results.Problem(
+                "mod pack template not configured (LUMBERJACKS_MODPACK_TEMPLATE)", statusCode: 503);
+            return null;
+        }
+
+        var info = new FileInfo(templatePath);
+        return new
+        {
+            schema_version = 1,
+            release = Environment.GetEnvironmentVariable("LUMBERJACKS_VERSION") ?? "unknown",
+            mod_release = ValheimReleaseIdentity.ExpectedModRelease,
+            package = new
+            {
+                kind = "comfy_p7_alpha_modpack",
+                sha256 = Sha256File(templatePath),
+                size_bytes = info.Length,
+            },
+            downloads = new
+            {
+                first_install = PublicBaseUrl(request) + "/join",
+                latest_update = PublicBaseUrl(request) + "/join/update",
+            },
+            install_policy = new
+            {
+                ordinary_update_rotates_credential = false,
+                update_preserves_config = true,
+                recovery_rotates_credential = true,
+            },
+        };
+    }
+
+    static byte[]? TryBuildConfigPreservingUpdatePack(out IResult? error)
+    {
+        error = null;
+        var templatePath = Environment.GetEnvironmentVariable("LUMBERJACKS_MODPACK_TEMPLATE");
+        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        {
+            error = Results.Problem(
+                "mod pack template not configured (LUMBERJACKS_MODPACK_TEMPLATE)", statusCode: 503);
+            return null;
+        }
+
+        try
+        {
+            return ModPackBuilder.BuildConfigPreservingUpdatePack(File.ReadAllBytes(templatePath));
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = Results.Problem(ex.Message, statusCode: 503);
+            return null;
+        }
+    }
+
+    static string Sha256File(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream)).ToLowerInvariant();
     }
 
     static object ToResponse(SteamEnrollmentService.EnrollmentView view) => new
