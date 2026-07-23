@@ -242,6 +242,15 @@ function paint(){
   if(ready){
     q('#headline').textContent='Ready to install the checked release';
     q('#next').textContent=manifest?'Install is enabled.':'Next: check the current alpha release.';
+  }else if(!v.found){
+    q('#headline').textContent='Read-only dashboard: Valheim is not visible';
+    q('#next').textContent='Updates need the Valheim folder mounted. Re-run the Companion bootstrap, or on i5 use Start-I5Companion.ps1 so /valheim is mounted.';
+  }else if(!v.config_found){
+    q('#headline').textContent='Valheim found, Lumberjacks config missing';
+    q('#next').textContent='Install or repair the ComfyNetworkSense config before using client-pull updates. Existing access keys are never shown here.';
+  }else if(!p.linked){
+    q('#headline').textContent='Local profile not linked yet';
+    q('#next').textContent='Claim the installed profile or complete Steam enrollment before installing updates.';
   }else{
     q('#headline').textContent='Finish the amber checks before updating';
     q('#next').textContent=v.running?'Close Valheim, then confirm it here.':'Check "I have closed Valheim" after closing the game.';
