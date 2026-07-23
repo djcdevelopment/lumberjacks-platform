@@ -84,6 +84,7 @@ if ($DryRun) {
 }
 
 $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+$releaseId = $Image.Split(':')[-1]
 $archiveName = "gateway-image-$($Image.Split(':')[-1])-$stamp.oci.tar"
 $localArchive = Join-Path ([IO.Path]::GetTempPath()) $archiveName
 $remoteArchive = "/tmp/$archiveName"
@@ -105,6 +106,7 @@ try {
   $remoteScript = @"
 set -euo pipefail
 image='$Image'
+release_id='$releaseId'
 expected_image_id='$localImageId'
 archive='$remoteArchive'
 expected_archive_hash='$archiveHash'
@@ -140,12 +142,15 @@ test "`$remote_image_id" = "`$expected_image_id"
 
 tmp_env="`$(mktemp)"
 sudo cp -a "`$environment_file" "`$tmp_env"
-sudo sed -i '/^LUMBERJACKS_GATEWAY_IMAGE=/d' "`$tmp_env"
+sudo sed -i '/^LUMBERJACKS_GATEWAY_IMAGE=/d;/^LUMBERJACKS_VERSION=/d' "`$tmp_env"
 printf '%s\n' "LUMBERJACKS_GATEWAY_IMAGE=`$image" | sudo tee -a "`$tmp_env" >/dev/null
+printf '%s\n' "LUMBERJACKS_VERSION=`$release_id" | sudo tee -a "`$tmp_env" >/dev/null
 sudo install -m 0600 -o root -g root "`$tmp_env" "`$environment_file"
 sudo rm -f "`$tmp_env"
 pin_count="`$(sudo grep -c '^LUMBERJACKS_GATEWAY_IMAGE=' "`$environment_file")"
 test "`$pin_count" = "1"
+version_count="`$(sudo grep -c '^LUMBERJACKS_VERSION=' "`$environment_file")"
+test "`$version_count" = "1"
 
 cd "`$compose_root"
 sudo docker compose --env-file "`$environment_file" up -d --no-build --no-deps gateway
@@ -168,6 +173,7 @@ printf 'status=promoted\n'
 printf 'image=%s\n' "`$image"
 printf 'image_id=%s\n' "`$running_id"
 printf 'old_ref=%s\n' "`$old_ref"
+printf 'lumberjacks_version=%s\n' "`$release_id"
 printf 'environment_backup=%s\n' "`$backup_file"
 printf 'archive_sha256=%s\n' "`$actual_archive_hash"
 "@

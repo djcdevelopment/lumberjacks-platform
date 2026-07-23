@@ -234,11 +234,12 @@ Then promote the already-verified image to P7:
 ```
 
 The promotion saves the local image, verifies the archive SHA-256 after upload, loads
-the image on P7, removes duplicate `LUMBERJACKS_GATEWAY_IMAGE` lines before writing
-the new durable pin, restarts only `gateway` with `--no-build --no-deps`, and verifies
-both `/health` and the exact running image id. The previous environment file is backed
-up under `/mnt/comfy-p7/backups/gateway-image-promote/<timestamp>/environment` and is
-restored automatically if the remote transaction fails.
+the image on P7, removes duplicate `LUMBERJACKS_GATEWAY_IMAGE` and `LUMBERJACKS_VERSION`
+lines before writing the new durable pins, restarts only `gateway` with
+`--no-build --no-deps`, and verifies both `/health` and the exact running image id. The
+previous environment file is backed up under
+`/mnt/comfy-p7/backups/gateway-image-promote/<timestamp>/environment` and is restored
+automatically if the remote transaction fails.
 
 `scripts\deploy-gateway.ps1` is retained for historical reference only. It still copies
 source into `/opt/lumberjacks-ed83bd8` and builds on the VM, which is the stale path

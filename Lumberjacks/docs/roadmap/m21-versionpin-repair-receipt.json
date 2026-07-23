@@ -1,0 +1,21 @@
+{
+  "schema": "comfy-p7-gateway-versionpin-repair/v1",
+  "image_release_id": "m21-datatrustcopy-20260723-r1",
+  "admitted_mod_release": "m15-hudrecover-20260723-r1",
+  "gateway_image": "sha256:6541a9a909a45bdeb275d4e758d9e9909af3df4399fdde5092c3916754c6d477",
+  "archive_sha256": "5b730c6c83cab526f4395cb82eea645b06d1533f280f882b3d7bb87e962a0427",
+  "observed_problem": "P7 was running the m21 Gateway image while /api/v0/telemetry/deployment still reported m18-companion-20260723-r1 from the stale durable LUMBERJACKS_VERSION value.",
+  "repair": {
+    "script": "infra/gcp/p7/scripts/Promote-GatewayImage.ps1",
+    "behavior": "Remove duplicate LUMBERJACKS_GATEWAY_IMAGE and LUMBERJACKS_VERSION lines, then write both durable pins during Gateway image promotion.",
+    "environment_backup": "/mnt/comfy-p7/backups/gateway-image-promote/20260723T125315Z/environment"
+  },
+  "verification": {
+    "p7_gateway_health": 200,
+    "durable_gateway_pin_count": 1,
+    "durable_version_pin_count": 1,
+    "running_gateway_image": "lumberjacks-gateway:m21-datatrustcopy-20260723-r1",
+    "running_gateway_image_id": "sha256:6541a9a909a45bdeb275d4e758d9e9909af3df4399fdde5092c3916754c6d477",
+    "deployment_endpoint_lumberjacks_version": "m21-datatrustcopy-20260723-r1"
+  }
+}
