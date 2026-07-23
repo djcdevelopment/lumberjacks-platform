@@ -99,6 +99,8 @@ foreach (var path in new[] { "/community", "/roadmap", "/networksense", "/events
     app.MapGet(path, (HttpContext context, GatewayClient gateway, CancellationToken cancellationToken) =>
         gateway.ProxyGet(context, path, cancellationToken));
 }
+app.MapGet("/trace", (HttpContext context, GatewayClient gateway, CancellationToken cancellationToken) =>
+    gateway.ProxyGetWithFallback(context, "/ops/boundary", "/community", cancellationToken));
 
 app.MapGet("/api/v0/telemetry/{**tail}", (HttpContext context, GatewayClient gateway, CancellationToken cancellationToken) =>
     gateway.ProxyGet(context, "/api/v0/telemetry/" + (context.Request.RouteValues["tail"] ?? string.Empty), cancellationToken));
@@ -138,6 +140,23 @@ sealed class GatewayClient(HttpClient client)
     {
         var query = context.Request.QueryString.HasValue ? context.Request.QueryString.Value : string.Empty;
         using var response = await client.GetAsync(GatewayUrl + path + query, cancellationToken);
+        var body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+        return Results.File(body, contentType, enableRangeProcessing: false, lastModified: null, entityTag: null);
+    }
+
+    public async Task<IResult> ProxyGetWithFallback(HttpContext context, string path, string fallbackPath, CancellationToken cancellationToken)
+    {
+        var query = context.Request.QueryString.HasValue ? context.Request.QueryString.Value : string.Empty;
+        using var response = await client.GetAsync(GatewayUrl + path + query, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            using var fallback = await client.GetAsync(GatewayUrl + fallbackPath, cancellationToken);
+            var fallbackBody = await fallback.Content.ReadAsByteArrayAsync(cancellationToken);
+            var fallbackContentType = fallback.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+            return Results.File(fallbackBody, fallbackContentType, enableRangeProcessing: false, lastModified: null, entityTag: null);
+        }
+
         var body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
         return Results.File(body, contentType, enableRangeProcessing: false, lastModified: null, entityTag: null);
