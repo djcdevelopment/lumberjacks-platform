@@ -59,7 +59,16 @@ if ($DryRun) {
     return
 }
 
-$existing = & gh release view $ReleaseId --repo $Repository 2>$null
+$previousErrorAction = $ErrorActionPreference
+try {
+    # A missing release is the expected precondition for an immutable create. Windows
+    # PowerShell otherwise promotes gh's stderr line into a terminating NativeCommandError.
+    $ErrorActionPreference = 'Continue'
+    $existing = & gh release view $ReleaseId --repo $Repository 2>$null
+}
+finally {
+    $ErrorActionPreference = $previousErrorAction
+}
 if ($LASTEXITCODE -eq 0) { throw "GitHub release '$ReleaseId' already exists in $Repository; choose a new immutable release id." }
 & gh @arguments
 if ($LASTEXITCODE -ne 0) { throw 'GitHub release publish failed.' }
