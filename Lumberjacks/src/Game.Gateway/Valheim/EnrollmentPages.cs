@@ -35,6 +35,7 @@ static class EnrollmentPages
         "<h1>Download the latest mod files</h1>" +
         "<p>Sign in with Steam and download the current alpha pack. Installed clients keep their " +
         "existing ComfyNetworkSense config and access key; recovery is a separate operator action.</p>" +
+        CurrentModpackBox() +
         CompanionBootstrapBox() +
         ReleaseHistoryTable() +
         "<p><a class=\"btn\" href=\"" + WebUtility.HtmlEncode(loginUrl) + "\">Sign in with Steam</a></p>",
@@ -130,6 +131,26 @@ static class EnrollmentPages
             "</code> · sha256 <code>" + WebUtility.HtmlEncode(release.package_sha256[..12]) +
             "…</code> · entrypoint <code>" + WebUtility.HtmlEncode(release.entrypoint) +
             "</code>.</p></section>";
+    }
+
+    static string CurrentModpackBox()
+    {
+        var available = ModpackReleaseCatalog.TryGetCurrent(out var release, out var error);
+        var html = "<section class=\"release-box\"><h2>Current downloadable mod pack</h2>";
+        if (!available)
+        {
+            return html + "<p class=\"small\">Modpack release is not published yet: " +
+                WebUtility.HtmlEncode(error ?? "unknown") + ".</p></section>";
+        }
+
+        return html +
+            "<p>This is the package the Steam sign-in button will download right now. It is read from " +
+            "the runtime manifest, not from the historical table below.</p>" +
+            "<p><strong>Gateway release:</strong> <code>" + WebUtility.HtmlEncode(release.release) +
+            "</code><br><strong>Admitted mod:</strong> <code>" + WebUtility.HtmlEncode(release.mod_release) +
+            "</code><br><strong>Package:</strong> " + WebUtility.HtmlEncode(release.package_size_bytes.ToString()) +
+            " bytes - sha256 <code>" + WebUtility.HtmlEncode(release.package_sha256[..12]) + "...</code></p>" +
+            "<p><a href=\"/api/v0/companion/update/manifest\">mod manifest</a></p></section>";
     }
 
     // Polls the public, un-rate-limited cutover snapshot and flips the banner. `stale===false` means a
