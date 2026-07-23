@@ -22,6 +22,11 @@ tools\wave0\Add-Wave0VisualObservation.ps1 `
   -StraightMovement smooth `
   -StutterMovement mixed `
   -RoleReversalRun no
+
+# Generate the concise return packet from current receipts
+tools\wave0\New-Wave0ReturnPacket.ps1 `
+  -OutputJson captures\wave0-return-packet.json `
+  -OutputMarkdown captures\wave0-return-packet.md
 ```
 
 Run order before asking for a live movement course:
@@ -44,3 +49,8 @@ and does not move either character.
 After the live course, use `Add-Wave0VisualObservation.ps1` instead of editing
 the receipt. It writes a sidecar `*.visual-observation.json` and a derived
 `*.annotated.json` projection while preserving the original machine receipt.
+
+`New-Wave0ReturnPacket.ps1` is the handoff generator. It summarizes the current
+non-human receipts, emits the commands to run when both clients are back, and
+lists the stop conditions without copying raw private Companion receipt bodies
+into the Markdown.
