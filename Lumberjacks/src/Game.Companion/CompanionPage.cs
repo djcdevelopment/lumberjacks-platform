@@ -354,6 +354,7 @@ async function captureTransport(seconds,label){
     const players=(d.observed_players||[]).join(', ')||'none';
     const counters=counterLine(d.counter_ranges)||'no counters';
     q('#capture-result').innerHTML='<strong>Capture complete: '+esc(d.verdict||'unknown')+'</strong><p>'+esc(d.final_current_read?.text||'No final read recorded.')+'</p><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>'+esc(identityLine(d.capture_identity))+'</p><p>Players: '+esc(players)+'</p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · '+esc(counters)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
+    q('#capture-result').insertAdjacentHTML('beforeend','<p><a class="btn secondary" href="'+base+'bundle.zip">Download evidence bundle</a></p>');
     if(d.interpretation)q('#capture-result').insertAdjacentHTML('afterbegin',interpretationBlock(d.interpretation));
     await captureHistory();
   }catch(e){
@@ -378,6 +379,11 @@ async function captureHistory(){
       const counters=counterLine(c.counter_ranges)||('peers '+c.max_peers+' · motion delta '+c.motion_received_delta);
       return '<p><strong>'+esc(c.verdict||'unknown')+'</strong> · <span class="release">'+esc(c.run_id)+'</span><br>'+esc(c.final_current_read?.text||'No final read recorded.')+'<br>'+esc(identityLine(c.capture_identity))+'<br>players '+esc(players)+'<br>'+esc(counters)+' · samples '+esc(c.sample_count)+'<br><a href="'+base+'summary.json">summary</a> · <a href="'+base+'samples.jsonl">samples</a></p>';
     }).join('');
+    const bundles=captures.map(c=>{
+      const base='/api/v0/companion/transport-capture/'+encodeURIComponent(c.run_id)+'/';
+      return '<p><span class="release">'+esc(c.run_id)+'</span> <a class="btn secondary" href="'+base+'bundle.zip">Download evidence bundle</a></p>';
+    }).join('');
+    if(bundles)q('#capture-history').insertAdjacentHTML('beforeend','<strong>Evidence bundles</strong>'+bundles);
     const interpreted=captures.filter(c=>c.interpretation).map(c=>'<p><span class="release">'+esc(c.run_id)+'</span>'+interpretationBlock(c.interpretation)+'</p>').join('');
     if(interpreted)q('#capture-history').insertAdjacentHTML('beforeend','<strong>Recent interpretations</strong>'+interpreted);
   }catch(e){

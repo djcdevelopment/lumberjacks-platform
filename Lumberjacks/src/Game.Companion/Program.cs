@@ -128,6 +128,14 @@ app.MapGet("/api/v0/companion/transport-capture", (TransportTruthCaptureService 
 
 app.MapGet("/api/v0/companion/transport-capture/{runId}/{file}", (string runId, string file, TransportTruthCaptureService capture) =>
 {
+    if (file.Equals("bundle.zip", StringComparison.OrdinalIgnoreCase))
+    {
+        var bundle = capture.CreateCaptureBundle(runId);
+        return bundle is null
+            ? Results.NotFound(new { error = "capture_bundle_not_found" })
+            : Results.File(bundle, "application/zip", $"{runId}.zip");
+    }
+
     var path = capture.ResolveCaptureFile(runId, file);
     if (path is null) return Results.NotFound(new { error = "capture_file_not_found" });
     var contentType = file.Equals("samples.jsonl", StringComparison.OrdinalIgnoreCase)
@@ -501,6 +509,21 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         var path = Path.GetFullPath(Path.Combine(root, runId, file));
         var normalizedRoot = Path.GetFullPath(root) + Path.DirectorySeparatorChar;
         return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase) && File.Exists(path) ? path : null;
+    }
+
+    public byte[]? CreateCaptureBundle(string runId)
+    {
+        var summaryPath = ResolveCaptureFile(runId, "summary.json");
+        var samplesPath = ResolveCaptureFile(runId, "samples.jsonl");
+        if (summaryPath is null && samplesPath is null) return null;
+
+        using var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            if (summaryPath is not null) archive.CreateEntryFromFile(summaryPath, "summary.json", CompressionLevel.Fastest);
+            if (samplesPath is not null) archive.CreateEntryFromFile(samplesPath, "samples.jsonl", CompressionLevel.Fastest);
+        }
+        return stream.ToArray();
     }
 
     public IReadOnlyList<TransportCaptureSummary> ListCaptures(int limit)
