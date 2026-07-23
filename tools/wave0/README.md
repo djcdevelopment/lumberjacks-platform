@@ -46,6 +46,13 @@ two-machine capture, sends one bounded Companion motion command, and writes a
 single receipt. If fewer than two peers are visible, it writes `wait_for_two_real_clients`
 and does not move either character.
 
+After two peers are visible, the live gate performs a five-second role preflight
+before sending motion. It reads each client's `final_local_motion.apply_enabled`
+from Companion capture evidence and blocks with `blocked_by_ambiguous_apply_roles`
+unless exactly one client is apply-enabled. This prevents a live pass where both
+screens are accidentally in the same presentation mode and the role-reversal
+result cannot be trusted.
+
 Every live-gate run also writes an observation worksheet next to the receipt
 (`*.observation.md` by default). That file is the operator-facing checklist:
 apply client, observe client, visual result, straight/stutter movement quality,

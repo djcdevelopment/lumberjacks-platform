@@ -42,7 +42,9 @@ param(
 
     [switch]$SkipSynthetic,
 
-    [switch]$SkipReadiness
+    [switch]$SkipReadiness,
+
+    [switch]$SkipRolePreflight
 )
 
 $ErrorActionPreference = 'Stop'
@@ -85,6 +87,10 @@ function Write-ObservationTemplate {
         $players = @($Receipt.p7_peer_check.players | ForEach-Object { [string]$_ })
     }
     $playerText = if ($players.Count -gt 0) { $players -join ', ' } else { 'none_recorded' }
+    $applyClient = if ($Receipt.role_preflight -and $Receipt.role_preflight.summary) { [string]$Receipt.role_preflight.summary.apply_client } else { 'unknown' }
+    $observeClient = if ($Receipt.role_preflight -and $Receipt.role_preflight.summary) { [string]$Receipt.role_preflight.summary.observe_client } else { 'unknown' }
+    $omenApply = if ($Receipt.role_preflight -and $Receipt.role_preflight.summary) { [string]$Receipt.role_preflight.summary.omen_apply_enabled } else { 'unknown' }
+    $i5Apply = if ($Receipt.role_preflight -and $Receipt.role_preflight.summary) { [string]$Receipt.role_preflight.summary.i5_apply_enabled } else { 'unknown' }
 
     $lines = @()
     $lines += '# Wave 0 live visual observation'
@@ -96,6 +102,7 @@ function Write-ObservationTemplate {
     $lines += "- Capture duration seconds: $($Receipt.capture_duration_seconds)"
     $lines += "- P7 peer count at gate: $peerCount"
     $lines += "- P7 players at gate: $playerText"
+    $lines += "- Role preflight: apply=$applyClient observe=$observeClient omen_apply=$omenApply i5_apply=$i5Apply"
     $lines += "- Machine receipt: $outputPath"
     $lines += ''
     $lines += '## Fill during the live pass'
@@ -164,6 +171,7 @@ function Get-JsonFile {
 
 $syntheticPath = Join-Path $outputDirectory 'synthetic-motion.json'
 $readinessPath = Join-Path $outputDirectory 'readiness.json'
+$rolePreflightPath = Join-Path $outputDirectory 'role-preflight.json'
 $capturePath = Join-Path $outputDirectory 'capture.json'
 $motionPath = Join-Path $outputDirectory 'motion-command.json'
 
@@ -180,6 +188,7 @@ $receipt = [ordered]@{
     next_action = $null
     non_human_gates = [ordered]@{}
     p7_peer_check = $null
+    role_preflight = $null
     capture = $null
     motion_command = $null
     human_observation_required = [ordered]@{
@@ -242,6 +251,50 @@ if ($peerCount -lt 2) {
     $receipt.verdict = 'wait_for_two_real_clients'
     $receipt.next_action = 'Join both OMEN and i5 clients, wait for peer_count >= 2, then rerun this command.'
     Write-Receipt $receipt 0
+}
+
+if (-not $SkipRolePreflight) {
+    $rolePreflightArgs = @(
+        '-DurationSeconds', '5',
+        '-IntervalSeconds', '1',
+        '-Label', "$runId-role-preflight",
+        '-SummaryOnly',
+        '-OutputJson', $rolePreflightPath
+    )
+    $rolePreflight = Invoke-JsonScript `
+        -ScriptPath (Join-Path $repoRoot 'tools\i5\Start-TwoClientCapture.ps1') `
+        -Arguments $rolePreflightArgs
+    $rolePreflightReceipt = Get-JsonFile $rolePreflightPath
+    $receipt.role_preflight = [ordered]@{
+        exit_code = $rolePreflight.exit_code
+        receipt_path = $rolePreflightPath
+        receipt = $rolePreflightReceipt
+    }
+
+    if ($rolePreflight.exit_code -ne 0 -or -not $rolePreflightReceipt -or -not $rolePreflightReceipt.comparison) {
+        $receipt.verdict = 'blocked_by_role_preflight_capture'
+        $receipt.next_action = 'Fix the two-client capture lane before running a live movement course.'
+        Write-Receipt $receipt 1
+    }
+
+    $omenApply = $rolePreflightReceipt.comparison.omen.final_local_motion.apply_enabled
+    $i5Apply = $rolePreflightReceipt.comparison.i5.final_local_motion.apply_enabled
+    $receipt.role_preflight['summary'] = [ordered]@{
+        omen_apply_enabled = $omenApply
+        i5_apply_enabled = $i5Apply
+        exactly_one_apply_enabled = ($null -ne $omenApply -and $null -ne $i5Apply -and [bool]$omenApply -ne [bool]$i5Apply)
+        apply_client = if ($omenApply -eq $true -and $i5Apply -eq $false) { 'omen' } elseif ($omenApply -eq $false -and $i5Apply -eq $true) { 'i5' } else { 'ambiguous' }
+        observe_client = if ($omenApply -eq $true -and $i5Apply -eq $false) { 'i5' } elseif ($omenApply -eq $false -and $i5Apply -eq $true) { 'omen' } else { 'ambiguous' }
+    }
+
+    if (-not $receipt.role_preflight.summary.exactly_one_apply_enabled) {
+        $receipt.verdict = 'blocked_by_ambiguous_apply_roles'
+        $receipt.next_action = 'Set exactly one client APPLY on and the other OBSERVE ONLY, then rerun. Do not run the movement course while both clients have the same apply state.'
+        Write-Receipt $receipt 0
+    }
+
+    $receipt.human_observation_required['apply_client'] = $receipt.role_preflight.summary.apply_client
+    $receipt.human_observation_required['observe_client'] = $receipt.role_preflight.summary.observe_client
 }
 
 $captureArgs = @(
