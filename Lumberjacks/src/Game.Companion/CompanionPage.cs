@@ -67,6 +67,15 @@ static class CompanionPage
 </section>
 
 <section class="card">
+  <h2>Capture transport evidence</h2>
+  <p class="muted">Start this before a two-client movement test. Companion records Gateway, Valheim, cutover, and motion counters into local JSONL evidence.</p>
+  <p>
+    <button id="capture" onclick="captureTransport()">Capture 60 seconds</button>
+  </p>
+  <div id="capture-result" class="result">No capture yet.</div>
+</section>
+
+<section class="card">
   <h2>Companion application</h2>
   <p class="muted">Local updater version: <span id="companion-version" class="release">Checking...</span></p>
   <p class="notice" id="companion-note">Checking Companion release status...</p>
@@ -220,6 +229,26 @@ async function rollback(){
   let r=await fetch('/api/v0/companion/update/rollback',{method:'POST',...confirmation()}),d=await r.json();
   q('#update').innerHTML=r.ok?'<strong class="ok">Rollback complete.</strong>':'<strong class="bad">Rollback did not run.</strong><p>'+esc(d.result)+'</p>';
   await status();
+}
+
+async function captureTransport(){
+  const button=q('#capture');
+  button.disabled=true;
+  q('#capture-result').textContent='Capturing for 60 seconds. Move both clients now; leave this browser tab open.';
+  try{
+    let r=await fetch('/api/v0/companion/transport-capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({duration_seconds:60,interval_seconds:5,label:'companion-ui'})});
+    let d=await r.json();
+    if(!r.ok)throw d;
+    const level=d.bad_sample_count>0?'wait':(d.motion_received_delta>0?'ok':'wait');
+    q('#capture-result').className='result '+level;
+    const base='/api/v0/companion/transport-capture/'+encodeURIComponent(d.run_id)+'/';
+    q('#capture-result').innerHTML='<strong>Capture complete</strong><p>Run <span class="release">'+esc(d.run_id)+'</span></p><p>Samples: '+esc(d.sample_count)+' · max peers: '+esc(d.max_peers)+' · motion delta: '+esc(d.motion_received_delta)+'</p><p><a class="btn secondary" href="'+base+'summary.json">Download summary</a> <a class="btn secondary" href="'+base+'samples.jsonl">Download samples</a></p>';
+  }catch(e){
+    q('#capture-result').className='result bad';
+    q('#capture-result').textContent='Capture failed: '+JSON.stringify(e);
+  }finally{
+    button.disabled=false;
+  }
 }
 
 status();

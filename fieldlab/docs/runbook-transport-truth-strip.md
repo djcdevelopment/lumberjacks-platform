@@ -82,7 +82,12 @@ the switch is to reveal coupling, not to make the table come true.
 
 ## Capture the window
 
-Before a two-client movement or fault test, start a short Companion-backed capture from OMEN:
+Before a two-client movement or fault test, open Companion at `http://127.0.0.1:8080` and click
+**Capture 60 seconds** under **Capture transport evidence**. Move both clients while the button is
+disabled. When the capture completes, download both `summary.json` and `samples.jsonl` from the
+result card.
+
+For longer operator-driven captures, use the PowerShell fallback from OMEN:
 
 ```powershell
 & C:\work\baseline\fieldlab\scripts\Capture-TransportTruth.ps1 `
@@ -91,7 +96,7 @@ Before a two-client movement or fault test, start a short Companion-backed captu
   -Label two-client-motion
 ```
 
-The script samples the same live surfaces as the Companion home page and writes:
+Both paths sample the same live surfaces as the Companion home page. The PowerShell fallback writes:
 
 ```text
 fieldlab\runs\transport-truth\<timestamp>-<label>\samples.jsonl

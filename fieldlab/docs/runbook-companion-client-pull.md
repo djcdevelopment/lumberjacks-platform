@@ -27,6 +27,12 @@ line intentionally translates live counters into an operator conclusion:
   and the in-game movement result should be compared against the Motion tile and trace.
 - `Motion telemetry is unavailable` means the dashboard cannot safely answer the transport question.
 
+The **Capture transport evidence** card is the no-shell path for builders. Click **Capture 60
+seconds** before moving two clients. Companion keeps polling while the button is disabled, then shows
+`sample_count`, `max_peers`, and `motion_received_delta` with direct downloads for `summary.json`
+and `samples.jsonl`. Use those downloads when sharing a run in Discord or attaching evidence to a
+future issue.
+
 ## Bootstrap a tester Docker Companion
 
 The normal tester package is a generic zip, not a copied plugin folder and not an image-specific

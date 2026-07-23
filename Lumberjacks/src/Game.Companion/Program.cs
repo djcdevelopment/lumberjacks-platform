@@ -10,6 +10,7 @@ builder.Services.AddHttpClient<GatewayClient>();
 builder.Services.AddSingleton<CompanionStateStore>();
 builder.Services.AddSingleton<ValheimLocator>();
 builder.Services.AddSingleton<ModpackInstaller>();
+builder.Services.AddHttpClient<TransportTruthCaptureService>();
 
 var app = builder.Build();
 app.Use(async (context, next) =>
@@ -91,6 +92,25 @@ app.MapGet("/api/v0/companion/release/check", () => Results.Ok(new
     update_available = false,
     note = "Companion self-update is the next slice; modpack updates are live now.",
 }));
+
+app.MapPost("/api/v0/companion/transport-capture", async (TransportCaptureRequest? request, TransportTruthCaptureService capture, CancellationToken cancellationToken) =>
+{
+    var duration = Math.Clamp(request?.duration_seconds ?? 60, 5, 300);
+    var interval = Math.Clamp(request?.interval_seconds ?? 5, 1, 60);
+    var label = string.IsNullOrWhiteSpace(request?.label) ? "companion" : request!.label!;
+    var summary = await capture.CaptureAsync(duration, interval, label, cancellationToken);
+    return Results.Ok(summary);
+});
+
+app.MapGet("/api/v0/companion/transport-capture/{runId}/{file}", (string runId, string file, TransportTruthCaptureService capture) =>
+{
+    var path = capture.ResolveCaptureFile(runId, file);
+    if (path is null) return Results.NotFound(new { error = "capture_file_not_found" });
+    var contentType = file.Equals("samples.jsonl", StringComparison.OrdinalIgnoreCase)
+        ? "application/x-ndjson"
+        : "application/json";
+    return Results.File(path, contentType, fileDownloadName: file);
+});
 
 // The existing operator dashboard remains at the stable local URLs. Only read-only GET traffic is
 // forwarded; enrollment and mutating Gateway routes intentionally stay on their public origin.
@@ -308,9 +328,162 @@ sealed class ModpackInstaller(CompanionStateStore stateStore, ValheimLocator loc
     static string SafeToken(string value) => string.Concat(value.Select(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_' ? ch : '-'));
 }
 
+sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore stateStore)
+{
+    static readonly JsonSerializerOptions JsonLineOptions = new(Json.Options) { WriteIndented = false };
+
+    public async Task<TransportCaptureSummary> CaptureAsync(int durationSeconds, int intervalSeconds, string label, CancellationToken cancellationToken)
+    {
+        var startedUtc = DateTimeOffset.UtcNow;
+        var runId = $"{startedUtc:yyyyMMdd-HHmmss}-{SafeToken(label)}";
+        var runDirectory = Path.Combine(stateStore.DataDirectory, "captures", "transport-truth", runId);
+        Directory.CreateDirectory(runDirectory);
+        var samplesPath = Path.Combine(runDirectory, "samples.jsonl");
+        var summaryPath = Path.Combine(runDirectory, "summary.json");
+        var endAt = startedUtc.AddSeconds(durationSeconds);
+        var sampleIndex = 0;
+        int? firstMotionReceived = null;
+        int? lastMotionReceived = null;
+        var maxPeers = 0;
+        var badSamples = 0;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var timestamp = DateTimeOffset.UtcNow;
+            var deployment = await ReadEndpointAsync("/api/v0/telemetry/deployment", cancellationToken);
+            var valheim = await ReadEndpointAsync("/api/v0/telemetry/valheim", cancellationToken);
+            var cutover = await ReadEndpointAsync("/api/v0/telemetry/cutover", cancellationToken);
+            var motion = await ReadEndpointAsync("/live/valheim-motion", cancellationToken);
+            var currentRead = CurrentRead(deployment, valheim, motion);
+
+            if (!deployment.ok || !valheim.ok || !cutover.ok || !motion.ok) badSamples++;
+
+            if (motion.ok)
+            {
+                var received = IntValue(motion.body, "received");
+                firstMotionReceived ??= received;
+                lastMotionReceived = received;
+            }
+
+            if (valheim.ok)
+            {
+                var peers = IntValue(valheim.body, "peers", IntValue(valheim.body, "peer_count"));
+                if (peers > maxPeers) maxPeers = peers;
+            }
+
+            var row = new TransportCaptureSample(
+                1,
+                "transport_truth.sample",
+                timestamp.UtcDateTime,
+                runId,
+                sampleIndex,
+                GatewayClient.GatewayUrl,
+                currentRead,
+                new TransportCaptureEndpoints(deployment, valheim, cutover, motion));
+            await File.AppendAllTextAsync(samplesPath, JsonSerializer.Serialize(row, JsonLineOptions) + Environment.NewLine, cancellationToken);
+            sampleIndex++;
+
+            var remaining = endAt - DateTimeOffset.UtcNow;
+            if (remaining <= TimeSpan.Zero) break;
+            await Task.Delay(TimeSpan.FromSeconds(Math.Min(intervalSeconds, Math.Ceiling(remaining.TotalSeconds))), cancellationToken);
+        }
+
+        var finishedUtc = DateTimeOffset.UtcNow;
+        var summary = new TransportCaptureSummary(
+            1,
+            runId,
+            label,
+            GatewayClient.GatewayUrl,
+            startedUtc.UtcDateTime,
+            finishedUtc.UtcDateTime,
+            Math.Round((finishedUtc - startedUtc).TotalSeconds, 3),
+            intervalSeconds,
+            sampleIndex,
+            badSamples,
+            maxPeers,
+            firstMotionReceived,
+            lastMotionReceived,
+            firstMotionReceived.HasValue && lastMotionReceived.HasValue ? lastMotionReceived.Value - firstMotionReceived.Value : null,
+            samplesPath,
+            summaryPath);
+        await File.WriteAllTextAsync(summaryPath, JsonSerializer.Serialize(summary, Json.Options), cancellationToken);
+        return summary;
+    }
+
+    public string? ResolveCaptureFile(string runId, string file)
+    {
+        if (!IsSafeToken(runId)) return null;
+        if (!file.Equals("summary.json", StringComparison.OrdinalIgnoreCase) && !file.Equals("samples.jsonl", StringComparison.OrdinalIgnoreCase)) return null;
+        var root = Path.Combine(stateStore.DataDirectory, "captures", "transport-truth");
+        var path = Path.GetFullPath(Path.Combine(root, runId, file));
+        var normalizedRoot = Path.GetFullPath(root) + Path.DirectorySeparatorChar;
+        return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase) && File.Exists(path) ? path : null;
+    }
+
+    async Task<TransportCaptureEndpoint> ReadEndpointAsync(string path, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await client.GetAsync(GatewayClient.GatewayUrl + path, cancellationToken);
+            var text = await response.Content.ReadAsStringAsync(cancellationToken);
+            var body = default(JsonElement?);
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                var parsed = JsonSerializer.Deserialize<JsonElement>(text);
+                var normalized = JsonSerializer.Serialize(parsed, JsonLineOptions);
+                using var document = JsonDocument.Parse(normalized);
+                body = document.RootElement.Clone();
+            }
+            return new TransportCaptureEndpoint(response.IsSuccessStatusCode, path, (int)response.StatusCode, body, response.IsSuccessStatusCode ? null : response.ReasonPhrase);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return new TransportCaptureEndpoint(false, path, null, null, ex.Message);
+        }
+    }
+
+    static TransportCurrentRead CurrentRead(TransportCaptureEndpoint deployment, TransportCaptureEndpoint valheim, TransportCaptureEndpoint motion)
+    {
+        if (!deployment.ok) return new("bad", "Gateway telemetry unavailable; live network evidence is not trustworthy.");
+        if (!motion.ok) return new("bad", "Motion telemetry unavailable; use the in-game strip and trace before interpreting movement.");
+        var received = IntValue(motion.body, "received");
+        if (received > 0) return new("ok", "Lumberjacks motion frames are arriving.");
+        var peers = IntValue(valheim.body, "peers", IntValue(valheim.body, "peer_count"));
+        if (peers > 0) return new("wait", $"Valheim has {peers} peer(s), but Lumberjacks motion counters are zero. Visible player movement is native Valheim for this run.");
+        return new("wait", "P7 is up with no active peers. Join two clients, then watch Valheim peers and Motion counters change together.");
+    }
+
+    static int IntValue(JsonElement? element, string name, int fallback = 0)
+    {
+        if (element is null || element.Value.ValueKind != JsonValueKind.Object) return fallback;
+        if (!element.Value.TryGetProperty(name, out var property)) return fallback;
+        return property.ValueKind switch
+        {
+            JsonValueKind.Number when property.TryGetInt32(out var value) => value,
+            JsonValueKind.Number when property.TryGetInt64(out var value) => value > int.MaxValue ? int.MaxValue : (int)value,
+            _ => fallback,
+        };
+    }
+
+    static string SafeToken(string value)
+    {
+        var token = string.Concat(value.Select(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_' ? ch : '-')).Trim('-');
+        return string.IsNullOrWhiteSpace(token) ? "companion" : token;
+    }
+
+    static bool IsSafeToken(string value) => !string.IsNullOrWhiteSpace(value) && value.All(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_');
+}
+
 sealed record ModpackManifest(int schema_version, string? release, string? mod_release, ModpackPackage? package);
 sealed record ModpackPackage(string? kind, string sha256, long size_bytes);
 sealed record GameClosedConfirmation(bool game_closed_confirmed);
+sealed record TransportCaptureRequest(int? duration_seconds, int? interval_seconds, string? label);
+sealed record TransportCurrentRead(string level, string text);
+sealed record TransportCaptureEndpoint(bool ok, string path, int? status, JsonElement? body, string? error);
+sealed record TransportCaptureEndpoints(TransportCaptureEndpoint deployment, TransportCaptureEndpoint valheim, TransportCaptureEndpoint cutover, TransportCaptureEndpoint motion);
+sealed record TransportCaptureSample(int schema_version, string event_type, DateTime timestamp_utc, string run_id, int sample_index, string base_url, TransportCurrentRead current_read, TransportCaptureEndpoints endpoints);
+sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string samples_path, string summary_path);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
 sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
 sealed class CompanionState
