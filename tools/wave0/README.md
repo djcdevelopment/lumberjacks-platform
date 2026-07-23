@@ -12,6 +12,16 @@ tools\i5\Test-Wave0Readiness.ps1 -SummaryOnly -OutputJson captures\wave0-readine
 
 # Full live-gate orchestrator; exits WAIT until both clients are joined
 tools\wave0\Start-Wave0LiveGate.ps1 -OutputJson captures\wave0-live-gate\result.json
+
+# Attach Derek's visual observation without editing the machine receipt
+tools\wave0\Add-Wave0VisualObservation.ps1 `
+  -ReceiptJson captures\wave0-live-gate\result.json `
+  -ApplyClient omen `
+  -ObserveClient i5 `
+  -VisualResult followed_role `
+  -StraightMovement smooth `
+  -StutterMovement mixed `
+  -RoleReversalRun no
 ```
 
 Run order before asking for a live movement course:
@@ -30,3 +40,7 @@ joined. It runs the two non-human gates, checks P7 peer count, starts the
 two-machine capture, sends one bounded Companion motion command, and writes a
 single receipt. If fewer than two peers are visible, it writes `wait_for_two_real_clients`
 and does not move either character.
+
+After the live course, use `Add-Wave0VisualObservation.ps1` instead of editing
+the receipt. It writes a sidecar `*.visual-observation.json` and a derived
+`*.annotated.json` projection while preserving the original machine receipt.
