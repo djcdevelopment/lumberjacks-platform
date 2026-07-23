@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-23T15:26:43.007Z</span>
+        <span>Updated 2026-07-23T15:34:30.876Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -843,7 +843,21 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260723152643-publish-motion-state-client-pull-modpack">
+        <div class="journal"><article class="journal-entry" id="note-20260723153430-promote-motion-state-gateway-and-current-head-mo">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-23T15:34:30.876Z">2026-07-23T15:34:30.876Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Promote motion-state Gateway and current-head modpack</h3>
+      <p><strong>Impact:</strong> The earlier m16 package was superseded before testing because the server deploy rebuilt the DLL at current HEAD. P7 now runs Gateway image m24-motionstate-20260723-r1, still admitting mod identity m15-hudrecover-20260723-r1, and current.json points at m17-motionstate-20260723-r1 with package SHA-256 57d073b694dd660cc3a050d0772687553ba3cdb0978a62a4baa865167e7c022a. OMEN, i5, and the server all carry the matching current-head ComfyNetworkSense DLL hash, and /api/v0/telemetry/valheim now exposes motion_state plus UDP/WebSocket motion counters.</p>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260723152643-publish-motion-state-client-pull-modpack">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
