@@ -29,7 +29,9 @@ $manifest = [ordered]@{
 
 $temporaryManifest = Join-Path ([System.IO.Path]::GetTempPath()) "lumberjacks-$ReleaseId-current.json"
 try {
-    $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $temporaryManifest -Encoding utf8NoBOM
+    # Windows PowerShell 5.1 does not support Set-Content -Encoding utf8NoBOM. Use the .NET
+    # overload so the manifest is portable JSON (and the remote shell never receives a BOM).
+    [System.IO.File]::WriteAllText($temporaryManifest, ($manifest | ConvertTo-Json -Depth 4), [System.Text.UTF8Encoding]::new($false))
     $temporaryPackage = "/tmp/lumberjacks-$ReleaseId-$packageName"
     $temporaryRemoteManifest = "/tmp/lumberjacks-$ReleaseId-current.json"
     & scp $package.FullName "${SshTarget}:$temporaryPackage"
@@ -57,7 +59,12 @@ mv -f "$root/current.json.tmp" "$root/current.json"
 rm -f "$package_tmp" "$manifest_tmp"
 printf 'published %s %s\n' "$release" "$actual_hash"
 '@
-    $remoteScript | & ssh $SshTarget "bash -s -- '$RemoteRoot' '$ReleaseId' '$temporaryPackage' '$temporaryRemoteManifest' '$packageName' '$hash'"
+    # Do not pipe a Windows PowerShell string directly into ssh: its stream encoding can prefix a
+    # UTF-8 BOM, turning `set -euo pipefail` into an unknown command on bash. Base64 is ASCII-only
+    # end-to-end, and sudo owns the root-managed P7 modpack mount. A failed remote publish now
+    # reliably returns non-zero instead of printing errors and falling through to a success line.
+    $encodedRemoteScript = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($remoteScript))
+    & ssh $SshTarget "echo $encodedRemoteScript | base64 -d | sudo bash -s -- '$RemoteRoot' '$ReleaseId' '$temporaryPackage' '$temporaryRemoteManifest' '$packageName' '$hash'"
     if ($LASTEXITCODE -ne 0) { throw 'remote publish failed' }
 
     [pscustomobject]@{

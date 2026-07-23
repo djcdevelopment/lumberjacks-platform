@@ -20,15 +20,19 @@
     "image_admits_mod_release": "m15-hudrecover-20260723-r1",
     "companion_health": 200,
     "companion_status": 200,
-    "runtime_manifest_behavior": "Gateway reads current.json and verifies the referenced package hash for every manifest or package request."
+    "runtime_manifest_behavior": "Gateway reads current.json and verifies the referenced package hash for every manifest or package request.",
+    "p7_gateway_health": 200,
+    "public_manifest_release": "m15-hudrecover-20260723-r1",
+    "public_manifest_package_sha256": "c847ae5787b1a6b8b3f67072509c1422fbf43a79d1219f93628ba98fea462b76",
+    "proof_of_no_gateway_restart_for_pointer": "Gateway container started at 2026-07-23T10:12:39Z; current.json was atomically published at 2026-07-23T10:13:55Z and the public manifest changed without recreating the container."
   },
   "deployment": {
     "target": "comfy-lumberjacks-p7",
     "gateway_only": true,
-    "status": "pending_p7_ssh_recovery"
+    "status": "deployed",
+    "backup": "/mnt/comfy-p7/backups/gateway-companion-20260723T101236Z"
   },
   "limitations": [
-    "P7 SSH/IAP failed to connect to port 22 during this cut, so this record describes a verified local release artifact, not a deployed P7 release.",
     "First-install Steam enrollment remains browser based; the Companion claims an already-installed local enrollment and uses it for ordinary client-pull updates."
   ]
 }
