@@ -548,6 +548,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         bool? finalMotionWebSocketConnected = null, finalMotionUdpReady = null;
         string? finalMotionLastError = null;
         var localMotionReady = false;
+        TransportLocalMotionSnapshot? finalLocalMotion = null;
         var badSamples = 0;
         var observedPlayers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         var observedMotionStates = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -563,6 +564,7 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             var cutover = await ReadEndpointAsync("/api/v0/telemetry/cutover", cancellationToken);
             var motion = await ReadEndpointAsync("/live/valheim-motion", cancellationToken);
             var localMotion = ReadLatestLocalMotion();
+            finalLocalMotion = LocalMotionSnapshot(localMotion);
             if (localMotion.HasValue)
             {
                 var state = StringProperty(localMotion.Value, "motion_state");
@@ -696,7 +698,8 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
             observedMotionStates.ToList(),
             finalMotionWebSocketConnected,
             finalMotionUdpReady,
-            finalMotionLastError);
+            finalMotionLastError,
+            finalLocalMotion);
         await File.WriteAllTextAsync(summaryPath, JsonSerializer.Serialize(summary, Json.Options), cancellationToken);
         return summary;
     }
@@ -889,6 +892,19 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         _ => new("wait", "No active peer window was captured."),
     };
 
+    static TransportLocalMotionSnapshot? LocalMotionSnapshot(JsonElement? element) => element is null
+        ? null
+        : new(
+            BoolValue(element, "motion_apply_enabled"),
+            IntValue(element, "motion_received_udp") + IntValue(element, "motion_received_websocket"),
+            IntValue(element, "motion_applied"),
+            IntValue(element, "motion_unknown_zdos"),
+            IntValue(element, "motion_direct_lookup_hits"),
+            IntValue(element, "motion_zdo_object_lookup_hits"),
+            IntValue(element, "motion_player_index_lookup_hits"),
+            IntValue(element, "motion_player_index_rebuilds"),
+            IntValue(element, "motion_player_index_size"));
+
     static TransportCaptureInterpretation Interpret(
         string verdict,
         int badSamples,
@@ -1009,7 +1025,8 @@ sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore
         var names = new List<string>();
         foreach (var player in players.Value.EnumerateArray())
         {
-            var name = StringProperty(player, "name") ??
+            var name = player.ValueKind == JsonValueKind.String ? player.GetString() : null;
+            name ??= StringProperty(player, "name") ??
                 StringProperty(player, "player_name") ??
                 StringProperty(player, "character_name") ??
                 StringProperty(player, "steam_name") ??
@@ -1078,7 +1095,8 @@ sealed record TransportCaptureIdentity(
     string? cutover_mode,
     string? enrollment_manifest_id);
 sealed record TransportCaptureInterpretation(string level, string headline, string next_action, string evidence);
-sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null, TransportCaptureIdentity? capture_identity = null, TransportCaptureInterpretation? interpretation = null, string? first_motion_state = null, string? last_motion_state = null, List<string>? observed_motion_states = null, bool? final_motion_websocket_connected = null, bool? final_motion_udp_ready = null, string? final_motion_last_error = null);
+sealed record TransportLocalMotionSnapshot(bool? apply_enabled, int received, int applied, int unknown_zdos, int direct_lookup_hits, int zdo_object_lookup_hits, int player_index_lookup_hits, int player_index_rebuilds, int player_index_size);
+sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null, TransportCaptureIdentity? capture_identity = null, TransportCaptureInterpretation? interpretation = null, string? first_motion_state = null, string? last_motion_state = null, List<string>? observed_motion_states = null, bool? final_motion_websocket_connected = null, bool? final_motion_udp_ready = null, string? final_motion_last_error = null, TransportLocalMotionSnapshot? final_local_motion = null);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
 sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
 
