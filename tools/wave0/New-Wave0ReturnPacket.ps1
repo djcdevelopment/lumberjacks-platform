@@ -102,6 +102,7 @@ $checks += Check-State `
 $failed = @($checks | Where-Object { -not $_.ok })
 $expectedRelease = if ($readiness.present) { [string]$readiness.body.expected_release } else { '' }
 $currentPeerCount = if ($liveGate.present -and $liveGate.body.p7_peer_check) { [int]$liveGate.body.p7_peer_check.peer_count } else { $null }
+$observationMarkdown = if ($liveGate.present -and $liveGate.body.observation_markdown) { [string]$liveGate.body.observation_markdown } else { '' }
 
 $packet = [ordered]@{
     schema_version = 1
@@ -115,6 +116,7 @@ $packet = [ordered]@{
         live_gate_waiting_for = 'two_real_clients_joined'
         machine_commands_ready = $true
         original_receipts_left_immutable = $true
+        observation_markdown = $observationMarkdown
     }
     run_when_back = @(
         [ordered]@{
@@ -170,6 +172,7 @@ $markdownLines += "- Generated UTC: $($packet.generated_utc)"
 $markdownLines += "- Verdict: $($packet.verdict)"
 if ($expectedRelease) { $markdownLines += "- Expected release: $expectedRelease" }
 if ($null -ne $currentPeerCount) { $markdownLines += "- Current P7 peer count: $currentPeerCount" }
+if ($observationMarkdown) { $markdownLines += "- Observation worksheet: $observationMarkdown" }
 $markdownLines += ''
 $markdownLines += '## Non-human evidence'
 $markdownLines += ''
@@ -181,6 +184,10 @@ foreach ($check in $checks) {
 $markdownLines += ''
 $markdownLines += '## Run when back'
 $markdownLines += ''
+if ($observationMarkdown) {
+    $markdownLines += "Use the observation worksheet during the live pass: $observationMarkdown"
+    $markdownLines += ''
+}
 foreach ($step in $packet.run_when_back) {
     $markdownLines += "$($step.step). **$($step.actor)** - $($step.action)"
     $markdownLines += "   - Expected: $($step.expected)"
