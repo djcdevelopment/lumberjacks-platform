@@ -1016,15 +1016,25 @@
         async function updateValheimMotionData() {
             try {
                 const data = await fetchEndpoint('/live/valheim-motion');
+                let heartbeat = null;
+                try {
+                    const valheim = await fetchEndpoint('/api/v0/telemetry/valheim');
+                    heartbeat = valheim.heartbeat || null;
+                } catch (_) { }
                 const dropped = (data.dropped_invalid || 0) +
                     (data.dropped_unauthorized || 0) + (data.dropped_stale || 0);
                 const relayed = (data.relayed_udp || 0) + (data.relayed_websocket || 0);
+                const state = heartbeat?.motion_state || 'unknown';
+                const ws = heartbeat?.motion_websocket_connected ? 'up' : 'down';
+                const udp = heartbeat?.motion_udp_ready ? 'up' : 'down';
+                const error = heartbeat?.motion_last_error ? ` | error ${heartbeat.motion_last_error}` : '';
                 const message = `${data.received || 0} received ` +
                     `(UDP ${data.received_udp || 0}, WS ${data.received_websocket || 0}) · ` +
                     `${relayed} relayed (UDP ${data.relayed_udp || 0}, WS fallback ${data.relayed_websocket || 0}) · ` +
                     `${dropped} dropped`;
-                addTraceIfChanged('valheim-motion', 'motion', message,
-                    dropped > 0 ? 'warn' : ((data.received || 0) > 0 ? 'good' : ''));
+                const enriched = `client ${state} (WS ${ws}, UDP ${udp}) | ${message}${error}`;
+                addTraceIfChanged('valheim-motion', 'motion', enriched,
+                    dropped > 0 ? 'warn' : (state === 'error' ? 'bad' : ((data.received || 0) > 0 ? 'good' : '')));
                 return true;
             } catch (e) {
                 addTrace('motion', `Valheim motion telemetry failed: ${e.message || e}`, 'bad');

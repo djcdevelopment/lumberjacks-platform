@@ -162,6 +162,7 @@ function signalFrom(live){
     players: live.players||'none',
     motion_received: live.motion_received,
     motion_relayed: live.motion_relayed,
+    motion_state: live.motion_state,
     cutover: live.cutover||'unknown',
     pending: live.cutover_pending,
     active_consumers: live.active_consumers,
@@ -175,7 +176,8 @@ function paintReadout(live){
   const motionRelayed=live.motion_relayed??0;
   metric('peers',String(live.peers??0),(live.peers??0)>0?'ok':'wait');
   metric('players',live.players||'none',(live.peers??0)>0?'ok':'wait');
-  metric('motion',motionReceived+' recv / '+motionRelayed+' relay',motionReceived>0?'ok':((live.peers??0)>0?'wait':'wait'));
+  const motionState=live.motion_state||'unknown';
+  metric('motion',motionState+' / '+motionReceived+' recv / '+motionRelayed+' relay',motionReceived>0?'ok':((live.peers??0)>0?'wait':'wait'));
   metric('cutover',live.cutover||'unknown',live.gateway?'ok':'bad');
   metric('queue','pending '+(live.cutover_pending??'?')+' / consumers '+(live.active_consumers??'?'),(live.cutover_pending??0)>0?'wait':'ok');
   metric('apply',(live.acknowledged??'?')+' ack / '+(live.applied??'?')+' applied',live.gateway?'ok':'bad');
@@ -304,6 +306,10 @@ async function movingParts(){
     live.valheim=!v.stale;
     live.peers=peerCount(v);
     live.players=playerNames(v)||'none';
+    live.motion_state=v.heartbeat?.motion_state||'unknown';
+    live.motion_ws=v.heartbeat?.motion_websocket_connected;
+    live.motion_udp=v.heartbeat?.motion_udp_ready;
+    live.motion_error=v.heartbeat?.motion_last_error||'';
     const text=valheimStatus(v)+' / '+live.peers+' peers';
     part('valheim',text,v.stale?'wait':'ok');
   }catch(e){part('valheim','heartbeat unavailable','bad')}
@@ -325,9 +331,12 @@ async function movingParts(){
     const received=(m.received||0), relayed=(m.relayed_udp||0)+(m.relayed_websocket||0);
     live.motion_received=received;
     live.motion_relayed=relayed;
+    const state=live.motion_state||'unknown';
+    const controls='client '+state+' / WS '+(live.motion_ws?'up':'down')+' / UDP '+(live.motion_udp?'up':'down');
     const details='recv '+received+' (UDP '+(m.received_udp||0)+' / WS '+(m.received_websocket||0)+') / relay '+relayed;
-    const text=received>0?'LJ motion observed / '+details:'native motion only / '+details;
-    part('motion',text,received>0?'ok':'wait');
+    const error=live.motion_error?' / error '+live.motion_error:'';
+    const text=received>0?'LJ motion observed / '+controls+' / '+details+error:controls+' / '+details+error;
+    part('motion',text,received>0?'ok':(state==='error'?'bad':'wait'));
   }catch(e){part('motion','motion telemetry unavailable','bad')}
 
   paintReadout(live);
