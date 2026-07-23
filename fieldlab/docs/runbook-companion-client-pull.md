@@ -41,7 +41,8 @@ Invoke-RestMethod https://comfy-p7.duckdns.org/api/v0/valheim/modpack/manifest
    then **Install latest**. The explicit checkbox is required for Docker-backed Companion instances:
    a container cannot reliably observe the Windows host game process. The Companion verifies the
    package hash, preserves the personalized ComfyNetworkSense config, and records a backup/receipt
-   under its local data directory.
+   under its local data directory. Both install and rollback endpoints reject a request that lacks
+   the matching `game_closed_confirmed` confirmation.
 
 ## Restart rules
 

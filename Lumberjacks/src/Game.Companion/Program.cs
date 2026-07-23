@@ -68,14 +68,18 @@ app.MapGet("/api/v0/companion/update/check", async (GatewayClient gateway, Cance
         : Results.Ok(manifest);
 });
 
-app.MapPost("/api/v0/companion/update/install", async (GatewayClient gateway, ModpackInstaller installer, CancellationToken cancellationToken) =>
+app.MapPost("/api/v0/companion/update/install", async (GameClosedConfirmation? confirmation, GatewayClient gateway, ModpackInstaller installer, CancellationToken cancellationToken) =>
 {
+    if (confirmation?.game_closed_confirmed != true)
+        return Results.BadRequest(InstallResult.Fail("game_closed_confirmation_required"));
     var result = await installer.InstallAsync(gateway, cancellationToken);
     return result.ok ? Results.Ok(result) : Results.BadRequest(result);
 });
 
-app.MapPost("/api/v0/companion/update/rollback", (ModpackInstaller installer) =>
+app.MapPost("/api/v0/companion/update/rollback", (GameClosedConfirmation? confirmation, ModpackInstaller installer) =>
 {
+    if (confirmation?.game_closed_confirmed != true)
+        return Results.BadRequest(InstallResult.Fail("game_closed_confirmation_required"));
     var result = installer.RollbackLatest();
     return result.ok ? Results.Ok(result) : Results.BadRequest(result);
 });
@@ -287,6 +291,7 @@ sealed class ModpackInstaller(CompanionStateStore stateStore, ValheimLocator loc
 
 sealed record ModpackManifest(int schema_version, string? release, string? mod_release, ModpackPackage? package);
 sealed record ModpackPackage(string? kind, string sha256, long size_bytes);
+sealed record GameClosedConfirmation(bool game_closed_confirmed);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
 sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
 sealed class CompanionState
