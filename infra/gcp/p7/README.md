@@ -214,16 +214,35 @@ Get-FileHash $dll -Algorithm SHA256
 
 ### 5. Deploy Gateway changes
 
-Back up the changed source under `/mnt/comfy-p7/backups/gateway/<timestamp>`, compact
-only while no client is draining, rebuild only the Gateway service, wait for
-`/health`, and verify deployed source hashes. The final victory deployment backup is
-`/mnt/comfy-p7/backups/gateway/20260716T005900Z`.
+Gateway deploys now promote a prebuilt local Docker image. Do not copy Gateway source
+to the VM and do not run `docker compose build` on P7 for normal alpha UI/API changes.
 
-`scripts\deploy-gateway.ps1` automates that transaction, but Windows `gcloud` IAP can
-emit a benign `stdin ReadFile failed` traceback after a successful SSH command. Judge
-the remote transaction by its explicit health/hash result, not by stderr alone. Until
-the script has its own recorded acceptance run, retain the backup path and verify the
-container image, health, source hashes, and empty queue manually after it returns.
+Cut and verify the image locally:
+
+```powershell
+& C:\work\baseline\infra\gcp\p7\scripts\New-GatewayReleaseCut.ps1 `
+  -ImageReleaseId m19-boundarytrace-20260723-r1 `
+  -AdmittedModRelease m15-hudrecover-20260723-r1
+```
+
+Then promote the already-verified image to P7:
+
+```powershell
+& C:\work\baseline\infra\gcp\p7\scripts\Promote-GatewayImage.ps1 `
+  -Image lumberjacks-gateway:m19-boundarytrace-20260723-r1 `
+  -AdmittedModRelease m15-hudrecover-20260723-r1
+```
+
+The promotion saves the local image, verifies the archive SHA-256 after upload, loads
+the image on P7, removes duplicate `LUMBERJACKS_GATEWAY_IMAGE` lines before writing
+the new durable pin, restarts only `gateway` with `--no-build --no-deps`, and verifies
+both `/health` and the exact running image id. The previous environment file is backed
+up under `/mnt/comfy-p7/backups/gateway-image-promote/<timestamp>/environment` and is
+restored automatically if the remote transaction fails.
+
+`scripts\deploy-gateway.ps1` is retained for historical reference only. It still copies
+source into `/opt/lumberjacks-ed83bd8` and builds on the VM, which is the stale path
+that this image-promotion lane replaces.
 
 ### 6. Enroll the player
 
