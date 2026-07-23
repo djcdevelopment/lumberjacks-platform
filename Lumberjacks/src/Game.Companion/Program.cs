@@ -188,6 +188,21 @@ app.MapGet("/api/v0/companion/diagnostics", async (CompanionStateStore state, Va
     }, Json.Options);
 });
 
+app.MapGet("/api/v0/companion/wave0/status", async (CompanionStateStore state, ValheimLocator locator, GatewayClient gateway, TransportTruthCaptureService capture, CancellationToken cancellationToken) =>
+{
+    var install = locator.Find();
+    var saved = state.Read();
+    CompanionConfig.TryReadCredentials(install is null ? null : ValheimLocator.ConfigPath(install), out var discovered);
+    var profile = saved.profile ?? (discovered is null ? null : new CompanionProfile(discovered.enrollment_id, null));
+    var deployment = await gateway.GetJson("/api/v0/telemetry/deployment", cancellationToken);
+    var valheim = await gateway.GetJson("/api/v0/telemetry/valheim", cancellationToken);
+    var motion = await gateway.GetJson("/live/valheim-motion", cancellationToken);
+    var captures = capture.ListCaptures(3);
+
+    var status = Wave0Status.Build(install, saved, profile, deployment, valheim, motion, captures);
+    return Results.Json(status, Json.Options);
+});
+
 app.MapPost("/api/v0/companion/transport-capture", async (TransportCaptureRequest? request, TransportTruthCaptureService capture, CancellationToken cancellationToken) =>
 {
     var duration = Math.Clamp(request?.duration_seconds ?? 60, 5, 300);
@@ -296,6 +311,181 @@ static string? HashShort(string? value)
     if (string.IsNullOrWhiteSpace(value)) return null;
     var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value));
     return Convert.ToHexString(hash).ToLowerInvariant()[..12];
+}
+
+static class Wave0Status
+{
+    public static object Build(
+        string? install,
+        CompanionState saved,
+        CompanionProfile? profile,
+        JsonElement? deployment,
+        JsonElement? valheim,
+        JsonElement? motion,
+        IReadOnlyList<TransportCaptureSummary> captures)
+    {
+        var valheimFound = install is not null;
+        var configFound = install is not null && File.Exists(ValheimLocator.ConfigPath(install));
+        var profileLinked = profile is not null;
+        var valheimRunning = ValheimLocator.IsRunning();
+        var gatewayReady = deployment is not null;
+        var valheimReady = valheim is not null && !Bool(valheim, "stale");
+        var motionReady = motion is not null;
+        var peers = PeerCount(valheim);
+        var players = PlayerNames(valheim);
+        var motionReceived = Int(motion, "received");
+        var motionRelayed = Int(motion, "relayed_udp") + Int(motion, "relayed_websocket");
+        var latestCapture = captures.FirstOrDefault();
+
+        var localReady = valheimFound && configFound && profileLinked;
+        string verdict;
+        string nextAction;
+        string level;
+        if (!localReady)
+        {
+            verdict = "blocked_by_local_setup";
+            level = "bad";
+            nextAction = "Fix the amber local setup checks first: Valheim folder, ComfyNetworkSense config, and installed profile association.";
+        }
+        else if (!gatewayReady || !valheimReady || !motionReady)
+        {
+            verdict = "blocked_by_unreadable_live_telemetry";
+            level = "bad";
+            nextAction = "Open the Community and Live trace links, then fix the missing P7 telemetry surface before running a live movement gate.";
+        }
+        else if (peers < 2)
+        {
+            verdict = "wait_for_two_real_clients";
+            level = "wait";
+            nextAction = "Join OMEN and i5 to P7, wait for two peers, then run the live gate from OMEN.";
+        }
+        else if (motionReceived > 0)
+        {
+            verdict = "motion_evidence_present";
+            level = "ok";
+            nextAction = "Run or review the Wave 0 live gate receipt and add the visual observation sidecar.";
+        }
+        else
+        {
+            verdict = "ready_for_live_gate";
+            level = "ok";
+            nextAction = "Run the Wave 0 live gate. First pass: OMEN applies and i5 observes; second pass reverses roles.";
+        }
+
+        return new
+        {
+            schema_version = 1,
+            generated_utc = DateTimeOffset.UtcNow,
+            verdict,
+            level,
+            next_action = nextAction,
+            local = new
+            {
+                valheim_found = valheimFound,
+                config_found = configFound,
+                profile_linked = profileLinked,
+                valheim_running = valheimRunning,
+                installed_release = saved.installed?.release,
+                installed_mod_release = saved.installed?.mod_release,
+                installed_package_sha256 = saved.installed?.package_sha256,
+                enrollment_id_hash = ShortHash(profile?.enrollment_id),
+            },
+            p7 = new
+            {
+                gateway_ready = gatewayReady,
+                gateway_version = Text(deployment, "lumberjacks_version"),
+                valheim_ready = valheimReady,
+                valheim_status = Text(valheim, "status") ?? Text(Object(valheim, "heartbeat"), "server_state"),
+                peer_count = peers,
+                players,
+                motion_ready = motionReady,
+                motion_received = motionReceived,
+                motion_relayed = motionRelayed,
+            },
+            latest_capture = latestCapture is null ? null : new
+            {
+                latestCapture.run_id,
+                latestCapture.label,
+                latestCapture.started_utc,
+                latestCapture.verdict,
+                latestCapture.max_peers,
+                latestCapture.motion_received_delta,
+                latestCapture.observed_players,
+                latestCapture.interpretation,
+            },
+            commands = new
+            {
+                prelive = @"powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Test-Wave0Prelive.ps1 -OutputDirectory captures\wave0-prelive-current",
+                live_omen_applies = @"powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Start-Wave0LiveGate.ps1 -DesiredApplyClient omen -OutputJson captures\wave0-live-gate\result.json",
+                live_i5_applies = @"powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Start-Wave0LiveGate.ps1 -DesiredApplyClient i5 -OutputJson captures\wave0-live-gate-reversal\result.json",
+            },
+        };
+    }
+
+    static JsonElement? Object(JsonElement? element, string name) =>
+        element is { ValueKind: JsonValueKind.Object } value &&
+        value.TryGetProperty(name, out var property) &&
+        property.ValueKind == JsonValueKind.Object
+            ? property
+            : null;
+
+    static string? Text(JsonElement? element, string name)
+    {
+        if (element is null || element.Value.ValueKind != JsonValueKind.Object || !element.Value.TryGetProperty(name, out var property)) return null;
+        return property.ValueKind == JsonValueKind.String ? property.GetString() : property.ToString();
+    }
+
+    static bool Bool(JsonElement? element, string name)
+    {
+        if (element is null || element.Value.ValueKind != JsonValueKind.Object || !element.Value.TryGetProperty(name, out var property)) return false;
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String => bool.TryParse(property.GetString(), out var parsed) && parsed,
+            _ => false,
+        };
+    }
+
+    static int Int(JsonElement? element, string name)
+    {
+        if (element is null || element.Value.ValueKind != JsonValueKind.Object || !element.Value.TryGetProperty(name, out var property)) return 0;
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var value)) return value;
+        return property.ValueKind == JsonValueKind.String && int.TryParse(property.GetString(), out value) ? value : 0;
+    }
+
+    static int PeerCount(JsonElement? valheim) =>
+        Int(valheim, "peers") != 0 ? Int(valheim, "peers") :
+        Int(valheim, "peer_count") != 0 ? Int(valheim, "peer_count") :
+        Int(Object(valheim, "heartbeat"), "peer_count");
+
+    static IReadOnlyList<string> PlayerNames(JsonElement? element)
+    {
+        var array = Array(Object(element, "heartbeat"), "players") ?? Array(element, "players");
+        if (array is null) return [];
+        var names = new List<string>();
+        foreach (var player in array.Value.EnumerateArray())
+        {
+            var name = player.ValueKind == JsonValueKind.String ? player.GetString() : null;
+            name ??= Text(player, "name") ?? Text(player, "player_name") ?? Text(player, "character_name") ?? Text(player, "steam_name") ?? Text(player, "id");
+            if (!string.IsNullOrWhiteSpace(name)) names.Add(name);
+        }
+        return names;
+    }
+
+    static JsonElement? Array(JsonElement? element, string name) =>
+        element is { ValueKind: JsonValueKind.Object } value &&
+        value.TryGetProperty(name, out var property) &&
+        property.ValueKind == JsonValueKind.Array
+            ? property
+            : null;
+
+    static string? ShortHash(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(hash).ToLowerInvariant()[..12];
+    }
 }
 
 static class CompanionVersion

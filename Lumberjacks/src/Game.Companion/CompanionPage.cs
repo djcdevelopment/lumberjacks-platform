@@ -59,6 +59,19 @@ static class CompanionPage
 </section>
 
 <section class="card">
+  <h2>Wave 0 live gate</h2>
+  <p class="muted">Operator-minimal checklist for the two-client apply/observe proof. The browser does not move characters; it tells you when the existing automation is safe to run.</p>
+  <div id="wave0-status" class="result wait">Checking Wave 0 status...</div>
+  <div class="checks">
+    <label class="check" id="w-local"><input id="wc-local" type="checkbox" disabled><span>Local profile and config ready</span></label>
+    <label class="check" id="w-p7"><input id="wc-p7" type="checkbox" disabled><span>P7 telemetry readable</span></label>
+    <label class="check" id="w-peers"><input id="wc-peers" type="checkbox" disabled><span>Two real clients joined</span></label>
+    <label class="check" id="w-capture"><input id="wc-capture" type="checkbox" disabled><span>Recent evidence capture exists</span></label>
+  </div>
+  <div id="wave0-command" class="result">Waiting for the next command.</div>
+</section>
+
+<section class="card">
   <h2>Ready to update</h2>
   <p class="muted">Your access key stays in your local Valheim config and is never shown here.</p>
   <div class="checks">
@@ -113,6 +126,11 @@ function confirmation(){return {headers:{'Content-Type':'application/json'},body
 function setCheck(id,ok){
   q('#'+id).checked=ok;
   q('#l-'+id.slice(2)).className='check '+(ok?'ok':'wait');
+}
+
+function setWaveCheck(labelId,checkId,ok,level){
+  q('#'+checkId).checked=ok;
+  q('#'+labelId).className='check '+(ok?'ok':(level||'wait'));
 }
 
 function part(id,text,level='ok'){
@@ -358,6 +376,31 @@ async function movingParts(){
   diffSignal(signalFrom(live));
 }
 
+async function wave0Status(){
+  try{
+    const w=await get('/api/v0/companion/wave0/status');
+    const level=levelClass(w.level||'wait');
+    q('#wave0-status').className='result '+level;
+    const players=(w.p7?.players||[]).join(', ')||'none';
+    const cap=w.latest_capture;
+    q('#wave0-status').innerHTML='<strong>'+esc(w.verdict)+'</strong><p>'+esc(w.next_action||'')+'</p><p>P7 peers: '+esc(w.p7?.peer_count??0)+' · players: '+esc(players)+' · motion received: '+esc(w.p7?.motion_received??0)+' · relayed: '+esc(w.p7?.motion_relayed??0)+'</p>';
+    setWaveCheck('w-local','wc-local',!!(w.local?.valheim_found&&w.local?.config_found&&w.local?.profile_linked),'bad');
+    setWaveCheck('w-p7','wc-p7',!!(w.p7?.gateway_ready&&w.p7?.valheim_ready&&w.p7?.motion_ready),'bad');
+    setWaveCheck('w-peers','wc-peers',(w.p7?.peer_count??0)>=2,'wait');
+    setWaveCheck('w-capture','wc-capture',!!cap,'wait');
+    let command=w.commands?.prelive||'Run Test-Wave0Prelive.ps1 from OMEN.';
+    let title='Recommended command';
+    if(w.verdict==='ready_for_live_gate'||w.verdict==='motion_evidence_present'){
+      command=w.commands?.live_omen_applies||command;
+      title='First live-gate command';
+    }
+    q('#wave0-command').innerHTML='<strong>'+esc(title)+'</strong><pre>'+esc(command)+'</pre>'+(cap?'<p>Latest capture: <span class="release">'+esc(cap.run_id)+'</span> · '+esc(cap.verdict)+' · max peers '+esc(cap.max_peers)+'</p>':'<p class="muted">No recent capture surfaced yet.</p>');
+  }catch(e){
+    q('#wave0-status').className='result bad';
+    q('#wave0-status').textContent='Could not read Wave 0 status: '+JSON.stringify(e);
+  }
+}
+
 async function check(){
   q('#update').textContent='Checking the current alpha release...';
   try{
@@ -454,8 +497,10 @@ async function captureHistory(){
 status();
 companionRelease();
 movingParts();
+wave0Status();
 captureHistory();
 setInterval(movingParts,5000);
+setInterval(wave0Status,5000);
 </script>
 </body>
 </html>
