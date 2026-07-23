@@ -1,13 +1,13 @@
 {
-  "schema_version": 1,
-  "release": "companion-bootstrap-20260723-r9",
-  "repository": "djcdevelopment/baseline",
-  "published_utc": "2026-07-23T13:30:09.0000000Z",
-  "release_url": "https://github.com/djcdevelopment/baseline/releases/tag/companion-bootstrap-20260723-r9",
-  "package_url": "https://github.com/djcdevelopment/baseline/releases/download/companion-bootstrap-20260723-r9/Lumberjacks-Companion-companion-bootstrap-20260723-r9.zip",
-  "manifest_url": "https://github.com/djcdevelopment/baseline/releases/download/companion-bootstrap-20260723-r9/Lumberjacks-Companion-companion-bootstrap-20260723-r9.json",
-  "package_file": "Lumberjacks-Companion-companion-bootstrap-20260723-r9.zip",
-  "package_sha256": "e60f2941ee9d718ce18613fd87bbbe750e1c5d1dc82d6e937e3ddcf61d9db109",
-  "package_size_bytes": 21196,
-  "entrypoint": "bootstrap/Start-LumberjacksCompanion.cmd"
+    "schema_version":  1,
+    "release":  "companion-bootstrap-20260723-r10",
+    "repository":  "djcdevelopment/baseline",
+    "published_utc":  "2026-07-23T13:33:54.5324004Z",
+    "release_url":  "https://github.com/djcdevelopment/baseline/releases/tag/companion-bootstrap-20260723-r10",
+    "package_url":  "https://github.com/djcdevelopment/baseline/releases/download/companion-bootstrap-20260723-r10/Lumberjacks-Companion-companion-bootstrap-20260723-r10.zip",
+    "manifest_url":  "https://github.com/djcdevelopment/baseline/releases/download/companion-bootstrap-20260723-r10/Lumberjacks-Companion-companion-bootstrap-20260723-r10.json",
+    "package_file":  "Lumberjacks-Companion-companion-bootstrap-20260723-r10.zip",
+    "package_sha256":  "3fea7f0c405388f8d5c0c7dc165683311d36cece55eba6e2bf6d20a566b1dfb3",
+    "package_size_bytes":  21364,
+    "entrypoint":  "bootstrap/Start-LumberjacksCompanion.cmd"
 }
