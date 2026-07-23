@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-23T21:08:30.776Z</span>
+        <span>Updated 2026-07-23T21:17:39.796Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -960,7 +960,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260723210830-cut-heartbeat-age-mod-release">
+        <div class="journal"><article class="journal-entry" id="note-20260723211739-deploy-heartbeat-age-release-to-p7-and-omen">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-23T21:17:39.796Z">2026-07-23T21:17:39.796Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Deploy heartbeat-age release to P7 and OMEN</h3>
+      <p><strong>Impact:</strong> P7 now runs Gateway m29-heartbeatage-20260723-r1 admitting the same m29 mod release; the dedicated Valheim server runtime and cold-start ComfyNetworkSense DLL hashes are 697f318f9dda7d5273253b787549de16c89abc9f1c365970c8944d917bc08424. The public client-pull manifest now points at m29-heartbeatage-20260723-r1 with package sha256 2b3cbb54eccc1860a3e93bc01586c17878cbc5e5ffd6e7d37f0c51cbca256475, and OMEN installed that package through Companion. i5 was not changed because the optional tailnet lane reported the laptop offline.</p>
+      <details><summary>Verification (5)</summary><ul><li>Promote-GatewayImage.ps1 reported status=promoted and running image sha256:7de2f45200b0da97f34dbce8b9f08b70ea931c6bfe1a991e8b3d568e706d5a35</li><li>deploy-network-sense.ps1 reported ModReady=True and ServerReady=True with runtime and cold-start DLL sha256 697f318f9dda7d5273253b787549de16c89abc9f1c365970c8944d917bc08424</li><li>Public /api/v0/valheim/modpack/manifest reports release and mod_release m29-heartbeatage-20260723-r1 with package sha256 2b3cbb54eccc1860a3e93bc01586c17878cbc5e5ffd6e7d37f0c51cbca256475</li><li>OMEN Companion install returned ok=true for release m29-heartbeatage-20260723-r1</li><li>tools/i5/Test-I5Link.ps1 reported i5 lane DOWN; offline is normal for the roaming laptop</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260723210830-cut-heartbeat-age-mod-release">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

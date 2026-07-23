@@ -2,21 +2,21 @@
   "schema_version": 2,
   "title": "Comfy Ã— Valheim â€” Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-23T21:08:30.776Z",
+  "updated_at": "2026-07-23T21:17:39.796Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
   "current_release": {
-    "release_id": "m17-motionstate-20260723-r1",
+    "release_id": "m29-heartbeatage-20260723-r1",
     "mod": "ComfyNetworkSense 0.5.35",
-    "mod_sha256": "5e45c7132c69338196ee377cb27a258a9c94bdbe97f837be0a366b65afef4a5e",
-    "gateway_image": "m28-historymarker-20260723-r1",
-    "gateway_image_release_id": "m28-historymarker-20260723-r1",
+    "mod_sha256": "697f318f9dda7d5273253b787549de16c89abc9f1c365970c8944d917bc08424",
+    "gateway_image": "m29-heartbeatage-20260723-r1",
+    "gateway_image_release_id": "m29-heartbeatage-20260723-r1",
     "deployment": "comfy-lumberjacks-p7",
     "window": "p7-primary-v1",
     "authoritative_consumer_ceiling": 2,
     "ceiling_enforcement": "Alpha target is two simultaneous testers. The temporary Gateway one-seat reservation is disabled on P7 via VALHEIM_HANDSHAKE_SEAT_CAPACITY=0; native Valheim max-player enforcement still applies. N-seat Gateway admission remains deferred until per-holder liveness exists.",
-    "gateway_admits_mod_release": "m15-hudrecover-20260723-r1"
+    "gateway_admits_mod_release": "m29-heartbeatage-20260723-r1"
   },
   "claim": "The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.",
   "primer": {
