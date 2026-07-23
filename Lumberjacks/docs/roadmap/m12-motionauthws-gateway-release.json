@@ -1,0 +1,41 @@
+{
+  "schema": "comfy-p7-gateway-release/v1",
+  "image_release_id": "m12-motionauthws-20260722-r1",
+  "admitted_mod_release": "m12-motion-20260722-r1",
+  "source_commit": "002b12c",
+  "gateway_image": "sha256:c361c8fc6d823d7be935e43221f69eb948355c9a35b516263316306a2805c97f",
+  "oci_archive_sha256": "21d84d4e47617ae78eb632138764ec152fc80972084f7941cfb27675375f5f7c",
+  "mod": {
+    "version": "0.5.33.0",
+    "sha256": "5b4a19fd12751d04aec7622fd83eca91fd07ed96e382a07ec218813d4af7df67",
+    "changed": false
+  },
+  "verification": {
+    "tests": {
+      "contracts": 123,
+      "simulation": 250,
+      "gateway": 192,
+      "failed": 0
+    },
+    "public_tls_enrollment_preserved": true,
+    "udp_port": 4005,
+    "fixture_bytes": 50,
+    "received_udp_delta": 1,
+    "invalid_delta": 0,
+    "unauthorized_delta": 0,
+    "stale_delta": 0,
+    "distinct_recipient_relay_proved": false
+  },
+  "deployment": {
+    "target": "comfy-lumberjacks-p7",
+    "gateway_only": true,
+    "health": "ok",
+    "seat_gate": "disabled",
+    "compatibility_seat_capacity": 0
+  },
+  "limitations": [
+    "A distinct second enrolled recipient is required to prove relay; same-recipient echo is intentionally suppressed.",
+    "Motion application remains opt-in and native Valheim remains connected.",
+    "Anonymous traffic through Caddy still inherits private-socket capabilities and is stop-ship before widening."
+  ]
+}

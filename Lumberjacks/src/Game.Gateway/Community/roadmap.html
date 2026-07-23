@@ -349,7 +349,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-23T06:45:52.427Z</span>
+        <span>Updated 2026-07-23T06:49:00.384Z</span>
         <span>ComfyNetworkSense 0.5.33</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -773,7 +773,7 @@
             <div><strong>Why not PROVEN</strong>This is a transport-ingress canary, not a sealed game run. One valid enrolled session received valheim_motion_available=true, advertised UDP port 4005, and sent the exact 50-byte fixture. Gateway telemetry advanced received and received_udp once with zero invalid, unauthorized, or stale drops. Relay remained zero because no second distinct enrolled recipient was connected; same-recipient echo is intentionally suppressed.</div>
             <div><strong>Milestone effect</strong>M1 now preserves enrollment identity through public TLS WebSocket setup, and M7 has its first real Lumberjacks-owned player-motion transport slice. Distinct-recipient fan-out, WebSocket fallback, and opt-in presentation remain the two-account canary gate. Anonymous Caddy traffic still inherits private-socket capabilities and remains stop-ship before widening.</div>
           </div>
-          <p class="observation-telemetry"><strong>Operational note:</strong> Gateway image sha256:dc195688ad9787ff897c9edf71468113966821dda267bf5c2a7c59ab31eb164e was pinned as m12-motionauthws-20260722-r1 and admits frozen mod m12-motion-20260722-r1. Health was good; TCP 42317 and UDP 4005 were published; the alpha seat gate remained disabled with the compatibility capacity value present exactly once.</p>
+          <p class="observation-telemetry"><strong>Operational note:</strong> Gateway image sha256:c361c8fc6d823d7be935e43221f69eb948355c9a35b516263316306a2805c97f was rebuilt from committed source 002b12c, pinned as m12-motionauthws-20260722-r1, and admits frozen mod m12-motion-20260722-r1. Health was good; TCP 42317 and UDP 4005 were published; the alpha seat gate remained disabled with the compatibility capacity value present exactly once.</p>
           <div class="observation-evidence"><strong>Evidence · local_only</strong>P7 enrolled WebSocket and UDP motion ingress canary — Documented in infra/gcp/p7/VALHEIM-MOTION-CANARY.md; no enrollment identifiers, credentials, or private diagnostic URLs are included in the public roadmap.</div>
         </article>
         <article class="proof-pipeline-card">
@@ -843,7 +843,21 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260723064552-resolve-enrolled-identity-before-websocket-motio">
+        <div class="journal"><article class="journal-entry" id="note-20260723064900-pin-the-committed-websocket-motion-gateway-on-p7">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-23T06:49:00.384Z">2026-07-23T06:49:00.384Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Pin the committed WebSocket motion Gateway on P7</h3>
+      <p><strong>Impact:</strong> Rebuilt m12-motionauthws-20260722-r1 from committed source 002b12c, verified 565 passing tests and the baked m12-motion-20260722-r1 admission identity, promoted exact image c361c8fc, and repeated the public enrolled TLS-to-UDP ingress canary successfully with zero invalid, unauthorized, or stale drops.</p>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260723064552-resolve-enrolled-identity-before-websocket-motio">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
