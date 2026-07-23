@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy Ã— Valheim â€” Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-23T15:34:30.876Z",
+  "updated_at": "2026-07-23T15:35:24.500Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -216,6 +216,11 @@
       "id": "authority",
       "name": "Network authority",
       "description": "Shadow, validate, and replace Valheim relevance and the remaining network planes."
+    },
+    {
+      "id": "adoption",
+      "name": "Adoption program",
+      "description": "The community-facing program: honest trust, legible tuning, replay workbooks, a turnkey local lab, delegable community support, and first federation light — owner-controlled, opt-in, built in the open."
     }
   ],
   "milestones": [
@@ -497,6 +502,173 @@
         "M6 real-player correctness, quality, and capacity exit evidence.",
         "Lumberjacks interest-management design at docs/network/interest-management.md.",
         "FieldLab native, shadow, and strict route fixtures."
+      ],
+      "exit_evidence": []
+    },
+    {
+      "id": "A1",
+      "title": "Trust & Rhythm",
+      "track": "adoption",
+      "status": "complete",
+      "depends_on": [],
+      "owns": "The plain-language trust surface and the weekly community operating rhythm: what is captured and how to opt out, alpha support expectations, a delegable weekly cycle, and stream-ops hygiene.",
+      "does_not_own": "Tuning legibility, replay tooling, the turnkey lab, community-support pipelines, or projection/peering.",
+      "summary": "Publish what the mod captures and how to opt out, set honest alpha expectations, and make the weekly community cycle a copy-paste rhythm — so the next person who joins meets trust, not surprises.",
+      "work": [
+        "Data & trust note: enumerate every captured field, state who sees what and how to opt out (capture ships off by default), and surface it at /data-and-trust and from onboarding.",
+        "Alpha expectations + down-state templates: what alpha means, the weekly response rhythm, and how and where to report.",
+        "Weekly rhythm + templates: the feedback -> roadmap -> changelog -> GM-touch-base cycle with a \"you said -> did / won't / later\" convention.",
+        "Stream-ops hygiene: a pre-stream checklist and a secret-rotation table so a live screen-share can never leak a key or a player identity."
+      ],
+      "exit_criteria": [
+        "Every field in the data-trust note maps to a real capture-code line, and it renders on /community and links from onboarding.",
+        "A new volunteer can answer, from the docs alone: is this normal, who do I tell, what do I include, when will I hear back.",
+        "The weekly cycle is a checklist with templates, and every secret-rotation target names where the key lives and the rotate command."
+      ],
+      "inputs": [
+        "The client-side capture code and the aggregates-only public telemetry API.",
+        "Positioning and adoption-strategy voice rules (owner-controlled, opt-in, never surveillance)."
+      ],
+      "exit_evidence": [
+        "Shipped 2026-07-23: docs/data-and-trust.md (plus the served /data-and-trust page and onboarding link), docs/alpha-expectations.md, docs/weekly-rhythm.md, docs/stream-ops-hygiene.md, and docs/templates/."
+      ]
+    },
+    {
+      "id": "A2",
+      "title": "Legible Tuning",
+      "track": "adoption",
+      "status": "active",
+      "depends_on": [
+        "A1"
+      ],
+      "owns": "Making manual netcode tuning legible: a citable knob -> hypothesis -> evidence -> verdict ledger, per-decision provenance in the hot path, and a GM interview instrument so each hands-on session also answers an open governance question.",
+      "does_not_own": "Offline replay tooling, the turnkey lab, or any change to the tuning values themselves.",
+      "summary": "Turn folklore weights into chains of evidence — every knob inventoried and every tuning change ledgered — and let each GM conversation also answer an open governance question.",
+      "work": [
+        "Tuning ledger: inventory every netcode knob (key, location, current value) and open an append-only knob -> hypothesis -> before/after -> verdict ledger.",
+        "Decision provenance: emit a per-decision trace when the netcode drops, defers, or reprioritizes, so a player-visible artifact is attributable to a specific filter and score (pending).",
+        "GM interview guide: a ~20-minute instrument closing the governance open questions, with an answer-capture template and a findings-routing file."
+      ],
+      "exit_criteria": [
+        "The knob inventory covers every tunable in code/config with file:line, and any current value traces to its ledger entry or a pre-ledger marker.",
+        "A recorded decision produces exactly one trace that reconciles with the aggregate counters (pending decision-provenance).",
+        "The interview guide fits one page, requires no internals of the GM, and routes answers into a findings file."
+      ],
+      "inputs": [
+        "A1 rhythm and templates.",
+        "The mod config surface (PluginConfig.cs) and the scoring code (ScoreCalculator.cs).",
+        "The governance open questions."
+      ],
+      "exit_evidence": [
+        "Shipped 2026-07-23: network/tuning-ledger.md (knob inventory + entry template + git-history backfill) and the GM interview guide, capture template, and governance-findings docs. Decision-provenance (the hot-path trace + tests) is still open."
+      ]
+    },
+    {
+      "id": "A3",
+      "title": "Replay & Workbooks",
+      "track": "adoption",
+      "status": "queued",
+      "depends_on": [
+        "A2"
+      ],
+      "owns": "Offline legibility of tuning: a counterfactual replay notebook, one tradeoff card per knob, a VOD-chaptering training library, and the runnable-proofs convention that keeps docs from rotting.",
+      "does_not_own": "Live tuning application, the lab stack, or projection.",
+      "summary": "Make tuning a replay -> adjust -> diff loop with no game required, back every knob with a tradeoff card, and end each doc chapter in something executable that proves it is still true.",
+      "work": [
+        "Counterfactual replay notebook: re-run the scoring math over a recorded session under adjustable weights and diff outcomes.",
+        "Tradeoff cards: one card per knob — what it controls, which axis it moves, the observable that proves it.",
+        "VOD chaptering: turn white-glove stream VODs into a searchable training library via the offload lane.",
+        "Runnable proofs: the convention that each doc ends in a single command that verifies it, plus a proof runner."
+      ],
+      "exit_criteria": [
+        "The replay reproduces recorded owner-election winners (or lists every mismatch), and changing a weight yields an explained diff.",
+        "Card count equals the knob-inventory count and every current value grep-verifies.",
+        "The proof runner runs the seed proofs from a fresh checkout and reports pass/fail per doc."
+      ],
+      "inputs": [
+        "A2 knob inventory and ledger.",
+        "A committed recorded-session fixture (still needed; capture is client-side)."
+      ],
+      "exit_evidence": []
+    },
+    {
+      "id": "A4",
+      "title": "Turnkey Lab",
+      "track": "adoption",
+      "status": "queued",
+      "depends_on": [
+        "A2"
+      ],
+      "owns": "A local, one-command server-side lab: an inventory-and-gap pass, a named docker-compose stack, first-run lab keys and the secrets/sauce boundary, and a scripted localhost demo.",
+      "does_not_own": "Client-side install (the mod rides the player's Steam), production deploy, or peering.",
+      "summary": "Bring the whole server-side system up with docker compose on your own machine, so seeing your own kill land on your own localhost dashboard is the demo.",
+      "work": [
+        "Inventory & gap pass: every service, its containerization status, and the gap list to \"docker compose up\".",
+        "Compose stack: named services (valheim-server, gateway, telemetry, dashboard, config-site) with healthchecks, readable as the architecture diagram.",
+        "Lab keys & boundary: generate all needed keys on first run; document what ships (sauce) versus what stays (secrets).",
+        "Localhost demo: a scripted, dry-run-verified walkthrough from compose up to your event on your dashboard."
+      ],
+      "exit_criteria": [
+        "A fresh machine reaches a working stack from one command, following only the written steps.",
+        "compose up needs zero hand-provided secrets, and the compose file reads as the architecture diagram.",
+        "Time-to-first-event is measured and stated."
+      ],
+      "inputs": [
+        "The existing gateway, dashboard, and telemetry images and the fieldlab autonomous compose as a starting asset."
+      ],
+      "exit_evidence": []
+    },
+    {
+      "id": "A5",
+      "title": "Community Scale",
+      "track": "adoption",
+      "status": "queued",
+      "depends_on": [
+        "A2"
+      ],
+      "owns": "Making community support and contribution delegable beyond the operator: a symptom -> tool support runbook, a quest-content contribution pipeline with visible author credit, and a GM-driven integration playbook.",
+      "does_not_own": "Code-contribution workflow, automated moderation, or projection/peering.",
+      "summary": "Shape support and contribution so a trained volunteer — not just the operator — can run them, and each hands-on onboarding session gets measurably shorter.",
+      "work": [
+        "Support runbook: map the top community-reported failure modes to the diagnostic that resolves them (mostly existing gateway tools).",
+        "Quest-content pipeline: author -> review -> smoke-test -> sign -> ship -> credit, run one quest end-to-end with a visible credit.",
+        "GM-driven integration: a playbook for a trained GM to drive parts of the next GM's integration, with the operator as safety net."
+      ],
+      "exit_criteria": [
+        "Every runbook entry's first check is copy-paste executable by a volunteer with no codebase knowledge.",
+        "One quest completes the whole pipeline including a visible author credit.",
+        "The integration segment map is complete and a trained GM could run their segments from the guide alone."
+      ],
+      "inputs": [
+        "A1 expectations and rhythm.",
+        "The gateway support-tool surface and the quest config site."
+      ],
+      "exit_evidence": []
+    },
+    {
+      "id": "A6",
+      "title": "Projection",
+      "track": "adoption",
+      "status": "later",
+      "depends_on": [
+        "A4"
+      ],
+      "owns": "First federation light: a node-shape contract that keeps every lab instance identical to a future node, config signing hardened from checksum to a real trust mechanism, and a minimal read-only peering pilot.",
+      "does_not_own": "Discovery/registry, more than two nodes, or any cross-node gameplay authority.",
+      "summary": "Make the turnkey lab the node all along — same gateway surface, same signed-config trust — so projection becomes \"turn on peering\", then exchange one small signed artifact between two boxes.",
+      "work": [
+        "Node-shape contract: testable invariants plus a conformance script, keeping every instance node-shaped.",
+        "Signing hardening: an honest threat model of today's keyless checksum, then the sequenced gap-closing to a real trust mechanism.",
+        "Peering pilot: two node-shaped instances exchange a signed aggregate tile, read-only, with staleness and signature status shown."
+      ],
+      "exit_criteria": [
+        "The node-shape invariants are each testable and the conformance script reports honestly, including its own coverage gaps.",
+        "The signing threat model cites real code, and any implemented gaps fail closed.",
+        "A peer tile shows live peer aggregates with a valid-signature indication; tampered or stale data is visibly flagged, and no gameplay behavior changes on either node."
+      ],
+      "inputs": [
+        "A4 lab stack and the secrets/sauce boundary.",
+        "The telemetry record schemas and the gateway contracts."
       ],
       "exit_evidence": []
     }
