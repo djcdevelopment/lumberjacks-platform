@@ -1,24 +1,13 @@
+# Burn-stop hygiene 2026-07-23: docker-stdout and default syslog ingestion into
+# Cloud Logging are disabled (they were 136K + 25K entries/3d of free-tier noise;
+# see commandcenter GCP-AGENT-ASSESSMENT.html). Container logs remain on-VM via
+# `docker logs` and the comfy-gateway MCP tail tools. To re-enable, restore the
+# docker receiver/processor pipeline recorded in git history for this file.
 logging:
-  receivers:
-    docker:
-      type: files
-      include_paths:
-        - /var/lib/docker/containers/*/*-json.log
-      record_log_file_path: true
-  processors:
-    parse_docker:
-      type: parse_json
-      field: message
-      time_key: time
-      time_format: "%Y-%m-%dT%H:%M:%S.%LZ"
-    parse_application:
-      type: parse_json
-      field: log
   service:
     pipelines:
-      docker:
-        receivers: [docker]
-        processors: [parse_docker, parse_application]
+      default_pipeline:
+        receivers: []
 
 combined:
   receivers:

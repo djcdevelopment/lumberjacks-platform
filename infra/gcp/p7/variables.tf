@@ -16,9 +16,9 @@ variable "zone" {
 }
 
 variable "machine_type" {
-  description = "Memory-safe VM size. n2-highmem-8 provides 64 GiB for the measured P7 workload."
+  description = "P7 VM size. Downsized to n2-highmem-2 (16 GiB) on 2026-07-23 for cost; n2-highmem-8 was the original memory-safe sizing (ADR-0004) and should be restored only for heavy playtest sessions."
   type        = string
-  default     = "n2-highmem-8"
+  default     = "n2-highmem-2"
 }
 
 variable "boot_disk_size_gb" {
