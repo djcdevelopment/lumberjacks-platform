@@ -9,20 +9,10 @@ diagnostics when the configured Gateway URL can reach them; otherwise it falls b
 public community live trace. For the full operator dashboard, start the P7 tunnel and set
 `LUMBERJACKS_COMPANION_GATEWAY_URL=http://host.docker.internal:14000` for the Docker service.
 
-## Native Windows (preferred for OMEN and i5)
+## Docker on Windows (preferred for OMEN and i5)
 
-```powershell
-cd C:\work\baseline\Lumberjacks
-dotnet run --project src\Game.Companion --urls http://127.0.0.1:8080
-Start-Process http://127.0.0.1:8080
-```
-
-The native process discovers the default Steam Valheim directory. Set
-`LUMBERJACKS_VALHEIM_PATH` when Steam is installed elsewhere. The updater refuses to write while
-Valheim is running, preserves the ComfyNetworkSense config, verifies the release SHA-256, and
-keeps overwritten files under `%LOCALAPPDATA%\Lumberjacks\Companion\backups`.
-
-## Docker
+This is the verified alpha path. It uses the repository's .NET 9 SDK container, so the host does
+not need a matching .NET SDK installed.
 
 ```powershell
 $env:LUMBERJACKS_VALHEIM_HOST_PATH = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim'
@@ -37,6 +27,28 @@ Without the optional second compose file, Docker is a read-only local dashboard 
 no Valheim path at all. With it, Docker uses the same updater and persistent state, but cannot
 reliably observe the Windows Valheim process. Stop Valheim, then explicitly check **I have closed
 Valheim** before selecting **Install latest**.
+
+For the i5 laptop, do not hand-copy files. Use the documented tailnet deploy lane from
+`C:\work\baseline`:
+
+```powershell
+.\tools\i5\Test-I5Link.ps1
+.\tools\i5\Deploy-ToI5.ps1 -Path .\Lumberjacks\src\Game.Companion\CompanionPage.cs -Dest C:/deploy/baseline/i5-companion/src/Game.Companion
+ssh -o BatchMode=yes i5 'powershell.exe -NoProfile -Command "Set-Location C:\deploy\baseline\i5-companion; docker compose -p lumberjacks-companion -f .\tools\companion\docker-compose.yml up -d --build"'
+```
+
+## Native Windows (only when .NET 9 SDK is installed)
+
+```powershell
+cd C:\work\baseline\Lumberjacks
+dotnet run --project src\Game.Companion --urls http://127.0.0.1:8080
+Start-Process http://127.0.0.1:8080
+```
+
+The native process discovers the default Steam Valheim directory. Set
+`LUMBERJACKS_VALHEIM_PATH` when Steam is installed elsewhere. The updater refuses to write while
+Valheim is running, preserves the ComfyNetworkSense config, verifies the release SHA-256, and
+keeps overwritten files under `%LOCALAPPDATA%\Lumberjacks\Companion\backups`.
 
 ## Generic Windows bootstrap bundle
 
@@ -71,7 +83,7 @@ Publish the same credential-free zip to P7 for testers:
 
 ```powershell
 cd C:\work\baseline
-.\infra\gcp\p7\scripts\Publish-CompanionBootstrap.ps1 -ReleaseId companion-bootstrap-20260723-r11
+.\infra\gcp\p7\scripts\Publish-CompanionBootstrap.ps1 -ReleaseId companion-bootstrap-20260723-r18
 ```
 
 That writes a hash-verified runtime pointer under the existing Gateway artifact mount, without
@@ -84,6 +96,21 @@ deployed, testers use:
 
 Frequent Valheim DLL/config updates remain on the authenticated Gateway client-pull lane inside
 Companion.
+
+## Transport evidence captures
+
+The Companion home page exposes three capture presets:
+
+- **15s smoke**: quick validation that Gateway, Valheim, cutover, and motion telemetry are readable.
+- **60s movement**: normal two-client movement test window.
+- **180s session**: longer alpha-test sample when a tester is intentionally exercising portals,
+  terrain, combat, or sustained movement.
+
+Each capture writes local `summary.json` and `samples.jsonl` files. The summary includes release
+identity, observed player names, counter deltas, and an interpretation block with the next operator
+action. A `native_motion_only` verdict means Valheim peers were present but Lumberjacks motion
+counters did not advance during that window; visible movement should be treated as native Valheim
+for that capture.
 
 `latest-bootstrap.json` is the stable machine-readable pointer for the current tester bootstrap.
 The P7 publisher rewrites it after a successful public upload with the `/join/update` page, public
