@@ -32,6 +32,17 @@ tools\wave0\Seal-Wave0VisualEvidence.ps1 `
   -ReversalAnnotatedJson captures\wave0-live-gate-reversal\result.annotated.json `
   -OutputJson captures\wave0-live-seal\visual-seal.json
 
+# If visual proof cannot be sealed, retain a named defect packet instead
+tools\wave0\New-Wave0DefectPacket.ps1 `
+  -DefectId wave0-role-reversal-failed `
+  -DefectKind role_reversal_failed `
+  -Summary "Role reversal did not follow the selected apply/observe split." `
+  -FirstReceiptJson captures\wave0-live-gate\result.json `
+  -ReversalReceiptJson captures\wave0-live-gate-reversal\result.json `
+  -FirstAnnotatedJson captures\wave0-live-gate\result.annotated.json `
+  -ReversalAnnotatedJson captures\wave0-live-gate-reversal\result.annotated.json `
+  -SealJson captures\wave0-live-seal\visual-seal.json
+
 # Generate the concise return packet from current receipts
 tools\wave0\New-Wave0ReturnPacket.ps1 `
   -OutputJson captures\wave0-return-packet.json `
@@ -111,10 +122,16 @@ After both directions are annotated, use `Seal-Wave0VisualEvidence.ps1` to
 verify that the visual evidence is complete, roles reversed, source receipts are
 distinct, and both annotations point at allowed live-gate verdicts. The seal is
 a derived index, not a replacement for the two immutable machine receipts.
+If the seal fails or the visual result is inconclusive, use
+`New-Wave0DefectPacket.ps1` to retain a named defect packet. That packet is the
+allowed alternative Wave 0 handoff: it explains why visual proof could not be
+sealed and indexes the failed receipts/annotations by SHA-256 without rewriting
+them.
 The seal verifier has fixture coverage:
 
 ```powershell
 tools\wave0\Test-Wave0SealFixtures.ps1
+tools\wave0\Test-Wave0DefectPacketFixtures.ps1
 ```
 
 `New-Wave0ReturnPacket.ps1` is the handoff generator. It summarizes the current
