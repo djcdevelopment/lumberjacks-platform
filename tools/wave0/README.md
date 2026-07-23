@@ -37,8 +37,10 @@ Run order before asking for a live movement course:
 4. one bounded apply/observe course
 5. role reversal
 
-If either non-human gate fails, stop and use its receipt instead of repeating a
-live join/movement test.
+If either non-human gate reports `FAIL` or `WAIT`, stop and use its receipt
+instead of repeating a live join/movement test. `WARN` is advisory: for example,
+after a new release it is normal to have no retained capture with the newest
+heartbeat-age fields until the next real two-client run creates one.
 
 `Start-Wave0LiveGate.ps1` is the preferred live command once both clients are
 joined. It runs the two non-human gates, checks P7 peer count, starts the
