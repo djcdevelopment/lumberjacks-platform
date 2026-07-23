@@ -1,0 +1,58 @@
+{
+  "schema": "comfy-p7-role-control-release-candidate/v1",
+  "release_id": "m30-rolecontrol-20260723-r1",
+  "source_commit": "95e8a2cf023707b0872ab2454506dd39571518b2",
+  "created_utc": "2026-07-23T22:12:46.3616316Z",
+  "status": "candidate_built_not_deployed",
+  "purpose": "Automate Wave 0 APPLY versus OBSERVE ONLY role selection through the bounded Companion command lane before live movement.",
+  "mod": {
+    "version": "0.5.35",
+    "release_id": "m30-rolecontrol-20260723-r1",
+    "dll_sha256": "2187557ad20175cb5b6b64048b3de3743dfa7e8e2cadbf7657ae366059d5787f"
+  },
+  "modpack": {
+    "release": "m30-rolecontrol-20260723-r1",
+    "package_file": "artifacts/modpacks/Comfy-P7-Alpha-Mods-m30-rolecontrol-20260723-r1.zip",
+    "package_sha256": "b4bfe96224d513b64385838cee103d7b63b03f1876d6b1652bf565cb289e7ca6",
+    "package_size_bytes": 892744,
+    "published_to_p7": false
+  },
+  "images": {
+    "gateway": {
+      "tag": "lumberjacks-gateway:m30-rolecontrol-20260723-r1",
+      "image_id": "sha256:1883a60acae412275f1d2e82372b2e8101738e7650858c599b85de0f222d97ed",
+      "admitted_mod_release": "m30-rolecontrol-20260723-r1"
+    },
+    "eventlog": {
+      "tag": "lumberjacks-eventlog:m30-rolecontrol-20260723-r1",
+      "image_id": "sha256:f4e85057f906b32bf02065dae4b31830e9cb64df9c239b3e0d31b68e0deb79ef"
+    },
+    "progression": {
+      "tag": "lumberjacks-progression:m30-rolecontrol-20260723-r1",
+      "image_id": "sha256:3be5e4321f002088952c1372cf2c60a397c9b9d049d8f224d50bfa887768c16a"
+    },
+    "operatorapi": {
+      "tag": "lumberjacks-operatorapi:m30-rolecontrol-20260723-r1",
+      "image_id": "sha256:f753f854ad1729523209eb1e88d2ef6bac60027e91df3f270202af371f5a0ace"
+    }
+  },
+  "verification": {
+    "release_cut_script": "infra/gcp/p7/scripts/New-ReleaseCut.ps1 -ReleaseId m30-rolecontrol-20260723-r1 -ComfyRoot C:\\work\\baseline -LumberjacksRoot C:\\work\\baseline\\Lumberjacks",
+    "mod_build": "passed net48 Release with 0 warnings and 0 errors",
+    "gateway_image_identity": "Test-GatewayImageRelease.ps1 confirmed /app/Game.Gateway.dll admits m30-rolecontrol-20260723-r1",
+    "docker_solution_build_and_tests": "passed inside the Gateway image build; existing warnings only",
+    "wave0_fixture_gate": "tools/wave0/Test-Wave0LiveGateFixtures.ps1 passed"
+  },
+  "deployment": {
+    "p7_gateway_deployed": false,
+    "p7_modpack_pointer_published": false,
+    "omen_installed": false,
+    "i5_installed": false
+  },
+  "next_steps": [
+    "Promote or load the m30 Gateway image on P7 so the server admits m30 clients.",
+    "Publish the m30 modpack pointer only after or alongside the Gateway admission change.",
+    "Install m30 through Companion on OMEN and i5 with Valheim closed.",
+    "Run Wave 0 readiness and live gate with both real clients joined."
+  ]
+}
