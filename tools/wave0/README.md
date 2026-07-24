@@ -210,3 +210,5 @@ contains a retained named defect, the correct result is
 
 `Test-Wave0StopRuleFixtures.ps1` proves the stop-rule guard's four branches:
 still blocked, sealed visual exit, named defect exit, and missing strategy rule.
+`New-Wave0ReturnPacket.ps1` includes both stop-rule receipts in its non-human
+evidence table so the operator handoff shows why later-wave work is still gated.

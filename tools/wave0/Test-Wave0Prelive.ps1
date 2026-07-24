@@ -183,6 +183,8 @@ $steps += Invoke-Step `
         '-DefectPacketFixtureReceipt', (Join-Path $defectFixturesRoot 'summary.json'),
         '-HumanTestRegisterReceipt', $humanRegisterPath,
         '-ExpectedResultGridReceipt', $expectedGridJson,
+        '-StopRuleReceipt', $stopRulePath,
+        '-StopRuleFixtureReceipt', (Join-Path $stopRuleFixturesRoot 'summary.json'),
         '-BundleSmokeReceipt', (Join-Path $bundleSmokeRoot 'result.json'),
         '-OutputJson', (Join-Path $returnPacketRoot 'packet.json'),
         '-OutputMarkdown', (Join-Path $returnPacketRoot 'packet.md')

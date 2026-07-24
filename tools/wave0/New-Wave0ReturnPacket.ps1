@@ -20,6 +20,8 @@ param(
     [string]$DefectPacketFixtureReceipt = '',
     [string]$HumanTestRegisterReceipt = '',
     [string]$ExpectedResultGridReceipt = '',
+    [string]$StopRuleReceipt = '',
+    [string]$StopRuleFixtureReceipt = '',
     [string]$BundleSmokeReceipt = '',
     [string]$OutputJson = 'captures/wave0-return-packet.json',
     [string]$OutputMarkdown = 'captures/wave0-return-packet.md'
@@ -174,6 +176,18 @@ if (-not $ExpectedResultGridReceipt) {
         [string]$Body.verdict -eq 'wave0_expected_result_grid_ready'
     }
 }
+if (-not $StopRuleReceipt) {
+    $StopRuleReceipt = Find-LatestReceipt 'stop-rule receipt' {
+        param($Body)
+        [string]$Body.verdict -in @('wave0_stop_rule_holds_no_exit_artifact', 'wave0_exit_artifact_present', 'wave0_stop_rule_missing_from_strategy')
+    }
+}
+if (-not $StopRuleFixtureReceipt) {
+    $StopRuleFixtureReceipt = Find-LatestReceipt 'stop-rule fixture summary receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_stop_rule_fixture_checks_passed'
+    }
+}
 if (-not $BundleSmokeReceipt) {
     $BundleSmokeReceipt = Find-LatestReceipt 'bundle smoke receipt' {
         param($Body)
@@ -191,6 +205,8 @@ $visualSealFixtures = Read-Receipt $VisualSealFixtureReceipt
 $defectPacketFixtures = Read-Receipt $DefectPacketFixtureReceipt
 $humanTestRegister = Read-Receipt $HumanTestRegisterReceipt
 $expectedResultGrid = Read-Receipt $ExpectedResultGridReceipt
+$stopRule = Read-Receipt $StopRuleReceipt
+$stopRuleFixtures = Read-Receipt $StopRuleFixtureReceipt
 $bundleSmoke = Read-Receipt $BundleSmokeReceipt
 
 $checks = @()
@@ -254,6 +270,18 @@ $checks += Check-State `
     -Detail ($(if ($expectedResultGrid.present) { "verdict=$($expectedResultGrid.body.verdict) rows=$(@($expectedResultGrid.body.rows).Count)" } else { 'missing expected-result grid receipt' })) `
     -ReceiptPath $expectedResultGrid.path `
     -ReceiptSha256 $expectedResultGrid.sha256
+$checks += Check-State `
+    -Name 'wave0_stop_rule_gate' `
+    -Ok ($stopRule.present -and [string]$stopRule.body.verdict -in @('wave0_stop_rule_holds_no_exit_artifact', 'wave0_exit_artifact_present') -and [bool]$stopRule.body.strategy_names_rule) `
+    -Detail ($(if ($stopRule.present) { "verdict=$($stopRule.body.verdict) exit_artifact_present=$($stopRule.body.exit_artifact_present)" } else { 'missing Wave 0 stop-rule receipt' })) `
+    -ReceiptPath $stopRule.path `
+    -ReceiptSha256 $stopRule.sha256
+$checks += Check-State `
+    -Name 'wave0_stop_rule_fixture_gate' `
+    -Ok ($stopRuleFixtures.present -and [string]$stopRuleFixtures.body.verdict -eq 'wave0_stop_rule_fixture_checks_passed' -and @($stopRuleFixtures.body.cases).Count -ge 4) `
+    -Detail ($(if ($stopRuleFixtures.present) { "verdict=$($stopRuleFixtures.body.verdict) cases=$(@($stopRuleFixtures.body.cases).Count)" } else { 'missing stop-rule fixture summary' })) `
+    -ReceiptPath $stopRuleFixtures.path `
+    -ReceiptSha256 $stopRuleFixtures.sha256
 $bundleCount = if ($bundleSmoke.present -and $bundleSmoke.body.bundles) { @($bundleSmoke.body.bundles).Count } else { 0 }
 $bundleDetail = if ($bundleSmoke.present) {
     $comparisonLevel = [string]$bundleSmoke.body.comparison.level
