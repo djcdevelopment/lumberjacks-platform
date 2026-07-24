@@ -216,6 +216,9 @@ The curated documentation index is at [docs/README.md](docs/README.md).
 
 ## License
 
-Licensed under the [Lumberjacks Community Source License v1.0](LICENSE.md): free for
-non-commercial community servers up to 100 active members. Commercial use requires a
-separate agreement. Copyright © 2026 DJC Development.
+Current versions are licensed under the [Business Source License 1.1](LICENSE.md).
+Noncommercial community deployments of up to 100 active members may operate when they
+publish the complete source and reproduction material for the exact deployed version.
+Commercial production use requires a separate written agreement. Each version converts
+to AGPL-3.0-only no later than the Change Date stated in the license. Earlier versions
+remain under the terms that accompanied them. Copyright © 2026 DJC Development.

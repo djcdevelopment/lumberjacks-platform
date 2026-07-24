@@ -1,120 +1,134 @@
-# Lumberjacks Community Source License v1.0
+# Business Source License 1.1
 
-**Copyright (c) 2026 DJC Development. All rights reserved.**
+## Parameters
 
-This license governs use of the accompanying software and its source code
-(the "Software"). By accessing or using the Software, you accept these terms.
+**Licensor:** DJC Development
 
----
+**Licensed Work:** The Lumberjacks subtree and the software and software
+documentation distributed with it, excluding material identified in the
+repository-root `THIRD_PARTY_NOTICES.md` or governed by a more specific license
+notice. Each version of the Licensed Work is licensed separately.
 
-## 1. Definitions
+**Additional Use Grant:**
 
-- **"Commercial Use"** means any use of the Software intended for or directed
-  toward commercial advantage or monetary compensation, including but not
-  limited to selling access to game servers, selling in-game items or
-  currencies for real money, offering paid subscriptions, or incorporating the
-  Software into a product or service that is sold.
+You may make production use of the Licensed Work for a Community Deployment
+only while all of the following conditions are satisfied:
 
-- **"Community Server"** means a game server operated by a community
-  organization, group, or individual that (a) has no more than 100 active
-  members at any given time, and (b) does not engage in Commercial Use.
+1. The deployment is not used for Commercial Use.
 
-- **"Run Cost"** means the actual, documented infrastructure expenses required
-  to operate the Software, including but not limited to server hosting,
-  bandwidth, database, and related cloud service fees.
+2. The deployment serves no more than 100 Active Members.
 
-- **"Active Member"** means a unique user who has connected to or interacted
-  with a deployment of the Software within a rolling 30-day period.
+3. For the entire time the deployment is available, and for at least 12
+   months afterward, you make the Complete Community Source publicly
+   available without charge or access controls under this License. You must
+   prominently offer every user of an interactive deployment a working link
+   to that source.
 
----
+4. You preserve all copyright, license, source-offer, attribution, and
+   unofficial-project notices included with the Licensed Work.
 
-## 2. Grant of Rights
+A Community Deployment may accept voluntary donations solely to reimburse
+documented, direct infrastructure expenses. Payment may not be required for
+access, features, priority, influence, in-game items, or in-game currency, and
+total receipts may not exceed those direct infrastructure expenses over any
+rolling 12-month period. Labor, development time, consulting, and profit are
+not direct infrastructure expenses.
 
-### 2.1 Personal Learning and Study
+For this Additional Use Grant:
 
-You may view, read, fork, and study the source code of the Software for
-personal educational purposes at no cost. You may not redistribute, deploy, or
-operate the Software under this section.
+- **"Active Member"** means a unique user who connected to or interacted with
+  the deployment during the preceding rolling 30-day period.
 
-### 2.2 Community Server License
+- **"Commercial Use"** means use intended for or directed toward commercial
+  advantage or monetary compensation, including paid access, subscriptions,
+  advertising or sponsorship connected to the deployment, sales of in-game
+  items or currency, paid hosting or managed services, paid support or
+  consulting whose value derives substantially from the Licensed Work, or
+  incorporation into a product or service that is sold.
 
-You may deploy and operate the Software as a Community Server, provided that:
+- **"Community Deployment"** means a deployment operated by an individual,
+  volunteer group, or community organization for noncommercial community use.
 
-(a) You do not engage in any Commercial Use of the Software;
+- **"Complete Community Source"** means the complete source code for the exact
+  version in production, including all modifications to the Licensed Work and
+  the preferred form for making those modifications, together with the build,
+  installation, configuration, and deployment material reasonably necessary
+  for another person to reproduce that version. It does not include
+  credentials, personal data, private keys, or third-party software that the
+  operator is not authorized to redistribute.
 
-(b) Your deployment serves no more than 100 Active Members;
+**Change Date:** 2030-07-24
 
-(c) You pay DJC Development a fee equal to **Run Cost plus 8.5%** of Run Cost
-    (the "Community Fee"), calculated and payable monthly; and
+**Change License:** GNU Affero General Public License version 3 only
+(`AGPL-3.0-only`)
 
-(d) You provide DJC Development with reasonable documentation of Run Cost upon
-    request.
+## Notice
 
-### 2.3 Commercial License
+The Business Source License (this document, or the "License") is not an Open
+Source license. However, the Licensed Work will eventually be made available
+under an Open Source License, as stated in this License.
 
-Any use of the Software that does not qualify under Section 2.1 or 2.2 —
-including but not limited to Commercial Use, deployments exceeding 100 Active
-Members, or redistribution — requires a separate commercial license agreement
-with DJC Development. Contact **licensing@djcdevelopment.com** for terms.
+## Terms
 
----
+The Licensor hereby grants you the right to copy, modify, create derivative
+works, redistribute, and make non-production use of the Licensed Work. The
+Licensor may make an Additional Use Grant, above, permitting limited
+production use.
 
-## 3. Restrictions
+Effective on the Change Date, or the fourth anniversary of the first publicly
+available distribution of a specific version of the Licensed Work under this
+License, whichever comes first, the Licensor hereby grants you rights under
+the terms of the Change License, and the rights granted in the paragraph above
+terminate.
 
-Unless you hold a commercial license under Section 2.3, you may NOT:
+If your use of the Licensed Work does not comply with the requirements
+currently in effect as described in this License, you must purchase a
+commercial license from the Licensor, its affiliated entities, or authorized
+resellers, or you must refrain from using the Licensed Work.
 
-(a) Sell, sublicense, lease, or otherwise transfer the Software or any rights
-    in it to a third party;
+All copies of the original and modified Licensed Work, and derivative works of
+the Licensed Work, are subject to this License. This License applies
+separately for each version of the Licensed Work and the Change Date may vary
+for each version of the Licensed Work released by Licensor.
 
-(b) Offer the Software, or any derivative of it, as a hosted or managed
-    service to third parties for a fee;
+You must conspicuously display this License on each original or modified copy
+of the Licensed Work. If you receive the Licensed Work in original or modified
+form from a third party, the terms and conditions set forth in this License
+apply to your use of that work.
 
-(c) Remove, alter, or obscure this license notice or any copyright notices
-    included with the Software;
+Any use of the Licensed Work in violation of this License will automatically
+terminate your rights under this License for the current and all other
+versions of the Licensed Work.
 
-(d) Use the Software in any way that competes with DJC Development's own
-    offerings; or
+This License does not grant you any right in any trademark or logo of Licensor
+or its affiliates (provided that you may use a trademark or logo of Licensor
+as expressly required by this License).
 
-(e) Redistribute modified or unmodified copies of the Software except as
-    permitted under Sections 2.1 and 2.2.
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSED WORK IS PROVIDED ON AN
+"AS IS" BASIS. LICENSOR HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS,
+EXPRESS OR IMPLIED, INCLUDING (WITHOUT LIMITATION) WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND
+TITLE.
 
----
+MariaDB hereby grants you permission to use this License's text to license
+your works, and to refer to it using the trademark "Business Source License",
+as long as you comply with the Covenants of Licensor below.
 
-## 4. Contributions
+## Covenants of Licensor
 
-By submitting a contribution (pull request, patch, or other modification) to
-this repository, you grant DJC Development a perpetual, worldwide,
-non-exclusive, royalty-free, irrevocable license to use, reproduce, modify,
-distribute, sublicense, and otherwise exploit your contribution as part of the
-Software under any license terms DJC Development may choose.
+In consideration of the right to use this License's text and the "Business
+Source License" name and trademark, Licensor covenants to MariaDB, and to all
+other recipients of the licensed work to be provided by Licensor:
 
----
+1. To specify as the Change License the GPL Version 2.0 or any later version,
+   or a license that is compatible with GPL Version 2.0 or a later version,
+   where "compatible" means that software provided under the Change License
+   can be included in a program with software provided under GPL Version 2.0
+   or a later version. Licensor may specify additional Change Licenses without
+   limitation.
 
-## 5. No Warranty
+2. To either: (a) specify an additional grant of rights to use that does not
+   impose any additional restriction on the right granted in this License; or
+   (b) insert the text "None" to specify a Change Date.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL DJC
-DEVELOPMENT BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM,
-OUT OF, OR IN CONNECTION WITH THE SOFTWARE.
-
----
-
-## 6. Termination
-
-Your rights under this license terminate automatically if you breach any of its
-terms. Upon termination you must cease all use of the Software and destroy any
-copies in your possession.
-
----
-
-## 7. General
-
-This license is governed by the laws of the United States. If any provision of
-this license is held unenforceable, the remaining provisions continue in full
-force. This license constitutes the entire agreement regarding its subject
-matter and supersedes all prior agreements.
-
----
-
-**For commercial licensing inquiries:** licensing@djcdevelopment.com
+3. To not modify this License in any other way.
