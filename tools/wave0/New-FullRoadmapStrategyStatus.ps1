@@ -111,10 +111,29 @@ $expectedRelease = if ($prelive.present) { [string]$prelive.body.expected_releas
 $peerCount = if ($prelive.present) { $prelive.body.p7_peer_count } else { $null }
 $returnPacket = if ($prelive.present -and $prelive.body.receipts) { [string]$prelive.body.receipts.return_packet_markdown } else { '' }
 $expectedGrid = if ($prelive.present -and $prelive.body.receipts) { [string]$prelive.body.receipts.expected_result_grid_markdown } else { '' }
+$stopRuleReceiptPath = if ($prelive.present -and $prelive.body.receipts) { [string]$prelive.body.receipts.stop_rule } else { '' }
+$stopRuleReceipt = if ($stopRuleReceiptPath) { Read-JsonFile $stopRuleReceiptPath } else { [ordered]@{ present = $false; path = ''; sha256 = $null; body = $null } }
 
 $wave0Ready = $prelive.present -and $preliveVerdict -eq 'ready_for_derek_two_client_join'
 $humanRegisterReady = $humanRegister.present -and $humanRegister.text.Contains('H0-1') -and $humanRegister.text.Contains('H4-5')
 $strategyStopRulePresent = $strategy.present -and $strategy.text.Contains('Do not begin M1/M2 expansion work until Wave 0')
+$wave0ExitArtifactPresent = $stopRuleReceipt.present -and [bool]$stopRuleReceipt.body.exit_artifact_present
+
+function New-AuditItem {
+    param(
+        [string]$Requirement,
+        [string]$State,
+        [string]$Evidence,
+        [string]$Needed
+    )
+
+    [ordered]@{
+        requirement = $Requirement
+        state = $State
+        evidence = $Evidence
+        needed = $Needed
+    }
+}
 
 $rows = @()
 $rows += New-StatusRow `
@@ -134,8 +153,8 @@ $rows += New-StatusRow `
     -NextAction 'Use the grid for pre-run bets and observed visual results.'
 $rows += New-StatusRow `
     -Area 'Wave 0 stop rule' `
-    -Status ($(if ($strategyStopRulePresent) { 'enforced_by_strategy' } else { 'missing_from_strategy' })) `
-    -Evidence ($(if ($strategy.present) { "$($strategy.path); sha256=$($strategy.sha256)" } else { 'missing strategy doc' })) `
+    -Status ($(if ($strategyStopRulePresent -and $wave0ExitArtifactPresent) { 'exit_artifact_present' } elseif ($strategyStopRulePresent) { 'enforced_no_exit_artifact' } else { 'missing_from_strategy' })) `
+    -Evidence ($(if ($stopRuleReceipt.present) { "$($stopRuleReceipt.path); verdict=$($stopRuleReceipt.body.verdict); exit_artifact_present=$($stopRuleReceipt.body.exit_artifact_present)" } elseif ($strategy.present) { "$($strategy.path); sha256=$($strategy.sha256)" } else { 'missing strategy doc' })) `
     -NextAction 'Do not start M1/M2 runtime expansion until Wave 0 has a sealed visual packet or named defect.'
 $rows += New-StatusRow `
     -Area 'Wave 1 admission / turnkey updates' `
@@ -164,6 +183,43 @@ $completionVerdict = if ($wave0Ready -and $humanRegisterReady -and $strategyStop
     'strategy_status_incomplete'
 }
 
+$completionAudit = @()
+$completionAudit += New-AuditItem `
+    -Requirement 'Wave 0 non-human pre-live evidence exists.' `
+    -State ($(if ($wave0Ready) { 'proven_ready_for_join' } else { 'missing_or_failed' })) `
+    -Evidence ($(if ($prelive.present) { "$preliveVerdict; $($prelive.path)" } else { 'missing prelive summary' })) `
+    -Needed 'Keep prelive green immediately before live join.'
+$completionAudit += New-AuditItem `
+    -Requirement 'Wave 0 exit artifact exists: sealed two-direction visual evidence or retained named defect.' `
+    -State ($(if ($wave0ExitArtifactPresent) { 'exit_artifact_present' } else { 'not_achieved' })) `
+    -Evidence ($(if ($stopRuleReceipt.present) { "$($stopRuleReceipt.body.verdict); exit_artifact_present=$($stopRuleReceipt.body.exit_artifact_present)" } else { 'missing stop-rule receipt' })) `
+    -Needed 'Join OMEN and i5, run both directions, then seal visual evidence or retain named defect.'
+$completionAudit += New-AuditItem `
+    -Requirement 'M1/M2 admission and turnkey update work may start.' `
+    -State ($(if ($wave0ExitArtifactPresent) { 'eligible_after_operator_review' } else { 'blocked_by_wave0_stop_rule' })) `
+    -Evidence 'Strategy stop rule requires Wave 0 exit artifact before M1/M2 expansion.' `
+    -Needed 'Do not start runtime admission/update expansion until Wave 0 exits.'
+$completionAudit += New-AuditItem `
+    -Requirement 'M3/M4a durable evidence and recipient correctness are closed.' `
+    -State 'not_achieved' `
+    -Evidence 'No sealed N=2/N=10 durable-recipient receipts are in scope for current Wave 0 packet.' `
+    -Needed 'After M1/M2, prove duplicate, isolation, reconnect, lease takeover, restart, WAL replay, loss, and double-apply cases.'
+$completionAudit += New-AuditItem `
+    -Requirement 'M4b/M5 real-client and external canary are closed.' `
+    -State 'not_achieved' `
+    -Evidence 'Owned two-client Wave 0 live visual proof is still waiting on peer_count >= 2; external canary not started.' `
+    -Needed 'Complete owned-client proof, then Companion-only trusted external canary.'
+$completionAudit += New-AuditItem `
+    -Requirement 'M6/A1-A6 adoption, replay, lab, widening, and signed aggregate work are closed.' `
+    -State 'not_achieved' `
+    -Evidence 'Strategy defers these until earlier sealed evidence exists.' `
+    -Needed 'Produce separate sealed receipts for replay, local lab, contribution path, cohort soak, and signed read-only aggregate.'
+$completionAudit += New-AuditItem `
+    -Requirement 'M7 network-authority expansion.' `
+    -State 'explicitly_deferred' `
+    -Evidence 'Strategy horizon says M7 requires a new explicit strategy and authorization.' `
+    -Needed 'Do not include M7 in this completion claim.'
+
 $packet = [ordered]@{
     schema_version = 1
     generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
@@ -188,8 +244,12 @@ $packet = [ordered]@{
         p7_peer_count = $peerCount
         return_packet = $returnPacket
         expected_result_grid = $expectedGrid
+        stop_rule_receipt = if ($stopRuleReceipt.present) { $stopRuleReceipt.path } else { '' }
+        wave0_exit_artifact_present = [bool]$wave0ExitArtifactPresent
     }
     rows = $rows
+    completion_audit = $completionAudit
+    full_objective_complete = $false
     human_required_next = @(
         'Join OMEN and i5 to P7 with owned player accounts.',
         'Observe whether the non-applying screen follows the selected applying player.',
@@ -219,6 +279,14 @@ $markdown += '## Human required next'
 $markdown += ''
 foreach ($item in $packet.human_required_next) {
     $markdown += "- $item"
+}
+$markdown += ''
+$markdown += '## Completion audit'
+$markdown += ''
+$markdown += '| Requirement | State | Evidence | Needed |'
+$markdown += '|---|---|---|---|'
+foreach ($item in $completionAudit) {
+    $markdown += "| $(MdEscape $item.requirement) | $(MdEscape $item.state) | $(MdEscape $item.evidence) | $(MdEscape $item.needed) |"
 }
 $markdown += ''
 $markdown += 'This packet is intentionally conservative. `ready_waiting_on_human_join` means the non-human pre-live gate passed; it is not proof that the full roadmap objective is complete.'

@@ -245,3 +245,6 @@ shows the no-unbounded-wait contract before the live movement window.
 `Test-Wave0ReturnPacketContract.ps1` validates the generated handoff packet
 itself, including every non-human evidence gate, live command, and sensitive
 marker exclusion.
+`New-FullRoadmapStrategyStatus.ps1` includes a completion audit that explicitly
+keeps the full roadmap objective incomplete until Wave 0 exits and later waves
+produce their own sealed receipts.

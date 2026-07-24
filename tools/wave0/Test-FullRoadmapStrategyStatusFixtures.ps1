@@ -41,11 +41,21 @@ function Write-FixtureSummary {
         receipts = [ordered]@{
             return_packet_markdown = Join-Path $outputRoot "$Name.return.md"
             expected_result_grid_markdown = Join-Path $outputRoot "$Name.grid.md"
+            stop_rule = Join-Path $outputRoot "$Name.stop-rule.json"
         }
     }
     [IO.File]::WriteAllText($path, (($receipt | ConvertTo-Json -Depth 8) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $outputRoot "$Name.return.md"), "# fixture return $Name`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $outputRoot "$Name.grid.md"), "# fixture grid $Name`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText(
+        (Join-Path $outputRoot "$Name.stop-rule.json"),
+        (([ordered]@{
+            schema_version = 1
+            verdict = 'wave0_stop_rule_holds_no_exit_artifact'
+            strategy_names_rule = $true
+            exit_artifact_present = $false
+        } | ConvertTo-Json -Depth 6) + [Environment]::NewLine),
+        [Text.UTF8Encoding]::new($false))
     return $path
 }
 
@@ -88,6 +98,18 @@ if ('blocked_by_wave0_exit' -notin @($good.rows | ForEach-Object { [string]$_.st
 if ('not_ready' -notin @($bad.rows | ForEach-Object { [string]$_.status })) {
     throw 'bad fixture did not retain not_ready row'
 }
+if ($good.full_objective_complete -ne $false) {
+    throw 'good fixture must not claim full objective completion'
+}
+if ('not_achieved' -notin @($good.completion_audit | ForEach-Object { [string]$_.state })) {
+    throw 'good fixture did not include incomplete roadmap audit states'
+}
+if ('blocked_by_wave0_stop_rule' -notin @($good.completion_audit | ForEach-Object { [string]$_.state })) {
+    throw 'good fixture did not include M1/M2 stop-rule block'
+}
+if ('explicitly_deferred' -notin @($good.completion_audit | ForEach-Object { [string]$_.state })) {
+    throw 'good fixture did not mark M7 explicitly deferred'
+}
 
 $summary = [ordered]@{
     schema_version = 1
@@ -103,4 +125,3 @@ $summaryPath = Join-Path $outputRoot 'summary.json'
 
 Write-Host ("Full roadmap strategy status fixtures: {0}" -f $summary.verdict)
 Write-Host ("Summary JSON: {0}" -f $summaryPath)
-
