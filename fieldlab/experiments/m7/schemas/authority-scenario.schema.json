@@ -14,7 +14,7 @@
     "actors": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["id", "trajectory"], "properties": { "id": { "type": "string" }, "trajectory": { "type": "string" } } } },
     "objects": { "type": "object", "required": ["generator", "count", "classes"], "properties": { "generator": { "type": "string" }, "count": { "type": "integer", "minimum": 0 }, "classes": { "type": "array", "items": { "type": "string" } } } },
     "policy": { "type": "object", "required": ["name", "near_meters", "outer_meters", "mid_hz"], "properties": { "name": { "type": "string" }, "near_meters": { "type": "number" }, "outer_meters": { "type": "number" }, "mid_hz": { "type": "number" } } },
-    "driver": { "type": "string", "enum": ["pure", "gateway", "replay", "local_valheim_shadow", "local_valheim_strict", "p7_shadow", "p7_canary"] },
+    "driver": { "type": "string", "enum": ["pure", "gateway", "gateway_durable", "gateway_udp", "replay", "local_valheim_shadow", "local_valheim_strict", "p7_shadow", "p7_canary"] },
     "stop_rules": { "type": "array", "items": { "type": "string" } },
     "parameters": { "type": "object" }
   }

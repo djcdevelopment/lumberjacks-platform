@@ -14,7 +14,7 @@
     "run_id": { "type": "string", "minLength": 1 },
     "seed": { "type": "integer", "minimum": 0 },
     "tick": { "type": "integer", "minimum": 0 },
-    "driver": { "type": "string", "enum": ["pure", "gateway", "replay", "local_valheim_shadow", "local_valheim_strict", "p7_shadow", "p7_canary"] },
+    "driver": { "type": "string", "enum": ["pure", "gateway", "gateway_durable", "gateway_udp", "replay", "local_valheim_shadow", "local_valheim_strict", "p7_shadow", "p7_canary"] },
     "payload": { "type": "object" }
   }
 }

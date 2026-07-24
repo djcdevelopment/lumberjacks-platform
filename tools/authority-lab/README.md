@@ -39,6 +39,27 @@ restarts the redirect service against a temporary WAL and verifies pending/ACK r
 `gateway_udp` starts the real UDP listener on loopback, binds both client endpoints, and
 verifies target delivery through `TrySend`.
 
-The executable surface is deliberately small: `generate`, `run`, `compare`, and
-`check`. A future Gateway/native driver must emit the same receipt shape and must
-never label a pure run as Gateway evidence.
+Normalize a captured native probe without claiming native authority:
+
+```powershell
+docker run --rm -v "${repoRoot}:/repo" -w /repo/tools/authority-lab mcr.microsoft.com/dotnet/sdk:9.0 dotnet run --no-build --project src/AuthorityLab -- normalize-native --scenario /repo/fieldlab/experiments/m7/m7-e04-native-candidate-capture/scenario.yaml --input /repo/path/to/native.jsonl --output /repo/fieldlab/experiments/m7/m7-e04-native-candidate-capture/runs/native-<timestamp>
+```
+
+The normalizer retains the exact source, emits `authority.native_candidate_observed`
+rows, and records ignored or malformed input rather than dropping it. A fixture
+smoke receipt exists under E04; it is parser evidence, not a native capture.
+
+Replay the normalized candidates through the current pure distance-band policy:
+
+```powershell
+docker run --rm -v "${repoRoot}:/repo" -w /repo/tools/authority-lab mcr.microsoft.com/dotnet/sdk:9.0 dotnet run --no-build --project src/AuthorityLab -- replay-native --run /repo/fieldlab/experiments/m7/m7-e04-native-candidate-capture/runs/native-<timestamp> --output /repo/fieldlab/experiments/m7/m7-e04-native-candidate-capture/runs/replay-<timestamp>
+```
+
+Replay emits explicit `authority.lumberjacks_decision` and
+`authority.decision_compared` rows with `observation_only`; it does not claim
+that the native client used the Lumberjacks decision.
+
+The executable surface is deliberately small: `generate`, `run`,
+`normalize-native`, `compare`, and `check`. A future native replay comparator must
+emit the same receipt shape and must never label a native observation as a
+Lumberjacks decision without an explicit comparison.

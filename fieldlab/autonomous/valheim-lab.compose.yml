@@ -28,6 +28,9 @@ x-steam-client: &steam-client
     COMFY_VALHEIM_PASSWORD: ${SERVER_PASS:-comfytest}
     COMFY_VALHEIM_LAUNCH_ARGS: ${COMFY_VALHEIM_LAUNCH_ARGS:--console}
     COMFY_VALHEIM_INSTALL_DIR: ${COMFY_VALHEIM_INSTALL_DIR:-/mnt/games/GameLibrary/Steam/steamapps/common/Valheim}
+    # This anchor is used only by profile-gated disposable lab clients. The
+    # selector is therefore opt-in at the lab boundary, not a player-install
+    # setting; override COMFY_AUTOJOIN=false for a manual rendered run.
     COMFY_AUTOJOIN: ${COMFY_AUTOJOIN:-true}
     COMFY_MATRIX_CHECKIN: ${COMFY_MATRIX_CHECKIN:-false}
     COMFY_GATEWAY_URL: ${COMFY_GATEWAY_URL:-http://comfy-gateway:8720}
@@ -82,6 +85,7 @@ services:
       COMFY_NETWORK_SENSE_CFG: /lab/omen-config/djcdevelopment.valheim.comfynetworksense.cfg
       COMFY_BEPINEX_LOG: /lab/omen-log/LogOutput.log
       COMFY_MCP_ROOT: /workspace/network/mcp
+      COMFY_AUTONOMOUS_STATE: /lab/state
       COMFY_MATRIX_VAR_DIR: /workspace/network/mcp/var/matrix
       COMFY_VALHEIM_NOTES: /workspace/network/mcp/var/valheim-dev-notes.jsonl
     volumes:
@@ -100,27 +104,23 @@ services:
       - comfy_gateway.toolsurface.valheim,comfy_gateway.toolsurface.inference
 
   # ---------------------------------------------------------------------------
-  # THE valheim-client-NN SERVICES BELOW NO LONGER SELF-DRIVE (2026-07-21).
+  # THE valheim-client-NN SERVICES BELOW ARE DISPOSABLE LAB CLIENTS (2026-07-24).
   #
   # Their COMFY_AUTOJOIN / COMFY_MATRIX_CHECKIN env vars are still set in the
-  # x-steam-client anchor above, but the mod-side code that read them was removed
-  # with the swarm harness — see network/mod/ComfyNetworkSense/SWARM-HARNESS-REMOVED.md
-  # (recoverable at commit 1887626). A client started now will boot Steam, launch
-  # Valheim, load the mod, and then sit at the character-select screen forever,
-  # logging rtt_ms = 0 / bytes_in = 0. That is exactly the condition auto-join was
-  # written to prevent.
+  # x-steam-client anchor above. The bounded mod-side selector is restored only
+  # for this lab path; it selects an existing profile and calls the normal start path.
+  # The client-init watcher stages the shared DLL/config and launches Valheim;
+  # the opt-in mod selector then starts an existing character profile.
   #
   # They are gated behind `profiles: ["clients"]`, so a plain `docker compose up`
   # does NOT start them — it brings up only valheim-server and comfy-gateway, both
   # of which are live and unaffected. Only `--profile clients` reaches this.
   #
-  # DECISION (2026-07-21, HANDOFF task 9): KEEP them as manual noVNC clients.
+  # They remain profile-gated and harmless; use noVNC only as a fallback when a
+  # lab run needs visual diagnosis.
   # They are deliberately retained — profile-gated, harmless, and useful for the
-  # two-client recipient-isolation work (HANDOFF task 6) where a human drives the
-  # joins anyway. To use one: `docker compose --profile clients up valheim-client-01`,
-  # then drive character select by hand over the noVNC console. To make them
-  # self-drive again, restore the swarm harness from commit 1887626. They are NOT
-  # deleted and NOT expected to collect telemetry on their own.
+  # They expose the bounded MCP observation/command surface after joining; no
+  # arbitrary script execution is added to the container.
   # ---------------------------------------------------------------------------
   valheim-client-01:
     <<: *steam-client

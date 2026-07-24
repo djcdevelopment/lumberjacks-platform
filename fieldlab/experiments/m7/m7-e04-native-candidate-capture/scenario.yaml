@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "experiment_id": "m7-e04-native-candidate-capture",
+  "scenario_id": "native-candidate-v1",
+  "seed": 419,
+  "plane": "relevance",
+  "duration_seconds": 30,
+  "actors": [
+    { "id": "native-probe", "trajectory": "captured" }
+  ],
+  "objects": { "generator": "native_capture", "count": 0, "classes": ["player", "zdo"] },
+  "policy": { "name": "native-observation", "near_meters": 30, "outer_meters": 64, "mid_hz": 5 },
+  "driver": "replay",
+  "stop_rules": ["source_missing", "malformed_rows", "candidate_count_zero"]
+}

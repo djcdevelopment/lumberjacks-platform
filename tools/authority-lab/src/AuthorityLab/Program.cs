@@ -34,6 +34,8 @@ public static class Program
             {
                 "generate" => Generate(Options.Parse(args[1..])),
                 "run" => Run(Options.Parse(args[1..])),
+                "normalize-native" => NativeCandidateNormalizer.Execute(Options.Parse(args[1..])),
+                "replay-native" => NativeCandidateReplay.Execute(Options.Parse(args[1..])),
                 "compare" => Compare(Options.Parse(args[1..])),
                 "check" => Check(Options.Parse(args[1..])),
                 _ => Usage()
@@ -210,7 +212,7 @@ public static class Program
 
     private static int Usage()
     {
-        Console.Error.WriteLine("usage: authority-lab <generate|run|compare|check> --scenario/--run ...");
+        Console.Error.WriteLine("usage: authority-lab <generate|run|normalize-native|replay-native|compare|check> --scenario/--run ...");
         return 2;
     }
 }

@@ -1,0 +1,4 @@
+{"event":"status","status":"probe_start","timestamp_utc":"2026-07-24T00:00:00Z"}
+{"event":"object","object_stable_key":"player:1","object_kind":"player","object_name":"Player","priority_tier":"near","priority_rank":1,"distance_meters":12.5,"pos_x":1.0,"pos_y":2.0,"pos_z":3.0}
+{"event":"zdo","dir":"send","uid":42,"owner":1,"owner_revision":3,"data_revision":9,"pos_x":4.0,"pos_y":5.0,"pos_z":6.0}
+{"event":"zdo","dir":"recv","uid":42,"owner":1,"owner_revision":3,"data_revision":9,"pos_x":4.0,"pos_y":5.0,"pos_z":6.0}
