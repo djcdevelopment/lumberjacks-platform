@@ -14,40 +14,47 @@ notice. Each version of the Licensed Work is licensed separately.
 You may make production use of the Licensed Work for a Community Deployment
 only while all of the following conditions are satisfied:
 
-1. The deployment is not used for Commercial Use.
+1. The operator is an Eligible Community Steward.
 
 2. The deployment serves no more than 100 Active Members.
 
-3. For the entire time the deployment is available, and for at least 12
+3. Aggregate Community Revenue for all Community Deployments under common
+   control does not exceed USD 25,000 during any rolling 12-month period.
+
+4. For the entire time the deployment is available, and for at least 12
    months afterward, you make the Complete Community Source publicly
    available without charge or access controls under this License. You must
    prominently offer every user of an interactive deployment a working link
    to that source.
 
-4. You preserve all copyright, license, source-offer, attribution, and
+5. You clearly disclose prices and paid benefits before purchase, do not sell
+   or license player personal data, and comply with applicable law and the
+   applicable game and platform terms.
+
+6. You preserve all copyright, license, source-offer, attribution, and
    unofficial-project notices included with the Licensed Work.
 
-A Community Deployment may accept voluntary donations solely to reimburse
-documented, direct infrastructure expenses. Payment may not be required for
-access, features, priority, influence, in-game items, or in-game currency, and
-total receipts may not exceed those direct infrastructure expenses over any
-rolling 12-month period. Labor, development time, consulting, and profit are
-not direct infrastructure expenses.
+An Eligible Community Steward may charge for access, subscriptions,
+sponsorship, advertising, items, services, or other benefits and may retain
+all Community Revenue, including profit, while every condition above remains
+satisfied. No royalty or separate commercial agreement is required for use
+within this Additional Use Grant.
 
 For this Additional Use Grant:
 
 - **"Active Member"** means a unique user who connected to or interacted with
   the deployment during the preceding rolling 30-day period.
 
-- **"Commercial Use"** means use intended for or directed toward commercial
-  advantage or monetary compensation, including paid access, subscriptions,
-  advertising or sponsorship connected to the deployment, sales of in-game
-  items or currency, paid hosting or managed services, paid support or
-  consulting whose value derives substantially from the Licensed Work, or
-  incorporation into a product or service that is sold.
+- **"Community Revenue"** means all money and the fair market value of
+  non-cash consideration received in connection with any Community
+  Deployment, including access fees, subscriptions, donations, sponsorship,
+  advertising, sales of items or currency, paid support, hosting, consulting,
+  and affiliate revenue. Refunds, chargebacks, and sales or use taxes
+  collected for a government are excluded.
 
-- **"Community Deployment"** means a deployment operated by an individual,
-  volunteer group, or community organization for noncommercial community use.
+- **"Community Deployment"** means a deployment operated primarily to sustain
+  a player community rather than to provide a product, platform, or service
+  for the benefit of a Large Organization.
 
 - **"Complete Community Source"** means the complete source code for the exact
   version in production, including all modifications to the Licensed Work and
@@ -56,6 +63,23 @@ For this Additional Use Grant:
   for another person to reproduce that version. It does not include
   credentials, personal data, private keys, or third-party software that the
   operator is not authorized to redistribute.
+
+- **"Eligible Community Steward"** means an individual, volunteer group, or
+  small organization that is not a Large Organization and is not controlled
+  by or operating primarily for the benefit of a Large Organization.
+
+- **"Large Organization"** means any publicly traded entity or an organization
+  that, together with entities it controls, is controlled by, or is under
+  common control with, had more than USD 1,000,000 in gross revenue during its
+  most recently completed fiscal year or averaged more than 10 full-time-
+  equivalent workers, including employees and individual contractors, during
+  that year.
+
+- **"Control"** means direct or indirect ownership of more than 50 percent of
+  an entity, the power to direct its management or policies, or practical
+  operation for the primary benefit of that entity. Deployments under common
+  Control are aggregated when applying the limits of this Additional Use
+  Grant.
 
 **Change Date:** 2030-07-24
 
