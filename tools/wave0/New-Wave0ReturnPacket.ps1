@@ -22,6 +22,7 @@ param(
     [string]$HumanTestRegisterReceipt = '',
     [string]$ExpectedResultGridReceipt = '',
     [string]$ExpectedResultGridFixtureReceipt = '',
+    [string]$BoundedCommandContractReceipt = '',
     [string]$StopRuleReceipt = '',
     [string]$StopRuleFixtureReceipt = '',
     [string]$BundleSmokeReceipt = '',
@@ -190,6 +191,12 @@ if (-not $ExpectedResultGridFixtureReceipt) {
         [string]$Body.verdict -eq 'wave0_expected_result_grid_fixture_checks_passed'
     }
 }
+if (-not $BoundedCommandContractReceipt) {
+    $BoundedCommandContractReceipt = Find-LatestReceipt 'bounded command contract receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_bounded_command_contracts_passed'
+    }
+}
 if (-not $StopRuleReceipt) {
     $StopRuleReceipt = Find-LatestReceipt 'stop-rule receipt' {
         param($Body)
@@ -221,6 +228,7 @@ $visualObservationFixtures = Read-Receipt $VisualObservationFixtureReceipt
 $humanTestRegister = Read-Receipt $HumanTestRegisterReceipt
 $expectedResultGrid = Read-Receipt $ExpectedResultGridReceipt
 $expectedResultGridFixtures = Read-Receipt $ExpectedResultGridFixtureReceipt
+$boundedCommandContracts = Read-Receipt $BoundedCommandContractReceipt
 $stopRule = Read-Receipt $StopRuleReceipt
 $stopRuleFixtures = Read-Receipt $StopRuleFixtureReceipt
 $bundleSmoke = Read-Receipt $BundleSmokeReceipt
@@ -298,6 +306,12 @@ $checks += Check-State `
     -Detail ($(if ($expectedResultGridFixtures.present) { "verdict=$($expectedResultGridFixtures.body.verdict) command_count=$($expectedResultGridFixtures.body.command_count)" } else { 'missing expected-result grid fixture summary' })) `
     -ReceiptPath $expectedResultGridFixtures.path `
     -ReceiptSha256 $expectedResultGridFixtures.sha256
+$checks += Check-State `
+    -Name 'bounded_command_contract_gate' `
+    -Ok ($boundedCommandContracts.present -and [string]$boundedCommandContracts.body.verdict -eq 'wave0_bounded_command_contracts_passed') `
+    -Detail ($(if ($boundedCommandContracts.present) { "verdict=$($boundedCommandContracts.body.verdict) checks=$(@($boundedCommandContracts.body.checks).Count)" } else { 'missing bounded-command contract receipt' })) `
+    -ReceiptPath $boundedCommandContracts.path `
+    -ReceiptSha256 $boundedCommandContracts.sha256
 $checks += Check-State `
     -Name 'wave0_stop_rule_gate' `
     -Ok ($stopRule.present -and [string]$stopRule.body.verdict -in @('wave0_stop_rule_holds_no_exit_artifact', 'wave0_exit_artifact_present') -and [bool]$stopRule.body.strategy_names_rule) `

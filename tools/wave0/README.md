@@ -34,6 +34,10 @@ tools\wave0\New-Wave0ExpectedResultGrid.ps1 `
 tools\wave0\Test-Wave0ExpectedResultGridFixtures.ps1 `
   -OutputDirectory captures\wave0-expected-result-grid-fixtures
 
+# Prove live movement scripts use bounded waits
+tools\wave0\Test-Wave0BoundedCommandContracts.ps1 `
+  -OutputJson captures\wave0-bounded-command-contracts.json
+
 # Attach Derek's visual observation without editing the machine receipt
 tools\wave0\Add-Wave0VisualObservation.ps1 `
   -ReceiptJson captures\wave0-live-gate\result.json `
@@ -228,3 +232,7 @@ shows the visual sidecar path is tested before a live run starts.
 with the full live command chain, including annotation and named-defect fallback.
 `New-Wave0ReturnPacket.ps1` includes the grid fixture receipt in the non-human
 evidence table so command-chain drift is visible before the live window.
+`Test-Wave0BoundedCommandContracts.ps1` checks that live movement capture waits
+have explicit timeouts and record timeout evidence in receipts.
+`New-Wave0ReturnPacket.ps1` includes the bounded-command receipt so the handoff
+shows the no-unbounded-wait contract before the live movement window.

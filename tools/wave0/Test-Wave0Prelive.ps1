@@ -15,6 +15,7 @@ Collects the evidence needed before asking for another two-client Valheim join:
 - Expected-result grid coverage for the live observation.
 - Expected-result grid fixture coverage.
 - Full strategy status fixture coverage.
+- Bounded command timeout contract coverage.
 - Wave 0 stop-rule coverage.
 - Wave 0 stop-rule fixture coverage.
 - Visual-observation sidecar immutability coverage.
@@ -87,6 +88,7 @@ $expectedGridJson = Join-Path $outRoot 'expected-result-grid.json'
 $expectedGridMarkdown = Join-Path $outRoot 'expected-result-grid.md'
 $expectedGridFixturesRoot = Join-Path $outRoot 'expected-result-grid-fixtures'
 $strategyStatusFixturesRoot = Join-Path $outRoot 'strategy-status-fixtures'
+$boundedCommandContractsPath = Join-Path $outRoot 'bounded-command-contracts.json'
 $stopRulePath = Join-Path $outRoot 'stop-rule.json'
 $stopRuleFixturesRoot = Join-Path $outRoot 'stop-rule-fixtures'
 $noClientRoot = Join-Path $outRoot 'no-client-live-gate'
@@ -152,6 +154,11 @@ $steps += Invoke-Step `
     -Arguments @('-OutputDirectory', $strategyStatusFixturesRoot)
 
 $steps += Invoke-Step `
+    -Name 'bounded-command-contracts' `
+    -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0BoundedCommandContracts.ps1') `
+    -Arguments @('-OutputJson', $boundedCommandContractsPath)
+
+$steps += Invoke-Step `
     -Name 'stop-rule' `
     -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0StopRule.ps1') `
     -Arguments @('-OutputJson', $stopRulePath)
@@ -199,6 +206,7 @@ $steps += Invoke-Step `
         '-HumanTestRegisterReceipt', $humanRegisterPath,
         '-ExpectedResultGridReceipt', $expectedGridJson,
         '-ExpectedResultGridFixtureReceipt', (Join-Path $expectedGridFixturesRoot 'summary.json'),
+        '-BoundedCommandContractReceipt', $boundedCommandContractsPath,
         '-StopRuleReceipt', $stopRulePath,
         '-StopRuleFixtureReceipt', (Join-Path $stopRuleFixturesRoot 'summary.json'),
         '-BundleSmokeReceipt', (Join-Path $bundleSmokeRoot 'result.json'),
@@ -217,6 +225,7 @@ $humanRegister = Read-JsonOrNull $humanRegisterPath
 $expectedGrid = Read-JsonOrNull $expectedGridJson
 $expectedGridFixtures = Read-JsonOrNull (Join-Path $expectedGridFixturesRoot 'summary.json')
 $strategyStatusFixtures = Read-JsonOrNull (Join-Path $strategyStatusFixturesRoot 'summary.json')
+$boundedCommandContracts = Read-JsonOrNull $boundedCommandContractsPath
 $stopRule = Read-JsonOrNull $stopRulePath
 $stopRuleFixtures = Read-JsonOrNull (Join-Path $stopRuleFixturesRoot 'summary.json')
 $noClient = Read-JsonOrNull (Join-Path $noClientRoot 'result.json')
@@ -238,6 +247,7 @@ $verdict =
     elseif (-not $expectedGrid -or [string]$expectedGrid.verdict -ne 'wave0_expected_result_grid_ready') { 'prelive_expected_result_grid_not_ready' }
     elseif (-not $expectedGridFixtures -or [string]$expectedGridFixtures.verdict -ne 'wave0_expected_result_grid_fixture_checks_passed') { 'prelive_expected_result_grid_fixtures_not_ready' }
     elseif (-not $strategyStatusFixtures -or [string]$strategyStatusFixtures.verdict -ne 'full_roadmap_strategy_status_fixture_checks_passed') { 'prelive_strategy_status_fixtures_not_ready' }
+    elseif (-not $boundedCommandContracts -or [string]$boundedCommandContracts.verdict -ne 'wave0_bounded_command_contracts_passed') { 'prelive_bounded_command_contracts_not_ready' }
     elseif (-not $stopRule -or [string]$stopRule.verdict -notin @('wave0_stop_rule_holds_no_exit_artifact', 'wave0_exit_artifact_present')) { 'prelive_stop_rule_not_ready' }
     elseif (-not $stopRuleFixtures -or [string]$stopRuleFixtures.verdict -ne 'wave0_stop_rule_fixture_checks_passed') { 'prelive_stop_rule_fixtures_not_ready' }
     elseif (-not $noClient -or [string]$noClient.verdict -ne 'wait_for_two_real_clients') { 'prelive_no_client_gate_unexpected' }
@@ -267,6 +277,7 @@ $receipt = [ordered]@{
         expected_result_grid_markdown = $expectedGridMarkdown
         expected_result_grid_fixtures = Join-Path $expectedGridFixturesRoot 'summary.json'
         strategy_status_fixtures = Join-Path $strategyStatusFixturesRoot 'summary.json'
+        bounded_command_contracts = $boundedCommandContractsPath
         stop_rule = $stopRulePath
         stop_rule_fixtures = Join-Path $stopRuleFixturesRoot 'summary.json'
         no_client_live_gate = Join-Path $noClientRoot 'result.json'

@@ -400,13 +400,19 @@ $receipt.motion_command = [ordered]@{
     receipt = Get-JsonFile $motionPath
 }
 
-Wait-Job -Job $captureJob | Out-Null
+$captureTimeoutSeconds = [Math]::Max(60, $CaptureDurationSeconds + $WarmupSeconds + 60)
+$captureCompleted = Wait-Job -Job $captureJob -Timeout $captureTimeoutSeconds
 $captureStdout = ''
 $captureError = $null
+if (-not $captureCompleted) {
+    Stop-Job -Job $captureJob -ErrorAction SilentlyContinue
+    $captureError = "capture command timed out after ${captureTimeoutSeconds}s"
+} else {
 try {
     $captureStdout = (Receive-Job $captureJob -ErrorAction Stop | Out-String)
 } catch {
     $captureError = $_.Exception.Message
+}
 }
 Remove-Job $captureJob -Force -ErrorAction SilentlyContinue
 
@@ -414,6 +420,7 @@ $receipt.capture = [ordered]@{
     receipt_path = $capturePath
     stdout = $captureStdout
     error = $captureError
+    timeout_seconds = $captureTimeoutSeconds
     receipt = Get-JsonFile $capturePath
 }
 
