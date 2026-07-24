@@ -81,6 +81,10 @@ tools\wave0\Test-FullRoadmapStrategyStatusFixtures.ps1 `
 
 # Check whether Wave 0 still blocks M1/M2 expansion
 tools\wave0\Test-Wave0StopRule.ps1 -OutputJson captures\wave0-stop-rule.json
+
+# Fixture-test every stop-rule branch
+tools\wave0\Test-Wave0StopRuleFixtures.ps1 `
+  -OutputDirectory captures\wave0-stop-rule-fixtures
 ```
 
 Run order before asking for a live movement course:
@@ -203,3 +207,6 @@ not fixture directories. Until `captures\wave0-live-seal\visual-seal.json`
 contains `wave0_visual_evidence_sealed` or `captures\wave0-defects\...\packet.json`
 contains a retained named defect, the correct result is
 `wave0_stop_rule_holds_no_exit_artifact`.
+
+`Test-Wave0StopRuleFixtures.ps1` proves the stop-rule guard's four branches:
+still blocked, sealed visual exit, named defect exit, and missing strategy rule.
