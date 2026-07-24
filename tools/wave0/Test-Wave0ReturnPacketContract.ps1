@@ -60,6 +60,7 @@ $requiredChecks = @(
 $requiredMarkdown = @(
     '## Live prerequisites',
     '## Non-human evidence',
+    '## Remaining human tests',
     '## Run when back',
     '## Stop conditions',
     '## Commands',
@@ -70,6 +71,7 @@ $requiredMarkdown = @(
     'New-Wave0DefectPacket.ps1',
     'The original machine receipts remain immutable.'
 )
+$requiredHumanTests = @('H0-1', 'H0-2', 'H0-3', 'H0-4')
 $forbiddenPublicText = @(
     'access_key',
     'steam_id',
@@ -100,6 +102,16 @@ foreach ($text in $requiredMarkdown) {
         -Name ("markdown_contains_" + (($text -replace '[^A-Za-z0-9]+', '_').Trim('_').ToLowerInvariant())) `
         -Ok ($markdown -match [regex]::Escape($text)) `
         -Detail "required handoff text: $text"
+}
+foreach ($id in $requiredHumanTests) {
+    $packetHasId = $false
+    foreach ($row in @($packet.remaining_human_tests)) {
+        if ([string]$row.id -eq $id) { $packetHasId = $true; break }
+    }
+    $checks += New-Check `
+        -Name ("remaining_human_test_present_" + ($id -replace '[^A-Za-z0-9]+', '_')) `
+        -Ok ($packetHasId -and $markdown -match [regex]::Escape("| $id |")) `
+        -Detail "required current human test appears in JSON and Markdown: $id"
 }
 foreach ($text in $forbiddenPublicText) {
     $checks += New-Check `

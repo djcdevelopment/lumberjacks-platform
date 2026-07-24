@@ -117,6 +117,26 @@ function MdEscape {
     return $Value.Replace('|', '\|')
 }
 
+function Read-CurrentHumanTestRows {
+    $registerPath = Resolve-UnderRepo 'plans/remaining-human-tests.md'
+    if (-not (Test-Path -LiteralPath $registerPath -PathType Leaf)) { return @() }
+
+    $rows = @()
+    foreach ($line in Get-Content -LiteralPath $registerPath) {
+        if ($line -notmatch '^\|\s*H0-\d+\s*\|') { continue }
+        $cells = @($line.Trim().Trim('|').Split('|') | ForEach-Object { $_.Trim() })
+        if ($cells.Count -lt 5) { continue }
+        $rows += [ordered]@{
+            id = $cells[0]
+            scope = $cells[1]
+            human_action = $cells[2]
+            agent_owned_prep = $cells[3]
+            evidence_that_closes_it = $cells[4]
+        }
+    }
+    return @($rows)
+}
+
 if (-not $SyntheticReceipt) {
     $SyntheticReceipt = Find-LatestReceipt 'synthetic receipt' {
         param($Body)
@@ -200,7 +220,9 @@ if (-not $BoundedCommandContractReceipt) {
 if (-not $StopRuleReceipt) {
     $StopRuleReceipt = Find-LatestReceipt 'stop-rule receipt' {
         param($Body)
-        [string]$Body.verdict -in @('wave0_stop_rule_holds_no_exit_artifact', 'wave0_exit_artifact_present', 'wave0_stop_rule_missing_from_strategy')
+        [string]$Body.verdict -in @('wave0_stop_rule_holds_no_exit_artifact', 'wave0_exit_artifact_present') -and
+            [bool]$Body.strategy_names_rule -and
+            ([string]$Body.strategy_path).EndsWith('plans\full-roadmap-working-strategy.md')
     }
 }
 if (-not $StopRuleFixtureReceipt) {
@@ -232,6 +254,7 @@ $boundedCommandContracts = Read-Receipt $BoundedCommandContractReceipt
 $stopRule = Read-Receipt $StopRuleReceipt
 $stopRuleFixtures = Read-Receipt $StopRuleFixtureReceipt
 $bundleSmoke = Read-Receipt $BundleSmokeReceipt
+$currentHumanTests = Read-CurrentHumanTestRows
 
 $checks = @()
 $checks += Check-State `
@@ -402,6 +425,7 @@ $packet = [ordered]@{
             evidence = 'Only visual follow/quality/role-reversal judgment is human-owned; all deployment, role switch, movement, capture, annotation, sealing, and defect packet generation are agent-owned.'
         }
     )
+    remaining_human_tests = @($currentHumanTests)
     run_when_back = @(
         [ordered]@{
             step = 1
@@ -483,6 +507,14 @@ $markdownLines += '| Check | OK | Detail | Receipt SHA-256 |'
 $markdownLines += '|---|---:|---|---|'
 foreach ($check in $checks) {
     $markdownLines += "| $(MdEscape $check.name) | $($check.ok) | $(MdEscape $check.detail) | $($check.receipt_sha256) |"
+}
+$markdownLines += ''
+$markdownLines += '## Remaining human tests'
+$markdownLines += ''
+$markdownLines += '| ID | Scope | Human action | Agent-owned prep | Evidence that closes it |'
+$markdownLines += '|---|---|---|---|---|'
+foreach ($test in $packet.remaining_human_tests) {
+    $markdownLines += "| $(MdEscape $test.id) | $(MdEscape $test.scope) | $(MdEscape $test.human_action) | $(MdEscape $test.agent_owned_prep) | $(MdEscape $test.evidence_that_closes_it) |"
 }
 $markdownLines += ''
 $markdownLines += '## Run when back'
