@@ -25,6 +25,18 @@ if ($LASTEXITCODE -ne 0) { throw 'seal fixtures did not prepare defect inputs' }
 $sealRoot = Join-Path $outputRoot 'seal-fixtures'
 $packetJson = Join-Path $outputRoot 'packet.json'
 $packetMd = Join-Path $outputRoot 'packet.md'
+$suggestionJson = Join-Path $outputRoot 'suggestion.json'
+$suggestionMd = Join-Path $outputRoot 'suggestion.md'
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot 'tools\wave0\Suggest-Wave0DefectPacket.ps1') `
+    -FirstReceiptJson (Join-Path $sealRoot 'first-omen-apply.receipt.json') `
+    -ReversalReceiptJson (Join-Path $sealRoot 'bad-reversal-omen-apply.receipt.json') `
+    -FirstAnnotatedJson (Join-Path $sealRoot 'first-omen-apply.receipt.annotated.json') `
+    -ReversalAnnotatedJson (Join-Path $sealRoot 'bad-reversal-omen-apply.receipt.annotated.json') `
+    -SealJson (Join-Path $sealRoot 'bad-seal.json') `
+    -OutputJson $suggestionJson `
+    -OutputMarkdown $suggestionMd | Out-Host
+if ($LASTEXITCODE -ne 0) { throw 'defect suggestion generator failed' }
+
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot 'tools\wave0\New-Wave0DefectPacket.ps1') `
     -DefectId 'wave0-fixture-role-not-reversed' `
     -DefectKind role_reversal_failed `
@@ -39,6 +51,10 @@ $packetMd = Join-Path $outputRoot 'packet.md'
 if ($LASTEXITCODE -ne 0) { throw 'defect packet generator failed' }
 
 $packet = Get-Content -LiteralPath $packetJson -Raw | ConvertFrom-Json
+$suggestion = Get-Content -LiteralPath $suggestionJson -Raw | ConvertFrom-Json
+if ($suggestion.verdict -ne 'wave0_defect_packet_suggested') { throw "unexpected suggestion verdict: $($suggestion.verdict)" }
+if ($suggestion.defect_kind -ne 'role_reversal_failed') { throw "unexpected suggestion kind: $($suggestion.defect_kind)" }
+if ($suggestion.command -notmatch 'New-Wave0DefectPacket.ps1') { throw 'suggestion did not include defect packet command' }
 if ($packet.verdict -ne 'wave0_named_defect_packet_retained') { throw "unexpected packet verdict: $($packet.verdict)" }
 if ($packet.evidence_verdict -ne 'wave0_visual_evidence_not_sealed') { throw "unexpected evidence verdict: $($packet.evidence_verdict)" }
 if (@($packet.artifacts | Where-Object { $_.present }).Count -lt 5) { throw 'expected all five fixture artifacts to be indexed' }
@@ -49,6 +65,8 @@ $summary = [ordered]@{
     generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
     verdict = 'wave0_defect_packet_fixture_checks_passed'
     output_directory = $outputRoot
+    suggestion_json = $suggestionJson
+    suggestion_markdown = $suggestionMd
     packet_json = $packetJson
     packet_markdown = $packetMd
 }
