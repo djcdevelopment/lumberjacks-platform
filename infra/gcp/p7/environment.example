@@ -46,6 +46,20 @@ VALHEIM_HANDSHAKE_SEAT_CAPACITY=0
 # loss (producer still files under `legacy`, consumer reads its partition).
 VALHEIM_QUEUE_PRODUCER_EMITS_RECIPIENTS=false
 
+# --- Valheim world backups (SDLC prod-vs-dev split) ---
+# The valheim-server container's built-in world backup. It defaults OFF in
+# docker-compose.yml because this is a DEV box: the world is an external import
+# that is already backed up, so hourly zips only bloat the disk and the daily
+# GCP snapshot chain. Leave these unset (or =false) for a lean dev loop.
+#
+# For a PRODUCTION deployment, turn it on with sane bounds:
+#   VALHEIM_BACKUPS=true
+#   VALHEIM_BACKUPS_INTERVAL=21600   # seconds — every 6h (not the image's hourly)
+#   VALHEIM_BACKUPS_IF_IDLE=false    # never re-zip a world that didn't change
+#   VALHEIM_BACKUPS_MAX_AGE=3        # days of retention
+#   VALHEIM_BACKUPS_MAX_COUNT=12     # hard cap on kept zips
+VALHEIM_BACKUPS=false
+
 # --- Secrets — CHANGE_ME here always; real values live only on the VM ---
 VALHEIM_TELEMETRY_KEY=CHANGE_ME
 LUMBERJACKS_CLIENT_ACCESS_KEY=CHANGE_ME

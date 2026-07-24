@@ -218,7 +218,19 @@ services:
       SERVER_PORT: "2456"
       CROSSPLAY: "false"
       BEPINEX: "true"
-      BACKUPS: "true"
+      # World backups are a PRODUCTION data-safety feature, parameterized so dev
+      # and prod pick their posture from the environment file. Dev default is OFF:
+      # the world is an external import (already backed up elsewhere), so hourly
+      # 580 MB zips of an idle 1.3 GB world only balloon the disk and the daily GCP
+      # snapshot chain for nothing. Prod sets VALHEIM_BACKUPS=true with a sane
+      # interval/retention (see environment.example). IF_IDLE=false so an unattended
+      # world is never re-zipped when nothing changed. Knobs verified against the
+      # community-valheim-tools/valheim-server image.
+      BACKUPS: "${VALHEIM_BACKUPS:-false}"
+      BACKUPS_INTERVAL: "${VALHEIM_BACKUPS_INTERVAL:-43200}"
+      BACKUPS_IF_IDLE: "${VALHEIM_BACKUPS_IF_IDLE:-false}"
+      BACKUPS_MAX_AGE: "${VALHEIM_BACKUPS_MAX_AGE:-2}"
+      BACKUPS_MAX_COUNT: "${VALHEIM_BACKUPS_MAX_COUNT:-6}"
       UPDATE_IF_IDLE: "true"
       RESTART_IF_IDLE: "false"
       PUID: "1000"
