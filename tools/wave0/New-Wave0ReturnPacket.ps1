@@ -23,6 +23,7 @@ param(
     [string]$ExpectedResultGridReceipt = '',
     [string]$ExpectedResultGridFixtureReceipt = '',
     [string]$BoundedCommandContractReceipt = '',
+    [string]$CompanionRollbackContractReceipt = '',
     [string]$StopRuleReceipt = '',
     [string]$StopRuleFixtureReceipt = '',
     [string]$BundleSmokeReceipt = '',
@@ -217,6 +218,12 @@ if (-not $BoundedCommandContractReceipt) {
         [string]$Body.verdict -eq 'wave0_bounded_command_contracts_passed'
     }
 }
+if (-not $CompanionRollbackContractReceipt) {
+    $CompanionRollbackContractReceipt = Find-LatestReceipt 'Companion rollback contract receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'companion_rollback_contract_passed'
+    }
+}
 if (-not $StopRuleReceipt) {
     $StopRuleReceipt = Find-LatestReceipt 'stop-rule receipt' {
         param($Body)
@@ -251,6 +258,7 @@ $humanTestRegister = Read-Receipt $HumanTestRegisterReceipt
 $expectedResultGrid = Read-Receipt $ExpectedResultGridReceipt
 $expectedResultGridFixtures = Read-Receipt $ExpectedResultGridFixtureReceipt
 $boundedCommandContracts = Read-Receipt $BoundedCommandContractReceipt
+$companionRollbackContract = Read-Receipt $CompanionRollbackContractReceipt
 $stopRule = Read-Receipt $StopRuleReceipt
 $stopRuleFixtures = Read-Receipt $StopRuleFixtureReceipt
 $bundleSmoke = Read-Receipt $BundleSmokeReceipt
@@ -335,6 +343,12 @@ $checks += Check-State `
     -Detail ($(if ($boundedCommandContracts.present) { "verdict=$($boundedCommandContracts.body.verdict) checks=$(@($boundedCommandContracts.body.checks).Count)" } else { 'missing bounded-command contract receipt' })) `
     -ReceiptPath $boundedCommandContracts.path `
     -ReceiptSha256 $boundedCommandContracts.sha256
+$checks += Check-State `
+    -Name 'companion_rollback_contract_gate' `
+    -Ok ($companionRollbackContract.present -and [string]$companionRollbackContract.body.verdict -eq 'companion_rollback_contract_passed') `
+    -Detail ($(if ($companionRollbackContract.present) { "verdict=$($companionRollbackContract.body.verdict) checks=$(@($companionRollbackContract.body.checks).Count)" } else { 'missing Companion rollback contract receipt' })) `
+    -ReceiptPath $companionRollbackContract.path `
+    -ReceiptSha256 $companionRollbackContract.sha256
 $checks += Check-State `
     -Name 'wave0_stop_rule_gate' `
     -Ok ($stopRule.present -and [string]$stopRule.body.verdict -in @('wave0_stop_rule_holds_no_exit_artifact', 'wave0_exit_artifact_present') -and [bool]$stopRule.body.strategy_names_rule) `

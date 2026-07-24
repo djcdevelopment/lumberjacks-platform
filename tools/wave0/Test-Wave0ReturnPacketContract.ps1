@@ -53,6 +53,7 @@ $requiredChecks = @(
     'expected_result_grid_gate',
     'expected_result_grid_fixture_gate',
     'bounded_command_contract_gate',
+    'companion_rollback_contract_gate',
     'wave0_stop_rule_gate',
     'wave0_stop_rule_fixture_gate',
     'two_machine_bundle_smoke'

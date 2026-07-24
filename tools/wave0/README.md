@@ -38,6 +38,10 @@ tools\wave0\Test-Wave0ExpectedResultGridFixtures.ps1 `
 tools\wave0\Test-Wave0BoundedCommandContracts.ps1 `
   -OutputJson captures\wave0-bounded-command-contracts.json
 
+# Prove the Companion install/rollback safety guards without mutating files
+tools\wave0\Test-CompanionRollbackContract.ps1 `
+  -OutputJson captures\companion-rollback-contract.json
+
 # Attach Derek's visual observation without editing the machine receipt
 tools\wave0\Add-Wave0VisualObservation.ps1 `
   -ReceiptJson captures\wave0-live-gate\result.json `
@@ -240,6 +244,11 @@ with the full live command chain, including annotation and named-defect fallback
 evidence table so command-chain drift is visible before the live window.
 `Test-Wave0BoundedCommandContracts.ps1` checks that live movement capture waits
 have explicit timeouts and record timeout evidence in receipts.
+`Test-CompanionRollbackContract.ps1` checks that the Companion install/rollback
+path still requires game-closed confirmation, preserves the local config, keeps
+backup metadata, refuses missing backups, and only enables rollback in the UI
+after a prior install plus green readiness checks. It does not call the live
+rollback endpoint.
 `New-Wave0ReturnPacket.ps1` includes the bounded-command receipt so the handoff
 shows the no-unbounded-wait contract before the live movement window.
 `Test-Wave0ReturnPacketContract.ps1` validates the generated handoff packet
