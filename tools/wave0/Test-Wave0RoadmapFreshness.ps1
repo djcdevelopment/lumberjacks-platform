@@ -22,10 +22,11 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $roadmapJsonPath = Join-Path $repoRoot 'Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json'
 $roadmapHtmlPath = Join-Path $repoRoot 'Lumberjacks/src/Game.Gateway/Community/roadmap.html'
 $gatewayRoot = $GatewayUrl.TrimEnd('/')
+$httpTimeoutSeconds = 15
 
 function Get-Json {
     param([string]$Url)
-    Invoke-RestMethod -Uri $Url -Method Get -Headers @{ 'Cache-Control' = 'no-cache' }
+    Invoke-RestMethod -Uri $Url -Method Get -Headers @{ 'Cache-Control' = 'no-cache' } -TimeoutSec $httpTimeoutSeconds
 }
 
 function New-Check {
@@ -48,7 +49,7 @@ $html = Get-Content -LiteralPath $roadmapHtmlPath -Raw
 $modManifest = Get-Json "$gatewayRoot/api/v0/valheim/modpack/manifest"
 $deployment = Get-Json "$gatewayRoot/api/v0/telemetry/deployment"
 $bootstrap = Get-Json "$gatewayRoot/api/v0/companion/bootstrap/manifest"
-$publicRoadmap = if ($SkipPublicRoadmap) { $null } else { (Invoke-WebRequest -Uri "$gatewayRoot/roadmap" -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' }).Content }
+$publicRoadmap = if ($SkipPublicRoadmap) { $null } else { (Invoke-WebRequest -Uri "$gatewayRoot/roadmap" -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -TimeoutSec $httpTimeoutSeconds).Content }
 
 $expectedRelease = [string]$modManifest.mod_release
 $expectedPackageSha = [string]$modManifest.package.sha256

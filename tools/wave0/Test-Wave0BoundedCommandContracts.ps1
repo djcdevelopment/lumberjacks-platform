@@ -28,9 +28,15 @@ function New-Check {
 }
 
 $capture = Read-Text 'tools\i5\Start-TwoClientCapture.ps1'
+$startCompanion = Read-Text 'tools\i5\Start-I5Companion.ps1'
+$installI5 = Read-Text 'tools\i5\Install-I5LatestModpack.ps1'
 $motion = Read-Text 'tools\i5\Start-TwoClientMotionTest.ps1'
 $roles = Read-Text 'tools\i5\Set-TwoClientApplyRoles.ps1'
+$readiness = Read-Text 'tools\i5\Test-Wave0Readiness.ps1'
+$alignment = Read-Text 'tools\i5\Test-AlphaReleaseAlignment.ps1'
 $live = Read-Text 'tools\wave0\Start-Wave0LiveGate.ps1'
+$wait = Read-Text 'tools\wave0\Wait-Wave0LiveGate.ps1'
+$freshness = Read-Text 'tools\wave0\Test-Wave0RoadmapFreshness.ps1'
 $returnPacket = Read-Text 'tools\wave0\New-Wave0ReturnPacket.ps1'
 
 $checks = @()
@@ -42,6 +48,10 @@ $checks += New-Check `
     -Name 'two_client_capture_receipt_records_timeout' `
     -Ok ($capture -match 'timeout_seconds\s*=\s*\$captureTimeoutSeconds') `
     -Detail 'Start-TwoClientCapture.ps1 result must record timeout_seconds.'
+$checks += New-Check `
+    -Name 'two_client_capture_http_calls_have_timeout' `
+    -Ok (([regex]::Matches($capture, '-TimeoutSec').Count -ge 4) -and $capture -match 'captureTimeoutSeconds') `
+    -Detail 'Start-TwoClientCapture.ps1 must bound Companion capture posts and bundle downloads.'
 $checks += New-Check `
     -Name 'two_client_motion_http_calls_have_timeout' `
     -Ok (([regex]::Matches($motion, '-TimeoutSec\s+\$httpTimeoutSeconds').Count -ge 2) -and $motion -match '\$httpTimeoutSeconds\s*=\s*\[Math\]::Max') `
@@ -66,6 +76,34 @@ $checks += New-Check `
     -Name 'live_gate_capture_receipt_records_timeout' `
     -Ok ($live -match 'timeout_seconds\s*=\s*\$captureTimeoutSeconds') `
     -Detail 'Start-Wave0LiveGate.ps1 capture block must record timeout_seconds.'
+$checks += New-Check `
+    -Name 'live_gate_peer_poll_has_timeout' `
+    -Ok ($live -match 'Invoke-RestMethod[\s\S]*-TimeoutSec\s+\$httpTimeoutSeconds' -and $live -match 'http_timeout_seconds\s*=\s*\$httpTimeoutSeconds') `
+    -Detail 'Start-Wave0LiveGate.ps1 must bound P7 peer polling and record the HTTP timeout.'
+$checks += New-Check `
+    -Name 'auto_wait_peer_poll_has_timeout' `
+    -Ok ($wait -match 'Invoke-RestMethod[\s\S]*-TimeoutSec\s+\$httpTimeoutSeconds' -and $wait -match 'http_timeout_seconds\s*=\s*\$httpTimeoutSeconds') `
+    -Detail 'Wait-Wave0LiveGate.ps1 must bound P7 peer polling and record the HTTP timeout.'
+$checks += New-Check `
+    -Name 'readiness_http_calls_have_timeout' `
+    -Ok (([regex]::Matches($readiness, '-TimeoutSec\s+\$httpTimeoutSeconds').Count -ge 2) -and $readiness -match '\$httpTimeoutSeconds\s*=\s*15') `
+    -Detail 'Test-Wave0Readiness.ps1 must bound P7, OMEN, and i5 Companion reads.'
+$checks += New-Check `
+    -Name 'roadmap_freshness_http_calls_have_timeout' `
+    -Ok (([regex]::Matches($freshness, '-TimeoutSec\s+\$httpTimeoutSeconds').Count -ge 2) -and $freshness -match '\$httpTimeoutSeconds\s*=\s*15') `
+    -Detail 'Test-Wave0RoadmapFreshness.ps1 must bound public manifest and roadmap reads.'
+$checks += New-Check `
+    -Name 'alpha_release_alignment_http_calls_have_timeout' `
+    -Ok (([regex]::Matches($alignment, '-TimeoutSec\s+\$httpTimeoutSeconds').Count -ge 2) -and $alignment -match '\$httpTimeoutSeconds\s*=\s*15') `
+    -Detail 'Test-AlphaReleaseAlignment.ps1 must bound Gateway, OMEN, and i5 Companion reads.'
+$checks += New-Check `
+    -Name 'i5_companion_start_http_calls_have_timeout' `
+    -Ok (([regex]::Matches($startCompanion, 'Invoke-RestMethod[\s\S]*?-TimeoutSec').Count -ge 2)) `
+    -Detail 'Start-I5Companion.ps1 must bound local health/status reads after container startup.'
+$checks += New-Check `
+    -Name 'i5_modpack_install_http_call_has_timeout' `
+    -Ok ($installI5 -match 'Invoke-RestMethod[\s\S]*-TimeoutSec\s+60') `
+    -Detail 'Install-I5LatestModpack.ps1 must bound the i5 Companion install request.'
 $checks += New-Check `
     -Name 'return_packet_names_timeout_contract' `
     -Ok ($returnPacket -match 'timeout' -and $returnPacket -match 'bounded') `

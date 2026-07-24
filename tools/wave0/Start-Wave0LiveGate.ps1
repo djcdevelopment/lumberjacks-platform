@@ -58,6 +58,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+$httpTimeoutSeconds = 15
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')
@@ -272,7 +273,7 @@ $valheim = if ($MockValheimTelemetryJson) {
     if (-not $mock) { throw "mock Valheim telemetry not found or invalid: $mockPath" }
     $mock
 } else {
-    Invoke-RestMethod -Uri "$gatewayRoot/api/v0/telemetry/valheim" -Method Get -Headers @{ 'Cache-Control' = 'no-cache' }
+    Invoke-RestMethod -Uri "$gatewayRoot/api/v0/telemetry/valheim" -Method Get -Headers @{ 'Cache-Control' = 'no-cache' } -TimeoutSec $httpTimeoutSeconds
 }
 $players = @($valheim.heartbeat.players)
 $peerCount = [int]$valheim.heartbeat.peer_count
@@ -281,6 +282,7 @@ $receipt.p7_peer_check = [ordered]@{
     server_state = [string]$valheim.heartbeat.server_state
     peer_count = $peerCount
     players = $players
+    http_timeout_seconds = $httpTimeoutSeconds
 }
 
 if ([bool]$valheim.stale -or [string]$valheim.heartbeat.server_state -ne 'ready') {

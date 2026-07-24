@@ -66,6 +66,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+$httpTimeoutSeconds = 15
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')
@@ -97,7 +98,7 @@ function Get-ValheimTelemetry {
         if (-not (Test-Path -LiteralPath $mockPath)) { throw "mock Valheim telemetry not found: $mockPath" }
         return Get-Content -LiteralPath $mockPath -Raw | ConvertFrom-Json
     }
-    return Invoke-RestMethod -Uri (($GatewayUrl.TrimEnd('/')) + '/api/v0/telemetry/valheim') -Method Get -Headers @{ 'Cache-Control' = 'no-cache' }
+    return Invoke-RestMethod -Uri (($GatewayUrl.TrimEnd('/')) + '/api/v0/telemetry/valheim') -Method Get -Headers @{ 'Cache-Control' = 'no-cache' } -TimeoutSec $httpTimeoutSeconds
 }
 
 function Get-PeerSnapshot {
@@ -130,6 +131,7 @@ function Write-WaitReceipt {
         min_peers = $MinPeers
         wait_seconds = $WaitSeconds
         poll_seconds = $PollSeconds
+        http_timeout_seconds = $httpTimeoutSeconds
         gateway_url = $GatewayUrl
         samples = $Samples
         delegated_live_gate = $null
