@@ -72,6 +72,32 @@ entrypoint normalizes and chowns user-init scripts. The watcher stages the share
 DLL/config, launches Valheim with `+connect`, and leaves character selection to the
 bounded `[LabAutoJoin]` patch.
 
+## Two-client lab run
+
+The thin coordinator is the preferred entry point once both disposable volumes
+are seeded. It refreshes every selected client, preflights every client, and only
+then starts any of them. A failure in either gate prevents all starts; a failure
+after a partial start stops the clients that were already started.
+
+```powershell
+# Check both clients without starting either one.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimScenario.ps1 -Action preflight -Clients '01,02'
+
+# Refresh both clients and start them only if both gates are green.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimScenario.ps1 -Action start -Clients '01,02' -NoBuild
+
+# After the agent has observed and commanded both clients through MCP:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimScenario.ps1 -Action stop -Clients '01,02'
+
+# Normalize/replay each retained probe after closure.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimScenario.ps1 -Action capture -Clients '01,02'
+```
+
+Each client retains its own `clientNN/lab-preflight.json`; the coordinator writes
+an aggregate receipt under `fieldlab/autonomous/state/multi-*.json`. The coordinator
+does not issue gameplay commands. MCP remains the bounded control plane between
+start and stop.
+
 ## Agent/MCP loop after the client is up
 
 The gateway receives `COMFY_AUTONOMOUS_STATE=/lab/state` and exposes:
