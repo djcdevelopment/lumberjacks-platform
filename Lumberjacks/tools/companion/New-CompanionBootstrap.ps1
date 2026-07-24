@@ -17,6 +17,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $lumberjacksRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$repoRoot = Split-Path -Parent $lumberjacksRoot
 $safeRelease = $ReleaseId -replace '[^A-Za-z0-9._-]', '-'
 if ([string]::IsNullOrWhiteSpace($safeRelease)) { throw 'ReleaseId must contain letters or numbers.' }
 
@@ -42,6 +43,16 @@ try {
         Copy-Item -LiteralPath (Join-Path $lumberjacksRoot "tools\companion\$file") -Destination $bundleTools
     }
     Copy-Item -LiteralPath (Join-Path $lumberjacksRoot 'tools\companion\bootstrap') -Destination $bundleTools -Recurse
+
+    # The Companion Wave 0 handoff points at repo-level operator scripts. Include the
+    # credential-free scripts it names so a downloaded bootstrap is a runnable workbench,
+    # not just a UI with commands that only work from the developer checkout.
+    $bundleRepoTools = Join-Path $bundleRoot 'tools'
+    New-Item -ItemType Directory -Force -Path $bundleRepoTools | Out-Null
+    foreach ($dir in 'wave0', 'i5') {
+        Copy-Item -LiteralPath (Join-Path $repoRoot "tools\$dir") -Destination $bundleRepoTools -Recurse
+    }
+
     $bootstrapRelease = [ordered]@{
         schema_version = 1
         release = $safeRelease
