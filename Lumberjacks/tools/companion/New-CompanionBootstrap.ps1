@@ -18,6 +18,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $lumberjacksRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $repoRoot = Split-Path -Parent $lumberjacksRoot
+$packageVerifier = Join-Path $PSScriptRoot 'Test-CompanionBootstrapPackage.ps1'
 $safeRelease = $ReleaseId -replace '[^A-Za-z0-9._-]', '-'
 if ([string]::IsNullOrWhiteSpace($safeRelease)) { throw 'ReleaseId must contain letters or numbers.' }
 
@@ -62,6 +63,8 @@ try {
 
     if (Test-Path -LiteralPath $packagePath) { Remove-Item -LiteralPath $packagePath -Force }
     Get-ChildItem -LiteralPath $bundleRoot -Force | Compress-Archive -DestinationPath $packagePath -CompressionLevel Optimal
+    if (-not (Test-Path -LiteralPath $packageVerifier)) { throw "Companion bootstrap package verifier not found: $packageVerifier" }
+    & $packageVerifier -PackagePath $packagePath | Out-Host
     $hash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
     $manifest = [ordered]@{
         schema_version = 1
