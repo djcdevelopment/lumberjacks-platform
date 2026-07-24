@@ -54,7 +54,8 @@ exists live and in **baseline** code, but is **not in state** → plan wants to 
 
 ### 4. State-disk resources now stale (from the 2026-07-24 right-size)
 The right-size replaced the disk out-of-band. State still references the **old** disk:
-- `google_compute_disk.state` → `comfy-lumberjacks-p7-state` (150 GB, **detached, pending deletion**).
+- `google_compute_disk.state` → `comfy-lumberjacks-p7-state` (150 GB, **DELETED 2026-07-24** — its
+  auto-snapshots survive via `KEEP_AUTO_SNAPSHOTS`). State still references this now-gone disk.
 - `google_compute_disk_resource_policy_attachment.state_snapshot` → attached to the old disk.
 - The **new** `comfy-lumberjacks-p7-state-v2` (32 GB) is **unmanaged**; its daily-snapshot policy
   attachment was created via `gcloud`, not Terraform.
@@ -81,8 +82,31 @@ terraform import google_compute_disk_resource_policy_attachment.state_snapshot \
    canonical root and retiring the comfy local state.
 4. Update sizing docs (`Lumberjacks/docs/google-cloud-stage1-runbook.md:55`, `README.md`).
 
+## Lessons from the 2026-07-24 attempt (read before starting the reconcile)
+- **The authoritative state is a local file in retired `C:\work\comfy`** (`terraform.tfstate`,
+  serial 31, local backend) — not in baseline. Seed any working root from there (copy the state,
+  never edit the original). First reconcile task should be moving to a **GCS backend** so this can't
+  rot again.
+- **Trust `terraform plan`, not a `.tf` text-diff, to judge drift.** The file diff showed only the
+  UDP firewall; `plan` against live revealed 4 resources in state/live that *neither* code tree
+  defines, plus a VM force-replace. The diff badly understated the gap.
+- **A blanket `apply` is a VM-killer.** The instance force-replaces on `image` (live `noble` vs code
+  `minimal`) + `metadata_startup_script`. Pin both with `lifecycle { ignore_changes = [...] }`
+  **before** the first apply, or the "cleanup" rebuilds the box.
+- **`prevent_destroy` blocks resize-in-place, not state surgery.** `terraform state rm` forgets a
+  resource without destroying it — that's how a replacement disk gets adopted without tripping it.
+- **Reconcile incrementally; verify a no-op plan between every step.** Import one resource, re-plan,
+  repeat. Only migrate the backend once plan is a genuine no-op. Do not batch imports.
+- **GCP mutations are NOT classifier-blocked here** — this session ran `create/attach/detach/snapshot/delete`
+  live with no block. The reconcile's imports/applies can run from this machine.
+- **What worked for the disk (the pattern to reuse when IaC is untrustworthy):** a live rsync cutover
+  to a new disk + out-of-band `gcloud`, keeping Terraform entirely out of the loop. When code/state
+  are drifted, don't route a risky change *through* the drifted IaC — change it directly, then
+  reconcile the record afterward.
+
 ## Restore points (as of the right-size)
-- Old 150 GB disk `comfy-lumberjacks-p7-state` — detached, intact (delete after ~48 h).
-- Snapshot `comfy-p7-state-precutover-20260724` (fresh, pre-cutover).
-- Daily auto-snapshots (7-day, `KEEP_AUTO_SNAPSHOTS`).
+- Old 150 GB disk `comfy-lumberjacks-p7-state` — **deleted 2026-07-24**; its daily auto-snapshots
+  remain (`KEEP_AUTO_SNAPSHOTS`).
+- Snapshot `comfy-p7-state-precutover-20260724` (full pre-cutover image, 67 GiB).
+- Daily auto-snapshots (7-day retention).
 - Untouched `C:\work\comfy\infra\gcp\p7\terraform.tfstate` (+ `.backup`) — the state rollback.
