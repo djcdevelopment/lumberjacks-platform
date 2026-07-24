@@ -71,6 +71,28 @@ function Assert-Equal {
     }
 }
 
+function Assert-ObservationMarkdown {
+    param(
+        [string]$CaseName,
+        $Receipt,
+        [string[]]$RequiredPatterns
+    )
+
+    $path = [string]$Receipt.observation_markdown
+    if ([string]::IsNullOrWhiteSpace($path)) {
+        throw "$CaseName did not record observation_markdown"
+    }
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "$CaseName observation markdown missing: $path"
+    }
+    $text = Get-Content -LiteralPath $path -Raw
+    foreach ($pattern in $RequiredPatterns) {
+        if ($text -notmatch [regex]::Escape($pattern)) {
+            throw "$CaseName observation markdown missing required text: $pattern"
+        }
+    }
+}
+
 $twoPeers = 'tools\wave0\fixtures\valheim-two-peers.json'
 $bothApply = 'tools\wave0\fixtures\role-preflight-both-apply.json'
 $omenApply = 'tools\wave0\fixtures\role-preflight-omen-apply.json'
@@ -94,6 +116,28 @@ Assert-Equal 'valid verdict' $cases[2].receipt.verdict 'role_preflight_passed_st
 Assert-Equal 'valid exactly-one' $cases[2].receipt.role_preflight.summary.exactly_one_apply_enabled $true
 Assert-Equal 'valid apply client' $cases[2].receipt.role_preflight.summary.apply_client 'omen'
 Assert-Equal 'valid observe client' $cases[2].receipt.role_preflight.summary.observe_client 'i5'
+
+Assert-ObservationMarkdown `
+    -CaseName 'no-peers' `
+    -Receipt $cases[0].receipt `
+    -RequiredPatterns @(
+        '# Wave 0 live visual observation',
+        'Machine verdict: wait_for_two_real_clients',
+        'P7 peer count at gate: 0',
+        'Visual result | followed_role / did_not_follow_role / inconclusive / not_observed',
+        'Rules: do not edit the machine receipt.'
+    )
+
+Assert-ObservationMarkdown `
+    -CaseName 'valid-roles' `
+    -Receipt $cases[2].receipt `
+    -RequiredPatterns @(
+        'Machine verdict: role_preflight_passed_stopped_before_motion',
+        'Role preflight: apply=omen observe=i5 omen_apply=True i5_apply=False',
+        'Straight movement | smooth / glidey / teleporting / mixed / not_tested',
+        'Stutter movement | smooth / glidey / teleporting / mixed / not_tested',
+        'Add-Wave0VisualObservation.ps1'
+    )
 
 $result = [ordered]@{
     schema_version = 1
