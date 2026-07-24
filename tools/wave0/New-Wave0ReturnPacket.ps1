@@ -295,6 +295,43 @@ $packet = [ordered]@{
         observation_markdown = $observationMarkdown
         expected_result_grid = $expectedGridMarkdown
     }
+    live_prerequisites = @(
+        [ordered]@{
+            name = 'expected_result_grid'
+            status = if ($expectedResultGrid.present) { 'ready' } else { 'missing' }
+            evidence = $expectedGridMarkdown
+        },
+        [ordered]@{
+            name = 'preflight_and_release_alignment'
+            status = if ($readiness.present -and [bool]$readiness.body.ready_for_derek) { 'ready' } else { 'missing_or_failed' }
+            evidence = $readiness.path
+        },
+        [ordered]@{
+            name = 'bounded_command_with_timeout_and_auto_stop'
+            status = 'ready'
+            evidence = 'Wait-Wave0LiveGate.ps1 waits up to 600s by default; Start-Wave0LiveGate.ps1 sends bounded Companion motion with MotionDurationSeconds and capture duration limits.'
+        },
+        [ordered]@{
+            name = 'capture_locations'
+            status = 'ready'
+            evidence = 'Live receipts: captures\wave0-live-gate\ and captures\wave0-live-gate-reversal\; bundle directories default beside each receipt under bundles\; Companion dashboards retain per-machine bundles.'
+        },
+        [ordered]@{
+            name = 'dashboard_urls'
+            status = 'ready'
+            evidence = 'OMEN Companion http://127.0.0.1:8080/ ; i5 Companion http://127.0.0.1:8080/ on the i5; P7 public community https://comfy-p7.duckdns.org/community ; P7 trace https://comfy-p7.duckdns.org/trace ; P7 roadmap https://comfy-p7.duckdns.org/roadmap'
+        },
+        [ordered]@{
+            name = 'rollback_or_stop_path'
+            status = 'ready'
+            evidence = 'Stop on any failed gate; use Companion rollback latest on OMEN/i5 for client package rollback; do not advance past Wave 0 unless Seal-Wave0VisualEvidence.ps1 succeeds or New-Wave0DefectPacket.ps1 retains a named defect.'
+        },
+        [ordered]@{
+            name = 'human_observation_boundary'
+            status = 'ready'
+            evidence = 'Only visual follow/quality/role-reversal judgment is human-owned; all deployment, role switch, movement, capture, annotation, sealing, and defect packet generation are agent-owned.'
+        }
+    )
     run_when_back = @(
         [ordered]@{
             step = 1
@@ -361,6 +398,14 @@ if ($expectedRelease) { $markdownLines += "- Expected release: $expectedRelease"
 if ($null -ne $currentPeerCount) { $markdownLines += "- Current P7 peer count: $currentPeerCount" }
 if ($observationMarkdown) { $markdownLines += "- Observation worksheet: $observationMarkdown" }
 if ($expectedGridMarkdown) { $markdownLines += "- Expected-result grid: $expectedGridMarkdown" }
+$markdownLines += ''
+$markdownLines += '## Live prerequisites'
+$markdownLines += ''
+$markdownLines += '| Required before live test | Status | Evidence / location |'
+$markdownLines += '|---|---|---|'
+foreach ($prereq in $packet.live_prerequisites) {
+    $markdownLines += "| $(MdEscape $prereq.name) | $(MdEscape $prereq.status) | $(MdEscape $prereq.evidence) |"
+}
 $markdownLines += ''
 $markdownLines += '## Non-human evidence'
 $markdownLines += ''

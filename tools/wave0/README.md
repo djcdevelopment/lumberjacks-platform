@@ -173,6 +173,8 @@ tools\wave0\Test-Wave0DefectPacketFixtures.ps1
 non-human receipts, including release readiness, roadmap freshness, live-gate
 fixtures, auto-wait fixtures, visual seal fixtures, defect-packet fixtures, the
 human-test register, expected-result grid, and the two-machine bundle smoke. It
-emits the commands to run when both clients are back and lists the stop
-conditions without copying raw private Companion receipt bodies into the
-Markdown.
+also renders the strategy prerequisites for a live test: expected-result grid,
+preflight/release alignment, bounded command/timeout, capture locations,
+dashboard URLs, rollback/stop path, and the human-observation boundary. It emits
+the commands to run when both clients are back and lists the stop conditions
+without copying raw private Companion receipt bodies into the Markdown.
