@@ -34,6 +34,16 @@ downloads for `summary.json` and `samples.jsonl`. Use those downloads when shari
 or attaching evidence to a future issue. The card also lists recent local captures after refresh, so
 a tester can recover the download links without finding the Docker volume path.
 
+The **Wave 0 live gate** card also exposes two read-only handoff downloads:
+
+- `/api/v0/companion/wave0/packet.md`
+- `/api/v0/companion/wave0/packet`
+
+Those packets are generated from the same local/P7 status as the page. They do not execute shell
+commands and they do not embed raw receipts; they summarize the current verdict, ready checks, exact
+remaining commands, stop conditions, and the human observations still required for the two-client
+apply/observe proof.
+
 ## Bootstrap a tester Docker Companion
 
 The normal tester package is a generic zip, not a copied plugin folder and not an image-specific
@@ -67,6 +77,23 @@ extracted bundle, so a relaunch cannot silently replace a local override.
 It searches the default Steam install plus Steam's configured extra libraries. For an unusual
 installation, start `bootstrap\Start-LumberjacksCompanion.ps1` with
 `-ValheimPath C:\path\to\Valheim`.
+
+The Companion service runs with Docker Compose `init: true`. This is intentional: on 2026-07-23 the
+i5 test laptop produced a zombie Companion container that Docker Desktop could not restart or remove
+cleanly. The init process gives future containers normal signal forwarding/reaping behavior and
+reduces the chance that a rapid rebuild/recreate loop leaves Docker stuck.
+
+If a remote i5 sync leaves `lumberjacks-companion-companion-1` in `Created` or Docker CLI calls hang,
+do not ask the operator to KVM files. Treat it as Docker Desktop recovery:
+
+```powershell
+ssh i5 "powershell.exe -NoProfile -Command `"Restart-Service com.docker.service -Force`""
+```
+
+If the Linux engine still does not answer `docker info --format '{{.OSType}}'` as `linux`, stop the
+Docker Desktop/backend processes and start Docker Desktop again from the i5 admin SSH session. Then
+rerun the Companion sync once. Do not retry-loop indefinitely; the i5 is a roaming optional test
+client.
 
 ## Publish a mod/config package
 

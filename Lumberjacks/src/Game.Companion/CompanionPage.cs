@@ -62,6 +62,7 @@ static class CompanionPage
   <h2>Wave 0 live gate</h2>
   <p class="muted">Operator-minimal checklist for the two-client apply/observe proof. The browser does not move characters; it tells you when the existing automation is safe to run.</p>
   <div id="wave0-status" class="result wait">Checking Wave 0 status...</div>
+  <p><a class="btn secondary" href="/api/v0/companion/wave0/packet.md" download="wave0-handoff-packet.md">Download Wave 0 handoff</a> <a class="btn secondary" href="/api/v0/companion/wave0/packet" download="wave0-handoff-packet.json">JSON packet</a></p>
   <div class="checks">
     <label class="check" id="w-local"><input id="wc-local" type="checkbox" disabled><span>Local profile and config ready</span></label>
     <label class="check" id="w-p7"><input id="wc-p7" type="checkbox" disabled><span>P7 telemetry readable</span></label>

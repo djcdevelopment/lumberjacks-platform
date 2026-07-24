@@ -1,5 +1,6 @@
 services:
   companion:
+    init: true
     build:
       context: ../..
       dockerfile: src/Game.Companion/Dockerfile

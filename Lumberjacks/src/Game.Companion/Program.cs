@@ -41,7 +41,7 @@ app.MapGet("/api/v0/companion/status", (CompanionStateStore state, ValheimLocato
         profile = new
         {
             linked = profile is not null,
-            enrollment_id = profile?.enrollment_id,
+            enrollment_id_hash = HashShort(profile?.enrollment_id),
             linked_utc = profile?.linked_utc,
         },
         installed = saved.installed,
@@ -201,6 +201,36 @@ app.MapGet("/api/v0/companion/wave0/status", async (CompanionStateStore state, V
 
     var status = Wave0Status.Build(install, saved, profile, deployment, valheim, motion, captures);
     return Results.Json(status, Json.Options);
+});
+
+app.MapGet("/api/v0/companion/wave0/packet", async (CompanionStateStore state, ValheimLocator locator, GatewayClient gateway, TransportTruthCaptureService capture, CancellationToken cancellationToken) =>
+{
+    var install = locator.Find();
+    var saved = state.Read();
+    CompanionConfig.TryReadCredentials(install is null ? null : ValheimLocator.ConfigPath(install), out var discovered);
+    var profile = saved.profile ?? (discovered is null ? null : new CompanionProfile(discovered.enrollment_id, null));
+    var deployment = await gateway.GetJson("/api/v0/telemetry/deployment", cancellationToken);
+    var valheim = await gateway.GetJson("/api/v0/telemetry/valheim", cancellationToken);
+    var motion = await gateway.GetJson("/live/valheim-motion", cancellationToken);
+    var captures = capture.ListCaptures(3);
+
+    var status = Wave0Status.Build(install, saved, profile, deployment, valheim, motion, captures);
+    return Results.Json(Wave0Packet.Build(status), Json.Options);
+});
+
+app.MapGet("/api/v0/companion/wave0/packet.md", async (CompanionStateStore state, ValheimLocator locator, GatewayClient gateway, TransportTruthCaptureService capture, CancellationToken cancellationToken) =>
+{
+    var install = locator.Find();
+    var saved = state.Read();
+    CompanionConfig.TryReadCredentials(install is null ? null : ValheimLocator.ConfigPath(install), out var discovered);
+    var profile = saved.profile ?? (discovered is null ? null : new CompanionProfile(discovered.enrollment_id, null));
+    var deployment = await gateway.GetJson("/api/v0/telemetry/deployment", cancellationToken);
+    var valheim = await gateway.GetJson("/api/v0/telemetry/valheim", cancellationToken);
+    var motion = await gateway.GetJson("/live/valheim-motion", cancellationToken);
+    var captures = capture.ListCaptures(3);
+
+    var status = Wave0Status.Build(install, saved, profile, deployment, valheim, motion, captures);
+    return Results.Text(Wave0Packet.BuildMarkdown(status), "text/markdown");
 });
 
 app.MapPost("/api/v0/companion/transport-capture", async (TransportCaptureRequest? request, TransportTruthCaptureService capture, CancellationToken cancellationToken) =>
@@ -489,6 +519,187 @@ static class Wave0Status
         if (string.IsNullOrWhiteSpace(value)) return null;
         var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value));
         return Convert.ToHexString(hash).ToLowerInvariant()[..12];
+    }
+}
+
+static class Wave0Packet
+{
+    public static object Build(object status)
+    {
+        var root = JsonSerializer.SerializeToElement(status, Json.Options);
+        var commands = Object(root, "commands");
+        var local = Object(root, "local");
+        var p7 = Object(root, "p7");
+        var latestCapture = Object(root, "latest_capture");
+
+        return new
+        {
+            schema_version = 1,
+            generated_utc = DateTimeOffset.UtcNow,
+            objective = "Wave 0 two-client apply/observe proof handoff.",
+            verdict = Text(root, "verdict"),
+            level = Text(root, "level"),
+            next_action = Text(root, "next_action"),
+            current_state = new
+            {
+                installed_release = Text(local, "installed_release"),
+                installed_mod_release = Text(local, "installed_mod_release"),
+                gateway_version = Text(p7, "gateway_version"),
+                p7_peer_count = Int(p7, "peer_count"),
+                p7_players = Strings(Array(p7, "players")),
+                motion_received = Int(p7, "motion_received"),
+                motion_relayed = Int(p7, "motion_relayed"),
+                latest_capture = latestCapture is null ? null : new
+                {
+                    run_id = Text(latestCapture, "run_id"),
+                    verdict = Text(latestCapture, "verdict"),
+                    max_peers = Int(latestCapture, "max_peers"),
+                    motion_received_delta = Int(latestCapture, "motion_received_delta"),
+                },
+            },
+            ready_checks = new
+            {
+                local_profile_and_config_ready = Bool(local, "valheim_found") && Bool(local, "config_found") && Bool(local, "profile_linked"),
+                p7_telemetry_readable = Bool(p7, "gateway_ready") && Bool(p7, "valheim_ready") && Bool(p7, "motion_ready"),
+                two_real_clients_joined = Int(p7, "peer_count") >= 2,
+                recent_evidence_capture_exists = latestCapture is not null,
+            },
+            required_human_observations = new[]
+            {
+                "Join OMEN and i5 to P7 with the two player accounts.",
+                "Watch both screens during the bounded movement course.",
+                "Record whether motion follows the selected apply/observe client rather than the machine/account.",
+                "Record straight-run and stutter-step quality as smooth, glidey, teleporting, mixed, or not_tested.",
+                "Repeat with roles reversed before sealing the evidence.",
+            },
+            stop_conditions = new[]
+            {
+                "Any non-human gate fails.",
+                "P7 peer_count stays below 2.",
+                "Role preflight does not show exactly one apply-enabled client.",
+                "Motion command fails on either Companion.",
+                "Visual result does not follow the selected apply/observe role.",
+                "Role reversal contradicts the first run.",
+            },
+            commands = new
+            {
+                prelive = Text(commands, "prelive"),
+                live_omen_applies = Text(commands, "live_omen_applies"),
+                annotate_omen_applies = Text(commands, "annotate_omen_applies"),
+                live_i5_applies = Text(commands, "live_i5_applies"),
+                annotate_i5_applies = Text(commands, "annotate_i5_applies"),
+                seal_visual_evidence = Text(commands, "seal_visual_evidence"),
+                retain_named_defect = Text(commands, "retain_named_defect"),
+            },
+        };
+    }
+
+    public static string BuildMarkdown(object status)
+    {
+        var packet = JsonSerializer.SerializeToElement(Build(status), Json.Options);
+        var lines = new List<string>
+        {
+            "# Wave 0 handoff packet",
+            "",
+            $"- Generated UTC: {Text(packet, "generated_utc")}",
+            $"- Verdict: {Text(packet, "verdict")}",
+            $"- Next action: {Text(packet, "next_action")}",
+            "",
+            "## Current state",
+            "",
+        };
+
+        var current = Object(packet, "current_state");
+        lines.Add($"- Installed release: {Text(current, "installed_release") ?? "unknown"}");
+        lines.Add($"- Gateway release: {Text(current, "gateway_version") ?? "unknown"}");
+        lines.Add($"- P7 peer count: {Int(current, "p7_peer_count")}");
+        var players = string.Join(", ", Strings(Array(current, "p7_players")));
+        lines.Add($"- P7 players: {(string.IsNullOrWhiteSpace(players) ? "none" : players)}");
+        lines.Add($"- Motion: {Int(current, "motion_received")} received / {Int(current, "motion_relayed")} relayed");
+        lines.Add("");
+        lines.Add("## Ready checks");
+        lines.Add("");
+        var checks = Object(packet, "ready_checks");
+        foreach (var name in new[] { "local_profile_and_config_ready", "p7_telemetry_readable", "two_real_clients_joined", "recent_evidence_capture_exists" })
+            lines.Add($"- [{(Bool(checks, name) ? "x" : " ")}] {name}");
+        lines.Add("");
+        lines.Add("## Human observations still required");
+        lines.Add("");
+        foreach (var item in Strings(Array(packet, "required_human_observations")))
+            lines.Add($"- {item}");
+        lines.Add("");
+        lines.Add("## Stop conditions");
+        lines.Add("");
+        foreach (var item in Strings(Array(packet, "stop_conditions")))
+            lines.Add($"- {item}");
+        lines.Add("");
+        lines.Add("## Commands");
+        lines.Add("");
+        lines.Add("```powershell");
+        var commands = Object(packet, "commands");
+        foreach (var name in new[] { "prelive", "live_omen_applies", "annotate_omen_applies", "live_i5_applies", "annotate_i5_applies", "seal_visual_evidence", "retain_named_defect" })
+        {
+            var command = Text(commands, name);
+            if (string.IsNullOrWhiteSpace(command)) continue;
+            lines.Add("# " + name);
+            lines.Add(command);
+            lines.Add("");
+        }
+        lines.Add("```");
+        lines.Add("");
+        lines.Add("Original machine receipts remain immutable. Visual observations are sidecars; the seal is a derived index over both directions.");
+        return string.Join(Environment.NewLine, lines) + Environment.NewLine;
+    }
+
+    static JsonElement? Object(JsonElement? element, string name) =>
+        element is { ValueKind: JsonValueKind.Object } value &&
+        value.TryGetProperty(name, out var property) &&
+        property.ValueKind == JsonValueKind.Object
+            ? property
+            : null;
+
+    static JsonElement? Array(JsonElement? element, string name) =>
+        element is { ValueKind: JsonValueKind.Object } value &&
+        value.TryGetProperty(name, out var property) &&
+        property.ValueKind == JsonValueKind.Array
+            ? property
+            : null;
+
+    static string? Text(JsonElement? element, string name)
+    {
+        if (element is null || element.Value.ValueKind != JsonValueKind.Object || !element.Value.TryGetProperty(name, out var property)) return null;
+        return property.ValueKind == JsonValueKind.Null ? null : property.ToString();
+    }
+
+    static bool Bool(JsonElement? element, string name)
+    {
+        if (element is null || element.Value.ValueKind != JsonValueKind.Object || !element.Value.TryGetProperty(name, out var property)) return false;
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String => bool.TryParse(property.GetString(), out var parsed) && parsed,
+            _ => false,
+        };
+    }
+
+    static int Int(JsonElement? element, string name)
+    {
+        if (element is null || element.Value.ValueKind != JsonValueKind.Object || !element.Value.TryGetProperty(name, out var property)) return 0;
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var value)) return value;
+        return property.ValueKind == JsonValueKind.String && int.TryParse(property.GetString(), out value) ? value : 0;
+    }
+
+    static IReadOnlyList<string> Strings(JsonElement? array)
+    {
+        if (array is null) return [];
+        var values = new List<string>();
+        foreach (var item in array.Value.EnumerateArray())
+        {
+            var value = item.ValueKind == JsonValueKind.String ? item.GetString() : item.ToString();
+            if (!string.IsNullOrWhiteSpace(value)) values.Add(value);
+        }
+        return values;
     }
 }
 
