@@ -13,6 +13,9 @@ tools\i5\Test-Wave0Readiness.ps1 -SummaryOnly -OutputJson captures\wave0-readine
 # Full live-gate orchestrator; exits WAIT until both clients are joined
 tools\wave0\Start-Wave0LiveGate.ps1 -OutputJson captures\wave0-live-gate\result.json
 
+# Start before/during the join; waits for two peers, then runs the live gate
+tools\wave0\Wait-Wave0LiveGate.ps1 -DesiredApplyClient omen -OutputJson captures\wave0-live-gate\result.json
+
 # One-command pre-live audit; no movement, stops at the real-client boundary
 tools\wave0\Test-Wave0Prelive.ps1 -OutputDirectory captures\wave0-prelive-current
 
@@ -55,7 +58,8 @@ Run order before asking for a live movement course:
 1. `Test-Wave0SyntheticMotion.ps1`
 2. `Test-Wave0Readiness.ps1`
 3. two-client idle capture
-4. one bounded apply/observe course
+4. one bounded apply/observe course, or start `Wait-Wave0LiveGate.ps1` before/during the join so
+   the command fires only after P7 reports the required peer window
 5. role reversal
 6. seal the two annotated visual projections
 
@@ -73,6 +77,13 @@ joined. It runs the two non-human gates, checks P7 peer count, starts the
 two-machine capture, sends one bounded Companion motion command, and writes a
 single receipt. If fewer than two peers are visible, it writes `wait_for_two_real_clients`
 and does not move either character.
+
+`Wait-Wave0LiveGate.ps1` wraps the same command for low-touch runs. Start it before
+or while the two clients are joining; it polls P7 Valheim telemetry until the
+heartbeat is fresh/ready and `peer_count >= 2`, then delegates to
+`Start-Wave0LiveGate.ps1`. If the peer window never appears, it writes a
+`wait_for_two_real_clients_timeout` receipt and exits 0, so "not joined yet" is
+kept separate from a failed gate.
 
 When the live course runs, capture bundles from OMEN and i5 are collected by
 default under `<receipt-dir>\bundles`. Pass `-BundleDirectory` only to override

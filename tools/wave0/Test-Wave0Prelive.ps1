@@ -7,6 +7,7 @@ Collects the evidence needed before asking for another two-client Valheim join:
 
 - P7/OMEN/i5 release readiness.
 - Mock live-gate fixture coverage.
+- Mock auto-wait live-gate fixture coverage.
 - Mock visual-seal fixture coverage.
 - Mock named-defect packet fixture coverage.
 - Real no-client live-gate smoke, proving the gate stops before motion.
@@ -67,12 +68,13 @@ function Read-JsonOrNull {
 
 $readinessPath = Join-Path $outRoot 'readiness.json'
 $fixturesRoot = Join-Path $outRoot 'fixtures'
+$autoWaitFixturesRoot = Join-Path $outRoot 'auto-wait-fixtures'
 $sealFixturesRoot = Join-Path $outRoot 'seal-fixtures'
 $defectFixturesRoot = Join-Path $outRoot 'defect-fixtures'
 $noClientRoot = Join-Path $outRoot 'no-client-live-gate'
 $bundleSmokeRoot = Join-Path $outRoot 'bundle-smoke'
 $returnPacketRoot = Join-Path $outRoot 'return-packet'
-New-Item -ItemType Directory -Force -Path $fixturesRoot, $sealFixturesRoot, $defectFixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $fixturesRoot, $autoWaitFixturesRoot, $sealFixturesRoot, $defectFixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot | Out-Null
 
 $steps = @()
 $steps += Invoke-Step `
@@ -84,6 +86,11 @@ $steps += Invoke-Step `
     -Name 'live-gate-fixtures' `
     -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0LiveGateFixtures.ps1') `
     -Arguments @('-OutputDirectory', $fixturesRoot)
+
+$steps += Invoke-Step `
+    -Name 'auto-wait-fixtures' `
+    -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0AutoWaitFixtures.ps1') `
+    -Arguments @('-OutputDirectory', $autoWaitFixturesRoot)
 
 $steps += Invoke-Step `
     -Name 'visual-seal-fixtures' `
@@ -131,6 +138,7 @@ $steps += Invoke-Step `
 
 $readiness = Read-JsonOrNull $readinessPath
 $fixtures = Read-JsonOrNull (Join-Path $fixturesRoot 'summary.json')
+$autoWaitFixtures = Read-JsonOrNull (Join-Path $autoWaitFixturesRoot 'summary.json')
 $sealFixtures = Read-JsonOrNull (Join-Path $sealFixturesRoot 'summary.json')
 $defectFixtures = Read-JsonOrNull (Join-Path $defectFixturesRoot 'summary.json')
 $noClient = Read-JsonOrNull (Join-Path $noClientRoot 'result.json')
@@ -143,6 +151,7 @@ $verdict =
     if ($failedSteps.Count -gt 0) { 'prelive_audit_failed' }
     elseif (-not $readiness -or [string]$readiness.verdict -ne 'ready_for_two_client_gate') { 'prelive_readiness_not_ready' }
     elseif (-not $fixtures -or [string]$fixtures.verdict -ne 'wave0_live_gate_fixture_checks_passed') { 'prelive_fixtures_not_ready' }
+    elseif (-not $autoWaitFixtures -or [string]$autoWaitFixtures.verdict -ne 'wave0_auto_wait_fixture_checks_passed') { 'prelive_auto_wait_fixtures_not_ready' }
     elseif (-not $sealFixtures -or [string]$sealFixtures.verdict -ne 'wave0_visual_seal_fixture_checks_passed') { 'prelive_visual_seal_fixtures_not_ready' }
     elseif (-not $defectFixtures -or [string]$defectFixtures.verdict -ne 'wave0_defect_packet_fixture_checks_passed') { 'prelive_defect_packet_fixtures_not_ready' }
     elseif (-not $noClient -or [string]$noClient.verdict -ne 'wait_for_two_real_clients') { 'prelive_no_client_gate_unexpected' }
@@ -162,6 +171,7 @@ $receipt = [ordered]@{
     receipts = [ordered]@{
         readiness = $readinessPath
         fixtures = Join-Path $fixturesRoot 'summary.json'
+        auto_wait_fixtures = Join-Path $autoWaitFixturesRoot 'summary.json'
         visual_seal_fixtures = Join-Path $sealFixturesRoot 'summary.json'
         defect_packet_fixtures = Join-Path $defectFixturesRoot 'summary.json'
         no_client_live_gate = Join-Path $noClientRoot 'result.json'
@@ -170,7 +180,7 @@ $receipt = [ordered]@{
         return_packet_markdown = Join-Path $returnPacketRoot 'packet.md'
     }
     next_action = if ($verdict -eq 'ready_for_derek_two_client_join') {
-        'Join OMEN and i5 to P7, then run Start-Wave0LiveGate.ps1 with DesiredApplyClient omen.'
+        'Start Wait-Wave0LiveGate.ps1 with DesiredApplyClient omen, then join OMEN and i5 to P7.'
     } else {
         'Inspect failed step output_tail and receipt paths before asking for a live join.'
     }

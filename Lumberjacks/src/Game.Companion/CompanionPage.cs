@@ -397,13 +397,17 @@ async function wave0Status(){
     let command=w.commands?.prelive||'Run Test-Wave0Prelive.ps1 from OMEN.';
     let title='Recommended command';
     let chain='';
+    if(w.verdict==='wait_for_two_real_clients'){
+      command=w.commands?.wait_live_omen_applies||command;
+      title='Low-touch wait command';
+    }
     if(w.verdict==='ready_for_live_gate'||w.verdict==='motion_evidence_present'){
-      command=w.commands?.live_omen_applies||command;
+      command=w.commands?.wait_live_omen_applies||w.commands?.live_omen_applies||command;
       title='First live-gate command';
       chain=[
-        commandBlock('1. First live gate: OMEN applies',w.commands?.live_omen_applies),
+        commandBlock('1. Wait/run first live gate: OMEN applies',w.commands?.wait_live_omen_applies||w.commands?.live_omen_applies),
         commandBlock('2. Annotate first visual pass',w.commands?.annotate_omen_applies),
-        commandBlock('3. Role reversal: i5 applies',w.commands?.live_i5_applies),
+        commandBlock('3. Wait/run role reversal: i5 applies',w.commands?.wait_live_i5_applies||w.commands?.live_i5_applies),
         commandBlock('4. Annotate reversal',w.commands?.annotate_i5_applies),
         commandBlock('5. Seal visual evidence',w.commands?.seal_visual_evidence),
         commandBlock('Fallback: retain named defect packet if seal fails',w.commands?.retain_named_defect)

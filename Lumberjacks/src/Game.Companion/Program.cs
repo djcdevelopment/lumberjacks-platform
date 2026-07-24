@@ -446,6 +446,8 @@ static class Wave0Status
             commands = new
             {
                 prelive = @"powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Test-Wave0Prelive.ps1 -OutputDirectory captures\wave0-prelive-current",
+                wait_live_omen_applies = @"powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Wait-Wave0LiveGate.ps1 -DesiredApplyClient omen -OutputJson captures\wave0-live-gate\result.json",
+                wait_live_i5_applies = @"powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Wait-Wave0LiveGate.ps1 -DesiredApplyClient i5 -OutputJson captures\wave0-live-gate-reversal\result.json",
                 live_omen_applies = @"powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Start-Wave0LiveGate.ps1 -DesiredApplyClient omen -OutputJson captures\wave0-live-gate\result.json",
                 live_i5_applies = @"powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Start-Wave0LiveGate.ps1 -DesiredApplyClient i5 -OutputJson captures\wave0-live-gate-reversal\result.json",
                 annotate_omen_applies = @"powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson captures\wave0-live-gate\result.json -ApplyClient omen -ObserveClient i5 -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun no",
@@ -584,6 +586,8 @@ static class Wave0Packet
             commands = new
             {
                 prelive = Text(commands, "prelive"),
+                wait_live_omen_applies = Text(commands, "wait_live_omen_applies"),
+                wait_live_i5_applies = Text(commands, "wait_live_i5_applies"),
                 live_omen_applies = Text(commands, "live_omen_applies"),
                 annotate_omen_applies = Text(commands, "annotate_omen_applies"),
                 live_i5_applies = Text(commands, "live_i5_applies"),
@@ -637,7 +641,7 @@ static class Wave0Packet
         lines.Add("");
         lines.Add("```powershell");
         var commands = Object(packet, "commands");
-        foreach (var name in new[] { "prelive", "live_omen_applies", "annotate_omen_applies", "live_i5_applies", "annotate_i5_applies", "seal_visual_evidence", "retain_named_defect" })
+        foreach (var name in new[] { "prelive", "wait_live_omen_applies", "live_omen_applies", "annotate_omen_applies", "wait_live_i5_applies", "live_i5_applies", "annotate_i5_applies", "seal_visual_evidence", "retain_named_defect" })
         {
             var command = Text(commands, name);
             if (string.IsNullOrWhiteSpace(command)) continue;
