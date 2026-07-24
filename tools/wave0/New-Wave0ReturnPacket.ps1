@@ -21,6 +21,7 @@ param(
     [string]$VisualObservationFixtureReceipt = '',
     [string]$HumanTestRegisterReceipt = '',
     [string]$ExpectedResultGridReceipt = '',
+    [string]$ExpectedResultGridFixtureReceipt = '',
     [string]$StopRuleReceipt = '',
     [string]$StopRuleFixtureReceipt = '',
     [string]$BundleSmokeReceipt = '',
@@ -183,6 +184,12 @@ if (-not $ExpectedResultGridReceipt) {
         [string]$Body.verdict -eq 'wave0_expected_result_grid_ready'
     }
 }
+if (-not $ExpectedResultGridFixtureReceipt) {
+    $ExpectedResultGridFixtureReceipt = Find-LatestReceipt 'expected-result grid fixture summary receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_expected_result_grid_fixture_checks_passed'
+    }
+}
 if (-not $StopRuleReceipt) {
     $StopRuleReceipt = Find-LatestReceipt 'stop-rule receipt' {
         param($Body)
@@ -213,6 +220,7 @@ $defectPacketFixtures = Read-Receipt $DefectPacketFixtureReceipt
 $visualObservationFixtures = Read-Receipt $VisualObservationFixtureReceipt
 $humanTestRegister = Read-Receipt $HumanTestRegisterReceipt
 $expectedResultGrid = Read-Receipt $ExpectedResultGridReceipt
+$expectedResultGridFixtures = Read-Receipt $ExpectedResultGridFixtureReceipt
 $stopRule = Read-Receipt $StopRuleReceipt
 $stopRuleFixtures = Read-Receipt $StopRuleFixtureReceipt
 $bundleSmoke = Read-Receipt $BundleSmokeReceipt
@@ -284,6 +292,12 @@ $checks += Check-State `
     -Detail ($(if ($expectedResultGrid.present) { "verdict=$($expectedResultGrid.body.verdict) rows=$(@($expectedResultGrid.body.rows).Count)" } else { 'missing expected-result grid receipt' })) `
     -ReceiptPath $expectedResultGrid.path `
     -ReceiptSha256 $expectedResultGrid.sha256
+$checks += Check-State `
+    -Name 'expected_result_grid_fixture_gate' `
+    -Ok ($expectedResultGridFixtures.present -and [string]$expectedResultGridFixtures.body.verdict -eq 'wave0_expected_result_grid_fixture_checks_passed') `
+    -Detail ($(if ($expectedResultGridFixtures.present) { "verdict=$($expectedResultGridFixtures.body.verdict) command_count=$($expectedResultGridFixtures.body.command_count)" } else { 'missing expected-result grid fixture summary' })) `
+    -ReceiptPath $expectedResultGridFixtures.path `
+    -ReceiptSha256 $expectedResultGridFixtures.sha256
 $checks += Check-State `
     -Name 'wave0_stop_rule_gate' `
     -Ok ($stopRule.present -and [string]$stopRule.body.verdict -in @('wave0_stop_rule_holds_no_exit_artifact', 'wave0_exit_artifact_present') -and [bool]$stopRule.body.strategy_names_rule) `

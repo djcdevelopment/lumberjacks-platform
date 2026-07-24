@@ -4,7 +4,7 @@ Generate the Wave 0 expected-result grid for the two-client visual gate.
 
 .DESCRIPTION
 The full roadmap strategy requires an expected-result grid before live testing.
-This script writes a small JSON receipt and Markdown table that Derek can copy
+This script writes a small JSON receipt and Markdown table that Derek can review
 or annotate before the live pass. It does not contact P7, OMEN, or i5.
 #>
 [CmdletBinding()]
@@ -100,8 +100,11 @@ $receipt = [ordered]@{
     commands = [ordered]@{
         prelive = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Test-Wave0Prelive.ps1 -OutputDirectory captures\wave0-prelive-current'
         first_direction = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Wait-Wave0LiveGate.ps1 -DesiredApplyClient omen -OutputJson captures\wave0-live-gate\result.json'
+        annotate_first_direction = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson captures\wave0-live-gate\result.json -ApplyClient omen -ObserveClient i5 -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun no'
         reversal = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Wait-Wave0LiveGate.ps1 -DesiredApplyClient i5 -OutputJson captures\wave0-live-gate-reversal\result.json'
+        annotate_reversal = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Add-Wave0VisualObservation.ps1 -ReceiptJson captures\wave0-live-gate-reversal\result.json -ApplyClient i5 -ObserveClient omen -VisualResult followed_role -StraightMovement smooth -StutterMovement mixed -RoleReversalRun yes'
         seal = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Seal-Wave0VisualEvidence.ps1 -FirstAnnotatedJson captures\wave0-live-gate\result.annotated.json -ReversalAnnotatedJson captures\wave0-live-gate-reversal\result.annotated.json -OutputJson captures\wave0-live-seal\visual-seal.json'
+        suggest_named_defect = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\wave0\Suggest-Wave0DefectPacket.ps1 -FirstReceiptJson captures\wave0-live-gate\result.json -ReversalReceiptJson captures\wave0-live-gate-reversal\result.json -FirstAnnotatedJson captures\wave0-live-gate\result.annotated.json -ReversalAnnotatedJson captures\wave0-live-gate-reversal\result.annotated.json -SealJson captures\wave0-live-seal\visual-seal.json -OutputJson captures\wave0-defects\suggestion.json -OutputMarkdown captures\wave0-defects\suggestion.md'
     }
 }
 
@@ -124,8 +127,14 @@ $markdown += ''
 $markdown += '```powershell'
 $markdown += $receipt.commands.prelive
 $markdown += $receipt.commands.first_direction
+$markdown += '# Agent records observed values after first direction:'
+$markdown += $receipt.commands.annotate_first_direction
 $markdown += $receipt.commands.reversal
+$markdown += '# Agent records observed values after role reversal:'
+$markdown += $receipt.commands.annotate_reversal
 $markdown += $receipt.commands.seal
+$markdown += '# If visual proof cannot be sealed, classify a named defect:'
+$markdown += $receipt.commands.suggest_named_defect
 $markdown += '```'
 
 $jsonPath = Resolve-UnderRepo $OutputJson

@@ -30,6 +30,10 @@ tools\wave0\New-Wave0ExpectedResultGrid.ps1 `
   -OutputJson captures\wave0-expected-result-grid.json `
   -OutputMarkdown captures\wave0-expected-result-grid.md
 
+# Fixture-test the expected-result grid handoff contract
+tools\wave0\Test-Wave0ExpectedResultGridFixtures.ps1 `
+  -OutputDirectory captures\wave0-expected-result-grid-fixtures
+
 # Attach Derek's visual observation without editing the machine receipt
 tools\wave0\Add-Wave0VisualObservation.ps1 `
   -ReceiptJson captures\wave0-live-gate\result.json `
@@ -220,3 +224,7 @@ evidence table so the operator handoff shows why later-wave work is still gated.
 immutable while human visual observations are written as sidecar/projection files.
 `New-Wave0ReturnPacket.ps1` includes that fixture receipt so the handoff packet
 shows the visual sidecar path is tested before a live run starts.
+`Test-Wave0ExpectedResultGridFixtures.ps1` keeps the expected-result grid aligned
+with the full live command chain, including annotation and named-defect fallback.
+`New-Wave0ReturnPacket.ps1` includes the grid fixture receipt in the non-human
+evidence table so command-chain drift is visible before the live window.
