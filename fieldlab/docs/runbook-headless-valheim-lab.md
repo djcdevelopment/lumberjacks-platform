@@ -13,6 +13,30 @@ alpha-player install path and it must not be copied to OMEN/i5 physical clients.
 - The client has an existing Valheim character profile. Lab autojoin never creates
   one.
 
+The repository records this as a machine-readable operator-touch gate. Run it
+before a client start so a missing install, stale payload, dead server, or dead
+Gateway is reported before anyone is asked to open Valheim:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimLab.ps1 -Client 01 -Action preflight
+```
+
+The receipt is written to
+`fieldlab/autonomous/state/client01/lab-preflight.json`. A blocked result is a
+real prerequisite failure, not an invitation to retry or log in again.
+
+If the gate reports the one-time seed is missing, use the explicit escape hatch
+once for the disposable volume only:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimLab.ps1 -Client 01 -Action start -AllowUnseeded
+```
+
+Use the client VNC endpoint (`http://127.0.0.1:8081`) only to complete the Steam
+install/login and create or copy one ordinary Valheim character. Then stop the
+client and rerun `preflight`. This is the only expected human interaction in
+the lane; physical OMEN/i5 installs are not modified.
+
 ## Lifecycle
 
 From `C:\\work\\baseline`:
@@ -20,6 +44,9 @@ From `C:\\work\\baseline`:
 ```powershell
 # Build and stage the current DLL; optionally add an explicit lab config with -ConfigPath.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimLab.ps1 -Client 01 -Action refresh
+
+# Re-check all prerequisites immediately before the run.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimLab.ps1 -Client 01 -Action preflight
 
 # Start one disposable rendered/headless client.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimLab.ps1 -Client 01 -Action start
@@ -29,7 +56,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\In
 
 # Stop and verify the client container is no longer running.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimLab.ps1 -Client 01 -Action stop
+
+# After stop, normalize and replay the retained native probe automatically.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimLab.ps1 -Client 01 -Action capture
 ```
+
+For a smoke-only proof that launch and the existing-character selector work, use
+`-Action smoke`. It runs the gate, starts the client, waits for the
+`Lab auto-join started existing character` marker, holds briefly, and always
+stops the container. It does not replace the MCP loop below.
 
 The script stages a writable, SHA-256-verified copy of the client-init watcher in
 the client's home volume. That is required by `josh5/steam-headless:debian`, whose
@@ -53,9 +88,22 @@ and `circle`, with durations limited to 1–60 seconds. The mailbox is consumed 
 `MotionTestController` on Unity's main thread. There is no arbitrary console,
 shell, teleport, or model-output execution path.
 
+The intended agent-owned sequence is:
+
+```text
+refresh -> preflight -> start -> MCP observe/command -> MCP telemetry -> stop -> capture
+```
+
+The agent can keep the client open while it issues bounded mailbox commands and
+reads JSONL. The final `stop` is mandatory before file refresh or evidence
+capture, and the capture step invokes the same AuthorityLab Docker build lane
+used by the synthetic experiments. No file needs to be copied between machines.
+
 ## Evidence and shutdown
 
 Keep the mod's JSONL, MCP receipt, and container lifecycle output together for a
-run. If the install is missing, the watcher reports that prerequisite and waits;
-do not treat that as a network failure. Stop the client before refreshing files or
-restarting a run. The script's green stop result is the closure receipt.
+run. A green preflight is the permission to start; a green stop result is the
+closure receipt; and the capture output contains the raw native source,
+normalization receipt, and observation-only Lumberjacks replay. Missing native
+probe evidence remains inconclusive rather than being reported as a failed
+authority comparison.
