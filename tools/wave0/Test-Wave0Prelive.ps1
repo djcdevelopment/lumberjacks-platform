@@ -6,6 +6,7 @@ Run the full non-human Wave 0 pre-live audit.
 Collects the evidence needed before asking for another two-client Valheim join:
 
 - P7/OMEN/i5 release readiness.
+- Public roadmap freshness against live P7 release truth.
 - Mock live-gate fixture coverage.
 - Mock auto-wait live-gate fixture coverage.
 - Mock visual-seal fixture coverage.
@@ -67,6 +68,7 @@ function Read-JsonOrNull {
 }
 
 $readinessPath = Join-Path $outRoot 'readiness.json'
+$roadmapFreshnessPath = Join-Path $outRoot 'roadmap-freshness.json'
 $fixturesRoot = Join-Path $outRoot 'fixtures'
 $autoWaitFixturesRoot = Join-Path $outRoot 'auto-wait-fixtures'
 $sealFixturesRoot = Join-Path $outRoot 'seal-fixtures'
@@ -81,6 +83,11 @@ $steps += Invoke-Step `
     -Name 'readiness' `
     -Script (Join-Path $repoRoot 'tools/i5/Test-Wave0Readiness.ps1') `
     -Arguments @('-SummaryOnly', '-OutputJson', $readinessPath)
+
+$steps += Invoke-Step `
+    -Name 'roadmap-freshness' `
+    -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0RoadmapFreshness.ps1') `
+    -Arguments @('-OutputJson', $roadmapFreshnessPath)
 
 $steps += Invoke-Step `
     -Name 'live-gate-fixtures' `
@@ -137,6 +144,7 @@ $steps += Invoke-Step `
     )
 
 $readiness = Read-JsonOrNull $readinessPath
+$roadmapFreshness = Read-JsonOrNull $roadmapFreshnessPath
 $fixtures = Read-JsonOrNull (Join-Path $fixturesRoot 'summary.json')
 $autoWaitFixtures = Read-JsonOrNull (Join-Path $autoWaitFixturesRoot 'summary.json')
 $sealFixtures = Read-JsonOrNull (Join-Path $sealFixturesRoot 'summary.json')
@@ -150,6 +158,7 @@ $failedSteps = @($steps | Where-Object { -not $_.ok })
 $verdict =
     if ($failedSteps.Count -gt 0) { 'prelive_audit_failed' }
     elseif (-not $readiness -or [string]$readiness.verdict -ne 'ready_for_two_client_gate') { 'prelive_readiness_not_ready' }
+    elseif (-not $roadmapFreshness -or [string]$roadmapFreshness.verdict -ne 'wave0_roadmap_freshness_passed') { 'prelive_roadmap_not_fresh' }
     elseif (-not $fixtures -or [string]$fixtures.verdict -ne 'wave0_live_gate_fixture_checks_passed') { 'prelive_fixtures_not_ready' }
     elseif (-not $autoWaitFixtures -or [string]$autoWaitFixtures.verdict -ne 'wave0_auto_wait_fixture_checks_passed') { 'prelive_auto_wait_fixtures_not_ready' }
     elseif (-not $sealFixtures -or [string]$sealFixtures.verdict -ne 'wave0_visual_seal_fixture_checks_passed') { 'prelive_visual_seal_fixtures_not_ready' }
@@ -170,6 +179,7 @@ $receipt = [ordered]@{
     steps = $steps
     receipts = [ordered]@{
         readiness = $readinessPath
+        roadmap_freshness = $roadmapFreshnessPath
         fixtures = Join-Path $fixturesRoot 'summary.json'
         auto_wait_fixtures = Join-Path $autoWaitFixturesRoot 'summary.json'
         visual_seal_fixtures = Join-Path $sealFixturesRoot 'summary.json'

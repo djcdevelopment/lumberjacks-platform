@@ -10,6 +10,9 @@ tools\wave0\Test-Wave0SyntheticMotion.ps1 -OutputJson captures\wave0-synthetic-m
 # Runtime release/readiness alignment across P7, OMEN, and i5
 tools\i5\Test-Wave0Readiness.ps1 -SummaryOnly -OutputJson captures\wave0-readiness.json
 
+# Public roadmap freshness against live P7 release truth
+tools\wave0\Test-Wave0RoadmapFreshness.ps1 -OutputJson captures\wave0-roadmap-freshness.json
+
 # Full live-gate orchestrator; exits WAIT until both clients are joined
 tools\wave0\Start-Wave0LiveGate.ps1 -OutputJson captures\wave0-live-gate\result.json
 
@@ -57,11 +60,12 @@ Run order before asking for a live movement course:
 0. `Test-Wave0Prelive.ps1`
 1. `Test-Wave0SyntheticMotion.ps1`
 2. `Test-Wave0Readiness.ps1`
-3. two-client idle capture
-4. one bounded apply/observe course, or start `Wait-Wave0LiveGate.ps1` before/during the join so
+3. `Test-Wave0RoadmapFreshness.ps1`
+4. two-client idle capture
+5. one bounded apply/observe course, or start `Wait-Wave0LiveGate.ps1` before/during the join so
    the command fires only after P7 reports the required peer window
-5. role reversal
-6. seal the two annotated visual projections
+6. role reversal
+7. seal the two annotated visual projections
 
 If either non-human gate reports `FAIL` or `WAIT`, stop and use its receipt
 instead of repeating a live join/movement test. `WARN` is advisory: for example,
@@ -69,8 +73,9 @@ after a new release it is normal to have no retained capture with the newest
 heartbeat-age fields until the next real two-client run creates one.
 
 `Test-Wave0Prelive.ps1` is the preferred unattended check before Derek returns.
-It runs readiness, fixture coverage, a no-client live-gate smoke, a two-machine
-bundle-lane smoke, and return-packet generation into one summary receipt.
+It runs readiness, public-roadmap freshness, fixture coverage, a no-client
+live-gate smoke, a two-machine bundle-lane smoke, and return-packet generation
+into one summary receipt.
 
 `Start-Wave0LiveGate.ps1` is the preferred live command once both clients are
 joined. It runs the two non-human gates, checks P7 peer count, starts the
