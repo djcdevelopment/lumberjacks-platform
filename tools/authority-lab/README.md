@@ -23,6 +23,16 @@ Run E00 twice and retain a comparison:
 .\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment m7-e00-lab-truth -RunTwice
 ```
 
+Run the first creative runtime-envelope experiment twice:
+
+```powershell
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment cre-e01-runtime-envelope -RunTwice
+```
+
+CRE-E01 emits `performance.gate_decision` rows for green, amber, and red synthetic
+combat-pressure bands. It proves budget, criticality, degradation, and route semantics
+without Unity, Steam, or a gameplay-authority change.
+
 Run the real Gateway seams in-memory for E02 or E03:
 
 ```powershell

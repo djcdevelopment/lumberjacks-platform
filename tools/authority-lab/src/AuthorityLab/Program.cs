@@ -272,7 +272,7 @@ public sealed class Scenario
             if (scenario.Seed < 0) throw new ScenarioException("seed must be non-negative");
             if (scenario.DurationSeconds <= 0 || scenario.DurationSeconds > 300) throw new ScenarioException("duration_seconds must be between 1 and 300");
             if (!new[] { "pure", "gateway", "gateway_durable", "gateway_udp", "replay", "local_valheim_shadow", "local_valheim_strict", "p7_shadow", "p7_canary" }.Contains(scenario.Driver, StringComparer.OrdinalIgnoreCase)) throw new ScenarioException($"unknown driver: {scenario.Driver}");
-            if (!new[] { "relevance", "replication", "ownership", "motion", "rpc" }.Contains(scenario.Plane, StringComparer.OrdinalIgnoreCase)) throw new ScenarioException($"unknown plane: {scenario.Plane}");
+            if (!new[] { "relevance", "replication", "ownership", "motion", "rpc", "runtime" }.Contains(scenario.Plane, StringComparer.OrdinalIgnoreCase)) throw new ScenarioException($"unknown plane: {scenario.Plane}");
             if (scenario.Actors.Count == 0) throw new ScenarioException("at least one actor is required");
             return scenario;
         }
@@ -417,6 +417,9 @@ internal static class AuthorityEngine
                 else if (scenario.Driver.Equals("gateway", StringComparison.OrdinalIgnoreCase)) ExecuteGatewayE03(scenario, events, invariants, predictions);
                 else ExecuteE03(scenario, events, invariants, predictions);
                 break;
+            case "cre-e01-runtime-envelope":
+                ExecuteCreativeRuntimeEnvelope(scenario, events, invariants, predictions);
+                break;
             default: throw new ScenarioException($"no pure executor for {scenario.ExperimentId}");
         }
         var ended = DateTimeOffset.UtcNow;
@@ -436,10 +439,16 @@ internal static class AuthorityEngine
         };
     }
 
-    private static EventEnvelope Event(Scenario s, int tick, string id, Dictionary<string, object?> payload) => new()
+    private static EventEnvelope Event(
+        Scenario s,
+        int tick,
+        string id,
+        Dictionary<string, object?> payload,
+        string eventType = "authority.lumberjacks_decision") => new()
     {
         EventId = id,
         TimestampUtc = "1970-01-01T00:00:00.0000000+00:00",
+        EventType = eventType,
         ExperimentId = s.ExperimentId,
         ScenarioId = s.ScenarioId,
         Seed = s.Seed,
@@ -447,6 +456,190 @@ internal static class AuthorityEngine
         Driver = s.Driver,
         Payload = payload
     };
+
+    private static void ExecuteCreativeRuntimeEnvelope(
+        Scenario s,
+        List<EventEnvelope> events,
+        List<InvariantResult> invariants,
+        List<PredictionObservation> predictions)
+    {
+        var deferredCapacity = s.IntParameter("deferred_capacity", 4);
+        var bands = new[]
+        {
+            new RuntimePressureBand(
+                "green",
+                s.IntParameter("green_budget_units", 100),
+                s.IntParameter("green_presentation_count", 4)),
+            new RuntimePressureBand(
+                "amber",
+                s.IntParameter("amber_budget_units", 70),
+                s.IntParameter("amber_presentation_count", 10)),
+            new RuntimePressureBand(
+                "red",
+                s.IntParameter("red_budget_units", 50),
+                s.IntParameter("red_presentation_count", 18))
+        };
+        var byBand = new Dictionary<string, IReadOnlyList<RuntimeGateDecision>>(StringComparer.Ordinal);
+
+        foreach (var (band, bandIndex) in bands.Select((value, index) => (value, index)))
+        {
+            var requests = new List<RuntimeWorkRequest>
+            {
+                new(
+                    "player_death",
+                    "critical_world_mutation",
+                    "critical",
+                    20,
+                    20,
+                    false,
+                    "binary_websocket",
+                    "stop_retry",
+                    1000),
+                new(
+                    "projectile_hit",
+                    "critical_world_mutation",
+                    "critical",
+                    25,
+                    25,
+                    false,
+                    "binary_websocket",
+                    "stop_retry",
+                    900)
+            };
+            requests.AddRange(Enumerable.Range(0, band.PresentationCount).Select(index =>
+                new RuntimeWorkRequest(
+                    $"projectile_trail_{index:000}",
+                    "transient_presentation",
+                    "presentation",
+                    7,
+                    3,
+                    true,
+                    "session_udp",
+                    "binary_websocket",
+                    100)));
+
+            var decisions = RuntimeEnvelopePolicy.Evaluate(requests, band.BudgetUnits, deferredCapacity);
+            byBand[band.Name] = decisions;
+
+            foreach (var (decision, index) in decisions.Select((value, index) => (value, index)))
+            {
+                events.Add(Event(
+                    s,
+                    bandIndex,
+                    $"cre-e01-{band.Name}-{index:000}",
+                    new Dictionary<string, object?>
+                    {
+                        ["pressure_band"] = band.Name,
+                        ["tick_budget_units"] = band.BudgetUnits,
+                        ["work_id"] = decision.Request.WorkId,
+                        ["work_class"] = decision.Request.WorkClass,
+                        ["criticality"] = decision.Request.Criticality,
+                        ["requested_mode"] = "full",
+                        ["selected_mode"] = decision.SelectedMode,
+                        ["requested_cost_units"] = decision.Request.FullCostUnits,
+                        ["selected_cost_units"] = decision.SelectedCostUnits,
+                        ["budget_remaining_units"] = decision.BudgetRemainingUnits,
+                        ["reason"] = decision.Reason,
+                        ["transport"] = decision.Transport,
+                        ["fallback_transport"] = decision.Request.FallbackTransport,
+                        ["deferred_depth"] = decision.DeferredDepth
+                    },
+                    "performance.gate_decision"));
+            }
+        }
+
+        var allDecisions = byBand.Values.SelectMany(value => value).ToArray();
+        var criticalPreserved = allDecisions
+            .Where(decision => decision.Request.Criticality == "critical")
+            .All(decision =>
+                decision.SelectedMode == "full" &&
+                decision.Transport == "binary_websocket" &&
+                decision.BudgetRemainingUnits >= 0);
+        var budgetsBounded = allDecisions.All(decision => decision.BudgetRemainingUnits >= 0);
+        var routesMatchSemantics = allDecisions.All(decision =>
+            decision.SelectedMode is "deferred" or "dropped"
+                ? decision.Transport == "none"
+                : decision.Request.Criticality == "critical"
+                    ? decision.Transport == "binary_websocket"
+                    : decision.Transport == "session_udp" &&
+                      decision.Request.FallbackTransport == "binary_websocket");
+        var selectedModes = allDecisions.Select(decision => decision.SelectedMode).ToHashSet(StringComparer.Ordinal);
+        var allModesObserved = new[] { "full", "reduced", "deferred", "dropped" }
+            .All(selectedModes.Contains);
+        var greenFull = PresentationCount(byBand["green"], "full");
+        var amberFull = PresentationCount(byBand["amber"], "full");
+        var redFull = PresentationCount(byBand["red"], "full");
+        var greenDegraded = DegradedCount(byBand["green"]);
+        var amberDegraded = DegradedCount(byBand["amber"]);
+        var redDegraded = DegradedCount(byBand["red"]);
+        var degradationMonotonic =
+            greenFull > amberFull &&
+            amberFull > redFull &&
+            greenDegraded < amberDegraded &&
+            amberDegraded < redDegraded;
+
+        invariants.Add(new()
+        {
+            Name = "critical_work_preserved",
+            Passed = criticalPreserved,
+            Detail = "player_death and projectile_hit remained full on binary WebSocket in every pressure band"
+        });
+        invariants.Add(new()
+        {
+            Name = "budget_never_negative",
+            Passed = budgetsBounded,
+            Detail = $"minimum_remaining={allDecisions.Min(decision => decision.BudgetRemainingUnits)}"
+        });
+        invariants.Add(new()
+        {
+            Name = "transport_follows_semantics",
+            Passed = routesMatchSemantics,
+            Detail = "critical mutations used binary WebSocket; emitted presentation used session UDP with binary WebSocket fallback"
+        });
+        invariants.Add(new()
+        {
+            Name = "all_degradation_modes_observed",
+            Passed = allModesObserved,
+            Detail = $"modes={string.Join(",", selectedModes.OrderBy(value => value, StringComparer.Ordinal))}"
+        });
+        invariants.Add(new()
+        {
+            Name = "degradation_tracks_pressure",
+            Passed = degradationMonotonic,
+            Detail = $"presentation_full={greenFull},{amberFull},{redFull}; degraded={greenDegraded},{amberDegraded},{redDegraded}"
+        });
+        invariants.Add(new()
+        {
+            Name = "deferred_queue_bounded",
+            Passed = allDecisions.Max(decision => decision.DeferredDepth) <= deferredCapacity,
+            Detail = $"capacity={deferredCapacity}; observed_max={allDecisions.Max(decision => decision.DeferredDepth)}"
+        });
+
+        predictions.Add(new()
+        {
+            Name = "selective_degradation",
+            Observed = $"green/amber/red presentation full counts were {greenFull}/{amberFull}/{redFull}; protected mutations stayed full"
+        });
+        predictions.Add(new()
+        {
+            Name = "explainable_transport",
+            Observed = "every decision records requested mode, selected mode, reason, cost, route, fallback, and remaining budget"
+        });
+    }
+
+    private static int PresentationCount(
+        IReadOnlyList<RuntimeGateDecision> decisions,
+        string selectedMode) =>
+        decisions.Count(decision =>
+            decision.Request.Criticality == "presentation" &&
+            decision.SelectedMode == selectedMode);
+
+    private static int DegradedCount(IReadOnlyList<RuntimeGateDecision> decisions) =>
+        decisions.Count(decision =>
+            decision.Request.Criticality == "presentation" &&
+            decision.SelectedMode != "full");
+
+    private sealed record RuntimePressureBand(string Name, int BudgetUnits, int PresentationCount);
 
     private static void ExecuteE00(Scenario s, List<EventEnvelope> events, List<InvariantResult> invariants, List<PredictionObservation> predictions)
     {

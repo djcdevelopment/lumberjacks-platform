@@ -66,4 +66,25 @@ public sealed class AuthorityLabTests
     {
         Assert.Equal(ZdoBandAction.Landmark, ZdoBandPolicy.Classify(80, 30, 64, 100, 0, -1, .2));
     }
+
+    [Fact]
+    public void RuntimeEnvelopePreservesCriticalWorkBeforePresentation()
+    {
+        var decisions = RuntimeEnvelopePolicy.Evaluate(
+            new[]
+            {
+                new RuntimeWorkRequest("trail", "transient_presentation", "presentation", 7, 3, true, "session_udp", "binary_websocket", 100),
+                new RuntimeWorkRequest("death", "critical_world_mutation", "critical", 20, 20, false, "binary_websocket", "stop_retry", 1000)
+            },
+            budgetUnits: 20,
+            deferredCapacity: 1);
+
+        var death = Assert.Single(decisions, decision => decision.Request.WorkId == "death");
+        var trail = Assert.Single(decisions, decision => decision.Request.WorkId == "trail");
+        Assert.Equal("full", death.SelectedMode);
+        Assert.Equal("binary_websocket", death.Transport);
+        Assert.Equal("deferred", trail.SelectedMode);
+        Assert.Equal("none", trail.Transport);
+        Assert.All(decisions, decision => Assert.True(decision.BudgetRemainingUnits >= 0));
+    }
 }

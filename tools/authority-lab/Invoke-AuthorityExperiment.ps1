@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)] [ValidateSet('m7-e00-lab-truth','m7-e01-relevance-shape','m7-e02-recipient-fanout','m7-e03-motion-fingerprints')] [string]$Experiment,
+    [Parameter(Mandatory = $true)] [ValidateSet('m7-e00-lab-truth','m7-e01-relevance-shape','m7-e02-recipient-fanout','m7-e03-motion-fingerprints','cre-e01-runtime-envelope')] [string]$Experiment,
     [ValidateSet('pure','gateway','gateway_durable','gateway_udp')] [string]$Driver = 'pure',
     [switch]$RunTwice,
     [switch]$ForceTimeout
@@ -8,8 +8,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$scenario = Join-Path $repoRoot "fieldlab\experiments\m7\$Experiment\scenario.yaml"
-$runsRoot = Join-Path $repoRoot "fieldlab\experiments\m7\$Experiment\runs"
+$experimentFamily = if ($Experiment.StartsWith('cre-', [StringComparison]::OrdinalIgnoreCase)) { 'creative-runtime' } else { 'm7' }
+$scenario = Join-Path $repoRoot "fieldlab\experiments\$experimentFamily\$Experiment\scenario.yaml"
+$runsRoot = Join-Path $repoRoot "fieldlab\experiments\$experimentFamily\$Experiment\runs"
 $revision = (& git -C $repoRoot rev-parse --short HEAD).Trim()
 $dirtyState = -not [string]::IsNullOrWhiteSpace((& git -C $repoRoot status --porcelain))
 if (-not (Test-Path -LiteralPath $scenario -PathType Leaf)) { throw "missing scenario: $scenario" }
