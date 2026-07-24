@@ -85,6 +85,10 @@ tools\wave0\Test-Wave0StopRule.ps1 -OutputJson captures\wave0-stop-rule.json
 # Fixture-test every stop-rule branch
 tools\wave0\Test-Wave0StopRuleFixtures.ps1 `
   -OutputDirectory captures\wave0-stop-rule-fixtures
+
+# Fixture-test visual observation sidecar immutability
+tools\wave0\Test-Wave0VisualObservationFixtures.ps1 `
+  -OutputDirectory captures\wave0-visual-observation-fixtures
 ```
 
 Run order before asking for a live movement course:
@@ -212,3 +216,7 @@ contains a retained named defect, the correct result is
 still blocked, sealed visual exit, named defect exit, and missing strategy rule.
 `New-Wave0ReturnPacket.ps1` includes both stop-rule receipts in its non-human
 evidence table so the operator handoff shows why later-wave work is still gated.
+`Test-Wave0VisualObservationFixtures.ps1` proves the live machine receipt remains
+immutable while human visual observations are written as sidecar/projection files.
+`New-Wave0ReturnPacket.ps1` includes that fixture receipt so the handoff packet
+shows the visual sidecar path is tested before a live run starts.

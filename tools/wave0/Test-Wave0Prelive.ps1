@@ -16,6 +16,7 @@ Collects the evidence needed before asking for another two-client Valheim join:
 - Full strategy status fixture coverage.
 - Wave 0 stop-rule coverage.
 - Wave 0 stop-rule fixture coverage.
+- Visual-observation sidecar immutability coverage.
 - Real no-client live-gate smoke, proving the gate stops before motion.
 - Two-machine Companion capture/bundle smoke, proving OMEN+i5 evidence collection.
 - Return packet generation from the newest valid receipts.
@@ -79,6 +80,7 @@ $fixturesRoot = Join-Path $outRoot 'fixtures'
 $autoWaitFixturesRoot = Join-Path $outRoot 'auto-wait-fixtures'
 $sealFixturesRoot = Join-Path $outRoot 'seal-fixtures'
 $defectFixturesRoot = Join-Path $outRoot 'defect-fixtures'
+$visualObservationFixturesRoot = Join-Path $outRoot 'visual-observation-fixtures'
 $humanRegisterPath = Join-Path $outRoot 'human-test-register.json'
 $expectedGridJson = Join-Path $outRoot 'expected-result-grid.json'
 $expectedGridMarkdown = Join-Path $outRoot 'expected-result-grid.md'
@@ -89,7 +91,7 @@ $noClientRoot = Join-Path $outRoot 'no-client-live-gate'
 $bundleSmokeRoot = Join-Path $outRoot 'bundle-smoke'
 $returnPacketRoot = Join-Path $outRoot 'return-packet'
 $strategyStatusRoot = Join-Path $outRoot 'strategy-status'
-New-Item -ItemType Directory -Force -Path $fixturesRoot, $autoWaitFixturesRoot, $sealFixturesRoot, $defectFixturesRoot, $strategyStatusFixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot, $strategyStatusRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $fixturesRoot, $autoWaitFixturesRoot, $sealFixturesRoot, $defectFixturesRoot, $visualObservationFixturesRoot, $strategyStatusFixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot, $strategyStatusRoot | Out-Null
 
 $steps = @()
 $steps += Invoke-Step `
@@ -121,6 +123,11 @@ $steps += Invoke-Step `
     -Name 'defect-packet-fixtures' `
     -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0DefectPacketFixtures.ps1') `
     -Arguments @('-OutputDirectory', $defectFixturesRoot)
+
+$steps += Invoke-Step `
+    -Name 'visual-observation-fixtures' `
+    -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0VisualObservationFixtures.ps1') `
+    -Arguments @('-OutputDirectory', $visualObservationFixturesRoot)
 
 $steps += Invoke-Step `
     -Name 'human-test-register' `
@@ -181,6 +188,7 @@ $steps += Invoke-Step `
         '-AutoWaitFixtureReceipt', (Join-Path $autoWaitFixturesRoot 'summary.json'),
         '-VisualSealFixtureReceipt', (Join-Path $sealFixturesRoot 'summary.json'),
         '-DefectPacketFixtureReceipt', (Join-Path $defectFixturesRoot 'summary.json'),
+        '-VisualObservationFixtureReceipt', (Join-Path $visualObservationFixturesRoot 'summary.json'),
         '-HumanTestRegisterReceipt', $humanRegisterPath,
         '-ExpectedResultGridReceipt', $expectedGridJson,
         '-StopRuleReceipt', $stopRulePath,
@@ -196,6 +204,7 @@ $fixtures = Read-JsonOrNull (Join-Path $fixturesRoot 'summary.json')
 $autoWaitFixtures = Read-JsonOrNull (Join-Path $autoWaitFixturesRoot 'summary.json')
 $sealFixtures = Read-JsonOrNull (Join-Path $sealFixturesRoot 'summary.json')
 $defectFixtures = Read-JsonOrNull (Join-Path $defectFixturesRoot 'summary.json')
+$visualObservationFixtures = Read-JsonOrNull (Join-Path $visualObservationFixturesRoot 'summary.json')
 $humanRegister = Read-JsonOrNull $humanRegisterPath
 $expectedGrid = Read-JsonOrNull $expectedGridJson
 $strategyStatusFixtures = Read-JsonOrNull (Join-Path $strategyStatusFixturesRoot 'summary.json')
@@ -215,6 +224,7 @@ $verdict =
     elseif (-not $autoWaitFixtures -or [string]$autoWaitFixtures.verdict -ne 'wave0_auto_wait_fixture_checks_passed') { 'prelive_auto_wait_fixtures_not_ready' }
     elseif (-not $sealFixtures -or [string]$sealFixtures.verdict -ne 'wave0_visual_seal_fixture_checks_passed') { 'prelive_visual_seal_fixtures_not_ready' }
     elseif (-not $defectFixtures -or [string]$defectFixtures.verdict -ne 'wave0_defect_packet_fixture_checks_passed') { 'prelive_defect_packet_fixtures_not_ready' }
+    elseif (-not $visualObservationFixtures -or [string]$visualObservationFixtures.verdict -ne 'wave0_visual_observation_fixture_checks_passed') { 'prelive_visual_observation_fixtures_not_ready' }
     elseif (-not $humanRegister -or [string]$humanRegister.verdict -ne 'wave0_human_test_register_current') { 'prelive_human_test_register_not_current' }
     elseif (-not $expectedGrid -or [string]$expectedGrid.verdict -ne 'wave0_expected_result_grid_ready') { 'prelive_expected_result_grid_not_ready' }
     elseif (-not $strategyStatusFixtures -or [string]$strategyStatusFixtures.verdict -ne 'full_roadmap_strategy_status_fixture_checks_passed') { 'prelive_strategy_status_fixtures_not_ready' }
@@ -241,6 +251,7 @@ $receipt = [ordered]@{
         auto_wait_fixtures = Join-Path $autoWaitFixturesRoot 'summary.json'
         visual_seal_fixtures = Join-Path $sealFixturesRoot 'summary.json'
         defect_packet_fixtures = Join-Path $defectFixturesRoot 'summary.json'
+        visual_observation_fixtures = Join-Path $visualObservationFixturesRoot 'summary.json'
         human_test_register = $humanRegisterPath
         expected_result_grid_json = $expectedGridJson
         expected_result_grid_markdown = $expectedGridMarkdown

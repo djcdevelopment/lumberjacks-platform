@@ -18,6 +18,7 @@ param(
     [string]$AutoWaitFixtureReceipt = '',
     [string]$VisualSealFixtureReceipt = '',
     [string]$DefectPacketFixtureReceipt = '',
+    [string]$VisualObservationFixtureReceipt = '',
     [string]$HumanTestRegisterReceipt = '',
     [string]$ExpectedResultGridReceipt = '',
     [string]$StopRuleReceipt = '',
@@ -164,6 +165,12 @@ if (-not $DefectPacketFixtureReceipt) {
         [string]$Body.verdict -eq 'wave0_defect_packet_fixture_checks_passed'
     }
 }
+if (-not $VisualObservationFixtureReceipt) {
+    $VisualObservationFixtureReceipt = Find-LatestReceipt 'visual observation fixture summary receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_visual_observation_fixture_checks_passed'
+    }
+}
 if (-not $HumanTestRegisterReceipt) {
     $HumanTestRegisterReceipt = Find-LatestReceipt 'human-test register receipt' {
         param($Body)
@@ -203,6 +210,7 @@ $fixtures = Read-Receipt $FixtureReceipt
 $autoWaitFixtures = Read-Receipt $AutoWaitFixtureReceipt
 $visualSealFixtures = Read-Receipt $VisualSealFixtureReceipt
 $defectPacketFixtures = Read-Receipt $DefectPacketFixtureReceipt
+$visualObservationFixtures = Read-Receipt $VisualObservationFixtureReceipt
 $humanTestRegister = Read-Receipt $HumanTestRegisterReceipt
 $expectedResultGrid = Read-Receipt $ExpectedResultGridReceipt
 $stopRule = Read-Receipt $StopRuleReceipt
@@ -258,6 +266,12 @@ $checks += Check-State `
     -Detail ($(if ($defectPacketFixtures.present) { "verdict=$($defectPacketFixtures.body.verdict)" } else { 'missing defect packet fixture summary' })) `
     -ReceiptPath $defectPacketFixtures.path `
     -ReceiptSha256 $defectPacketFixtures.sha256
+$checks += Check-State `
+    -Name 'visual_observation_fixture_gate' `
+    -Ok ($visualObservationFixtures.present -and [string]$visualObservationFixtures.body.verdict -eq 'wave0_visual_observation_fixture_checks_passed' -and @($visualObservationFixtures.body.cases).Count -ge 4) `
+    -Detail ($(if ($visualObservationFixtures.present) { "verdict=$($visualObservationFixtures.body.verdict) cases=$(@($visualObservationFixtures.body.cases).Count)" } else { 'missing visual observation fixture summary' })) `
+    -ReceiptPath $visualObservationFixtures.path `
+    -ReceiptSha256 $visualObservationFixtures.sha256
 $checks += Check-State `
     -Name 'human_test_register_gate' `
     -Ok ($humanTestRegister.present -and [string]$humanTestRegister.body.verdict -eq 'wave0_human_test_register_current') `
