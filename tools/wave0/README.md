@@ -78,6 +78,9 @@ tools\wave0\New-FullRoadmapStrategyStatus.ps1 `
 # Fixture-test the strategy status packet's ready and incomplete paths
 tools\wave0\Test-FullRoadmapStrategyStatusFixtures.ps1 `
   -OutputDirectory captures\full-roadmap-strategy-status-fixtures
+
+# Check whether Wave 0 still blocks M1/M2 expansion
+tools\wave0\Test-Wave0StopRule.ps1 -OutputJson captures\wave0-stop-rule.json
 ```
 
 Run order before asking for a live movement course:
@@ -194,3 +197,9 @@ full strategy, the remaining-human-test register, and the latest or provided
 Wave 0 pre-live summary, then emits a conservative matrix of proven,
 human-gated, blocked-by-Wave-0, and future-scope areas. It deliberately does not
 mark the roadmap complete.
+
+`Test-Wave0StopRule.ps1` checks only the live Wave 0 exit-artifact locations,
+not fixture directories. Until `captures\wave0-live-seal\visual-seal.json`
+contains `wave0_visual_evidence_sealed` or `captures\wave0-defects\...\packet.json`
+contains a retained named defect, the correct result is
+`wave0_stop_rule_holds_no_exit_artifact`.
