@@ -74,6 +74,10 @@ tools\wave0\New-Wave0ReturnPacket.ps1 `
 tools\wave0\New-FullRoadmapStrategyStatus.ps1 `
   -OutputJson captures\full-roadmap-strategy-status.json `
   -OutputMarkdown captures\full-roadmap-strategy-status.md
+
+# Fixture-test the strategy status packet's ready and incomplete paths
+tools\wave0\Test-FullRoadmapStrategyStatusFixtures.ps1 `
+  -OutputDirectory captures\full-roadmap-strategy-status-fixtures
 ```
 
 Run order before asking for a live movement course:
@@ -172,6 +176,7 @@ The seal verifier has fixture coverage:
 ```powershell
 tools\wave0\Test-Wave0SealFixtures.ps1
 tools\wave0\Test-Wave0DefectPacketFixtures.ps1
+tools\wave0\Test-FullRoadmapStrategyStatusFixtures.ps1
 ```
 
 `New-Wave0ReturnPacket.ps1` is the handoff generator. It summarizes the current

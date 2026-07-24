@@ -13,6 +13,7 @@ Collects the evidence needed before asking for another two-client Valheim join:
 - Mock named-defect packet fixture coverage.
 - Human-test register coverage for the Derek-only return gates.
 - Expected-result grid coverage for the live observation.
+- Full strategy status fixture coverage.
 - Real no-client live-gate smoke, proving the gate stops before motion.
 - Two-machine Companion capture/bundle smoke, proving OMEN+i5 evidence collection.
 - Return packet generation from the newest valid receipts.
@@ -79,11 +80,12 @@ $defectFixturesRoot = Join-Path $outRoot 'defect-fixtures'
 $humanRegisterPath = Join-Path $outRoot 'human-test-register.json'
 $expectedGridJson = Join-Path $outRoot 'expected-result-grid.json'
 $expectedGridMarkdown = Join-Path $outRoot 'expected-result-grid.md'
+$strategyStatusFixturesRoot = Join-Path $outRoot 'strategy-status-fixtures'
 $noClientRoot = Join-Path $outRoot 'no-client-live-gate'
 $bundleSmokeRoot = Join-Path $outRoot 'bundle-smoke'
 $returnPacketRoot = Join-Path $outRoot 'return-packet'
 $strategyStatusRoot = Join-Path $outRoot 'strategy-status'
-New-Item -ItemType Directory -Force -Path $fixturesRoot, $autoWaitFixturesRoot, $sealFixturesRoot, $defectFixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot, $strategyStatusRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $fixturesRoot, $autoWaitFixturesRoot, $sealFixturesRoot, $defectFixturesRoot, $strategyStatusFixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot, $strategyStatusRoot | Out-Null
 
 $steps = @()
 $steps += Invoke-Step `
@@ -125,6 +127,11 @@ $steps += Invoke-Step `
     -Name 'expected-result-grid' `
     -Script (Join-Path $repoRoot 'tools/wave0/New-Wave0ExpectedResultGrid.ps1') `
     -Arguments @('-OutputJson', $expectedGridJson, '-OutputMarkdown', $expectedGridMarkdown)
+
+$steps += Invoke-Step `
+    -Name 'strategy-status-fixtures' `
+    -Script (Join-Path $repoRoot 'tools/wave0/Test-FullRoadmapStrategyStatusFixtures.ps1') `
+    -Arguments @('-OutputDirectory', $strategyStatusFixturesRoot)
 
 $noClientArgs = @(
     '-DesiredApplyClient', 'omen',
@@ -175,6 +182,7 @@ $sealFixtures = Read-JsonOrNull (Join-Path $sealFixturesRoot 'summary.json')
 $defectFixtures = Read-JsonOrNull (Join-Path $defectFixturesRoot 'summary.json')
 $humanRegister = Read-JsonOrNull $humanRegisterPath
 $expectedGrid = Read-JsonOrNull $expectedGridJson
+$strategyStatusFixtures = Read-JsonOrNull (Join-Path $strategyStatusFixturesRoot 'summary.json')
 $noClient = Read-JsonOrNull (Join-Path $noClientRoot 'result.json')
 $bundleSmoke = Read-JsonOrNull (Join-Path $bundleSmokeRoot 'result.json')
 $packet = Read-JsonOrNull (Join-Path $returnPacketRoot 'packet.json')
@@ -191,6 +199,7 @@ $verdict =
     elseif (-not $defectFixtures -or [string]$defectFixtures.verdict -ne 'wave0_defect_packet_fixture_checks_passed') { 'prelive_defect_packet_fixtures_not_ready' }
     elseif (-not $humanRegister -or [string]$humanRegister.verdict -ne 'wave0_human_test_register_current') { 'prelive_human_test_register_not_current' }
     elseif (-not $expectedGrid -or [string]$expectedGrid.verdict -ne 'wave0_expected_result_grid_ready') { 'prelive_expected_result_grid_not_ready' }
+    elseif (-not $strategyStatusFixtures -or [string]$strategyStatusFixtures.verdict -ne 'full_roadmap_strategy_status_fixture_checks_passed') { 'prelive_strategy_status_fixtures_not_ready' }
     elseif (-not $noClient -or [string]$noClient.verdict -ne 'wait_for_two_real_clients') { 'prelive_no_client_gate_unexpected' }
     elseif (-not $bundleSmoke -or $bundleCount -lt 2) { 'prelive_bundle_collection_not_ready' }
     elseif (-not $packet -or [string]$packet.verdict -ne 'ready_for_derek_two_client_join') { 'prelive_return_packet_not_ready' }
@@ -215,6 +224,7 @@ $receipt = [ordered]@{
         human_test_register = $humanRegisterPath
         expected_result_grid_json = $expectedGridJson
         expected_result_grid_markdown = $expectedGridMarkdown
+        strategy_status_fixtures = Join-Path $strategyStatusFixturesRoot 'summary.json'
         no_client_live_gate = Join-Path $noClientRoot 'result.json'
         bundle_smoke = Join-Path $bundleSmokeRoot 'result.json'
         return_packet_json = Join-Path $returnPacketRoot 'packet.json'
