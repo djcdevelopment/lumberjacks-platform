@@ -25,8 +25,9 @@ teleport has the largest correction; the traces remain logically ordered.
 
 ## Limits
 
-Pure driver, 20 samples per pattern, no Unity interpolation, no UDP/WebSocket path,
-and no claim that velocity prediction is the live defect.
+Pure and Gateway drivers use 20 samples per pattern and no Unity interpolation. The
+Gateway runs exercise WebSocket fallback and bound UDP loopback, but make no claim
+that velocity prediction is the live defect.
 
 ## Assumptions
 
@@ -45,15 +46,20 @@ trajectory.
 
 ## Results
 
-Supported. All six patterns appeared in 120 rows. Fingerprint correction totals were
-straight=1, stutter=13, stop/start=2, turn=2.414, circle=9.204, and teleport=56.286.
+The pure, Gateway WebSocket, and Gateway UDP runs are all supported. All six patterns
+appeared in 120 rows in each run. Fingerprint correction totals were straight=1,
+stutter=13, stop/start=2, turn=2.414, circle=9.204, and teleport=56.286. The Gateway
+WebSocket fallback relayed all 120 frames in order, and the bound-UDP run delivered all
+120 frames to the distinct target with the target token and envelope order intact.
 
 ## What changed in our understanding
 
-The lab can produce a useful prediction grid for the live motion symptom. The next
-seam must preserve logical ordering while adding Gateway transport observations.
+The lab can produce a useful prediction grid for the live motion symptom, and both
+Gateway transport paths preserve the same logical fingerprints. The live unknown
+remains whether cadence, ordering, or client interpolation dominates.
 
 ## Next experiment
 
-Run the existing motion smoke and a Gateway driver through the same scenario before
-using local Valheim clients.
+Replay the existing motion smoke through the same receipt contract, then capture the
+native candidate fields on a disposable local Valheim server before using strict
+authority or changing client equations.

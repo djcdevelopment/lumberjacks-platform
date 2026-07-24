@@ -1,8 +1,18 @@
 using System.Security.Cryptography;
+using System.Net;
+using System.Net.WebSockets;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ComfyNetworkSense;
+using Game.Contracts.Entities;
+using Game.Contracts.Protocol;
+using Game.Contracts.Protocol.Binary;
+using Game.Gateway.Valheim;
+using Game.Gateway.WebSocket;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AuthorityLab;
 
@@ -60,7 +70,10 @@ public static class Program
         var output = options.Required("output");
         var forceTimeout = options.Has("force-timeout");
         var sourceRevision = options.Value("source-revision") ?? Environment.GetEnvironmentVariable("AUTHORITY_LAB_SOURCE_REVISION") ?? "working_tree";
+        var dirtyState = options.Has("dirty-state") || sourceRevision == "working_tree";
         var scenario = Scenario.Load(scenarioPath);
+        var requestedDriver = options.Value("driver");
+        if (!string.IsNullOrWhiteSpace(requestedDriver)) scenario.SetDriver(requestedDriver);
         Directory.CreateDirectory(output);
         Directory.CreateDirectory(Path.Combine(output, "raw"));
 
@@ -83,7 +96,7 @@ public static class Program
             ScenarioId = scenario.ScenarioId,
             RunId = runId,
             SourceRevision = sourceRevision,
-            DirtyState = sourceRevision == "working_tree",
+            DirtyState = dirtyState,
             ScenarioSha256 = Hashing.File(scenarioPath),
             NormalizedInputSha256 = Hashing.Sha256(normalized),
             Policy = scenario.Policy,
@@ -137,9 +150,20 @@ public static class Program
         var receipt = ReadReceipt(receiptPath);
         foreach (var required in new[] { receipt.ExperimentId, receipt.ScenarioId, receipt.RunId, receipt.Driver, receipt.StopResult, receipt.NormalizedDecisionSha256 })
             if (string.IsNullOrWhiteSpace(required)) throw new InvalidDataException("receipt has an empty required field");
+        var normalizedInputPath = Path.Combine(run, "normalized-input.json");
+        if (!File.Exists(normalizedInputPath)) throw new InvalidDataException($"missing normalized input: {normalizedInputPath}");
+        var normalizedInput = File.ReadAllText(normalizedInputPath).TrimEnd('\r', '\n');
+        if (!string.Equals(Hashing.Sha256(normalizedInput), receipt.NormalizedInputSha256, StringComparison.Ordinal))
+            throw new InvalidDataException("normalized input hash does not match receipt");
+        var decisionsPath = Path.Combine(run, "raw", "normalized-decisions.json");
+        if (!File.Exists(decisionsPath)) throw new InvalidDataException($"missing normalized decisions: {decisionsPath}");
+        var normalizedDecisions = File.ReadAllText(decisionsPath).TrimEnd('\r', '\n');
+        if (!string.Equals(Hashing.Sha256(normalizedDecisions), receipt.NormalizedDecisionSha256, StringComparison.Ordinal))
+            throw new InvalidDataException("normalized decision hash does not match receipt");
         var eventsPath = Path.Combine(run, "raw", "events.jsonl");
         if (!File.Exists(eventsPath)) throw new InvalidDataException($"missing event stream: {eventsPath}");
         var lineNumber = 0;
+        var eventCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var line in File.ReadLines(eventsPath))
         {
             lineNumber++;
@@ -148,7 +172,16 @@ public static class Program
             var root = document.RootElement;
             foreach (var name in new[] { "schema_version", "event_id", "timestamp_utc", "event_type", "experiment_id", "scenario_id", "run_id", "seed", "tick", "driver", "payload" })
                 if (!root.TryGetProperty(name, out _)) throw new InvalidDataException($"event line {lineNumber} missing {name}");
+            if (root.GetProperty("run_id").GetString() != receipt.RunId ||
+                root.GetProperty("experiment_id").GetString() != receipt.ExperimentId ||
+                root.GetProperty("scenario_id").GetString() != receipt.ScenarioId ||
+                root.GetProperty("driver").GetString() != receipt.Driver)
+                throw new InvalidDataException($"event line {lineNumber} identity does not match receipt");
+            var eventType = root.GetProperty("event_type").GetString() ?? "";
+            eventCounts[eventType] = eventCounts.GetValueOrDefault(eventType) + 1;
         }
+        if (!eventCounts.OrderBy(pair => pair.Key).SequenceEqual(receipt.EventCounts.OrderBy(pair => pair.Key)))
+            throw new InvalidDataException("event counts do not match receipt");
         Console.WriteLine($"check: valid receipt and {lineNumber} complete event(s)");
         return 0;
     }
@@ -213,7 +246,7 @@ public sealed class Scenario
     [JsonPropertyName("actors")] public List<Actor> Actors { get; init; } = new();
     [JsonPropertyName("objects")] public ObjectFixture Objects { get; init; } = new();
     [JsonPropertyName("policy")] public PolicyConfig Policy { get; init; } = new();
-    [JsonPropertyName("driver")] public string Driver { get; init; } = "";
+    [JsonPropertyName("driver")] public string Driver { get; set; } = "";
     [JsonPropertyName("stop_rules")] public List<string> StopRules { get; init; } = new();
     [JsonPropertyName("parameters")] public Dictionary<string, JsonElement> Parameters { get; init; } = new();
 
@@ -222,12 +255,22 @@ public sealed class Scenario
         if (!File.Exists(path)) throw new ScenarioException($"scenario not found: {path}");
         try
         {
-            var scenario = JsonSerializer.Deserialize<Scenario>(File.ReadAllText(path), ProgramJson.Options) ?? throw new ScenarioException("empty scenario");
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) throw new ScenarioException("scenario root must be an object");
+            var requiredProperties = new[] { "schema_version", "experiment_id", "scenario_id", "seed", "plane", "duration_seconds", "actors", "objects", "policy", "driver", "stop_rules" };
+            foreach (var property in requiredProperties)
+                if (!root.TryGetProperty(property, out _)) throw new ScenarioException($"missing required field: {property}");
+            var allowedProperties = requiredProperties.Append("parameters").ToHashSet(StringComparer.Ordinal);
+            var unknown = root.EnumerateObject().Select(property => property.Name).Where(name => !allowedProperties.Contains(name)).ToArray();
+            if (unknown.Length > 0) throw new ScenarioException($"unknown root field(s): {string.Join(",", unknown)}");
+            var scenario = JsonSerializer.Deserialize<Scenario>(root.GetRawText(), ProgramJson.Options) ?? throw new ScenarioException("empty scenario");
             if (scenario.SchemaVersion != 1) throw new ScenarioException("schema_version must be 1");
             if (string.IsNullOrWhiteSpace(scenario.ExperimentId) || string.IsNullOrWhiteSpace(scenario.ScenarioId)) throw new ScenarioException("experiment_id and scenario_id are required");
             if (scenario.Seed < 0) throw new ScenarioException("seed must be non-negative");
             if (scenario.DurationSeconds <= 0 || scenario.DurationSeconds > 300) throw new ScenarioException("duration_seconds must be between 1 and 300");
-            if (!new[] { "pure", "gateway", "replay", "local_valheim_shadow", "local_valheim_strict", "p7_shadow", "p7_canary" }.Contains(scenario.Driver, StringComparer.OrdinalIgnoreCase)) throw new ScenarioException($"unknown driver: {scenario.Driver}");
+            if (!new[] { "pure", "gateway", "gateway_durable", "gateway_udp", "replay", "local_valheim_shadow", "local_valheim_strict", "p7_shadow", "p7_canary" }.Contains(scenario.Driver, StringComparer.OrdinalIgnoreCase)) throw new ScenarioException($"unknown driver: {scenario.Driver}");
+            if (!new[] { "relevance", "replication", "ownership", "motion", "rpc" }.Contains(scenario.Plane, StringComparer.OrdinalIgnoreCase)) throw new ScenarioException($"unknown plane: {scenario.Plane}");
             if (scenario.Actors.Count == 0) throw new ScenarioException("at least one actor is required");
             return scenario;
         }
@@ -235,6 +278,14 @@ public sealed class Scenario
     }
 
     public string NormalizedJson() => JsonSerializer.Serialize(this, ProgramJson.NormalizedOptions);
+
+    public void SetDriver(string driver)
+    {
+        if (!AllowedDrivers.Contains(driver, StringComparer.OrdinalIgnoreCase)) throw new ScenarioException($"unknown driver: {driver}");
+        Driver = driver;
+    }
+
+    private static readonly string[] AllowedDrivers = ["pure", "gateway", "gateway_durable", "gateway_udp", "replay", "local_valheim_shadow", "local_valheim_strict", "p7_shadow", "p7_canary"];
 
     public int IntParameter(string name, int fallback) => Parameters.TryGetValue(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var result) ? result : fallback;
     public double DoubleParameter(string name, double fallback) => Parameters.TryGetValue(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var result) ? result : fallback;
@@ -354,8 +405,16 @@ internal static class AuthorityEngine
         {
             case "m7-e00-lab-truth": ExecuteE00(scenario, events, invariants, predictions); break;
             case "m7-e01-relevance-shape": ExecuteE01(scenario, events, invariants, predictions); break;
-            case "m7-e02-recipient-fanout": ExecuteE02(scenario, events, invariants, predictions); break;
-            case "m7-e03-motion-fingerprints": ExecuteE03(scenario, events, invariants, predictions); break;
+            case "m7-e02-recipient-fanout":
+                if (scenario.Driver.Equals("gateway_durable", StringComparison.OrdinalIgnoreCase)) ExecuteGatewayE02Durable(scenario, events, invariants, predictions);
+                else if (scenario.Driver.Equals("gateway", StringComparison.OrdinalIgnoreCase)) ExecuteGatewayE02(scenario, events, invariants, predictions);
+                else ExecuteE02(scenario, events, invariants, predictions);
+                break;
+            case "m7-e03-motion-fingerprints":
+                if (scenario.Driver.Equals("gateway_udp", StringComparison.OrdinalIgnoreCase)) ExecuteGatewayE03Udp(scenario, events, invariants, predictions);
+                else if (scenario.Driver.Equals("gateway", StringComparison.OrdinalIgnoreCase)) ExecuteGatewayE03(scenario, events, invariants, predictions);
+                else ExecuteE03(scenario, events, invariants, predictions);
+                break;
             default: throw new ScenarioException($"no pure executor for {scenario.ExperimentId}");
         }
         var ended = DateTimeOffset.UtcNow;
@@ -481,6 +540,131 @@ internal static class AuthorityEngine
         predictions.Add(new() { Name = "scaling_shape", Observed = "emissions grow with in-band observers; this is not a 100-player capacity claim" });
     }
 
+    private static void ExecuteGatewayE02(Scenario s, List<EventEnvelope> events, List<InvariantResult> invariants, List<PredictionObservation> predictions)
+    {
+        var totals = new Dictionary<int, int>();
+        var gateway = new ValheimZdoRedirectService(walPath: null);
+        foreach (var n in new[] { 2, 10, 100 })
+        {
+            var observers = Enumerable.Range(0, n).Select(i => new FanoutObserverInput(
+                i == n - 1 ? "observer-000" : $"observer-{i:000}",
+                i % 3 == 0 ? 20 : (i % 3 == 1 ? 45 : 90),
+                i == 1 ? 410L : null)).ToArray();
+            var decisions = ZdoFanoutPlan.Evaluate(410, 30, 64, 0, observers);
+            var windowId = $"authority-lab-n-{n}";
+            var envelopes = decisions
+                .Where(decision => decision.Emit)
+                .Select((decision, index) => new ValheimZdoRedirectEnvelope
+                {
+                    Seq = 410,
+                    Recipient = decision.Recipient,
+                    RecipientId = decision.Recipient,
+                    CorrelationId = $"m7-e02-{n}-{index}",
+                    IdempotencyKey = $"m7-e02-{n}-{decision.Recipient}-410",
+                    Prefab = 1,
+                    BodyB64 = "YXV0aG9yaXR5LWxhYg=="
+                }).ToList();
+            gateway.RecordEnvelopes(windowId, "authority-lab", envelopes, envelope => envelope.Recipient);
+            // Repeat the same batch to exercise the real Gateway duplicate tracker. Pending state
+            // remains one logical revision per recipient and ACK still has one terminal effect.
+            gateway.RecordEnvelopes(windowId, "authority-lab", envelopes, envelope => envelope.Recipient);
+            totals[n] = envelopes.Count;
+
+            foreach (var (decision, index) in decisions.Select((value, index) => (value, index)))
+            {
+                var status = gateway.GetStatus(windowId, decision.Recipient);
+                var pending = gateway.Pending(windowId, decision.Recipient, 1024);
+                var ack = gateway.Acknowledge(windowId, decision.Recipient, pending.Where(envelope => envelope.Seq.HasValue).Select(envelope => envelope.Seq!.Value).ToArray());
+                events.Add(Event(s, n * 1000 + index, $"e02-gateway-{n:000}-{index:000}", new Dictionary<string, object?>
+                {
+                    ["observer_count"] = n,
+                    ["recipient"] = decision.Recipient,
+                    ["distance_meters"] = decision.DistanceMeters,
+                    ["disposition"] = decision.Disposition.ToString(),
+                    ["emit"] = decision.Emit,
+                    ["gateway_recorded"] = decision.Emit,
+                    ["pending_before_ack"] = pending.Count,
+                    ["acknowledged"] = ack.Acknowledged,
+                    ["duplicates_observed"] = status.Duplicates,
+                    ["partition"] = status.RecipientId
+                }));
+            }
+        }
+
+        var emitted = events.Where(e => e.Payload.TryGetValue("emit", out var value) && value is true).ToArray();
+        var isolated = emitted.All(e => (int)e.Payload["acknowledged"]! == 1 && (int)e.Payload["pending_before_ack"]! == 1);
+        var scaling = totals[2] < totals[10] && totals[10] < totals[100];
+        var duplicateTracker = emitted.All(e => (long)e.Payload["duplicates_observed"]! >= 1);
+        invariants.Add(new() { Name = "gateway_recipient_partition", Passed = isolated, Detail = "ValheimZdoRedirectService kept one pending revision and one terminal ACK per emitted recipient" });
+        invariants.Add(new() { Name = "gateway_duplicate_terminal_apply", Passed = duplicateTracker, Detail = "replayed batches were counted as duplicates without producing a second pending item" });
+        invariants.Add(new() { Name = "gateway_fanout_scales_with_observers", Passed = scaling, Detail = string.Join(",", totals.Select(kvp => $"n={kvp.Key}:{kvp.Value}")) });
+        predictions.Add(new() { Name = "gateway_queue_partition", Observed = "recipient-local pending and ACK state remains independent through the real redirect service" });
+        predictions.Add(new() { Name = "gateway_duplicate_handling", Observed = "duplicate records are observable and do not double-apply at ACK" });
+    }
+
+    private static void ExecuteGatewayE02Durable(Scenario s, List<EventEnvelope> events, List<InvariantResult> invariants, List<PredictionObservation> predictions)
+    {
+        var windowId = "authority-lab-reconnect";
+        var walPath = Path.Combine(Path.GetTempPath(), $"authority-lab-{Guid.NewGuid():N}.wal");
+        var recipients = new[] { "observer-a", "observer-b" };
+        var envelopes = recipients.Select((recipient, index) => new ValheimZdoRedirectEnvelope
+        {
+            Seq = 410 + index,
+            Recipient = recipient,
+            RecipientId = recipient,
+            CorrelationId = $"m7-e02-durable-{index}",
+            IdempotencyKey = $"m7-e02-durable-{recipient}",
+            Prefab = 1,
+            BodyB64 = "YXV0aG9yaXR5LWxhYg=="
+        }).ToList();
+
+        try
+        {
+            var first = new ValheimZdoRedirectService(walPath);
+            first.RecordEnvelopes(windowId, "authority-lab", envelopes, envelope => envelope.Recipient);
+            first.RecordEnvelopes(windowId, "authority-lab-retry", envelopes, envelope => envelope.Recipient);
+
+            var restarted = new ValheimZdoRedirectService(walPath);
+            var pendingAfterRestart = new List<int>();
+            var acknowledgedAfterRestart = new List<int>();
+            var durablePendingAfterAck = new List<int>();
+            var durableAcknowledgedAfterAck = new List<long>();
+
+            foreach (var (recipient, index) in recipients.Select((value, index) => (value, index)))
+            {
+                var status = restarted.GetStatus(windowId, recipient);
+                var pending = restarted.Pending(windowId, recipient, 64);
+                var ack = restarted.Acknowledge(windowId, recipient, pending.Select(item => item.Seq!.Value).ToArray());
+                var afterAck = new ValheimZdoRedirectService(walPath).GetStatus(windowId, recipient);
+                pendingAfterRestart.Add(pending.Count);
+                acknowledgedAfterRestart.Add(ack.Acknowledged);
+                durablePendingAfterAck.Add((int)afterAck.Pending);
+                durableAcknowledgedAfterAck.Add(afterAck.Acknowledged);
+                events.Add(Event(s, index, $"e02-gateway-durable-{index:000}", new Dictionary<string, object?>
+                {
+                    ["recipient"] = recipient,
+                    ["restarted_receipts"] = status.Receipts,
+                    ["restarted_duplicates"] = status.Duplicates,
+                    ["pending_after_restart"] = pending.Count,
+                    ["acknowledged_after_restart"] = ack.Acknowledged,
+                    ["pending_after_ack_restart"] = afterAck.Pending,
+                    ["acknowledged_after_ack_restart"] = afterAck.Acknowledged,
+                    ["wal_bytes"] = new FileInfo(walPath).Length
+                }));
+            }
+
+            invariants.Add(new() { Name = "gateway_wal_reconnect_pending", Passed = pendingAfterRestart.All(count => count == 1), Detail = $"pending_after_restart={string.Join(",", pendingAfterRestart)}" });
+            invariants.Add(new() { Name = "gateway_wal_duplicate_replay", Passed = recipients.All(recipient => new ValheimZdoRedirectService(walPath).GetStatus(windowId, recipient).Duplicates >= 1), Detail = "duplicate record batches survived service restart" });
+            invariants.Add(new() { Name = "gateway_wal_ack_recovery", Passed = acknowledgedAfterRestart.All(count => count == 1) && durablePendingAfterAck.All(count => count == 0) && durableAcknowledgedAfterAck.All(count => count == 1), Detail = $"acknowledged={string.Join(",", acknowledgedAfterRestart)};pending_after_ack={string.Join(",", durablePendingAfterAck)}" });
+            predictions.Add(new() { Name = "gateway_restart_recovery", Observed = "WAL replay reconstructs recipient-local pending state before reconnect" });
+            predictions.Add(new() { Name = "gateway_ack_durability", Observed = "ACK written after reconnect remains terminal after a second service restart" });
+        }
+        finally
+        {
+            if (File.Exists(walPath)) File.Delete(walPath);
+        }
+    }
+
     private static void ExecuteE03(Scenario s, List<EventEnvelope> events, List<InvariantResult> invariants, List<PredictionObservation> predictions)
     {
         var patterns = s.Actors.Select(a => a.Trajectory).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
@@ -519,6 +703,222 @@ internal static class AuthorityEngine
         invariants.Add(new() { Name = "motion_fingerprints_distinguishable", Passed = fingerprints.Values.Distinct().Count() >= Math.Min(4, fingerprints.Count), Detail = string.Join(",", fingerprints.Select(kvp => $"{kvp.Key}={kvp.Value:0.###}")) });
         predictions.Add(new() { Name = "cadence_vs_interpolation", Observed = "stutter has larger output intervals and sequence lag; this does not identify the live interpolation cause" });
         predictions.Add(new() { Name = "transport_ordering", Observed = "pure driver preserves logical event order; UDP/WebSocket comparison is deferred to Gateway driver" });
+    }
+
+    private static void ExecuteGatewayE03(Scenario s, List<EventEnvelope> events, List<InvariantResult> invariants, List<PredictionObservation> predictions)
+    {
+        var fixture = new GatewayMotionFixture();
+        var source = fixture.CreateSession("region-lab", "source-a");
+        var target = fixture.CreateSession("region-lab", "target-b");
+        var patterns = s.Actors.Select(actor => actor.Trajectory).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var fingerprints = new Dictionary<string, double>();
+        ushort sequence = 1;
+        foreach (var pattern in patterns)
+        {
+            var position = (x: 0d, y: 0d);
+            var previous = position;
+            var errorTotal = 0d;
+            for (var tick = 0; tick < 20; tick++)
+            {
+                var next = Motion(pattern, tick, position);
+                var velocity = (x: position.x - previous.x, y: position.y - previous.y);
+                var predicted = (x: position.x + velocity.x, y: position.y + velocity.y);
+                var correction = Math.Sqrt(Math.Pow(next.x - predicted.x, 2) + Math.Pow(next.y - predicted.y, 2));
+                var frame = BuildMotionFrame(sequence++, next, sentMilliseconds: tick * 50);
+                fixture.Transport.HandleValheimMotionFrameAsync(source, frame.Header, frame.Payload, frame.Frame, "websocket").GetAwaiter().GetResult();
+                errorTotal += correction;
+                events.Add(Event(s, tick, $"e03-gateway-{pattern}-{tick:000}", new Dictionary<string, object?>
+                {
+                    ["pattern"] = pattern,
+                    ["input_interval_ms"] = 50,
+                    ["output_interval_ms"] = pattern.Equals("stutter_north", StringComparison.OrdinalIgnoreCase) && tick % 3 == 0 ? 150 : 50,
+                    ["correction_meters"] = correction,
+                    ["transport_path"] = "websocket_fallback",
+                    ["sequence"] = (int)frame.Header.Seq
+                }));
+                previous = position;
+                position = next;
+            }
+            fingerprints[pattern] = errorTotal;
+        }
+
+        var telemetry = fixture.MotionSnapshot();
+        var sequenceValues = target.Socket.SentFrames.Select(frame => (int)BinaryEnvelope.ReadHeader(frame).Seq).ToArray();
+        var ordered = sequenceValues.SequenceEqual(sequenceValues.OrderBy(value => value));
+        var expected = patterns.Length * 20;
+        var relayCount = telemetry.GetProperty("relayed_websocket").GetInt64();
+        var receiveCount = telemetry.GetProperty("received_websocket").GetInt64();
+        invariants.Add(new() { Name = "gateway_motion_relayed", Passed = receiveCount == expected && relayCount == expected, Detail = $"received_websocket={receiveCount}; relayed_websocket={relayCount}; expected={expected}" });
+        invariants.Add(new() { Name = "gateway_websocket_fallback", Passed = relayCount == target.Socket.SentFrames.Count, Detail = $"captured_target_frames={target.Socket.SentFrames.Count}" });
+        invariants.Add(new() { Name = "gateway_logical_order", Passed = ordered, Detail = "captured fallback frames have monotonic envelope sequence" });
+        invariants.Add(new() { Name = "gateway_motion_fingerprints", Passed = fingerprints.Values.Distinct().Count() >= Math.Min(4, fingerprints.Count), Detail = string.Join(",", fingerprints.Select(kvp => $"{kvp.Key}={kvp.Value:0.###}")) });
+        predictions.Add(new() { Name = "gateway_transport_path", Observed = "all frames used the real UdpTransport WebSocket fallback seam because no UDP endpoint was bound" });
+        predictions.Add(new() { Name = "gateway_cadence_vs_interpolation", Observed = "the same synthetic correction fingerprints survive Gateway relay; live interpolation remains unproven" });
+    }
+
+    private static void ExecuteGatewayE03Udp(Scenario s, List<EventEnvelope> events, List<InvariantResult> invariants, List<PredictionObservation> predictions)
+    {
+        var fixture = new GatewayMotionFixture(FindFreeUdpPort());
+        var source = fixture.CreateSession("region-lab", "source-a");
+        var target = fixture.CreateSession("region-lab", "target-b");
+        using var sourceUdp = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        using var targetUdp = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        var targetFrames = new List<byte[]>();
+        var patterns = s.Actors.Select(actor => actor.Trajectory).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var fingerprints = new Dictionary<string, double>();
+        ushort sequence = 1;
+
+        fixture.Transport.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+        try
+        {
+            var targetBind = BuildMotionFrame(600, (0, 0), sentMilliseconds: 0);
+            SendUdp(targetUdp, target.Session.UdpToken, targetBind.Frame, fixture.Transport.Port);
+            if (!SpinWait.SpinUntil(() => target.Session.UdpEndpoint is not null, TimeSpan.FromSeconds(2)))
+                throw new InvalidOperationException("Gateway UDP target endpoint did not bind");
+
+            foreach (var pattern in patterns)
+            {
+                var position = (x: 0d, y: 0d);
+                var previous = position;
+                var errorTotal = 0d;
+                for (var tick = 0; tick < 20; tick++)
+                {
+                    var next = Motion(pattern, tick, position);
+                    var velocity = (x: position.x - previous.x, y: position.y - previous.y);
+                    var predicted = (x: position.x + velocity.x, y: position.y + velocity.y);
+                    var correction = Math.Sqrt(Math.Pow(next.x - predicted.x, 2) + Math.Pow(next.y - predicted.y, 2));
+                    var frame = BuildMotionFrame(sequence++, next, sentMilliseconds: tick * 50);
+                    SendUdp(sourceUdp, source.Session.UdpToken, frame.Frame, fixture.Transport.Port);
+                    var relayed = ReceiveUdp(targetUdp);
+                    targetFrames.Add(relayed);
+                    errorTotal += correction;
+                    events.Add(Event(s, tick, $"e03-gateway-udp-{pattern}-{tick:000}", new Dictionary<string, object?>
+                    {
+                        ["pattern"] = pattern,
+                        ["input_interval_ms"] = 50,
+                        ["output_interval_ms"] = pattern.Equals("stutter_north", StringComparison.OrdinalIgnoreCase) && tick % 3 == 0 ? 150 : 50,
+                        ["correction_meters"] = correction,
+                        ["transport_path"] = "udp_bound",
+                        ["sequence"] = (int)frame.Header.Seq,
+                        ["target_token_matches"] = BitConverter.ToUInt64(relayed, 0) == target.Session.UdpToken
+                    }));
+                    previous = position;
+                    position = next;
+                }
+                fingerprints[pattern] = errorTotal;
+            }
+
+            var telemetry = fixture.MotionSnapshot();
+            var sequenceValues = targetFrames.Select(frame => (int)BinaryEnvelope.ReadHeader(frame.AsSpan(UdpTransport.TokenBytes)).Seq).ToArray();
+            var ordered = sequenceValues.SequenceEqual(sequenceValues.OrderBy(value => value));
+            var expected = patterns.Length * 20;
+            var receivedUdp = telemetry.GetProperty("received_udp").GetInt64();
+            var relayedUdp = telemetry.GetProperty("relayed_udp").GetInt64();
+            invariants.Add(new() { Name = "gateway_udp_bound_relayed", Passed = receivedUdp == expected + 1 && relayedUdp == expected, Detail = $"received_udp={receivedUdp}; relayed_udp={relayedUdp}; expected_motion={expected}" });
+            invariants.Add(new() { Name = "gateway_udp_target_delivery", Passed = targetFrames.Count == expected && events.All(e => (bool)e.Payload["target_token_matches"]!), Detail = $"captured_target_frames={targetFrames.Count}; token_matches={events.Count(e => (bool)e.Payload["target_token_matches"]!)}" });
+            invariants.Add(new() { Name = "gateway_udp_logical_order", Passed = ordered, Detail = "captured UDP frames have monotonic envelope sequence" });
+            invariants.Add(new() { Name = "gateway_udp_motion_fingerprints", Passed = fingerprints.Values.Distinct().Count() >= Math.Min(4, fingerprints.Count), Detail = string.Join(",", fingerprints.Select(kvp => $"{kvp.Key}={kvp.Value:0.###}")) });
+            predictions.Add(new() { Name = "gateway_udp_path", Observed = "source motion binds a UDP endpoint and reaches the distinct target through UdpTransport.TrySend" });
+            predictions.Add(new() { Name = "gateway_udp_vs_websocket", Observed = "the same synthetic correction fingerprints survive the bound UDP path; real client interpolation remains unproven" });
+        }
+        finally
+        {
+            fixture.Transport.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+    }
+
+    private static int FindFreeUdpPort()
+    {
+        using var probe = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        return ((IPEndPoint)probe.Client.LocalEndPoint!).Port;
+    }
+
+    private static void SendUdp(UdpClient sender, ulong token, byte[] frame, int port)
+    {
+        var packet = new byte[UdpTransport.TokenBytes + frame.Length];
+        BitConverter.TryWriteBytes(packet.AsSpan(0, UdpTransport.TokenBytes), token);
+        frame.CopyTo(packet, UdpTransport.TokenBytes);
+        sender.Send(packet, packet.Length, new IPEndPoint(IPAddress.Loopback, port));
+    }
+
+    private static byte[] ReceiveUdp(UdpClient receiver)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        return receiver.ReceiveAsync(timeout.Token).GetAwaiter().GetResult().Buffer;
+    }
+
+    private static (BinaryEnvelopeHeader Header, byte[] Payload, byte[] Frame) BuildMotionFrame(ushort sequence, (double x, double y) position, long sentMilliseconds)
+    {
+        var payload = new byte[PayloadSerializers.ValheimPlayerMotionBytes];
+        var payloadLength = PayloadSerializers.WriteValheimPlayerMotion(
+            payload,
+            zdoUserId: 100,
+            zdoId: 200,
+            new Vec3((float)position.x, 0, (float)position.y),
+            new Vec3(1, 0, 0),
+            yaw: 90,
+            sentMilliseconds: (uint)Math.Max(0, sentMilliseconds));
+        var frame = new byte[BinaryEnvelope.HeaderBytes + payloadLength];
+        var frameLength = BinaryEnvelope.Write(frame, version: 1, MessageTypeId.ValheimPlayerMotion,
+            DeliveryLane.Datagram, sequence, payload.AsSpan(0, payloadLength));
+        Array.Resize(ref frame, frameLength);
+        return new(BinaryEnvelope.ReadHeader(frame), payload[..payloadLength], frame);
+    }
+
+    private sealed class GatewayMotionFixture
+    {
+        private readonly SessionManager sessions = new();
+        private readonly ValheimMotionTelemetry motionTelemetry = new();
+
+        public GatewayMotionFixture(int? udpPort = null)
+        {
+            var config = new ConfigurationBuilder();
+            if (udpPort.HasValue)
+                config.AddInMemoryCollection(new Dictionary<string, string?> { ["Udp:Port"] = udpPort.Value.ToString() });
+            Transport = new UdpTransport(sessions, router: null!, motionTelemetry,
+                config.Build(), NullLogger<UdpTransport>.Instance);
+        }
+
+        public UdpTransport Transport { get; }
+
+        public CapturingSession CreateSession(string region, string recipient)
+        {
+            var socket = new CapturingWebSocket();
+            var session = sessions.Create(socket);
+            session.RegionId = region;
+            session.ValheimRecipientId = recipient;
+            return new CapturingSession(session, socket);
+        }
+
+        public JsonElement MotionSnapshot()
+        {
+            using var document = JsonDocument.Parse(JsonSerializer.Serialize(motionTelemetry.Snapshot()));
+            return document.RootElement.Clone();
+        }
+    }
+
+    private sealed record CapturingSession(GameSession Session, CapturingWebSocket Socket)
+    {
+        public static implicit operator GameSession(CapturingSession capturing) => capturing.Session;
+    }
+
+    private sealed class CapturingWebSocket : WebSocket
+    {
+        public List<byte[]> SentFrames { get; } = [];
+        public override WebSocketCloseStatus? CloseStatus => null;
+        public override string? CloseStatusDescription => null;
+        public override WebSocketState State => WebSocketState.Open;
+        public override string? SubProtocol => null;
+        public override void Abort() { }
+        public override Task CloseAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken) => Task.CompletedTask;
+        public override Task CloseOutputAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken) => Task.CompletedTask;
+        public override void Dispose() { }
+        public override Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public override Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
+        {
+            SentFrames.Add(buffer.ToArray());
+            return Task.CompletedTask;
+        }
     }
 
     private static (double x, double y) Motion(string pattern, int tick, (double x, double y) current) => pattern.ToLowerInvariant() switch

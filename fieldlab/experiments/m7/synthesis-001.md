@@ -14,6 +14,10 @@ promotion.
 - E01: the linked tiered policy has the predicted near/mid/far boundary shape and emitted decisions increase with fixture density.
 - E02: the pure fan-out seam keeps recipient decisions independent and scales in the expected direction across N=2/N=10/N=100.
 - E03: motion patterns produce repeatable fingerprints, including a distinct stutter cadence and large teleport correction.
+- Gateway E02: the real `ValheimZdoRedirectService` keeps pending and ACK state partitioned by recipient and makes duplicate batches observable without double application.
+- Gateway durable E02: WAL replay reconstructs both recipient partitions after a service restart, and ACK state remains terminal after a second restart.
+- Gateway E03: the real `UdpTransport` WebSocket fallback relays all 120 frames and preserves envelope ordering without changing the synthetic fingerprints.
+- Gateway UDP E03: the real bound UDP listener delivers all 120 frames to the distinct target with token and ordering invariants intact; the synthetic fingerprints remain unchanged.
 
 ## Assumptions that remain open
 
@@ -23,10 +27,10 @@ promotion.
 
 ## What is justified next
 
-1. Add a Gateway driver for E02 and E03 with explicit transport-path labels.
-2. Reuse the existing synthetic motion smoke as a second receipt-producing seam.
-3. Capture native candidate observations on a disposable local Valheim server before changing relevance ownership.
-4. Keep Unity automation out of the next slice until Gateway receipts and the native capture fields are named.
+1. Reuse the existing synthetic motion smoke as a second receipt-producing seam.
+2. Capture native candidate observations on a disposable local Valheim server before changing relevance ownership.
+3. Normalize and replay the native candidate trace through the existing receipt contract.
+4. Keep Unity automation out of the next slice until the native capture fields are named.
 
 ## What should not be built yet
 

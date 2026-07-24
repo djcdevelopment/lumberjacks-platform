@@ -24,8 +24,9 @@ to N=10 to N=100, while an already-delivered observer remains local.
 
 ## Limits
 
-Pure driver, one logical revision, synthetic distances, 112 event rows, and no real
-queue, ACK, reconnect, or Gateway socket.
+The pure driver uses one logical revision and synthetic distances. Gateway coverage
+uses the real in-memory queue and the durable follow-up uses a temporary WAL; neither
+is a claim about production load or Valheim client behavior.
 
 ## Assumptions
 
@@ -44,17 +45,24 @@ the N=2/N=10/N=100 cases.
 
 ## Results
 
-Supported. The run retained 112 decisions; emissions were N=2:1, N=10:5, and
-N=100:65. Recipient isolation, scaling direction, and local already-delivered
-behavior all passed.
+The pure, Gateway, and durable Gateway runs are all supported. Each pure/Gateway run retained 112 decisions;
+emissions were N=2:1, N=10:5, and N=100:65. The Gateway run drove the real
+`ValheimZdoRedirectService`, replayed each accepted batch, and observed duplicates
+without producing a second pending item or terminal ACK. Recipient isolation,
+scaling direction, and local already-delivered behavior all passed.
+
+The durable follow-up restarted the real redirect service twice against a temporary
+WAL. Both recipient partitions recovered one pending item, retained duplicate counts,
+and persisted one terminal ACK each after the reconnect.
 
 ## What changed in our understanding
 
-The existing fan-out equation is suitable for a Gateway driver. This does not prove
-that the native candidate list is complete, so it does not authorize authority
-promotion.
+The existing fan-out equation and the Gateway queue preserve recipient-local state
+through the tested seam. This does not prove that the native candidate list is
+complete, so it does not authorize authority promotion.
 
 ## Next experiment
 
-Add Gateway protocol load and ACK/reconnect evidence without relabeling pure rows as
-Gateway evidence.
+Add higher-volume Gateway reconnect/lease pressure only if the native capture exposes
+a queue-specific question; otherwise capture native candidate observations without
+relabeling Gateway rows as native evidence.

@@ -7,6 +7,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\Lumberjacks\src\Game.Gateway\Game.Gateway.csproj" />
     <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\ZdoIntegrationContract.cs" Link="Policies\ZdoIntegrationContract.cs" />
     <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\ZdoBandPolicy.cs" Link="Policies\ZdoBandPolicy.cs" />
     <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\ZdoFanoutPolicy.cs" Link="Policies\ZdoFanoutPolicy.cs" />

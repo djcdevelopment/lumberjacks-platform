@@ -23,6 +23,22 @@ Run E00 twice and retain a comparison:
 .\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment m7-e00-lab-truth -RunTwice
 ```
 
+Run the real Gateway seams in-memory for E02 or E03:
+
+```powershell
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment m7-e02-recipient-fanout -Driver gateway
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment m7-e03-motion-fingerprints -Driver gateway
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment m7-e02-recipient-fanout -Driver gateway_durable
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment m7-e03-motion-fingerprints -Driver gateway_udp
+```
+
+The Gateway runs instantiate `ValheimZdoRedirectService` and
+`UdpTransport.HandleValheimMotionFrameAsync` directly. They are not pure substitutes,
+but they also do not require a running server or public endpoint. `gateway_durable`
+restarts the redirect service against a temporary WAL and verifies pending/ACK recovery;
+`gateway_udp` starts the real UDP listener on loopback, binds both client endpoints, and
+verifies target delivery through `TrySend`.
+
 The executable surface is deliberately small: `generate`, `run`, `compare`, and
 `check`. A future Gateway/native driver must emit the same receipt shape and must
 never label a pure run as Gateway evidence.
