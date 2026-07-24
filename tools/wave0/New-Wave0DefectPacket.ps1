@@ -121,6 +121,9 @@ if ($presentArtifacts.Count -eq 0) {
 $seal = @($artifacts | Where-Object { $_.label -eq 'visual_seal' })[0]
 $evidenceVerdict = if ($seal.present -and $seal.verdict) { $seal.verdict }
     else { 'defect_packet_without_seal' }
+if ($seal.present -and $evidenceVerdict -eq 'wave0_visual_evidence_sealed') {
+    throw 'refusing to retain a Wave 0 defect packet from a sealed visual-evidence receipt; use the visual seal as the Wave 0 exit artifact instead'
+}
 
 $packet = [ordered]@{
     schema_version = 1

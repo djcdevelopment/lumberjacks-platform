@@ -248,3 +248,6 @@ marker exclusion.
 `New-FullRoadmapStrategyStatus.ps1` includes a completion audit that explicitly
 keeps the full roadmap objective incomplete until Wave 0 exits and later waves
 produce their own sealed receipts.
+`New-Wave0DefectPacket.ps1` refuses to retain a defect packet when the supplied
+seal already says `wave0_visual_evidence_sealed`; use the seal, not a defect,
+as the Wave 0 exit artifact in that case.

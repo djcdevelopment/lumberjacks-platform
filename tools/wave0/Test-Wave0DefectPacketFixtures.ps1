@@ -60,6 +60,38 @@ if ($packet.evidence_verdict -ne 'wave0_visual_evidence_not_sealed') { throw "un
 if (@($packet.artifacts | Where-Object { $_.present }).Count -lt 5) { throw 'expected all five fixture artifacts to be indexed' }
 if (-not (Select-String -LiteralPath $packetMd -Pattern 'wave0-fixture-role-not-reversed' -Quiet)) { throw 'markdown did not contain defect id' }
 
+$sealedVisual = Join-Path $outputRoot 'sealed-visual.json'
+[IO.File]::WriteAllText(
+    $sealedVisual,
+    (([ordered]@{
+        schema_version = 1
+        artifact_type = 'wave0_visual_evidence_seal'
+        verdict = 'wave0_visual_evidence_sealed'
+        next_action = 'Fixture sealed visual receipt.'
+    } | ConvertTo-Json -Depth 6) + [Environment]::NewLine),
+    [Text.UTF8Encoding]::new($false))
+
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+try {
+    $sealedOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot 'tools\wave0\New-Wave0DefectPacket.ps1') `
+        -DefectId 'wave0-fixture-should-not-retain' `
+        -DefectKind other `
+        -Summary 'This fixture must be rejected because visual proof is already sealed.' `
+        -SealJson $sealedVisual `
+        -OutputJson (Join-Path $outputRoot 'sealed-should-not-retain.json') `
+        -OutputMarkdown (Join-Path $outputRoot 'sealed-should-not-retain.md') 2>&1
+    $sealedExitCode = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+}
+if ($sealedExitCode -eq 0) {
+    throw 'defect packet generator unexpectedly accepted a sealed visual-evidence receipt'
+}
+if ((@($sealedOutput) -join "`n") -notmatch 'refusing to retain') {
+    throw 'sealed visual rejection did not explain the boundary'
+}
+
 $summary = [ordered]@{
     schema_version = 1
     generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
@@ -69,6 +101,7 @@ $summary = [ordered]@{
     suggestion_markdown = $suggestionMd
     packet_json = $packetJson
     packet_markdown = $packetMd
+    sealed_visual_rejection = 'passed'
 }
 $summaryPath = Join-Path $outputRoot 'summary.json'
 [IO.File]::WriteAllText($summaryPath, (($summary | ConvertTo-Json -Depth 6) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
