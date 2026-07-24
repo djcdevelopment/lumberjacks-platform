@@ -69,6 +69,11 @@ tools\wave0\New-Wave0DefectPacket.ps1 `
 tools\wave0\New-Wave0ReturnPacket.ps1 `
   -OutputJson captures\wave0-return-packet.json `
   -OutputMarkdown captures\wave0-return-packet.md
+
+# Generate a conservative full-strategy status packet from current receipts
+tools\wave0\New-FullRoadmapStrategyStatus.ps1 `
+  -OutputJson captures\full-roadmap-strategy-status.json `
+  -OutputMarkdown captures\full-roadmap-strategy-status.md
 ```
 
 Run order before asking for a live movement course:
@@ -178,3 +183,9 @@ preflight/release alignment, bounded command/timeout, capture locations,
 dashboard URLs, rollback/stop path, and the human-observation boundary. It emits
 the commands to run when both clients are back and lists the stop conditions
 without copying raw private Companion receipt bodies into the Markdown.
+
+`New-FullRoadmapStrategyStatus.ps1` is the broader status handoff. It reads the
+full strategy, the remaining-human-test register, and the latest or provided
+Wave 0 pre-live summary, then emits a conservative matrix of proven,
+human-gated, blocked-by-Wave-0, and future-scope areas. It deliberately does not
+mark the roadmap complete.

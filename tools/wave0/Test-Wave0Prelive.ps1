@@ -16,6 +16,7 @@ Collects the evidence needed before asking for another two-client Valheim join:
 - Real no-client live-gate smoke, proving the gate stops before motion.
 - Two-machine Companion capture/bundle smoke, proving OMEN+i5 evidence collection.
 - Return packet generation from the newest valid receipts.
+- Full strategy status packet generation from the current receipts.
 
 This script does not move players. It is safe to run while no clients are joined.
 #>
@@ -81,7 +82,8 @@ $expectedGridMarkdown = Join-Path $outRoot 'expected-result-grid.md'
 $noClientRoot = Join-Path $outRoot 'no-client-live-gate'
 $bundleSmokeRoot = Join-Path $outRoot 'bundle-smoke'
 $returnPacketRoot = Join-Path $outRoot 'return-packet'
-New-Item -ItemType Directory -Force -Path $fixturesRoot, $autoWaitFixturesRoot, $sealFixturesRoot, $defectFixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot | Out-Null
+$strategyStatusRoot = Join-Path $outRoot 'strategy-status'
+New-Item -ItemType Directory -Force -Path $fixturesRoot, $autoWaitFixturesRoot, $sealFixturesRoot, $defectFixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot, $strategyStatusRoot | Out-Null
 
 $steps = @()
 $steps += Invoke-Step `
@@ -217,6 +219,8 @@ $receipt = [ordered]@{
         bundle_smoke = Join-Path $bundleSmokeRoot 'result.json'
         return_packet_json = Join-Path $returnPacketRoot 'packet.json'
         return_packet_markdown = Join-Path $returnPacketRoot 'packet.md'
+        strategy_status_json = Join-Path $strategyStatusRoot 'packet.json'
+        strategy_status_markdown = Join-Path $strategyStatusRoot 'packet.md'
     }
     next_action = if ($verdict -eq 'ready_for_derek_two_client_join') {
         'Start Wait-Wave0LiveGate.ps1 with DesiredApplyClient omen, then join OMEN and i5 to P7.'
@@ -226,9 +230,35 @@ $receipt = [ordered]@{
 }
 
 $receiptPath = Join-Path $outRoot 'summary.json'
+$preStrategyReceiptPath = Join-Path $outRoot 'summary.pre-strategy.json'
+$receipt | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $preStrategyReceiptPath -Encoding UTF8
+
+$strategyStep = Invoke-Step `
+    -Name 'strategy-status' `
+    -Script (Join-Path $repoRoot 'tools/wave0/New-FullRoadmapStrategyStatus.ps1') `
+    -Arguments @(
+        '-PreliveSummaryJson', $preStrategyReceiptPath,
+        '-OutputJson', (Join-Path $strategyStatusRoot 'packet.json'),
+        '-OutputMarkdown', (Join-Path $strategyStatusRoot 'packet.md')
+    )
+$steps += $strategyStep
+$strategyStatus = Read-JsonOrNull (Join-Path $strategyStatusRoot 'packet.json')
+
+if (-not $strategyStep.ok) {
+    $receipt['verdict'] = 'prelive_audit_failed'
+} elseif ($receipt['verdict'] -eq 'ready_for_derek_two_client_join' -and (-not $strategyStatus -or [string]$strategyStatus.verdict -ne 'strategy_active_wave0_human_gated')) {
+    $receipt['verdict'] = 'prelive_strategy_status_not_ready'
+}
+$receipt['steps'] = $steps
+$receipt['next_action'] = if ($receipt['verdict'] -eq 'ready_for_derek_two_client_join') {
+    'Start Wait-Wave0LiveGate.ps1 with DesiredApplyClient omen, then join OMEN and i5 to P7.'
+} else {
+    'Inspect failed step output_tail and receipt paths before asking for a live join.'
+}
+
 $receipt | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $receiptPath -Encoding UTF8
 
-Write-Host ("Wave 0 prelive audit: {0}" -f $verdict)
+Write-Host ("Wave 0 prelive audit: {0}" -f $receipt['verdict'])
 Write-Host ("Summary JSON: {0}" -f $receiptPath)
 Write-Host ("Return packet: {0}" -f $receipt.receipts.return_packet_markdown)
-if ($verdict -ne 'ready_for_derek_two_client_join') { exit 1 }
+if ($receipt['verdict'] -ne 'ready_for_derek_two_client_join') { exit 1 }
