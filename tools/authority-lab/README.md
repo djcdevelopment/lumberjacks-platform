@@ -33,6 +33,17 @@ CRE-E01 emits `performance.gate_decision` rows for green, amber, and red synthet
 combat-pressure bands. It proves budget, criticality, degradation, and route semantics
 without Unity, Steam, or a gameplay-authority change.
 
+Route those decisions through the real Gateway presentation seams:
+
+```powershell
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment cre-e02-gateway-pressure-route -Driver gateway
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment cre-e02-gateway-pressure-route -Driver gateway_udp
+```
+
+CRE-E02 retains both the gate decisions and `transport.route_observed` rows. It proves
+presentation routing only; it deliberately does not claim critical world-mutation
+carriage from a motion-frame test.
+
 Run the real Gateway seams in-memory for E02 or E03:
 
 ```powershell

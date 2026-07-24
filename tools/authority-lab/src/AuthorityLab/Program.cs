@@ -420,6 +420,14 @@ internal static class AuthorityEngine
             case "cre-e01-runtime-envelope":
                 ExecuteCreativeRuntimeEnvelope(scenario, events, invariants, predictions);
                 break;
+            case "cre-e02-gateway-pressure-route":
+                if (scenario.Driver.Equals("gateway_udp", StringComparison.OrdinalIgnoreCase))
+                    ExecuteCreativeRuntimeGateway(scenario, events, invariants, predictions, useUdp: true);
+                else if (scenario.Driver.Equals("gateway", StringComparison.OrdinalIgnoreCase))
+                    ExecuteCreativeRuntimeGateway(scenario, events, invariants, predictions, useUdp: false);
+                else
+                    throw new ScenarioException("cre-e02 requires driver gateway or gateway_udp");
+                break;
             default: throw new ScenarioException($"no pure executor for {scenario.ExperimentId}");
         }
         var ended = DateTimeOffset.UtcNow;
@@ -464,88 +472,17 @@ internal static class AuthorityEngine
         List<PredictionObservation> predictions)
     {
         var deferredCapacity = s.IntParameter("deferred_capacity", 4);
-        var bands = new[]
-        {
-            new RuntimePressureBand(
-                "green",
-                s.IntParameter("green_budget_units", 100),
-                s.IntParameter("green_presentation_count", 4)),
-            new RuntimePressureBand(
-                "amber",
-                s.IntParameter("amber_budget_units", 70),
-                s.IntParameter("amber_presentation_count", 10)),
-            new RuntimePressureBand(
-                "red",
-                s.IntParameter("red_budget_units", 50),
-                s.IntParameter("red_presentation_count", 18))
-        };
+        var bands = RuntimePressureBands(s);
         var byBand = new Dictionary<string, IReadOnlyList<RuntimeGateDecision>>(StringComparer.Ordinal);
 
         foreach (var (band, bandIndex) in bands.Select((value, index) => (value, index)))
         {
-            var requests = new List<RuntimeWorkRequest>
-            {
-                new(
-                    "player_death",
-                    "critical_world_mutation",
-                    "critical",
-                    20,
-                    20,
-                    false,
-                    "binary_websocket",
-                    "stop_retry",
-                    1000),
-                new(
-                    "projectile_hit",
-                    "critical_world_mutation",
-                    "critical",
-                    25,
-                    25,
-                    false,
-                    "binary_websocket",
-                    "stop_retry",
-                    900)
-            };
-            requests.AddRange(Enumerable.Range(0, band.PresentationCount).Select(index =>
-                new RuntimeWorkRequest(
-                    $"projectile_trail_{index:000}",
-                    "transient_presentation",
-                    "presentation",
-                    7,
-                    3,
-                    true,
-                    "session_udp",
-                    "binary_websocket",
-                    100)));
-
-            var decisions = RuntimeEnvelopePolicy.Evaluate(requests, band.BudgetUnits, deferredCapacity);
+            var decisions = RuntimeEnvelopePolicy.Evaluate(
+                RuntimeRequests(band),
+                band.BudgetUnits,
+                deferredCapacity);
             byBand[band.Name] = decisions;
-
-            foreach (var (decision, index) in decisions.Select((value, index) => (value, index)))
-            {
-                events.Add(Event(
-                    s,
-                    bandIndex,
-                    $"cre-e01-{band.Name}-{index:000}",
-                    new Dictionary<string, object?>
-                    {
-                        ["pressure_band"] = band.Name,
-                        ["tick_budget_units"] = band.BudgetUnits,
-                        ["work_id"] = decision.Request.WorkId,
-                        ["work_class"] = decision.Request.WorkClass,
-                        ["criticality"] = decision.Request.Criticality,
-                        ["requested_mode"] = "full",
-                        ["selected_mode"] = decision.SelectedMode,
-                        ["requested_cost_units"] = decision.Request.FullCostUnits,
-                        ["selected_cost_units"] = decision.SelectedCostUnits,
-                        ["budget_remaining_units"] = decision.BudgetRemainingUnits,
-                        ["reason"] = decision.Reason,
-                        ["transport"] = decision.Transport,
-                        ["fallback_transport"] = decision.Request.FallbackTransport,
-                        ["deferred_depth"] = decision.DeferredDepth
-                    },
-                    "performance.gate_decision"));
-            }
+            AppendRuntimeGateEvents(s, events, band, bandIndex, decisions, "cre-e01");
         }
 
         var allDecisions = byBand.Values.SelectMany(value => value).ToArray();
@@ -625,6 +562,268 @@ internal static class AuthorityEngine
             Name = "explainable_transport",
             Observed = "every decision records requested mode, selected mode, reason, cost, route, fallback, and remaining budget"
         });
+    }
+
+    private static void ExecuteCreativeRuntimeGateway(
+        Scenario s,
+        List<EventEnvelope> events,
+        List<InvariantResult> invariants,
+        List<PredictionObservation> predictions,
+        bool useUdp)
+    {
+        var fixture = new GatewayMotionFixture(useUdp ? FindFreeUdpPort() : null);
+        var source = fixture.CreateSession("region-runtime", "source-a");
+        var target = fixture.CreateSession("region-runtime", "target-b");
+        using var sourceUdp = useUdp ? new UdpClient(new IPEndPoint(IPAddress.Loopback, 0)) : null;
+        using var targetUdp = useUdp ? new UdpClient(new IPEndPoint(IPAddress.Loopback, 0)) : null;
+        var deferredCapacity = s.IntParameter("deferred_capacity", 4);
+        var bands = RuntimePressureBands(s);
+        var expectedRoutedKeys = new HashSet<string>(StringComparer.Ordinal);
+        var observedRoutedKeys = new HashSet<string>(StringComparer.Ordinal);
+        var udpTargetFrames = new List<byte[]>();
+        ushort sequence = 1;
+
+        if (useUdp)
+        {
+            fixture.Transport.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+            var targetBind = BuildMotionFrame(600, (0, 0), sentMilliseconds: 0);
+            SendUdp(targetUdp!, target.Session.UdpToken, targetBind.Frame, fixture.Transport.Port);
+            if (!SpinWait.SpinUntil(() => target.Session.UdpEndpoint is not null, TimeSpan.FromSeconds(2)))
+                throw new InvalidOperationException("CRE-E02 Gateway UDP target endpoint did not bind");
+        }
+
+        try
+        {
+            foreach (var (band, bandIndex) in bands.Select((value, index) => (value, index)))
+            {
+                var decisions = RuntimeEnvelopePolicy.Evaluate(
+                    RuntimeRequests(band),
+                    band.BudgetUnits,
+                    deferredCapacity);
+                AppendRuntimeGateEvents(s, events, band, bandIndex, decisions, "cre-e02");
+
+                foreach (var decision in decisions.Where(decision =>
+                             decision.Request.Criticality == "presentation" &&
+                             decision.SelectedMode is "full" or "reduced"))
+                {
+                    var key = $"{band.Name}/{decision.Request.WorkId}";
+                    expectedRoutedKeys.Add(key);
+                    var frame = BuildMotionFrame(
+                        sequence++,
+                        (bandIndex * 100 + expectedRoutedKeys.Count, decision.SelectedMode == "full" ? 1 : .5),
+                        sentMilliseconds: bandIndex * 1000 + expectedRoutedKeys.Count * 50);
+                    bool delivered;
+                    bool targetTokenMatches;
+
+                    if (useUdp)
+                    {
+                        SendUdp(sourceUdp!, source.Session.UdpToken, frame.Frame, fixture.Transport.Port);
+                        var relayed = ReceiveUdp(targetUdp!);
+                        udpTargetFrames.Add(relayed);
+                        delivered = true;
+                        targetTokenMatches =
+                            BitConverter.ToUInt64(relayed, 0) == target.Session.UdpToken;
+                    }
+                    else
+                    {
+                        var before = target.Socket.SentFrames.Count;
+                        fixture.Transport
+                            .HandleValheimMotionFrameAsync(
+                                source,
+                                frame.Header,
+                                frame.Payload,
+                                frame.Frame,
+                                "websocket")
+                            .GetAwaiter()
+                            .GetResult();
+                        delivered = target.Socket.SentFrames.Count == before + 1;
+                        targetTokenMatches = true;
+                    }
+
+                    if (delivered) observedRoutedKeys.Add(key);
+                    events.Add(Event(
+                        s,
+                        bandIndex,
+                        $"cre-e02-route-{band.Name}-{decision.Request.WorkId}",
+                        new Dictionary<string, object?>
+                        {
+                            ["pressure_band"] = band.Name,
+                            ["work_id"] = decision.Request.WorkId,
+                            ["selected_mode"] = decision.SelectedMode,
+                            ["declared_transport"] = decision.Request.PreferredTransport,
+                            ["observed_transport"] = useUdp ? "session_udp" : "binary_websocket_fallback",
+                            ["sequence"] = (int)frame.Header.Seq,
+                            ["delivered"] = delivered,
+                            ["target_token_matches"] = targetTokenMatches
+                        },
+                        "transport.route_observed"));
+                }
+            }
+
+            var telemetry = fixture.MotionSnapshot();
+            var routeEvents = events.Where(item => item.EventType == "transport.route_observed").ToArray();
+            var suppressedGateRows = events.Where(item =>
+                item.EventType == "performance.gate_decision" &&
+                Equals(item.Payload["criticality"], "presentation") &&
+                (Equals(item.Payload["selected_mode"], "deferred") ||
+                 Equals(item.Payload["selected_mode"], "dropped"))).ToArray();
+            var sequenceValues = useUdp
+                ? udpTargetFrames
+                    .Select(frame => (int)BinaryEnvelope.ReadHeader(frame.AsSpan(UdpTransport.TokenBytes)).Seq)
+                    .ToArray()
+                : target.Socket.SentFrames
+                    .Select(frame => (int)BinaryEnvelope.ReadHeader(frame).Seq)
+                    .ToArray();
+            var ordered = sequenceValues.SequenceEqual(sequenceValues.OrderBy(value => value));
+            var routeSetMatches =
+                expectedRoutedKeys.SetEquals(observedRoutedKeys) &&
+                routeEvents.Length == expectedRoutedKeys.Count;
+            var noSuppressedRoute = suppressedGateRows.All(gate =>
+                !observedRoutedKeys.Contains($"{gate.Payload["pressure_band"]}/{gate.Payload["work_id"]}"));
+            var deliveryCount = useUdp
+                ? telemetry.GetProperty("relayed_udp").GetInt64()
+                : telemetry.GetProperty("relayed_websocket").GetInt64();
+            var receiveCount = useUdp
+                ? telemetry.GetProperty("received_udp").GetInt64()
+                : telemetry.GetProperty("received_websocket").GetInt64();
+            var expectedReceiveCount = routeEvents.Length + (useUdp ? 1 : 0);
+            var telemetryMatches =
+                deliveryCount == routeEvents.Length &&
+                receiveCount == expectedReceiveCount;
+            var tokensMatch = routeEvents.All(item => Equals(item.Payload["target_token_matches"], true));
+
+            invariants.Add(new()
+            {
+                Name = "gateway_only_routes_selected_presentation",
+                Passed = routeSetMatches && noSuppressedRoute,
+                Detail = $"selected={expectedRoutedKeys.Count}; observed={observedRoutedKeys.Count}; suppressed={suppressedGateRows.Length}"
+            });
+            invariants.Add(new()
+            {
+                Name = useUdp ? "gateway_udp_delivery" : "gateway_websocket_fallback_delivery",
+                Passed = telemetryMatches && tokensMatch,
+                Detail = $"received={receiveCount}; relayed={deliveryCount}; expected_relayed={routeEvents.Length}"
+            });
+            invariants.Add(new()
+            {
+                Name = "gateway_route_sequence_monotonic",
+                Passed = ordered,
+                Detail = $"sequences={string.Join(",", sequenceValues)}"
+            });
+            invariants.Add(new()
+            {
+                Name = "critical_carriage_not_overclaimed",
+                Passed = routeEvents.All(item =>
+                    !Equals(item.Payload["work_id"], "player_death") &&
+                    !Equals(item.Payload["work_id"], "projectile_hit")),
+                Detail = "CRE-E02 exercises presentation motion transport only; critical state requires its own reliable-carriage experiment"
+            });
+            predictions.Add(new()
+            {
+                Name = "pressure_to_transport",
+                Observed = $"{routeEvents.Length} selected presentation decisions reached the real {(useUdp ? "bound UDP" : "WebSocket fallback")} seam; {suppressedGateRows.Length} deferred/dropped decisions did not"
+            });
+            predictions.Add(new()
+            {
+                Name = "critical_transport_boundary",
+                Observed = "critical mutations remain gate decisions only in CRE-E02; this result makes no death, hit, build, or inventory durability claim"
+            });
+        }
+        finally
+        {
+            if (useUdp)
+                fixture.Transport.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+    }
+
+    private static RuntimePressureBand[] RuntimePressureBands(Scenario s) =>
+    [
+        new(
+            "green",
+            s.IntParameter("green_budget_units", 100),
+            s.IntParameter("green_presentation_count", 4)),
+        new(
+            "amber",
+            s.IntParameter("amber_budget_units", 70),
+            s.IntParameter("amber_presentation_count", 10)),
+        new(
+            "red",
+            s.IntParameter("red_budget_units", 50),
+            s.IntParameter("red_presentation_count", 18))
+    ];
+
+    private static List<RuntimeWorkRequest> RuntimeRequests(RuntimePressureBand band)
+    {
+        var requests = new List<RuntimeWorkRequest>
+        {
+            new(
+                "player_death",
+                "critical_world_mutation",
+                "critical",
+                20,
+                20,
+                false,
+                "binary_websocket",
+                "stop_retry",
+                1000),
+            new(
+                "projectile_hit",
+                "critical_world_mutation",
+                "critical",
+                25,
+                25,
+                false,
+                "binary_websocket",
+                "stop_retry",
+                900)
+        };
+        requests.AddRange(Enumerable.Range(0, band.PresentationCount).Select(index =>
+            new RuntimeWorkRequest(
+                $"projectile_trail_{index:000}",
+                "transient_presentation",
+                "presentation",
+                7,
+                3,
+                true,
+                "session_udp",
+                "binary_websocket",
+                100)));
+        return requests;
+    }
+
+    private static void AppendRuntimeGateEvents(
+        Scenario s,
+        List<EventEnvelope> events,
+        RuntimePressureBand band,
+        int bandIndex,
+        IReadOnlyList<RuntimeGateDecision> decisions,
+        string eventPrefix)
+    {
+        foreach (var (decision, index) in decisions.Select((value, index) => (value, index)))
+        {
+            events.Add(Event(
+                s,
+                bandIndex,
+                $"{eventPrefix}-{band.Name}-{index:000}",
+                new Dictionary<string, object?>
+                {
+                    ["pressure_band"] = band.Name,
+                    ["tick_budget_units"] = band.BudgetUnits,
+                    ["work_id"] = decision.Request.WorkId,
+                    ["work_class"] = decision.Request.WorkClass,
+                    ["criticality"] = decision.Request.Criticality,
+                    ["requested_mode"] = "full",
+                    ["selected_mode"] = decision.SelectedMode,
+                    ["requested_cost_units"] = decision.Request.FullCostUnits,
+                    ["selected_cost_units"] = decision.SelectedCostUnits,
+                    ["budget_remaining_units"] = decision.BudgetRemainingUnits,
+                    ["reason"] = decision.Reason,
+                    ["transport"] = decision.Transport,
+                    ["fallback_transport"] = decision.Request.FallbackTransport,
+                    ["deferred_depth"] = decision.DeferredDepth
+                },
+                "performance.gate_decision"));
+        }
     }
 
     private static int PresentationCount(

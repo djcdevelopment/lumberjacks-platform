@@ -8,7 +8,7 @@
     "schema_version": { "type": "integer", "const": 1 },
     "event_id": { "type": "string", "minLength": 1 },
     "timestamp_utc": { "type": "string", "format": "date-time" },
-    "event_type": { "type": "string", "enum": ["authority.native_candidate_observed", "authority.lumberjacks_decision", "authority.decision_compared", "authority.ownership_observed", "authority.rpc_observed", "performance.gate_decision"] },
+    "event_type": { "type": "string", "enum": ["authority.native_candidate_observed", "authority.lumberjacks_decision", "authority.decision_compared", "authority.ownership_observed", "authority.rpc_observed", "performance.gate_decision", "transport.route_observed"] },
     "experiment_id": { "type": "string", "minLength": 1 },
     "scenario_id": { "type": "string", "minLength": 1 },
     "run_id": { "type": "string", "minLength": 1 },
