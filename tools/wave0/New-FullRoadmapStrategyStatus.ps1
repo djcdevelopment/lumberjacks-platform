@@ -162,6 +162,11 @@ $rows += New-StatusRow `
     -Evidence 'Strategy requires Wave 0 sealed visual proof or named defect before M1/M2 expansion.' `
     -NextAction 'Prepare fixtures/docs only; defer runtime admission changes.'
 $rows += New-StatusRow `
+    -Area 'M7 authority discovery' `
+    -Status 'discovery_active_p7_promotion_gated' `
+    -Evidence 'M7 authority experiment program and execution handoff authorize synthetic, replay, local-lab, and zero-behavior-change shadow work.' `
+    -NextAction 'Run M7-E00 through M7-E03 before native capture; do not promote P7 authority.'
+$rows += New-StatusRow `
     -Area 'Wave 2 durable evidence / recipient correctness' `
     -Status 'not_started_in_current_slice' `
     -Evidence 'Strategy sequences this after M1/M2 and Wave 0 exit.' `
@@ -216,9 +221,9 @@ $completionAudit += New-AuditItem `
     -Needed 'Produce separate sealed receipts for replay, local lab, contribution path, cohort soak, and signed read-only aggregate.'
 $completionAudit += New-AuditItem `
     -Requirement 'M7 network-authority expansion.' `
-    -State 'explicitly_deferred' `
-    -Evidence 'Strategy horizon says M7 requires a new explicit strategy and authorization.' `
-    -Needed 'Do not include M7 in this completion claim.'
+    -State 'discovery_active_p7_promotion_gated' `
+    -Evidence 'M7 discovery is authorized by the experiment program and handoff; behavior-changing P7 promotion remains claim-gated.' `
+    -Needed 'Run E00-E03, then native/local shadow evidence; do not include P7 promotion in this completion claim.'
 
 $packet = [ordered]@{
     schema_version = 1

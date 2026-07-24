@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "experiment_id": "m7-e03-motion-fingerprints",
+  "scenario_id": "motion-fingerprints-v1",
+  "seed": 413,
+  "plane": "motion",
+  "duration_seconds": 20,
+  "actors": [
+    { "id": "straight", "trajectory": "straight_north" },
+    { "id": "stutter", "trajectory": "stutter_north" },
+    { "id": "stop_start", "trajectory": "stop_start" },
+    { "id": "turn", "trajectory": "turn_90" },
+    { "id": "circle", "trajectory": "circle" },
+    { "id": "teleport", "trajectory": "teleport" }
+  ],
+  "objects": { "generator": "motion_fixture", "count": 0, "classes": ["player"] },
+  "policy": { "name": "motion-observation", "near_meters": 30, "outer_meters": 64, "mid_hz": 5 },
+  "driver": "pure",
+  "stop_rules": ["pattern_missing", "unbounded_run", "unexpected_reordering"]
+}

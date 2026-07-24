@@ -107,8 +107,8 @@ if ('not_achieved' -notin @($good.completion_audit | ForEach-Object { [string]$_
 if ('blocked_by_wave0_stop_rule' -notin @($good.completion_audit | ForEach-Object { [string]$_.state })) {
     throw 'good fixture did not include M1/M2 stop-rule block'
 }
-if ('explicitly_deferred' -notin @($good.completion_audit | ForEach-Object { [string]$_.state })) {
-    throw 'good fixture did not mark M7 explicitly deferred'
+if ('discovery_active_p7_promotion_gated' -notin @($good.completion_audit | ForEach-Object { [string]$_.state })) {
+    throw 'good fixture did not mark M7 discovery active with P7 promotion gated'
 }
 
 $summary = [ordered]@{

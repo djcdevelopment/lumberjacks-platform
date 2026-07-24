@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "experiment_id": "m7-e02-recipient-fanout",
+  "scenario_id": "recipient-isolation-v1",
+  "seed": 412,
+  "plane": "replication",
+  "duration_seconds": 15,
+  "actors": [{ "id": "observer_a", "trajectory": "stationary" }, { "id": "observer_b", "trajectory": "reconnect" }],
+  "objects": { "generator": "revision_fixture", "count": 1, "classes": ["structure"] },
+  "policy": { "name": "tiered", "near_meters": 30, "outer_meters": 64, "mid_hz": 5 },
+  "driver": "pure",
+  "stop_rules": ["cross_recipient_activity", "duplicate_terminal_apply", "unbounded_queue_growth"]
+}

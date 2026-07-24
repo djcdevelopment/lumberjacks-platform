@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "authority-event.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "timestamp_utc", "event_type", "experiment_id", "scenario_id", "run_id", "seed", "tick", "driver", "payload"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "event_id": { "type": "string", "minLength": 1 },
+    "timestamp_utc": { "type": "string", "format": "date-time" },
+    "event_type": { "type": "string", "enum": ["authority.native_candidate_observed", "authority.lumberjacks_decision", "authority.decision_compared", "authority.ownership_observed", "authority.rpc_observed"] },
+    "experiment_id": { "type": "string", "minLength": 1 },
+    "scenario_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "seed": { "type": "integer", "minimum": 0 },
+    "tick": { "type": "integer", "minimum": 0 },
+    "driver": { "type": "string", "enum": ["pure", "gateway", "replay", "local_valheim_shadow", "local_valheim_strict", "p7_shadow", "p7_canary"] },
+    "payload": { "type": "object" }
+  }
+}

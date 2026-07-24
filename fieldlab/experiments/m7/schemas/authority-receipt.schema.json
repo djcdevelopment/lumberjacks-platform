@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "authority-receipt.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "experiment_id", "scenario_id", "run_id", "source_revision", "dirty_state", "scenario_sha256", "normalized_input_sha256", "policy", "driver", "seed", "started_utc", "ended_utc", "duration_seconds", "stop_result", "event_counts", "invariants", "prediction_observations", "raw_evidence_paths", "normalized_decision_sha256", "result_classification"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "experiment_id": { "type": "string" },
+    "scenario_id": { "type": "string" },
+    "run_id": { "type": "string" },
+    "source_revision": { "type": "string" },
+    "dirty_state": { "type": "boolean" },
+    "scenario_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "normalized_input_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "policy": { "type": "object" },
+    "driver": { "type": "string" },
+    "seed": { "type": "integer" },
+    "started_utc": { "type": "string", "format": "date-time" },
+    "ended_utc": { "type": "string", "format": "date-time" },
+    "duration_seconds": { "type": "number", "minimum": 0 },
+    "stop_result": { "type": "string" },
+    "event_counts": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "invariants": { "type": "array" },
+    "prediction_observations": { "type": "array" },
+    "raw_evidence_paths": { "type": "array", "items": { "type": "string" } },
+    "normalized_decision_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "result_classification": { "type": "string", "enum": ["supported", "refuted", "mixed", "inconclusive", "harness_failed", "pending"] }
+  }
+}

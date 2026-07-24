@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "experiment_id": "m7-e01-relevance-shape",
+  "scenario_id": "relevance-boundaries-v1",
+  "seed": 411,
+  "plane": "relevance",
+  "duration_seconds": 10,
+  "actors": [{ "id": "observer_a", "trajectory": "straight_north" }],
+  "objects": { "generator": "concentric_density", "count": 6, "classes": ["player", "structure", "container", "creature", "decorative"] },
+  "policy": { "name": "tiered", "near_meters": 30, "outer_meters": 64, "mid_hz": 5 },
+  "driver": "pure",
+  "stop_rules": ["critical_omission", "boundary_chatter"]
+}
