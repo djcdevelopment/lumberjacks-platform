@@ -18,6 +18,7 @@ Collects the evidence needed before asking for another two-client Valheim join:
 - Bounded command timeout contract coverage.
 - Wave 0 stop-rule coverage.
 - Wave 0 stop-rule fixture coverage.
+- Return-packet handoff contract coverage.
 - Visual-observation sidecar immutability coverage.
 - Real no-client live-gate smoke, proving the gate stops before motion.
 - Two-machine Companion capture/bundle smoke, proving OMEN+i5 evidence collection.
@@ -94,6 +95,7 @@ $stopRuleFixturesRoot = Join-Path $outRoot 'stop-rule-fixtures'
 $noClientRoot = Join-Path $outRoot 'no-client-live-gate'
 $bundleSmokeRoot = Join-Path $outRoot 'bundle-smoke'
 $returnPacketRoot = Join-Path $outRoot 'return-packet'
+$returnPacketContractPath = Join-Path $outRoot 'return-packet-contract.json'
 $strategyStatusRoot = Join-Path $outRoot 'strategy-status'
 New-Item -ItemType Directory -Force -Path $fixturesRoot, $autoWaitFixturesRoot, $sealFixturesRoot, $defectFixturesRoot, $visualObservationFixturesRoot, $expectedGridFixturesRoot, $strategyStatusFixturesRoot, $noClientRoot, $bundleSmokeRoot, $returnPacketRoot, $strategyStatusRoot | Out-Null
 
@@ -214,6 +216,15 @@ $steps += Invoke-Step `
         '-OutputMarkdown', (Join-Path $returnPacketRoot 'packet.md')
     )
 
+$steps += Invoke-Step `
+    -Name 'return-packet-contract' `
+    -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0ReturnPacketContract.ps1') `
+    -Arguments @(
+        '-PacketJson', (Join-Path $returnPacketRoot 'packet.json'),
+        '-PacketMarkdown', (Join-Path $returnPacketRoot 'packet.md'),
+        '-OutputJson', $returnPacketContractPath
+    )
+
 $readiness = Read-JsonOrNull $readinessPath
 $roadmapFreshness = Read-JsonOrNull $roadmapFreshnessPath
 $fixtures = Read-JsonOrNull (Join-Path $fixturesRoot 'summary.json')
@@ -231,6 +242,7 @@ $stopRuleFixtures = Read-JsonOrNull (Join-Path $stopRuleFixturesRoot 'summary.js
 $noClient = Read-JsonOrNull (Join-Path $noClientRoot 'result.json')
 $bundleSmoke = Read-JsonOrNull (Join-Path $bundleSmokeRoot 'result.json')
 $packet = Read-JsonOrNull (Join-Path $returnPacketRoot 'packet.json')
+$returnPacketContract = Read-JsonOrNull $returnPacketContractPath
 
 $bundleCount = if ($bundleSmoke -and $bundleSmoke.bundles) { @($bundleSmoke.bundles).Count } else { 0 }
 $failedSteps = @($steps | Where-Object { -not $_.ok })
@@ -253,6 +265,7 @@ $verdict =
     elseif (-not $noClient -or [string]$noClient.verdict -ne 'wait_for_two_real_clients') { 'prelive_no_client_gate_unexpected' }
     elseif (-not $bundleSmoke -or $bundleCount -lt 2) { 'prelive_bundle_collection_not_ready' }
     elseif (-not $packet -or [string]$packet.verdict -ne 'ready_for_derek_two_client_join') { 'prelive_return_packet_not_ready' }
+    elseif (-not $returnPacketContract -or [string]$returnPacketContract.verdict -ne 'wave0_return_packet_contract_passed') { 'prelive_return_packet_contract_not_ready' }
     else { 'ready_for_derek_two_client_join' }
 
 $receipt = [ordered]@{
@@ -284,6 +297,7 @@ $receipt = [ordered]@{
         bundle_smoke = Join-Path $bundleSmokeRoot 'result.json'
         return_packet_json = Join-Path $returnPacketRoot 'packet.json'
         return_packet_markdown = Join-Path $returnPacketRoot 'packet.md'
+        return_packet_contract = $returnPacketContractPath
         strategy_status_json = Join-Path $strategyStatusRoot 'packet.json'
         strategy_status_markdown = Join-Path $strategyStatusRoot 'packet.md'
     }

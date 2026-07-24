@@ -78,6 +78,12 @@ tools\wave0\New-Wave0ReturnPacket.ps1 `
   -OutputJson captures\wave0-return-packet.json `
   -OutputMarkdown captures\wave0-return-packet.md
 
+# Validate the generated return packet handoff contract
+tools\wave0\Test-Wave0ReturnPacketContract.ps1 `
+  -PacketJson captures\wave0-return-packet.json `
+  -PacketMarkdown captures\wave0-return-packet.md `
+  -OutputJson captures\wave0-return-packet-contract.json
+
 # Generate a conservative full-strategy status packet from current receipts
 tools\wave0\New-FullRoadmapStrategyStatus.ps1 `
   -OutputJson captures\full-roadmap-strategy-status.json `
@@ -236,3 +242,6 @@ evidence table so command-chain drift is visible before the live window.
 have explicit timeouts and record timeout evidence in receipts.
 `New-Wave0ReturnPacket.ps1` includes the bounded-command receipt so the handoff
 shows the no-unbounded-wait contract before the live movement window.
+`Test-Wave0ReturnPacketContract.ps1` validates the generated handoff packet
+itself, including every non-human evidence gate, live command, and sensitive
+marker exclusion.
