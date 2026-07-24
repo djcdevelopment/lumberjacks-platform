@@ -28,6 +28,8 @@ function New-Check {
 }
 
 $capture = Read-Text 'tools\i5\Start-TwoClientCapture.ps1'
+$motion = Read-Text 'tools\i5\Start-TwoClientMotionTest.ps1'
+$roles = Read-Text 'tools\i5\Set-TwoClientApplyRoles.ps1'
 $live = Read-Text 'tools\wave0\Start-Wave0LiveGate.ps1'
 $returnPacket = Read-Text 'tools\wave0\New-Wave0ReturnPacket.ps1'
 
@@ -40,6 +42,22 @@ $checks += New-Check `
     -Name 'two_client_capture_receipt_records_timeout' `
     -Ok ($capture -match 'timeout_seconds\s*=\s*\$captureTimeoutSeconds') `
     -Detail 'Start-TwoClientCapture.ps1 result must record timeout_seconds.'
+$checks += New-Check `
+    -Name 'two_client_motion_http_calls_have_timeout' `
+    -Ok (([regex]::Matches($motion, '-TimeoutSec\s+\$httpTimeoutSeconds').Count -ge 2) -and $motion -match '\$httpTimeoutSeconds\s*=\s*\[Math\]::Max') `
+    -Detail 'Start-TwoClientMotionTest.ps1 must bound local and remote Companion HTTP posts.'
+$checks += New-Check `
+    -Name 'two_client_motion_receipt_records_timeout' `
+    -Ok ($motion -match 'timeout_seconds\s*=\s*\$httpTimeoutSeconds') `
+    -Detail 'Start-TwoClientMotionTest.ps1 result must record timeout_seconds.'
+$checks += New-Check `
+    -Name 'two_client_apply_roles_http_calls_have_timeout' `
+    -Ok (([regex]::Matches($roles, '-TimeoutSec\s+\$httpTimeoutSeconds').Count -ge 2) -and $roles -match '\$httpTimeoutSeconds\s*=\s*15') `
+    -Detail 'Set-TwoClientApplyRoles.ps1 must bound local and remote Companion HTTP posts.'
+$checks += New-Check `
+    -Name 'two_client_apply_roles_receipt_records_timeout' `
+    -Ok ($roles -match 'timeout_seconds\s*=\s*\$httpTimeoutSeconds') `
+    -Detail 'Set-TwoClientApplyRoles.ps1 result must record timeout_seconds.'
 $checks += New-Check `
     -Name 'live_gate_capture_wait_job_has_timeout' `
     -Ok ($live -match 'Wait-Job\s+-Job\s+\$captureJob\s+-Timeout\s+\$captureTimeoutSeconds') `
