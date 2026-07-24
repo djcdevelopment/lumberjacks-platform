@@ -223,4 +223,6 @@ source and reproduction material for the exact deployed version. They may keep t
 without a separate agreement or royalty. Larger production use follows the flexible
 commercial path documented at the repository root. Each version converts to AGPL-3.0-only
 no later than the Change Date stated in the license. Earlier versions remain under the
-terms that accompanied them. Copyright © 2026 DJC Development.
+terms that accompanied them. The canonical integrated source and full licensing map are
+in the [Baseline repository](https://github.com/djcdevelopment/baseline#repository-family-and-licensing-map);
+repository visibility alone does not grant production rights. Copyright © 2026 DJC Development.
