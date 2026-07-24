@@ -6,11 +6,11 @@ using System.Text.Json.Serialization;
 using Lumberjacks.Companion;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddHttpClient<GatewayClient>();
+builder.Services.AddHttpClient<GatewayClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddSingleton<CompanionStateStore>();
 builder.Services.AddSingleton<ValheimLocator>();
 builder.Services.AddSingleton<ModpackInstaller>();
-builder.Services.AddHttpClient<TransportTruthCaptureService>();
+builder.Services.AddHttpClient<TransportTruthCaptureService>(client => client.Timeout = TimeSpan.FromSeconds(10));
 
 var app = builder.Build();
 app.Use(async (context, next) =>
@@ -47,6 +47,74 @@ app.MapGet("/api/v0/companion/status", (CompanionStateStore state, ValheimLocato
         installed = saved.installed,
         last_error = saved.last_error,
     });
+});
+
+app.MapGet("/api/v0/companion/workbench", async (CompanionStateStore state, ValheimLocator locator, GatewayClient gateway, TransportTruthCaptureService capture, CancellationToken cancellationToken) =>
+{
+    var install = locator.Find();
+    var saved = state.Read();
+    var deployment = await gateway.GetJson("/api/v0/telemetry/deployment", cancellationToken);
+    var catalog = WorkbenchCatalog.Read();
+    var latestCapture = capture.ListCaptures(1).FirstOrDefault();
+    return Results.Json(new
+    {
+        schema_version = 1,
+        event_type = "companion.workbench_status",
+        generated_utc = DateTimeOffset.UtcNow,
+        source = new
+        {
+            companion_version = CompanionVersion.Value,
+            bootstrap_release = CompanionVersion.BootstrapRelease,
+            source_revision = CompanionVersion.SourceRevision,
+            source_branch = CompanionVersion.SourceBranch,
+            source_dirty = CompanionVersion.SourceDirty,
+            image = CompanionVersion.Image,
+            gateway_url = GatewayClient.GatewayUrl,
+        },
+        gateway_reachable = deployment is not null,
+        local_status = new
+        {
+            valheim = new
+            {
+                found = install is not null,
+                config_found = install is not null && File.Exists(ValheimLocator.ConfigPath(install)),
+                running = ValheimLocator.IsRunning(),
+            },
+            profile = new { linked = saved.profile is not null },
+            installed = saved.installed is null ? null : new
+            {
+                saved.installed.release,
+                saved.installed.mod_release,
+                installed_package_sha256_short = HashShort(saved.installed.package_sha256),
+                saved.installed.installed_utc,
+            },
+            last_error = saved.last_error,
+        },
+        recent_capture_exists = latestCapture is not null,
+        latest_capture = latestCapture,
+        catalog,
+    }, Json.Options);
+});
+
+app.MapPost("/api/v0/companion/workbench/snapshot", (CompanionStateStore state, ValheimLocator locator) =>
+{
+    var snapshot = WorkbenchCatalog.Snapshot(WorkbenchCatalog.Read(), state.Read(), locator.Find());
+    var path = WorkbenchCatalog.WriteSnapshot(state, snapshot);
+    return Results.Ok(new
+    {
+        ok = true,
+        event_type = "companion.workbench_snapshot",
+        generated_utc = DateTimeOffset.UtcNow,
+        snapshot_name = Path.GetFileName(path),
+    });
+});
+
+app.MapGet("/api/v0/companion/workbench/snapshot/latest", (CompanionStateStore state) =>
+{
+    var path = WorkbenchCatalog.LatestSnapshot(state);
+    return path is null
+        ? Results.NotFound(new { error = "workbench_snapshot_not_found" })
+        : Results.File(path, "application/json", Path.GetFileName(path));
 });
 
 app.MapPost("/api/v0/companion/profile/claim-installed", (CompanionStateStore state, ValheimLocator locator) =>
@@ -332,6 +400,8 @@ app.MapGet("/api/v0/telemetry/{**tail}", (HttpContext context, GatewayClient gat
     gateway.ProxyGet(context, "/api/v0/telemetry/" + (context.Request.RouteValues["tail"] ?? string.Empty), cancellationToken));
 app.MapGet("/live/{**tail}", (HttpContext context, GatewayClient gateway, CancellationToken cancellationToken) =>
     gateway.ProxyGet(context, "/live/" + (context.Request.RouteValues["tail"] ?? string.Empty), cancellationToken));
+
+app.MapGet("/workbench", () => Results.Content(WorkbenchPage.Html, "text/html"));
 
 app.MapGet("/", () => Results.Content(CompanionPage.Html, "text/html"));
 app.Run();
@@ -711,6 +781,10 @@ static class CompanionVersion
 {
     public static string Value => typeof(CompanionVersion).Assembly.GetName().Version?.ToString(3) ?? "0.1.0";
     public static string BootstrapRelease => Environment.GetEnvironmentVariable("LUMBERJACKS_COMPANION_BOOTSTRAP_RELEASE") ?? "unknown";
+    public static string SourceRevision => Environment.GetEnvironmentVariable("LUMBERJACKS_COMPANION_SOURCE_REVISION") ?? "unknown";
+    public static string SourceBranch => Environment.GetEnvironmentVariable("LUMBERJACKS_COMPANION_SOURCE_BRANCH") ?? "unknown";
+    public static string SourceDirty => Environment.GetEnvironmentVariable("LUMBERJACKS_COMPANION_SOURCE_DIRTY") ?? "unknown";
+    public static string Image => Environment.GetEnvironmentVariable("LUMBERJACKS_COMPANION_IMAGE") ?? "unknown";
 }
 
 sealed class GatewayClient(HttpClient client)

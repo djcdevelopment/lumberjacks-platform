@@ -3,4 +3,7 @@
     <AssemblyName>Lumberjacks.Companion</AssemblyName>
     <RootNamespace>Lumberjacks.Companion</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Update="workbench-checklist.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

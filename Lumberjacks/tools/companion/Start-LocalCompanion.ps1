@@ -42,6 +42,16 @@ $LatestBootstrapFile = Join-Path $ToolRoot 'latest-bootstrap.json'
 $ProjectName = 'lumberjacks-companion'
 $LegacyProjectName = 'companion'
 
+function Set-WorkbenchSourceMetadata {
+    $revision = (& git -C $RepoRoot.Path rev-parse HEAD 2>$null | Select-Object -First 1)
+    $branch = (& git -C $RepoRoot.Path branch --show-current 2>$null | Select-Object -First 1)
+    $dirty = (& git -C $RepoRoot.Path status --porcelain --untracked-files=no 2>$null)
+    $env:LUMBERJACKS_COMPANION_SOURCE_REVISION = if ($revision) { $revision.ToString().Trim() } else { 'unknown' }
+    $env:LUMBERJACKS_COMPANION_SOURCE_BRANCH = if ($branch) { $branch.ToString().Trim() } else { 'unknown' }
+    $env:LUMBERJACKS_COMPANION_SOURCE_DIRTY = if ($dirty) { 'true' } else { 'false' }
+    $env:LUMBERJACKS_COMPANION_IMAGE = "$ProjectName:local"
+}
+
 function Test-DockerServer {
     param([int]$TimeoutSeconds = 8)
 
@@ -129,6 +139,7 @@ if (-not $NoLegacyCleanup) {
 Assert-PortAvailableOrOwnedByProject
 
 Set-Location $RepoRoot
+Set-WorkbenchSourceMetadata
 $composeArgs = @('compose', '-p', $ProjectName, '-f', $ComposeFile.Path)
 if (Test-Path -LiteralPath $LatestBootstrapFile) {
     try {

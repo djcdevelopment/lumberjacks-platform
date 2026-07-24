@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "catalog_kind": "lumberjacks_workbench_checklist",
+  "catalog_last_updated_utc": "2026-07-24T09:35:57Z",
+  "source_of_truth": [
+    {
+      "name": "living_roadmap",
+      "path": "Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json",
+      "role": "milestone status and public release truth"
+    },
+    {
+      "name": "full_roadmap_strategy",
+      "path": "plans/full-roadmap-working-strategy.md",
+      "role": "execution order, gates, and promotion boundaries"
+    },
+    {
+      "name": "goal_overview",
+      "path": "plans/full-roadmap-goal-overview.csv",
+      "role": "goal-to-milestone-to-feature evidence index"
+    },
+    {
+      "name": "m7_authority_program",
+      "path": "plans/m7-authority-experiment-program.md",
+      "role": "synthetic, replay, local-lab, and shadow authority experiments"
+    },
+    {
+      "name": "physical_feel_lane",
+      "path": "plans/m7-physical-feel-lane-strategy.md",
+      "role": "low-touch OMEN/i5 visual observation and transport evidence"
+    }
+  ],
+  "active_goal": {
+    "id": "full-roadmap",
+    "title": "End-to-end Valheim network replacement and alpha workbench",
+    "status": "active_incomplete",
+    "objective": "Make each interaction produce observable evidence, preserve the workbench state, and reduce human testing to short intentional feel judgments.",
+    "source_points": [
+      "plans/full-roadmap-working-strategy.md",
+      "plans/full-roadmap-goal-overview.csv",
+      "Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json"
+    ]
+  },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Release foundation",
+      "status": "complete",
+      "last_updated": "2026-07-16",
+      "focus": "Freeze a known-good release and retain reproducible evidence.",
+      "source_points": ["Lumberjacks/docs/roadmap/m0-clean-build-candidate-r2.json", "m0-a5-publication-receipt.json"]
+    },
+    {
+      "id": "M1",
+      "title": "Identity and admission",
+      "status": "active",
+      "last_updated": "2026-07-23T19:55:59-07:00",
+      "focus": "Steam enrollment, compatibility, capacity, least privilege, and trusted proxy boundaries.",
+      "source_points": ["Lumberjacks/src/Game.Gateway/Valheim/SteamEnrollmentEndpoints.cs", "plans/full-roadmap-working-strategy.md"]
+    },
+    {
+      "id": "M2",
+      "title": "Companion client pull",
+      "status": "active",
+      "last_updated": "2026-07-23T21:40:26-07:00",
+      "focus": "Hash-verified install, config preservation, rollback, diagnostics, and local workbench.",
+      "source_points": ["Lumberjacks/src/Game.Companion", "Lumberjacks/tools/companion", "plans/remaining-human-tests.md"]
+    },
+    {
+      "id": "M3",
+      "title": "Traffic proof",
+      "status": "queued",
+      "last_updated": "2026-07-24T04:39:25.9907538Z",
+      "focus": "Append-only JSONL boundary evidence, retained dashboards, and run reconstruction.",
+      "source_points": ["plans/community-telemetry-surface-integration-plan.md", "plans/full-roadmap-working-strategy.md"]
+    },
+    {
+      "id": "M4a",
+      "title": "Recipient correctness",
+      "status": "active",
+      "last_updated": "2026-07-24T03:13:12.990Z",
+      "focus": "Recipient-scoped queues, readiness leases, reconnect/takeover, and synthetic N=2/N=10 proof.",
+      "source_points": ["fieldlab/integration/COMFY-LUMBERJACKS-ACCEPTANCE.md", "Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json"]
+    },
+    {
+      "id": "M5",
+      "title": "External canary",
+      "status": "gated",
+      "last_updated": "2026-07-24T04:39:25.9907538Z",
+      "focus": "One trusted non-developer tester using the Companion-only route and a sealed personal trace.",
+      "source_points": ["plans/remaining-human-tests.md", "plans/full-roadmap-working-strategy.md"]
+    },
+    {
+      "id": "M6",
+      "title": "Widening",
+      "status": "gated",
+      "last_updated": "2026-07-24T04:39:25.9907538Z",
+      "focus": "2-4 then 5-8 player soak after correctness and synthetic qualifications.",
+      "source_points": ["plans/remaining-human-tests.md", "plans/full-roadmap-working-strategy.md"]
+    },
+    {
+      "id": "M7",
+      "title": "Future authority",
+      "status": "discovery_active_p7_promotion_gated",
+      "last_updated": "2026-07-24T05:49:37.9681996Z",
+      "focus": "Synthetic, replay, local-lab, and shadow experiments for relevance, ownership, replication, motion, and RPC claims.",
+      "source_points": ["plans/m7-authority-experiment-program.md", "plans/m7-authority-expansion-working-strategy.md", "plans/m7-physical-feel-lane-strategy.md"]
+    }
+  ],
+  "execution_lanes": [
+    {
+      "id": "local_workbench",
+      "title": "Local Docker workbench",
+      "status": "primary",
+      "surface": "http://127.0.0.1:8080/workbench",
+      "owns": ["operator checklist", "redacted local status", "capture history", "snapshot and reconstruction links"],
+      "does_not_own": ["public Steam identity", "P7 authority promotion"]
+    },
+    {
+      "id": "public_gateway",
+      "title": "Remote public Gateway",
+      "status": "live_edge",
+      "surface": "/join/update, /community, /trace",
+      "owns": ["Steam/OpenID callback", "enrollment", "release manifest", "P7 telemetry"],
+      "does_not_own": ["local Docker admin controls", "local Steam credentials"]
+    },
+    {
+      "id": "physical_clients",
+      "title": "OMEN and i5 physical clients",
+      "status": "ready_for_bounded_window",
+      "surface": "Companion localhost plus the i5 SSH lane",
+      "owns": ["human visual feel", "GPU/display/runtime variance", "bounded named movement"],
+      "human_touch": "join both clients once; then watch and annotate"
+    },
+    {
+      "id": "headless_lab",
+      "title": "Docker headless/rendered lab clients",
+      "status": "seed_gated",
+      "surface": "fieldlab/autonomous/valheim-lab.compose.yml plus MCP",
+      "owns": ["synthetic generation", "replay", "authority experiments", "no-human regression loops"],
+      "limitation": "Steam client volumes need one-time existing-character seeding"
+    },
+    {
+      "id": "gcp_server",
+      "title": "GCP server and Gateway",
+      "status": "remote_shared_target",
+      "surface": "public Gateway telemetry and existing operator tunnels",
+      "owns": ["realistic latency", "server heartbeat", "remote deployment truth"],
+      "guardrail": "local workbench observes and drives allow-listed lab surfaces; it does not silently promote authority"
+    }
+  ],
+  "reconstruct": {
+    "principle": "Reset the image, preserve the data volume, then reconstruct from source revision plus retained snapshots and captures.",
+    "never": ["docker compose down -v when evidence matters", "copy Steam credentials into Docker", "treat a browser view as a receipt"],
+    "steps": [
+      {
+        "order": 1,
+        "title": "Record current workbench state",
+        "command": "POST /api/v0/companion/workbench/snapshot",
+        "result": "Immutable redacted snapshot under the Companion data volume"
+      },
+      {
+        "order": 2,
+        "title": "Reset to the latest source/image",
+        "command": ".\\Lumberjacks\\tools\\companion\\Start-LocalCompanion.ps1",
+        "result": "Rebuilds or starts the canonical Docker image while preserving companion-data"
+      },
+      {
+        "order": 3,
+        "title": "Reconstruct the investigation",
+        "command": "Open /workbench, /trace, the latest snapshot, and the retained capture bundle",
+        "result": "Source pointer, milestone position, local status, and raw evidence are visible together"
+      },
+      {
+        "order": 4,
+        "title": "Change one seam",
+        "command": "Run the smallest bounded synthetic or physical feel window",
+        "result": "New receipt references the source/image identity and leaves prior evidence untouched"
+      }
+    ]
+  }
+}

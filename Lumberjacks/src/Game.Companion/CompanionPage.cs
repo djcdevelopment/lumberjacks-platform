@@ -21,6 +21,7 @@ static class CompanionPage
     <a class="btn" href="/community">Community</a>
     <a class="btn" href="/trace">Live trace</a>
     <a class="btn" href="/roadmap">Roadmap</a>
+    <a class="btn" href="/workbench">Workbench</a>
   </div>
 </div>
 

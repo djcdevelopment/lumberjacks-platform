@@ -9,6 +9,13 @@ diagnostics when the configured Gateway URL can reach them; otherwise it falls b
 public community live trace. For the full operator dashboard, start the P7 tunnel and set
 `LUMBERJACKS_COMPANION_GATEWAY_URL=http://host.docker.internal:14000` for the Docker service.
 
+`http://127.0.0.1:8080/workbench` is the source-aware operator map. It shows the active goal,
+milestone hierarchy, feature/source pointers, physical and headless execution lanes, the current
+Docker source revision/branch/image, and the reconstruction steps. The local workbench is the
+primary operator surface; `/join/update` and its Steam/OpenID callback remain on the public Gateway.
+The Companion receives only the installed profile association and redacted status, never Steam
+credentials or raw access keys.
+
 ## Docker on Windows (preferred for OMEN and i5)
 
 This is the verified alpha path. It uses the repository's .NET 9 SDK container, so the host does
@@ -26,6 +33,10 @@ from this same compose file. Without the Valheim compose override, Docker is a r
 dashboard and can start with no Valheim path at all. With it, Docker uses the same updater and
 persistent state, but cannot reliably observe the Windows Valheim process. Stop Valheim, then
 explicitly check **I have closed Valheim** before selecting **Install latest**.
+
+The launcher stamps the container with the current Git revision, branch, dirty state, and local
+image label. This makes a dashboard observation attributable to the source that built it. The
+metadata is informational and does not grant the container Git or host control.
 
 For the i5 laptop, do not hand-copy files. Use the documented tailnet deploy lane from
 `C:\work\baseline`:
@@ -109,6 +120,12 @@ identity, observed player names, counter deltas, and an interpretation block wit
 action. A `native_motion_only` verdict means Valheim peers were present but Lumberjacks motion
 counters did not advance during that window; visible movement should be treated as native Valheim
 for that capture.
+
+Use the Workbench **Capture redacted workbench snapshot** action before a meaningful investigation
+or reset. It writes an immutable JSON snapshot under the persistent `companion-data` volume. To
+reconstruct after rebuilding, keep that volume, run `Start-LocalCompanion.ps1`, then open
+`/workbench`, `/trace`, the latest snapshot, and the relevant capture bundle. Do not use
+`docker compose down -v` when evidence matters.
 
 `latest-bootstrap.json` is the stable machine-readable pointer for the current tester bootstrap.
 The P7 publisher rewrites it after a successful public upload with the `/join/update` page, public

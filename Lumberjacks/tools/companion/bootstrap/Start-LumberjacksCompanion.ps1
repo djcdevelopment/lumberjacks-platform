@@ -84,10 +84,16 @@ if (-not (Test-Path -LiteralPath $override)) {
     Copy-Item -LiteralPath $overrideTemplate -Destination $override
 }
 $env:LUMBERJACKS_VALHEIM_HOST_PATH = $valheimPath
+$env:LUMBERJACKS_COMPANION_SOURCE_BRANCH = 'release-bundle'
+$env:LUMBERJACKS_COMPANION_SOURCE_DIRTY = 'false'
 if (Test-Path -LiteralPath $bootstrapReleaseFile) {
     try {
         $bootstrapRelease = Get-Content -LiteralPath $bootstrapReleaseFile -Raw | ConvertFrom-Json
-        if ($bootstrapRelease.release) { $env:LUMBERJACKS_COMPANION_BOOTSTRAP_RELEASE = $bootstrapRelease.release }
+        if ($bootstrapRelease.release) {
+            $env:LUMBERJACKS_COMPANION_BOOTSTRAP_RELEASE = $bootstrapRelease.release
+            $env:LUMBERJACKS_COMPANION_SOURCE_REVISION = 'bundle:' + $bootstrapRelease.release
+            $env:LUMBERJACKS_COMPANION_IMAGE = 'lumberjacks-companion:' + $bootstrapRelease.release
+        }
     }
     catch {
         Write-Warning "Could not read Companion bootstrap release metadata: $($_.Exception.Message)"
