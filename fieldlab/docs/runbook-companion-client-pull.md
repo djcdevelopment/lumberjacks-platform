@@ -87,13 +87,14 @@ If a remote i5 sync leaves `lumberjacks-companion-companion-1` in `Created` or D
 do not ask the operator to KVM files. Treat it as Docker Desktop recovery:
 
 ```powershell
-ssh i5 "powershell.exe -NoProfile -Command `"Restart-Service com.docker.service -Force`""
+tools\i5\Repair-I5DockerDesktop.ps1
 ```
 
-If the Linux engine still does not answer `docker info --format '{{.OSType}}'` as `linux`, stop the
-Docker Desktop/backend processes and start Docker Desktop again from the i5 admin SSH session. Then
-rerun the Companion sync once. Do not retry-loop indefinitely; the i5 is a roaming optional test
-client.
+The repair script runs over the existing i5 SSH lane, restarts only Docker Desktop
+service/processes when required, waits for `docker info --format '{{.OSType}}'` to answer `linux`,
+recreates the Companion with both compose files, and verifies the Wave 0 packet endpoint. Use
+`-NoCompanionStart` when the desired receipt is Docker-engine health only. Do not retry-loop
+indefinitely; the i5 is a roaming optional test client.
 
 ## Publish a mod/config package
 
