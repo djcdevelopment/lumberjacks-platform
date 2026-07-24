@@ -22,6 +22,9 @@ tools\wave0\Wait-Wave0LiveGate.ps1 -DesiredApplyClient omen -OutputJson captures
 # One-command pre-live audit; no movement, stops at the real-client boundary
 tools\wave0\Test-Wave0Prelive.ps1 -OutputDirectory captures\wave0-prelive-current
 
+# Verify the human-only test register that the pre-live packet depends on
+tools\wave0\Test-Wave0HumanTestRegister.ps1 -OutputJson captures\wave0-human-test-register.json
+
 # Attach Derek's visual observation without editing the machine receipt
 tools\wave0\Add-Wave0VisualObservation.ps1 `
   -ReceiptJson captures\wave0-live-gate\result.json `
@@ -82,8 +85,8 @@ heartbeat-age fields until the next real two-client run creates one.
 
 `Test-Wave0Prelive.ps1` is the preferred unattended check before Derek returns.
 It runs readiness, public-roadmap freshness, fixture coverage, a no-client
-live-gate smoke, a two-machine bundle-lane smoke, and return-packet generation
-into one summary receipt.
+live-gate smoke, the human-test register check, a two-machine bundle-lane
+smoke, and return-packet generation into one summary receipt.
 
 `Start-Wave0LiveGate.ps1` is the preferred live command once both clients are
 joined. It runs the two non-human gates, checks P7 peer count, starts the
@@ -161,7 +164,7 @@ tools\wave0\Test-Wave0DefectPacketFixtures.ps1
 
 `New-Wave0ReturnPacket.ps1` is the handoff generator. It summarizes the current
 non-human receipts, including release readiness, roadmap freshness, live-gate
-fixtures, auto-wait fixtures, visual seal fixtures, defect-packet fixtures, and
-the two-machine bundle smoke. It emits the commands to run when both clients are
-back and lists the stop conditions without copying raw private Companion receipt
-bodies into the Markdown.
+fixtures, auto-wait fixtures, visual seal fixtures, defect-packet fixtures, the
+human-test register, and the two-machine bundle smoke. It emits the commands to
+run when both clients are back and lists the stop conditions without copying raw
+private Companion receipt bodies into the Markdown.

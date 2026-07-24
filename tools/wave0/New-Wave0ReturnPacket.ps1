@@ -18,6 +18,7 @@ param(
     [string]$AutoWaitFixtureReceipt = '',
     [string]$VisualSealFixtureReceipt = '',
     [string]$DefectPacketFixtureReceipt = '',
+    [string]$HumanTestRegisterReceipt = '',
     [string]$BundleSmokeReceipt = '',
     [string]$OutputJson = 'captures/wave0-return-packet.json',
     [string]$OutputMarkdown = 'captures/wave0-return-packet.md'
@@ -160,6 +161,12 @@ if (-not $DefectPacketFixtureReceipt) {
         [string]$Body.verdict -eq 'wave0_defect_packet_fixture_checks_passed'
     }
 }
+if (-not $HumanTestRegisterReceipt) {
+    $HumanTestRegisterReceipt = Find-LatestReceipt 'human-test register receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_human_test_register_current'
+    }
+}
 if (-not $BundleSmokeReceipt) {
     $BundleSmokeReceipt = Find-LatestReceipt 'bundle smoke receipt' {
         param($Body)
@@ -175,6 +182,7 @@ $fixtures = Read-Receipt $FixtureReceipt
 $autoWaitFixtures = Read-Receipt $AutoWaitFixtureReceipt
 $visualSealFixtures = Read-Receipt $VisualSealFixtureReceipt
 $defectPacketFixtures = Read-Receipt $DefectPacketFixtureReceipt
+$humanTestRegister = Read-Receipt $HumanTestRegisterReceipt
 $bundleSmoke = Read-Receipt $BundleSmokeReceipt
 
 $checks = @()
@@ -226,6 +234,12 @@ $checks += Check-State `
     -Detail ($(if ($defectPacketFixtures.present) { "verdict=$($defectPacketFixtures.body.verdict)" } else { 'missing defect packet fixture summary' })) `
     -ReceiptPath $defectPacketFixtures.path `
     -ReceiptSha256 $defectPacketFixtures.sha256
+$checks += Check-State `
+    -Name 'human_test_register_gate' `
+    -Ok ($humanTestRegister.present -and [string]$humanTestRegister.body.verdict -eq 'wave0_human_test_register_current') `
+    -Detail ($(if ($humanTestRegister.present) { "verdict=$($humanTestRegister.body.verdict) checks=$(@($humanTestRegister.body.checks).Count)" } else { 'missing human-test register receipt' })) `
+    -ReceiptPath $humanTestRegister.path `
+    -ReceiptSha256 $humanTestRegister.sha256
 $bundleCount = if ($bundleSmoke.present -and $bundleSmoke.body.bundles) { @($bundleSmoke.body.bundles).Count } else { 0 }
 $bundleDetail = if ($bundleSmoke.present) {
     $comparisonLevel = [string]$bundleSmoke.body.comparison.level
