@@ -19,6 +19,7 @@ param(
     [string]$VisualSealFixtureReceipt = '',
     [string]$DefectPacketFixtureReceipt = '',
     [string]$HumanTestRegisterReceipt = '',
+    [string]$ExpectedResultGridReceipt = '',
     [string]$BundleSmokeReceipt = '',
     [string]$OutputJson = 'captures/wave0-return-packet.json',
     [string]$OutputMarkdown = 'captures/wave0-return-packet.md'
@@ -167,6 +168,12 @@ if (-not $HumanTestRegisterReceipt) {
         [string]$Body.verdict -eq 'wave0_human_test_register_current'
     }
 }
+if (-not $ExpectedResultGridReceipt) {
+    $ExpectedResultGridReceipt = Find-LatestReceipt 'expected-result grid receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_expected_result_grid_ready'
+    }
+}
 if (-not $BundleSmokeReceipt) {
     $BundleSmokeReceipt = Find-LatestReceipt 'bundle smoke receipt' {
         param($Body)
@@ -183,6 +190,7 @@ $autoWaitFixtures = Read-Receipt $AutoWaitFixtureReceipt
 $visualSealFixtures = Read-Receipt $VisualSealFixtureReceipt
 $defectPacketFixtures = Read-Receipt $DefectPacketFixtureReceipt
 $humanTestRegister = Read-Receipt $HumanTestRegisterReceipt
+$expectedResultGrid = Read-Receipt $ExpectedResultGridReceipt
 $bundleSmoke = Read-Receipt $BundleSmokeReceipt
 
 $checks = @()
@@ -240,6 +248,12 @@ $checks += Check-State `
     -Detail ($(if ($humanTestRegister.present) { "verdict=$($humanTestRegister.body.verdict) checks=$(@($humanTestRegister.body.checks).Count)" } else { 'missing human-test register receipt' })) `
     -ReceiptPath $humanTestRegister.path `
     -ReceiptSha256 $humanTestRegister.sha256
+$checks += Check-State `
+    -Name 'expected_result_grid_gate' `
+    -Ok ($expectedResultGrid.present -and [string]$expectedResultGrid.body.verdict -eq 'wave0_expected_result_grid_ready' -and @($expectedResultGrid.body.rows).Count -ge 5) `
+    -Detail ($(if ($expectedResultGrid.present) { "verdict=$($expectedResultGrid.body.verdict) rows=$(@($expectedResultGrid.body.rows).Count)" } else { 'missing expected-result grid receipt' })) `
+    -ReceiptPath $expectedResultGrid.path `
+    -ReceiptSha256 $expectedResultGrid.sha256
 $bundleCount = if ($bundleSmoke.present -and $bundleSmoke.body.bundles) { @($bundleSmoke.body.bundles).Count } else { 0 }
 $bundleDetail = if ($bundleSmoke.present) {
     $comparisonLevel = [string]$bundleSmoke.body.comparison.level
@@ -261,6 +275,10 @@ $failed = @($checks | Where-Object { -not $_.ok })
 $expectedRelease = if ($readiness.present) { [string]$readiness.body.expected_release } else { '' }
 $currentPeerCount = if ($liveGate.present -and $liveGate.body.p7_peer_check) { [int]$liveGate.body.p7_peer_check.peer_count } else { $null }
 $observationMarkdown = if ($liveGate.present -and $liveGate.body.observation_markdown) { [string]$liveGate.body.observation_markdown } else { '' }
+$expectedGridMarkdown = ''
+if ($expectedResultGrid.present) {
+    $expectedGridMarkdown = [IO.Path]::ChangeExtension($expectedResultGrid.path, '.md')
+}
 
 $packet = [ordered]@{
     schema_version = 1
@@ -275,6 +293,7 @@ $packet = [ordered]@{
         machine_commands_ready = $true
         original_receipts_left_immutable = $true
         observation_markdown = $observationMarkdown
+        expected_result_grid = $expectedGridMarkdown
     }
     run_when_back = @(
         [ordered]@{
@@ -341,6 +360,7 @@ $markdownLines += "- Verdict: $($packet.verdict)"
 if ($expectedRelease) { $markdownLines += "- Expected release: $expectedRelease" }
 if ($null -ne $currentPeerCount) { $markdownLines += "- Current P7 peer count: $currentPeerCount" }
 if ($observationMarkdown) { $markdownLines += "- Observation worksheet: $observationMarkdown" }
+if ($expectedGridMarkdown) { $markdownLines += "- Expected-result grid: $expectedGridMarkdown" }
 $markdownLines += ''
 $markdownLines += '## Non-human evidence'
 $markdownLines += ''

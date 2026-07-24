@@ -25,6 +25,11 @@ tools\wave0\Test-Wave0Prelive.ps1 -OutputDirectory captures\wave0-prelive-curren
 # Verify the human-only test register that the pre-live packet depends on
 tools\wave0\Test-Wave0HumanTestRegister.ps1 -OutputJson captures\wave0-human-test-register.json
 
+# Generate the expected-result grid required before live movement
+tools\wave0\New-Wave0ExpectedResultGrid.ps1 `
+  -OutputJson captures\wave0-expected-result-grid.json `
+  -OutputMarkdown captures\wave0-expected-result-grid.md
+
 # Attach Derek's visual observation without editing the machine receipt
 tools\wave0\Add-Wave0VisualObservation.ps1 `
   -ReceiptJson captures\wave0-live-gate\result.json `
@@ -72,11 +77,12 @@ Run order before asking for a live movement course:
 1. `Test-Wave0SyntheticMotion.ps1`
 2. `Test-Wave0Readiness.ps1`
 3. `Test-Wave0RoadmapFreshness.ps1`
-4. two-client idle capture
-5. one bounded apply/observe course, or start `Wait-Wave0LiveGate.ps1` before/during the join so
+4. `New-Wave0ExpectedResultGrid.ps1`
+5. two-client idle capture
+6. one bounded apply/observe course, or start `Wait-Wave0LiveGate.ps1` before/during the join so
    the command fires only after P7 reports the required peer window
-6. role reversal
-7. seal the two annotated visual projections
+7. role reversal
+8. seal the two annotated visual projections
 
 If either non-human gate reports `FAIL` or `WAIT`, stop and use its receipt
 instead of repeating a live join/movement test. `WARN` is advisory: for example,
@@ -85,8 +91,9 @@ heartbeat-age fields until the next real two-client run creates one.
 
 `Test-Wave0Prelive.ps1` is the preferred unattended check before Derek returns.
 It runs readiness, public-roadmap freshness, fixture coverage, a no-client
-live-gate smoke, the human-test register check, a two-machine bundle-lane
-smoke, and return-packet generation into one summary receipt.
+live-gate smoke, the human-test register check, expected-result grid generation,
+a two-machine bundle-lane smoke, and return-packet generation into one summary
+receipt.
 
 `Start-Wave0LiveGate.ps1` is the preferred live command once both clients are
 joined. It runs the two non-human gates, checks P7 peer count, starts the
@@ -165,6 +172,7 @@ tools\wave0\Test-Wave0DefectPacketFixtures.ps1
 `New-Wave0ReturnPacket.ps1` is the handoff generator. It summarizes the current
 non-human receipts, including release readiness, roadmap freshness, live-gate
 fixtures, auto-wait fixtures, visual seal fixtures, defect-packet fixtures, the
-human-test register, and the two-machine bundle smoke. It emits the commands to
-run when both clients are back and lists the stop conditions without copying raw
-private Companion receipt bodies into the Markdown.
+human-test register, expected-result grid, and the two-machine bundle smoke. It
+emits the commands to run when both clients are back and lists the stop
+conditions without copying raw private Companion receipt bodies into the
+Markdown.
