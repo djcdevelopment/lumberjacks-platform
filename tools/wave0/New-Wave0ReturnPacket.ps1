@@ -12,8 +12,13 @@ profile or diagnostic details.
 param(
     [string]$SyntheticReceipt = '',
     [string]$ReadinessReceipt = '',
+    [string]$RoadmapFreshnessReceipt = '',
     [string]$LiveGateReceipt = '',
     [string]$FixtureReceipt = '',
+    [string]$AutoWaitFixtureReceipt = '',
+    [string]$VisualSealFixtureReceipt = '',
+    [string]$DefectPacketFixtureReceipt = '',
+    [string]$BundleSmokeReceipt = '',
     [string]$OutputJson = 'captures/wave0-return-packet.json',
     [string]$OutputMarkdown = 'captures/wave0-return-packet.md'
 )
@@ -117,6 +122,12 @@ if (-not $ReadinessReceipt) {
         $null -ne $Body.ready_for_derek -and [string]$Body.verdict -in @('ready_for_two_client_gate', 'waiting_for_optional_i5_or_real_clients', 'blocked_by_failed_preflight')
     }
 }
+if (-not $RoadmapFreshnessReceipt) {
+    $RoadmapFreshnessReceipt = Find-LatestReceipt 'roadmap freshness receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_roadmap_freshness_passed'
+    }
+}
 if (-not $LiveGateReceipt) {
     $LiveGateReceipt = Find-LatestReceipt 'live gate wait receipt' {
         param($Body)
@@ -131,11 +142,40 @@ if (-not $FixtureReceipt) {
         [string]$Body.verdict -eq 'wave0_live_gate_fixture_checks_passed'
     }
 }
+if (-not $AutoWaitFixtureReceipt) {
+    $AutoWaitFixtureReceipt = Find-LatestReceipt 'auto-wait fixture summary receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_auto_wait_fixture_checks_passed'
+    }
+}
+if (-not $VisualSealFixtureReceipt) {
+    $VisualSealFixtureReceipt = Find-LatestReceipt 'visual seal fixture summary receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_visual_seal_fixture_checks_passed'
+    }
+}
+if (-not $DefectPacketFixtureReceipt) {
+    $DefectPacketFixtureReceipt = Find-LatestReceipt 'defect packet fixture summary receipt' {
+        param($Body)
+        [string]$Body.verdict -eq 'wave0_defect_packet_fixture_checks_passed'
+    }
+}
+if (-not $BundleSmokeReceipt) {
+    $BundleSmokeReceipt = Find-LatestReceipt 'bundle smoke receipt' {
+        param($Body)
+        $null -ne $Body.comparison -and $null -ne $Body.bundles
+    }
+}
 
 $synthetic = Read-Receipt $SyntheticReceipt
 $readiness = Read-Receipt $ReadinessReceipt
+$roadmapFreshness = Read-Receipt $RoadmapFreshnessReceipt
 $liveGate = Read-Receipt $LiveGateReceipt
 $fixtures = Read-Receipt $FixtureReceipt
+$autoWaitFixtures = Read-Receipt $AutoWaitFixtureReceipt
+$visualSealFixtures = Read-Receipt $VisualSealFixtureReceipt
+$defectPacketFixtures = Read-Receipt $DefectPacketFixtureReceipt
+$bundleSmoke = Read-Receipt $BundleSmokeReceipt
 
 $checks = @()
 $checks += Check-State `
@@ -151,6 +191,12 @@ $checks += Check-State `
     -ReceiptPath $readiness.path `
     -ReceiptSha256 $readiness.sha256
 $checks += Check-State `
+    -Name 'roadmap_freshness_gate' `
+    -Ok ($roadmapFreshness.present -and [string]$roadmapFreshness.body.verdict -eq 'wave0_roadmap_freshness_passed') `
+    -Detail ($(if ($roadmapFreshness.present) { "verdict=$($roadmapFreshness.body.verdict) release=$($roadmapFreshness.body.expected_release) bootstrap=$($roadmapFreshness.body.expected_companion_bootstrap)" } else { 'missing roadmap freshness receipt' })) `
+    -ReceiptPath $roadmapFreshness.path `
+    -ReceiptSha256 $roadmapFreshness.sha256
+$checks += Check-State `
     -Name 'live_gate_wait_state' `
     -Ok ($liveGate.present -and [string]$liveGate.body.verdict -eq 'wait_for_two_real_clients') `
     -Detail ($(if ($liveGate.present) { "verdict=$($liveGate.body.verdict) peer_count=$($liveGate.body.p7_peer_check.peer_count)" } else { 'missing live gate smoke receipt' })) `
@@ -162,6 +208,40 @@ $checks += Check-State `
     -Detail ($(if ($fixtures.present) { "verdict=$($fixtures.body.verdict) cases=$(@($fixtures.body.cases).Count)" } else { 'missing live gate fixture summary' })) `
     -ReceiptPath $fixtures.path `
     -ReceiptSha256 $fixtures.sha256
+$checks += Check-State `
+    -Name 'auto_wait_fixture_gate' `
+    -Ok ($autoWaitFixtures.present -and [string]$autoWaitFixtures.body.verdict -eq 'wave0_auto_wait_fixture_checks_passed') `
+    -Detail ($(if ($autoWaitFixtures.present) { "verdict=$($autoWaitFixtures.body.verdict) cases=$(@($autoWaitFixtures.body.cases).Count)" } else { 'missing auto-wait fixture summary' })) `
+    -ReceiptPath $autoWaitFixtures.path `
+    -ReceiptSha256 $autoWaitFixtures.sha256
+$checks += Check-State `
+    -Name 'visual_seal_fixture_gate' `
+    -Ok ($visualSealFixtures.present -and [string]$visualSealFixtures.body.verdict -eq 'wave0_visual_seal_fixture_checks_passed') `
+    -Detail ($(if ($visualSealFixtures.present) { "verdict=$($visualSealFixtures.body.verdict)" } else { 'missing visual seal fixture summary' })) `
+    -ReceiptPath $visualSealFixtures.path `
+    -ReceiptSha256 $visualSealFixtures.sha256
+$checks += Check-State `
+    -Name 'defect_packet_fixture_gate' `
+    -Ok ($defectPacketFixtures.present -and [string]$defectPacketFixtures.body.verdict -eq 'wave0_defect_packet_fixture_checks_passed') `
+    -Detail ($(if ($defectPacketFixtures.present) { "verdict=$($defectPacketFixtures.body.verdict)" } else { 'missing defect packet fixture summary' })) `
+    -ReceiptPath $defectPacketFixtures.path `
+    -ReceiptSha256 $defectPacketFixtures.sha256
+$bundleCount = if ($bundleSmoke.present -and $bundleSmoke.body.bundles) { @($bundleSmoke.body.bundles).Count } else { 0 }
+$bundleDetail = if ($bundleSmoke.present) {
+    $comparisonLevel = [string]$bundleSmoke.body.comparison.level
+    $headline = [string]$bundleSmoke.body.comparison.headline
+    if (-not $comparisonLevel) { $comparisonLevel = 'unknown' }
+    if (-not $headline) { $headline = 'no comparison headline' }
+    "level=$comparisonLevel bundles=$bundleCount; $headline"
+} else {
+    'missing two-machine bundle smoke receipt'
+}
+$checks += Check-State `
+    -Name 'two_machine_bundle_smoke' `
+    -Ok ($bundleSmoke.present -and $bundleCount -ge 2 -and $null -ne $bundleSmoke.body.comparison) `
+    -Detail $bundleDetail `
+    -ReceiptPath $bundleSmoke.path `
+    -ReceiptSha256 $bundleSmoke.sha256
 
 $failed = @($checks | Where-Object { -not $_.ok })
 $expectedRelease = if ($readiness.present) { [string]$readiness.body.expected_release } else { '' }

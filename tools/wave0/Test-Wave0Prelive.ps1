@@ -137,8 +137,13 @@ $steps += Invoke-Step `
     -Arguments @(
         '-SyntheticReceipt', (Join-Path $noClientRoot 'synthetic-motion.json'),
         '-ReadinessReceipt', $readinessPath,
+        '-RoadmapFreshnessReceipt', $roadmapFreshnessPath,
         '-LiveGateReceipt', (Join-Path $noClientRoot 'result.json'),
         '-FixtureReceipt', (Join-Path $fixturesRoot 'summary.json'),
+        '-AutoWaitFixtureReceipt', (Join-Path $autoWaitFixturesRoot 'summary.json'),
+        '-VisualSealFixtureReceipt', (Join-Path $sealFixturesRoot 'summary.json'),
+        '-DefectPacketFixtureReceipt', (Join-Path $defectFixturesRoot 'summary.json'),
+        '-BundleSmokeReceipt', (Join-Path $bundleSmokeRoot 'result.json'),
         '-OutputJson', (Join-Path $returnPacketRoot 'packet.json'),
         '-OutputMarkdown', (Join-Path $returnPacketRoot 'packet.md')
     )
