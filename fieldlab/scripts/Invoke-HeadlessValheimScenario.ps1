@@ -26,6 +26,11 @@ Optional Compose environment file passed to every child lifecycle invocation.
 .PARAMETER NoBuild
 Stage the existing Release DLL without invoking the local mod build.
 
+.PARAMETER DllPath
+Optional exact DLL artifact to stage for every selected client. Supplying a path
+skips the worktree build and makes preflight compare the staged SHA-256 to that
+artifact, preventing concurrent dirty source from entering an experiment.
+
 .EXAMPLE
 .\Invoke-HeadlessValheimScenario.ps1 -Action preflight -Clients 01,02
 
@@ -43,6 +48,8 @@ param(
     [string] $Action = 'preflight',
 
     [string] $EnvFile = '',
+
+    [string] $DllPath = '',
 
     [switch] $NoBuild
 )
@@ -94,6 +101,7 @@ function Invoke-Lifecycle([string] $Client, [string] $ChildAction, [switch] $Chi
         '-Action', $ChildAction
     )
     if ($EnvFile) { $invokeArgs += @('-EnvFile', $EnvFile) }
+    if ($DllPath) { $invokeArgs += @('-DllPath', $DllPath) }
     if ($ChildNoBuild) { $invokeArgs += '-NoBuild' }
 
     Write-Host "[$Client] $ChildAction"

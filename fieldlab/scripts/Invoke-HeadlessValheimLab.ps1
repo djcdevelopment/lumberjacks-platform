@@ -47,6 +47,8 @@ param(
 
     [string] $CaptureOutput = '',
 
+    [string] $DllPath = '',
+
     [switch] $AllowUnseeded,
 
     [switch] $NoBuild
@@ -58,7 +60,13 @@ $composeFile = Join-Path $repoRoot 'fieldlab\autonomous\valheim-lab.compose.yml'
 $defaultEnv = Join-Path $repoRoot 'fieldlab\autonomous\valheim-lab.env'
 $exampleEnv = Join-Path $repoRoot 'fieldlab\autonomous\valheim-lab.env.example'
 $sharedRoot = Join-Path $repoRoot 'fieldlab\autonomous\state\client-shared'
-$dllSource = Join-Path $repoRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
+$dllSource = if ([string]::IsNullOrWhiteSpace($DllPath)) {
+    Join-Path $repoRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
+} elseif ([IO.Path]::IsPathRooted($DllPath)) {
+    [IO.Path]::GetFullPath($DllPath)
+} else {
+    [IO.Path]::GetFullPath((Join-Path $repoRoot $DllPath))
+}
 $clientInitSource = Join-Path $repoRoot 'fieldlab\autonomous\client-init\20-comfy-valheim-autostart.sh'
 $clientService = "valheim-client-$Client"
 $clientHome = Join-Path $repoRoot "fieldlab\autonomous\state\client$Client\home"
@@ -88,7 +96,7 @@ function Copy-Verified([string] $Source, [string] $Target) {
 }
 
 function Refresh-Payload {
-    if (-not $NoBuild) {
+    if (-not $NoBuild -and [string]::IsNullOrWhiteSpace($DllPath)) {
         Push-Location $repoRoot
         try {
             & dotnet build '.\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj' -c Release
@@ -150,8 +158,21 @@ function Invoke-LabPreflight {
     $composeReady = ($LASTEXITCODE -eq 0)
     $checks += New-PreflightCheck 'compose_contract' $composeReady (Select-CheckDetail $composeReady 'Compose file and environment expand successfully' 'docker compose config failed')
 
-    $dllReady = Test-Path -LiteralPath (Join-Path $sharedRoot 'plugins\ComfyNetworkSense.dll') -PathType Leaf
-    $dllDetail = if ($dllReady) { 'verified shared ComfyNetworkSense.dll is staged' } else { 'shared ComfyNetworkSense.dll is missing; run refresh' }
+    $stagedDll = Join-Path $sharedRoot 'plugins\ComfyNetworkSense.dll'
+    $sourceReady = Test-Path -LiteralPath $dllSource -PathType Leaf
+    $stagedReady = Test-Path -LiteralPath $stagedDll -PathType Leaf
+    $sourceHash = if ($sourceReady) { (Get-FileHash -LiteralPath $dllSource -Algorithm SHA256).Hash } else { '' }
+    $stagedHash = if ($stagedReady) { (Get-FileHash -LiteralPath $stagedDll -Algorithm SHA256).Hash } else { '' }
+    $dllReady = $sourceReady -and $stagedReady -and $sourceHash -eq $stagedHash
+    $dllDetail = if ($dllReady) {
+        "shared ComfyNetworkSense.dll matches source sha256:$($sourceHash.Substring(0, 12).ToLowerInvariant())"
+    } elseif (-not $sourceReady) {
+        "DLL source is missing: $dllSource"
+    } elseif (-not $stagedReady) {
+        'shared ComfyNetworkSense.dll is missing; run refresh'
+    } else {
+        "shared DLL hash $($stagedHash.Substring(0, 12).ToLowerInvariant()) does not match requested source $($sourceHash.Substring(0, 12).ToLowerInvariant()); run refresh"
+    }
     $checks += New-PreflightCheck 'mod_payload' $dllReady $dllDetail
 
     $initPath = Join-Path $clientHome 'init.d\20-comfy-valheim-autostart.sh'

@@ -93,6 +93,20 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\In
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimScenario.ps1 -Action capture -Clients '01,02'
 ```
 
+When another agent has uncommitted mod work, do not let the lab build from the
+working tree. Point the scenario at an exact clean artifact instead:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\fieldlab\scripts\Invoke-HeadlessValheimScenario.ps1 `
+  -Action start `
+  -Clients '01,02' `
+  -DllPath C:\work\baseline\artifacts\cre-e06-4120497-clean\out\ComfyNetworkSense.dll
+```
+
+An explicit `-DllPath` skips the worktree build. Refresh SHA-256 verifies the copy,
+and every child preflight compares the shared payload to the requested artifact
+before any client starts.
+
 Each client retains its own `clientNN/lab-preflight.json`; the coordinator writes
 an aggregate receipt under `fieldlab/autonomous/state/multi-*.json`. The coordinator
 does not issue gameplay commands. MCP remains the bounded control plane between
