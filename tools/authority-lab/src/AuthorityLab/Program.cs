@@ -291,6 +291,13 @@ public sealed class Scenario
 
     public int IntParameter(string name, int fallback) => Parameters.TryGetValue(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var result) ? result : fallback;
     public double DoubleParameter(string name, double fallback) => Parameters.TryGetValue(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var result) ? result : fallback;
+    public int[] IntArrayParameter(string name, int[] fallback) =>
+        Parameters.TryGetValue(name, out var value) && value.ValueKind == JsonValueKind.Array
+            ? value.EnumerateArray()
+                .Where(item => item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out _))
+                .Select(item => item.GetInt32())
+                .ToArray()
+            : fallback;
 }
 
 public sealed class Actor
@@ -441,6 +448,9 @@ internal static class AuthorityEngine
                 break;
             case "cre-e05-current-apply-model":
                 ExecuteCreativeCurrentApplyModel(scenario, events, invariants, predictions);
+                break;
+            case "cre-e07-presentation-replay":
+                ExecuteCreativePresentationReplay(scenario, events, invariants, predictions);
                 break;
             default: throw new ScenarioException($"no pure executor for {scenario.ExperimentId}");
         }
@@ -1317,6 +1327,216 @@ internal static class AuthorityEngine
             Name = "source_boundary",
             Observed = "the checked-in runner already coalesces receive bursts per ZDO, then performs lookup and exponential convergence every LateUpdate without velocity extrapolation"
         });
+    }
+
+    private static void ExecuteCreativePresentationReplay(
+        Scenario s,
+        List<EventEnvelope> events,
+        List<InvariantResult> invariants,
+        List<PredictionObservation> predictions)
+    {
+        var sourceInterval = s.IntParameter("source_interval_ms", 50);
+        var frameRate = s.IntParameter("frame_rate_hz", 60);
+        var freshness = s.IntParameter("freshness_ms", 500);
+        var convergenceRate = s.DoubleParameter("convergence_rate", 18);
+        var interpolationDelays = s.IntArrayParameter("interpolation_delays_ms", [50, 100, 150, 200])
+            .Where(delay => delay >= 0)
+            .Distinct()
+            .OrderBy(delay => delay)
+            .ToArray();
+        if (interpolationDelays.Length == 0)
+            throw new ScenarioException("cre-e07 requires at least one non-negative interpolation delay");
+        var baseLatency = s.IntParameter("base_latency_ms", 40);
+        var discontinuityMeters = s.DoubleParameter("discontinuity_meters", 5);
+        var largeStepMeters = s.DoubleParameter("large_step_meters", 0.75);
+        var sampleCount = s.IntParameter("sample_count", 40);
+        var patterns = s.Actors.Select(actor => actor.Trajectory)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var profiles = new[] { "stable", "three_sample_burst" };
+        var results = new Dictionary<(string pattern, string profile, string policy, int delay), MotionPresentationReplayMetrics>();
+        var tick = 0;
+
+        foreach (var pattern in patterns)
+        {
+            foreach (var profile in profiles)
+            {
+                var samples = MotionReplaySamples(
+                    pattern,
+                    profile,
+                    sampleCount,
+                    sourceInterval,
+                    baseLatency);
+                var chase = MotionPresentationReplay.Evaluate(
+                    samples,
+                    MotionPresentationReplay.ChaseLatest,
+                    frameRate,
+                    freshness,
+                    convergenceRate,
+                    0,
+                    discontinuityMeters,
+                    largeStepMeters);
+                RecordResult(pattern, profile, MotionPresentationReplay.ChaseLatest, 0, chase);
+
+                foreach (var interpolationDelay in interpolationDelays)
+                {
+                    var result = MotionPresentationReplay.Evaluate(
+                        samples,
+                        MotionPresentationReplay.BufferedInterpolation,
+                        frameRate,
+                        freshness,
+                        convergenceRate,
+                        interpolationDelay,
+                        discontinuityMeters,
+                        largeStepMeters);
+                    RecordResult(
+                        pattern,
+                        profile,
+                        MotionPresentationReplay.BufferedInterpolation,
+                        interpolationDelay,
+                        result);
+                }
+            }
+        }
+
+        void RecordResult(
+            string pattern,
+            string profile,
+            string policy,
+            int delay,
+            MotionPresentationReplayMetrics result)
+        {
+            results[(pattern, profile, policy, delay)] = result;
+            events.Add(Event(
+                s,
+                tick++,
+                $"cre-e07-{pattern}-{profile}-{policy}-{delay:000}ms",
+                new Dictionary<string, object?>
+                {
+                    ["pattern"] = pattern,
+                    ["arrival_profile"] = profile,
+                    ["policy"] = policy,
+                    ["rendered_frames"] = result.RenderedFrames,
+                    ["applied_frames"] = result.AppliedFrames,
+                    ["stale_frames"] = result.StaleFrames,
+                    ["final_sequence"] = result.FinalSequence,
+                    ["timeline_delay_ms"] = result.TimelineDelayMilliseconds,
+                    ["mean_current_truth_error_m"] = Math.Round(result.MeanCurrentTruthErrorMeters, 6),
+                    ["mean_timeline_error_m"] = Math.Round(result.MeanTimelineErrorMeters, 6),
+                    ["final_error_m"] = Math.Round(result.FinalErrorMeters, 6),
+                    ["mean_step_m"] = Math.Round(result.MeanStepMeters, 6),
+                    ["max_step_m"] = Math.Round(result.MaximumStepMeters, 6),
+                    ["mean_step_change_m"] = Math.Round(result.MeanStepChangeMeters, 6),
+                    ["max_step_change_m"] = Math.Round(result.MaximumStepChangeMeters, 6),
+                    ["large_step_frames"] = result.LargeStepFrames,
+                    ["stalled_while_timeline_moving_frames"] = result.StalledWhileTimelineMovingFrames,
+                    ["discontinuity_guard_frames"] = result.DiscontinuityGuardFrames,
+                    ["interpolation_bounds_violations"] = result.InterpolationBoundsViolations,
+                    ["finite"] = result.Finite
+                },
+                "presentation.replay_result"));
+        }
+
+        var expectedSequence = sampleCount;
+        invariants.Add(new()
+        {
+            Name = "replay_outputs_remain_finite",
+            Passed = results.Values.All(result => result.Finite),
+            Detail = $"evaluated={results.Count} policy/profile/pattern combinations"
+        });
+        invariants.Add(new()
+        {
+            Name = "replay_consumes_final_sequence",
+            Passed = results.Values.All(result => result.FinalSequence == expectedSequence),
+            Detail = $"expected_final_sequence={expectedSequence}"
+        });
+        invariants.Add(new()
+        {
+            Name = "buffered_interpolation_does_not_extrapolate",
+            Passed = results
+                .Where(pair => pair.Key.policy == MotionPresentationReplay.BufferedInterpolation)
+                .All(pair => pair.Value.InterpolationBoundsViolations == 0),
+            Detail = "all interpolation factors stayed within the two bracketing source snapshots"
+        });
+        var teleportResults = results
+            .Where(pair =>
+                pair.Key.pattern.Equals("teleport", StringComparison.OrdinalIgnoreCase) &&
+                pair.Key.policy == MotionPresentationReplay.BufferedInterpolation)
+            .Select(pair => pair.Value)
+            .ToArray();
+        invariants.Add(new()
+        {
+            Name = "teleport_discontinuity_is_not_smoothed",
+            Passed = teleportResults.Length == profiles.Length * interpolationDelays.Length &&
+                     teleportResults.All(result =>
+                         result.DiscontinuityGuardFrames > 0 ||
+                         result.MaximumStepMeters >= discontinuityMeters),
+            Detail =
+                $"guarded_frames={string.Join(",", teleportResults.Select(result => result.DiscontinuityGuardFrames))}; " +
+                $"maximum_steps={string.Join(",", teleportResults.Select(result => result.MaximumStepMeters.ToString("F3")))}"
+        });
+
+        foreach (var interpolationDelay in interpolationDelays)
+        {
+            var comparable = results.Keys
+                .Where(key => key.policy == MotionPresentationReplay.ChaseLatest &&
+                              !key.pattern.Equals("teleport", StringComparison.OrdinalIgnoreCase))
+                .Select(key => new
+                {
+                    key.pattern,
+                    key.profile,
+                    chase = results[key],
+                    buffered = results[(
+                        key.pattern,
+                        key.profile,
+                        MotionPresentationReplay.BufferedInterpolation,
+                        interpolationDelay)]
+                })
+                .ToArray();
+            var lowerStepChange = comparable.Count(item =>
+                item.buffered.MeanStepChangeMeters < item.chase.MeanStepChangeMeters);
+            var lowerTimelineError = comparable.Count(item =>
+                item.buffered.MeanTimelineErrorMeters < item.chase.MeanTimelineErrorMeters);
+            var burstPairs = comparable.Where(item => item.profile == "three_sample_burst").ToArray();
+            predictions.Add(new()
+            {
+                Name = $"buffer_candidate_{interpolationDelay}ms",
+                Observed =
+                    $"lower_step_change={lowerStepChange}/{comparable.Length}; " +
+                    $"lower_timeline_error={lowerTimelineError}/{comparable.Length}; " +
+                    $"burst_stalls_chase/buffered={burstPairs.Sum(item => item.chase.StalledWhileTimelineMovingFrames)}/{burstPairs.Sum(item => item.buffered.StalledWhileTimelineMovingFrames)}; " +
+                    $"mean_current_error_buffered={comparable.Average(item => item.buffered.MeanCurrentTruthErrorMeters):F3}m"
+            });
+        }
+        predictions.Add(new()
+        {
+            Name = "authority_limit",
+            Observed = "the replay excludes native transform writes, Unity physics, binding cost, and human feel; it selects candidate equations only"
+        });
+    }
+
+    private static MotionReplaySample[] MotionReplaySamples(
+        string pattern,
+        string profile,
+        int sampleCount,
+        int sourceIntervalMilliseconds,
+        int baseLatencyMilliseconds)
+    {
+        var position = (x: 0d, y: 0d);
+        var samples = new List<MotionReplaySample>(sampleCount);
+        for (var index = 0; index < sampleCount; index++)
+        {
+            position = Motion(pattern, index, position);
+            var produced = index * sourceIntervalMilliseconds;
+            var arrival = produced + baseLatencyMilliseconds;
+            if (profile == "three_sample_burst" && index % 6 >= 3)
+            {
+                var blockEnd = index + (5 - index % 6);
+                arrival = blockEnd * sourceIntervalMilliseconds + baseLatencyMilliseconds;
+            }
+            samples.Add(new(index + 1, produced, arrival, position.x, position.y));
+        }
+        return samples.ToArray();
     }
 
     private static RuntimePressureBand[] RuntimePressureBands(Scenario s) =>
