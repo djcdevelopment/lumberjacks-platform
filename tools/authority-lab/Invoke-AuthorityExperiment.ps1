@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)] [ValidateSet('m7-e00-lab-truth','m7-e01-relevance-shape','m7-e02-recipient-fanout','m7-e03-motion-fingerprints','cre-e01-runtime-envelope','cre-e02-gateway-pressure-route','cre-e03-transport-faults','cre-e04-presentation-consumer')] [string]$Experiment,
+    [Parameter(Mandatory = $true)] [ValidateSet('m7-e00-lab-truth','m7-e01-relevance-shape','m7-e02-recipient-fanout','m7-e03-motion-fingerprints','cre-e01-runtime-envelope','cre-e02-gateway-pressure-route','cre-e03-transport-faults','cre-e04-presentation-consumer','cre-e05-current-apply-model')] [string]$Experiment,
     [ValidateSet('pure','gateway','gateway_durable','gateway_udp')] [string]$Driver = 'pure',
     [switch]$RunTwice,
     [switch]$ForceTimeout

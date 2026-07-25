@@ -66,6 +66,16 @@ CRE-E04 emits `presentation.consumer_decision` rows for direct apply, per-source
 latest-wins coalescing, and latest-wins with an age limit. It proves consumer-policy
 shape and projected work only; it does not claim Unity smoothness.
 
+Model the checked-in render apply loop:
+
+```powershell
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment cre-e05-current-apply-model -Driver pure -RunTwice
+```
+
+CRE-E05 emits `presentation.apply_model` rows over FPS and remote-entity bands. It
+expresses source-derived scaling and exponential convergence only; Stopwatch and
+Unity evidence remain the next rung.
+
 Run the real Gateway seams in-memory for E02 or E03:
 
 ```powershell

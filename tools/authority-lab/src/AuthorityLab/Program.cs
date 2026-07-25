@@ -439,6 +439,9 @@ internal static class AuthorityEngine
             case "cre-e04-presentation-consumer":
                 ExecuteCreativePresentationConsumer(scenario, events, invariants, predictions);
                 break;
+            case "cre-e05-current-apply-model":
+                ExecuteCreativeCurrentApplyModel(scenario, events, invariants, predictions);
+                break;
             default: throw new ScenarioException($"no pure executor for {scenario.ExperimentId}");
         }
         var ended = DateTimeOffset.UtcNow;
@@ -1185,6 +1188,136 @@ internal static class AuthorityEngine
         new("b08", "source_b", 8, 520, 800, 107),
         new("b09", "source_b", 9, 860, 860, 108)
     ];
+
+    private static void ExecuteCreativeCurrentApplyModel(
+        Scenario s,
+        List<EventEnvelope> events,
+        List<InvariantResult> invariants,
+        List<PredictionObservation> predictions)
+    {
+        var snapshotRate = s.IntParameter("snapshot_rate_hz", 20);
+        var freshnessMilliseconds = s.IntParameter("freshness_ms", 500);
+        var convergenceRate = s.DoubleParameter("convergence_rate", 18);
+        var frameRates = new[] { 20, 40, 60, 120 };
+        var entityCounts = new[] { 1, 10, 100 };
+        var points = (
+            from frameRate in frameRates
+            from entityCount in entityCounts
+            select PresentationApplyModel.Evaluate(
+                frameRate,
+                entityCount,
+                snapshotRate,
+                freshnessMilliseconds,
+                convergenceRate))
+            .ToArray();
+
+        foreach (var (point, index) in points.Select((value, index) => (value, index)))
+        {
+            events.Add(Event(
+                s,
+                index,
+                $"cre-e05-fps{point.FrameRateHz}-n{point.RemoteEntities}",
+                new Dictionary<string, object?>
+                {
+                    ["frame_rate_hz"] = point.FrameRateHz,
+                    ["remote_entities"] = point.RemoteEntities,
+                    ["snapshot_rate_hz"] = point.SnapshotRateHz,
+                    ["inbound_snapshots_per_second"] = point.InboundSnapshotsPerSecond,
+                    ["render_apply_calls_per_second"] = point.RenderApplyCallsPerSecond,
+                    ["apply_calls_per_snapshot"] = Math.Round(point.ApplyCallsPerSnapshot, 6),
+                    ["stale_tail_apply_upper_bound"] = point.StaleTailApplyUpperBound,
+                    ["frame_alpha"] = Math.Round(point.FrameAlpha, 9),
+                    ["send_interval_convergence"] = Math.Round(point.SendIntervalConvergence, 9),
+                    ["convergence_time_constant_ms"] =
+                        Math.Round(point.ConvergenceTimeConstantMilliseconds, 6)
+                },
+                "presentation.apply_model"));
+        }
+
+        var formulaMatches = points.All(point =>
+            point.InboundSnapshotsPerSecond == point.SnapshotRateHz * point.RemoteEntities &&
+            point.RenderApplyCallsPerSecond == point.FrameRateHz * point.RemoteEntities &&
+            Math.Abs(point.ApplyCallsPerSnapshot -
+                     point.FrameRateHz / (double)point.SnapshotRateHz) < 0.0000001);
+        var linearEntityScaling = frameRates.All(frameRate =>
+        {
+            var atOne = points.Single(point =>
+                point.FrameRateHz == frameRate && point.RemoteEntities == 1);
+            return entityCounts.All(entityCount =>
+            {
+                var point = points.Single(candidate =>
+                    candidate.FrameRateHz == frameRate &&
+                    candidate.RemoteEntities == entityCount);
+                return point.RenderApplyCallsPerSecond ==
+                       atOne.RenderApplyCallsPerSecond * entityCount;
+            });
+        });
+        var convergenceValues = points
+            .Where(point => point.RemoteEntities == 1)
+            .Select(point => point.SendIntervalConvergence)
+            .ToArray();
+        var convergenceStable =
+            convergenceValues.Max() - convergenceValues.Min() < 0.000000001;
+        var expectedTail = new Dictionary<int, int>
+        {
+            [20] = 11,
+            [40] = 21,
+            [60] = 31,
+            [120] = 61
+        };
+        var staleTailMatches = points
+            .Where(point => point.RemoteEntities == 1)
+            .All(point => point.StaleTailApplyUpperBound == expectedTail[point.FrameRateHz]);
+
+        invariants.Add(new()
+        {
+            Name = "current_apply_rate_is_frame_bound",
+            Passed = formulaMatches,
+            Detail = "inbound=snapshot_hz*entities; render_apply=fps*entities; ratio=fps/snapshot_hz"
+        });
+        invariants.Add(new()
+        {
+            Name = "remote_entity_cost_scales_linearly",
+            Passed = linearEntityScaling,
+            Detail = "modeled entity counts 1,10,100 preserve exact per-frame multiplication"
+        });
+        invariants.Add(new()
+        {
+            Name = "send_interval_convergence_is_frame_rate_stable",
+            Passed = convergenceStable,
+            Detail = $"min={convergenceValues.Min():F9}; max={convergenceValues.Max():F9}; rate={convergenceRate}"
+        });
+        invariants.Add(new()
+        {
+            Name = "stale_tail_upper_bound_matches_source_defaults",
+            Passed = staleTailMatches,
+            Detail = "one entity at 20/40/60/120 FPS reuses the last snapshot at most 11/21/31/61 times across 500 ms"
+        });
+
+        var oneEntity = points
+            .Where(point => point.RemoteEntities == 1)
+            .OrderBy(point => point.FrameRateHz)
+            .ToArray();
+        var hundredEntities = points
+            .Where(point => point.RemoteEntities == 100)
+            .OrderBy(point => point.FrameRateHz)
+            .ToArray();
+        predictions.Add(new()
+        {
+            Name = "frame_amplification",
+            Observed = $"one_entity_apply_per_second={string.Join(",", oneEntity.Select(point => point.RenderApplyCallsPerSecond))}; apply_per_snapshot={string.Join(",", oneEntity.Select(point => point.ApplyCallsPerSnapshot.ToString("F0")))}"
+        });
+        predictions.Add(new()
+        {
+            Name = "entity_amplification",
+            Observed = $"hundred_entity_apply_per_second={string.Join(",", hundredEntities.Select(point => point.RenderApplyCallsPerSecond))}"
+        });
+        predictions.Add(new()
+        {
+            Name = "source_boundary",
+            Observed = "the checked-in runner already coalesces receive bursts per ZDO, then performs lookup and exponential convergence every LateUpdate without velocity extrapolation"
+        });
+    }
 
     private static RuntimePressureBand[] RuntimePressureBands(Scenario s) =>
     [
