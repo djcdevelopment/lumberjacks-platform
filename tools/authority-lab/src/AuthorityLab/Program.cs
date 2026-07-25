@@ -436,6 +436,9 @@ internal static class AuthorityEngine
                 else
                     throw new ScenarioException("cre-e03 requires driver gateway or gateway_udp");
                 break;
+            case "cre-e04-presentation-consumer":
+                ExecuteCreativePresentationConsumer(scenario, events, invariants, predictions);
+                break;
             default: throw new ScenarioException($"no pure executor for {scenario.ExperimentId}");
         }
         var ended = DateTimeOffset.UtcNow;
@@ -1030,6 +1033,158 @@ internal static class AuthorityEngine
                 ["observed_result"] = observedResult
             },
             "transport.fault_observed");
+
+    private static void ExecuteCreativePresentationConsumer(
+        Scenario s,
+        List<EventEnvelope> events,
+        List<InvariantResult> invariants,
+        List<PredictionObservation> predictions)
+    {
+        var drainInterval = s.IntParameter("drain_interval_ms", 50);
+        var expiry = s.IntParameter("expiry_ms", 120);
+        var eligibleRecipients = s.IntParameter("eligible_recipients", 3);
+        var samples = PresentationSamples();
+        var results = new[]
+        {
+            PresentationConsumerPolicy.Direct(samples),
+            PresentationConsumerPolicy.LatestWins(samples, drainInterval),
+            PresentationConsumerPolicy.LatestWins(samples, drainInterval, expiry)
+        };
+
+        foreach (var result in results)
+        {
+            foreach (var decision in result.Decisions)
+            {
+                events.Add(Event(
+                    s,
+                    checked((int)decision.Sample.ArrivedMilliseconds),
+                    $"cre-e04-{result.Consumer}-{decision.Sample.SampleId}",
+                    new Dictionary<string, object?>
+                    {
+                        ["consumer"] = result.Consumer,
+                        ["sample_id"] = decision.Sample.SampleId,
+                        ["source"] = decision.Sample.SourceId,
+                        ["sequence"] = (int)decision.Sample.Sequence,
+                        ["produced_ms"] = decision.Sample.ProducedMilliseconds,
+                        ["arrived_ms"] = decision.Sample.ArrivedMilliseconds,
+                        ["apply_ms"] = decision.ApplyMilliseconds,
+                        ["age_ms"] = decision.AgeMilliseconds,
+                        ["disposition"] = decision.Disposition,
+                        ["projected_delivery_count"] = decision.Applied ? eligibleRecipients : 0
+                    },
+                    "presentation.consumer_decision"));
+            }
+        }
+
+        var direct = results.Single(result => result.Consumer == "direct");
+        var latest = results.Single(result => result.Consumer == "latest_wins");
+        var expiring = results.Single(result => result.Consumer == "latest_wins_expiry");
+        var expectedCounts = new Dictionary<string, (int Applied, int Coalesced, int Expired, int Stale)>
+        {
+            ["direct"] = (19, 0, 0, 1),
+            ["latest_wins"] = (14, 5, 0, 1),
+            ["latest_wins_expiry"] = (12, 5, 2, 1)
+        };
+        var countShapeMatches = results.All(result =>
+        {
+            var expected = expectedCounts[result.Consumer];
+            return result.Count("applied") == expected.Applied &&
+                   result.Count("coalesced") == expected.Coalesced &&
+                   result.Count("expired") == expected.Expired &&
+                   result.Count("stale") == expected.Stale;
+        });
+        var expectedFinal = new Dictionary<string, ushort>(StringComparer.Ordinal)
+        {
+            ["source_a"] = 13,
+            ["source_b"] = 9
+        };
+        var finalStateMatches = results.All(result =>
+            expectedFinal.All(expected =>
+                result.FinalAppliedSequences.TryGetValue(expected.Key, out var observed) &&
+                observed == expected.Value));
+        var expiringMaxAge = expiring.Decisions
+            .Where(decision => decision.Applied)
+            .Max(decision => decision.AgeMilliseconds);
+        var expiryBounded = expiringMaxAge <= expiry &&
+                            expiring.Decisions.Count(decision =>
+                                decision.Disposition == "expired") == 2;
+        var workMonotonic =
+            direct.Count("applied") > latest.Count("applied") &&
+            latest.Count("applied") > expiring.Count("applied");
+        var projected = results.ToDictionary(
+            result => result.Consumer,
+            result => result.Count("applied") * eligibleRecipients,
+            StringComparer.Ordinal);
+
+        invariants.Add(new()
+        {
+            Name = "consumer_count_shape_matches_prediction",
+            Passed = countShapeMatches,
+            Detail = string.Join("; ", results.Select(result =>
+                $"{result.Consumer}=applied:{result.Count("applied")},coalesced:{result.Count("coalesced")},expired:{result.Count("expired")},stale:{result.Count("stale")}"))
+        });
+        invariants.Add(new()
+        {
+            Name = "final_fresh_state_preserved",
+            Passed = finalStateMatches,
+            Detail = string.Join("; ", results.Select(result =>
+                $"{result.Consumer}=source_a:{result.FinalAppliedSequences.GetValueOrDefault("source_a")},source_b:{result.FinalAppliedSequences.GetValueOrDefault("source_b")}"))
+        });
+        invariants.Add(new()
+        {
+            Name = "expiry_prevents_old_apply",
+            Passed = expiryBounded,
+            Detail = $"expiry_ms={expiry}; max_applied_age_ms={expiringMaxAge}; expired={expiring.Count("expired")}"
+        });
+        invariants.Add(new()
+        {
+            Name = "apply_work_reduces_monotonically",
+            Passed = workMonotonic,
+            Detail = $"applied={direct.Count("applied")},{latest.Count("applied")},{expiring.Count("applied")}; projected_deliveries={projected["direct"]},{projected["latest_wins"]},{projected["latest_wins_expiry"]}"
+        });
+        invariants.Add(new()
+        {
+            Name = "fresh_recovery_survives_expiry",
+            Passed = expiring.FinalAppliedSequences.GetValueOrDefault("source_a") == 13 &&
+                     expiring.FinalAppliedSequences.GetValueOrDefault("source_b") == 9,
+            Detail = "delayed sequences expired, then the next fresh sample for each source applied"
+        });
+
+        predictions.Add(new()
+        {
+            Name = "bounded_apply_work",
+            Observed = $"direct/latest/expiry applied {direct.Count("applied")}/{latest.Count("applied")}/{expiring.Count("applied")} samples and projected {projected["direct"]}/{projected["latest_wins"]}/{projected["latest_wins_expiry"]} recipient deliveries"
+        });
+        predictions.Add(new()
+        {
+            Name = "fidelity_boundary",
+            Observed = "latest-wins preserved the final fresh sequence while intentionally coalescing five intermediate burst samples; visual smoothness remains untested"
+        });
+    }
+
+    private static PresentationSample[] PresentationSamples() =>
+    [
+        new("a01", "source_a", 1, 0, 0, 0),
+        new("a02", "source_a", 2, 50, 50, 1),
+        new("a03", "source_a", 3, 100, 100, 2),
+        new("a04", "source_a", 4, 200, 260, 3),
+        new("a05", "source_a", 5, 210, 261, 4),
+        new("a06", "source_a", 6, 220, 262, 5),
+        new("a07", "source_a", 7, 230, 263, 6),
+        new("a09", "source_a", 9, 350, 350, 8),
+        new("a11", "source_a", 11, 450, 451, 10),
+        new("a10", "source_a", 10, 400, 452, 9),
+        new("a12", "source_a", 12, 500, 800, 11),
+        new("a13", "source_a", 13, 850, 850, 12),
+        new("b01", "source_b", 1, 0, 10, 100),
+        new("b02", "source_b", 2, 40, 55, 101),
+        new("b03", "source_b", 3, 205, 260, 102),
+        new("b04", "source_b", 4, 215, 261, 103),
+        new("b05", "source_b", 5, 225, 264, 104),
+        new("b07", "source_b", 7, 360, 360, 106),
+        new("b08", "source_b", 8, 520, 800, 107),
+        new("b09", "source_b", 9, 860, 860, 108)
+    ];
 
     private static RuntimePressureBand[] RuntimePressureBands(Scenario s) =>
     [

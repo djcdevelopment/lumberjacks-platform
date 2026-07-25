@@ -56,6 +56,16 @@ sample, ushort wrap, authenticated resume, and detached UDP-token cases. Its rec
 separate accepted source frames, one primary observer, and aggregate regional fanout;
 UDP endpoint binding is fixture setup and is excluded from the measurement window.
 
+Compare deterministic presentation consumers:
+
+```powershell
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment cre-e04-presentation-consumer -Driver pure -RunTwice
+```
+
+CRE-E04 emits `presentation.consumer_decision` rows for direct apply, per-source
+latest-wins coalescing, and latest-wins with an age limit. It proves consumer-policy
+shape and projected work only; it does not claim Unity smoothness.
+
 Run the real Gateway seams in-memory for E02 or E03:
 
 ```powershell
