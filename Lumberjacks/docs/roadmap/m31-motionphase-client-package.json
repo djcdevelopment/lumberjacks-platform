@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "release_id": "m31-motionphase-20260724-r1",
+  "published_utc": "2026-07-25T03:34:12.0716234Z",
+  "source_commit": "4120497",
+  "scope": "client_pull_observation_only",
+  "admitted_mod_release": "m30-rolecontrol-20260723-r1",
+  "gateway_restart_required": false,
+  "server_restart_required": false,
+  "valheim_client_restart_required": true,
+  "artifacts": {
+    "client_plugin_sha256": "1e875984fde1b81895beaf70a3ad99db832a330257788d2f8ccfd6db7f4fe6a7",
+    "package_sha256": "ef5ced82655f403deeaae83e40ed382742db445db7cae0a3349cbeabd2117259",
+    "package_size_bytes": 897651,
+    "package_entry_count": 33
+  },
+  "verification": {
+    "clean_commit_build": "passed",
+    "packaged_plugin_hash": "matched",
+    "public_manifest": "matched release, admitted mod identity, package hash, and size",
+    "omen_companion_install": "passed with rollback backup retained",
+    "i5_companion_install": "passed with rollback backup retained",
+    "omen_plugin_hash": "matched",
+    "i5_plugin_hash": "matched",
+    "personalized_config_policy": "preserved by Companion installer"
+  },
+  "authority_effect": "none; adds bounded client motion phase evidence only",
+  "next_gate": "two-client straight movement role reversal with phase summaries"
+}
