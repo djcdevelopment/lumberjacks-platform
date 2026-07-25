@@ -148,7 +148,11 @@ kept separate from a failed gate.
 
 When the live course runs, capture bundles from OMEN and i5 are collected by
 default under `<receipt-dir>\bundles`. Pass `-BundleDirectory` only to override
-that location.
+that location. The shared capture path also analyzes both `samples.jsonl` files
+and writes motion-phase summaries under `<bundle-dir>\motion-phase`. The live
+gate fails closed if either client lacks the phase telemetry contract or either
+summary is unreadable; this happens before the evidence is interpreted, not by
+repeating the human movement window.
 
 After two peers are visible, the live gate sets the requested apply/observe
 split through the bounded Companion command lane, then performs a five-second

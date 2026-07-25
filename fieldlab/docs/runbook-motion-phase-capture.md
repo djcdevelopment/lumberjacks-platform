@@ -35,7 +35,18 @@ discovering a stale DLL or missing telemetry contract.
 
 The command starts capture before movement, runs one bounded window per role, stops
 the motion command in `finally`, downloads both evidence bundles, and writes an OMEN
-and i5 motion-phase summary into each window's `motion-phase` directory.
+and i5 motion-phase summary into each window's `bundles\motion-phase` directory.
+
+The formal Wave 0 lane uses the same analyzer automatically:
+
+```powershell
+.\tools\wave0\Wait-Wave0LiveGate.ps1 `
+  -DesiredApplyClient omen `
+  -OutputJson .\captures\wave0-live-gate\result.json
+```
+
+Its receipt embeds `capture.receipt.motion_phase`; a missing contract or unreadable
+summary fails the capture rather than consuming the result as visual evidence.
 
 Run `stutter_north` only after the straight baseline is complete:
 
@@ -85,3 +96,16 @@ For telemetry plumbing or idle-baseline checks that do not need i5:
 
 The analyzer is restart-aware for cumulative totals. It refuses captures from mods
 that do not expose the CRE-E06 phase contract.
+
+To prove the two-client bundle adapter without live games, zip a retained or
+synthetic `samples.jsonl` at the archive root and run:
+
+```powershell
+.\fieldlab\scripts\Summarize-TwoClientMotionPhaseBundles.ps1 `
+  -OmenBundlePath <omen-bundle.zip> `
+  -I5BundlePath <i5-bundle.zip> `
+  -OutputDirectory <capture>\motion-phase
+```
+
+The adapter exits nonzero unless both summaries succeed and always writes
+`motion-phase-receipt.json`, including per-machine rejection reasons.

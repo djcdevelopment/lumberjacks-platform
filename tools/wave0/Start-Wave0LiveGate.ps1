@@ -382,7 +382,8 @@ $captureArgs = @(
     '-Label', $runId,
     '-SummaryOnly',
     '-OutputJson', $capturePath,
-    '-BundleDirectory', $bundlePath
+    '-BundleDirectory', $bundlePath,
+    '-CollectPhaseSummaries'
 )
 
 $captureJob = Start-Job -ScriptBlock {

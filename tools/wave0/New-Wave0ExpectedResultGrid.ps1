@@ -73,16 +73,16 @@ $rows += New-Row `
         -RowId 'W0-3' `
         -Phase 'first_direction' `
         -Trigger 'Run Wait-Wave0LiveGate.ps1 -DesiredApplyClient omen.' `
-        -ExpectedMachineEvidence 'Role preflight verifies OMEN apply=true and i5 apply=false; capture bundles are retained for both machines; bounded motion command completes.' `
+        -ExpectedMachineEvidence 'Role preflight verifies OMEN apply=true and i5 apply=false; both phase contracts are present; received/drain/bind/render counters advance; capture bundles and phase summaries are retained; bounded motion completes.' `
         -ExpectedHumanObservation 'i5 observing screen follows OMEN-applied movement; straight/stutter quality is classifiable.' `
-        -StopIf 'Both clients apply, neither applies, capture fails, or observed movement does not follow role selection.'
+        -StopIf 'Both clients apply, neither applies, capture/phase analysis fails, or observed movement does not follow role selection. Interframe displacement is diagnostic, not a stop rule by itself.'
 $rows += New-Row `
         -RowId 'W0-4' `
         -Phase 'role_reversal' `
         -Trigger 'Run Wait-Wave0LiveGate.ps1 -DesiredApplyClient i5.' `
-        -ExpectedMachineEvidence 'Role preflight verifies i5 apply=true and OMEN apply=false; second capture bundle pair is retained; bounded motion command completes.' `
+        -ExpectedMachineEvidence 'Role preflight verifies i5 apply=true and OMEN apply=false; both phase contracts remain present; received/drain/bind/render counters advance; second bundle and phase-summary pair is retained; bounded motion completes.' `
         -ExpectedHumanObservation 'OMEN observing screen follows i5-applied movement; result follows role, not machine/account.' `
-        -StopIf 'Role split does not reverse, capture fails, or visual result contradicts first direction.'
+        -StopIf 'Role split does not reverse, capture/phase analysis fails, or visual result contradicts first direction. Compare phase ratios across roles before assigning cause.'
 $rows += New-Row `
         -RowId 'W0-5' `
         -Phase 'seal_or_defect' `

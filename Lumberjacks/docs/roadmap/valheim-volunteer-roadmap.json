@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy Ã— Valheim â€” Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-25T03:44:59.809Z",
+  "updated_at": "2026-07-25T03:56:40.476Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -484,15 +484,16 @@
       "id": "M7",
       "title": "Move inference and remaining authority into Lumberjacks",
       "track": "authority",
-      "status": "later",
+      "status": "active",
       "depends_on": [
         "M6"
       ],
       "owns": "Shadowing, validating, and promoting Lumberjacks relevance/inference and later authority planes one bounded claim at a time.",
       "does_not_own": "Unmeasured transport replacement or removal of Steam/Valheim compatibility dependencies that still provide value.",
-      "summary": "Use the volunteer platform as the safety harness for shadowing and replacing Valheim's relevance, ownership, replication, and remaining RPC judgments.",
+      "summary": "Run active lab experiments against Valheim's relevance, ownership, replication, presentation, and remaining RPC judgments now; keep production promotion gated on the earlier real-player milestones and bounded evidence.",
       "work": [
         "Shadow Lumberjacks interest management beside Valheim's per-peer candidate list.",
+        "Measure the current motion arrival, drain/coalescing, binding, and presentation phases before changing client authority or interpolation.",
         "Measure omissions, extra sends, bytes, CPU, queue age, and visible pop-in by class and region.",
         "Promote one safe object class or policy at a time with strict rollback.",
         "Evaluate base-transport replacement on measured value rather than assumption."
@@ -506,7 +507,8 @@
         "M6 real-player correctness, quality, and capacity exit evidence.",
         "Lumberjacks interest-management design at docs/network/interest-management.md.",
         "FieldLab native, shadow, and strict route fixtures.",
-        "Creative-runtime lab receipts now prove a deterministic pressure gate, both real Gateway motion routes, bounded sequence freshness, reconnect behavior, topology-derived fanout accounting, direct versus latest-wins/expiry consumer behavior, and the checked-in frame-bound motion apply model without changing live gameplay authority."
+        "Creative-runtime lab receipts now prove a deterministic pressure gate, both real Gateway motion routes, bounded sequence freshness, reconnect behavior, topology-derived fanout accounting, direct versus latest-wins/expiry consumer behavior, and the checked-in frame-bound motion apply model without changing live gameplay authority.",
+        "CRE-E06 now provides cumulative motion phase rollups plus a synthetic two-bundle adapter that proves both-machine success and missing-client rejection before a physical join window; the formal Wave 0 gate and feel window share that fail-closed analysis path."
       ],
       "exit_evidence": []
     },
