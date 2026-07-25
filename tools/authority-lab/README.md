@@ -44,6 +44,18 @@ CRE-E02 retains both the gate decisions and `transport.route_observed` rows. It 
 presentation routing only; it deliberately does not claim critical world-mutation
 carriage from a motion-frame test.
 
+Exercise motion sequence faults through both paths:
+
+```powershell
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment cre-e03-transport-faults -Driver gateway
+.\tools\authority-lab\Invoke-AuthorityExperiment.ps1 -Experiment cre-e03-transport-faults -Driver gateway_udp
+```
+
+CRE-E03 emits `transport.fault_observed` rows for duplicate, reorder, omitted transient
+sample, ushort wrap, authenticated resume, and detached UDP-token cases. Its receipts
+separate accepted source frames, one primary observer, and aggregate regional fanout;
+UDP endpoint binding is fixture setup and is excluded from the measurement window.
+
 Run the real Gateway seams in-memory for E02 or E03:
 
 ```powershell

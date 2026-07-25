@@ -428,6 +428,14 @@ internal static class AuthorityEngine
                 else
                     throw new ScenarioException("cre-e02 requires driver gateway or gateway_udp");
                 break;
+            case "cre-e03-transport-faults":
+                if (scenario.Driver.Equals("gateway_udp", StringComparison.OrdinalIgnoreCase))
+                    ExecuteCreativeRuntimeTransportFaults(scenario, events, invariants, predictions, useUdp: true);
+                else if (scenario.Driver.Equals("gateway", StringComparison.OrdinalIgnoreCase))
+                    ExecuteCreativeRuntimeTransportFaults(scenario, events, invariants, predictions, useUdp: false);
+                else
+                    throw new ScenarioException("cre-e03 requires driver gateway or gateway_udp");
+                break;
             default: throw new ScenarioException($"no pure executor for {scenario.ExperimentId}");
         }
         var ended = DateTimeOffset.UtcNow;
@@ -735,6 +743,293 @@ internal static class AuthorityEngine
                 fixture.Transport.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
     }
+
+    private static void ExecuteCreativeRuntimeTransportFaults(
+        Scenario s,
+        List<EventEnvelope> events,
+        List<InvariantResult> invariants,
+        List<PredictionObservation> predictions,
+        bool useUdp)
+    {
+        var fixture = new GatewayMotionFixture(useUdp ? FindFreeUdpPort() : null);
+        var target = fixture.CreateSession("region-faults", "target-b");
+        using var targetUdp = useUdp ? new UdpClient(new IPEndPoint(IPAddress.Loopback, 0)) : null;
+        var observations = new List<FaultObservation>();
+        var primaryTargetDeliveries = 0;
+
+        if (useUdp)
+        {
+            fixture.Transport.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+            var targetBind = BuildMotionFrame(600, (0, 0), sentMilliseconds: 0, zdoUserId: 900, zdoId: 900);
+            SendUdp(targetUdp!, target.Session.UdpToken, targetBind.Frame, fixture.Transport.Port);
+            if (!SpinWait.SpinUntil(() => target.Session.UdpEndpoint is not null, TimeSpan.FromSeconds(2)))
+                throw new InvalidOperationException("CRE-E03 Gateway UDP target endpoint did not bind");
+        }
+
+        // Endpoint binding is fixture setup, not an observed source attempt. Retain an
+        // explicit baseline so transport setup cannot inflate the experiment counters.
+        var measurementBaseline = fixture.MotionSnapshot();
+
+        try
+        {
+            var sourceA = fixture.CreateSession("region-faults", "source-a");
+            using var sourceAUdp = useUdp ? new UdpClient(new IPEndPoint(IPAddress.Loopback, 0)) : null;
+            RunFaultAttempt("baseline_100", "source_a", 100, true, 100, 200, sourceA, sourceAUdp);
+            RunFaultAttempt("baseline_101", "source_a", 101, true, 100, 200, sourceA, sourceAUdp);
+            RunFaultAttempt("duplicate_101", "source_a", 101, false, 100, 200, sourceA, sourceAUdp);
+            RunFaultAttempt("reordered_99", "source_a", 99, false, 100, 200, sourceA, sourceAUdp);
+            RunFaultAttempt("recovery_102", "source_a", 102, true, 100, 200, sourceA, sourceAUdp);
+            // Sequence 103 is intentionally never sent. Motion is transient, so the next fresh
+            // sample must be accepted without waiting for retransmission.
+            RunFaultAttempt("gap_after_loss_104", "source_a", 104, true, 100, 200, sourceA, sourceAUdp);
+
+            var sourceWrap = fixture.CreateSession("region-faults", "source-wrap");
+            using var sourceWrapUdp = useUdp ? new UdpClient(new IPEndPoint(IPAddress.Loopback, 0)) : null;
+            RunFaultAttempt("wrap_65534", "source_wrap", 65534, true, 101, 201, sourceWrap, sourceWrapUdp);
+            RunFaultAttempt("wrap_65535", "source_wrap", 65535, true, 101, 201, sourceWrap, sourceWrapUdp);
+            RunFaultAttempt("wrap_0", "source_wrap", 0, true, 101, 201, sourceWrap, sourceWrapUdp);
+            RunFaultAttempt("wrap_1", "source_wrap", 1, true, 101, 201, sourceWrap, sourceWrapUdp);
+            RunFaultAttempt("old_after_wrap_65535", "source_wrap", 65535, false, 101, 201, sourceWrap, sourceWrapUdp);
+
+            var sourceReconnect = fixture.CreateSession("region-faults", "source-reconnect");
+            using var sourceReconnectUdp = useUdp ? new UdpClient(new IPEndPoint(IPAddress.Loopback, 0)) : null;
+            RunFaultAttempt("before_reconnect_500", "source_reconnect", 500, true, 102, 202, sourceReconnect, sourceReconnectUdp);
+            var oldUdpToken = sourceReconnect.Session.UdpToken;
+            var resumed = fixture.DetachAndResume(sourceReconnect, "source-reconnect");
+
+            if (useUdp)
+            {
+                var oldFrame = BuildMotionFrame(501, (501, 0), 501 * 50, 102, 202);
+                var before = fixture.MotionSnapshot();
+                SendUdp(sourceReconnectUdp!, oldUdpToken, oldFrame.Frame, fixture.Transport.Port);
+                var unexpectedlyDelivered = SpinWait.SpinUntil(
+                    () => targetUdp!.Available > 0,
+                    TimeSpan.FromMilliseconds(150));
+                if (unexpectedlyDelivered) ReceiveUdp(targetUdp!);
+                var after = fixture.MotionSnapshot();
+                var unchanged =
+                    MotionCount(before, "received_udp") == MotionCount(after, "received_udp") &&
+                    MotionCount(before, "relayed_udp") == MotionCount(after, "relayed_udp") &&
+                    MotionCount(before, "dropped_stale") == MotionCount(after, "dropped_stale");
+                observations.Add(new(
+                    "old_udp_token_after_detach",
+                    "source_reconnect",
+                    501,
+                    "unknown_session",
+                    !unexpectedlyDelivered && unchanged ? "unknown_session" : "unexpected_delivery"));
+                events.Add(FaultEvent(
+                    s,
+                    "old_udp_token_after_detach",
+                    "source_reconnect",
+                    501,
+                    "unknown_session",
+                    !unexpectedlyDelivered && unchanged ? "unknown_session" : "unexpected_delivery",
+                    useUdp));
+            }
+
+            using var resumedUdp = useUdp ? new UdpClient(new IPEndPoint(IPAddress.Loopback, 0)) : null;
+            RunFaultAttempt("resumed_sequence_reset_1", "source_reconnect", 1, true, 102, 202, resumed, resumedUdp);
+
+            var snapshot = fixture.MotionSnapshot();
+            const int expectedAcceptedFrames = 10;
+            const int expectedPrimaryTargetDeliveries = 10;
+            // Four source-a frames fan out to one peer, four source-wrap frames to
+            // two peers, and the pre/post reconnect frames to three peers each.
+            const int expectedRegionalRelayDeliveries = (4 * 1) + (4 * 2) + (1 * 3) + (1 * 3);
+            var received =
+                MotionCount(snapshot, useUdp ? "received_udp" : "received_websocket") -
+                MotionCount(measurementBaseline, useUdp ? "received_udp" : "received_websocket");
+            var relayed =
+                MotionCount(snapshot, useUdp ? "relayed_udp" : "relayed_websocket") -
+                MotionCount(measurementBaseline, useUdp ? "relayed_udp" : "relayed_websocket");
+            var droppedStale =
+                MotionCount(snapshot, "dropped_stale") -
+                MotionCount(measurementBaseline, "dropped_stale");
+            var expectationsMatch = observations.All(observation =>
+                observation.ExpectedResult == observation.ObservedResult);
+            var gapAccepted = observations.Any(observation =>
+                observation.Case == "gap_after_loss_104" &&
+                observation.ObservedResult == "relayed");
+            var wrapAccepted = new[] { "wrap_65534", "wrap_65535", "wrap_0", "wrap_1" }
+                .All(name => observations.Any(observation =>
+                    observation.Case == name &&
+                    observation.ObservedResult == "relayed"));
+            var reconnectAccepted = observations.Any(observation =>
+                observation.Case == "resumed_sequence_reset_1" &&
+                observation.ObservedResult == "relayed");
+            var oldTokenRejected = !useUdp || observations.Any(observation =>
+                observation.Case == "old_udp_token_after_detach" &&
+                observation.ObservedResult == "unknown_session");
+
+            invariants.Add(new()
+            {
+                Name = "duplicate_and_reorder_rejected",
+                Passed = expectationsMatch && droppedStale == 3,
+                Detail = $"dropped_stale={droppedStale}; expected=3"
+            });
+            invariants.Add(new()
+            {
+                Name = "transient_gap_does_not_block_fresh_motion",
+                Passed = gapAccepted,
+                Detail = "sequence 104 relayed even though sequence 103 was intentionally absent"
+            });
+            invariants.Add(new()
+            {
+                Name = "ushort_sequence_wrap_preserved",
+                Passed = wrapAccepted,
+                Detail = "65534,65535,0,1 relayed; an old 65535 after wrap was rejected"
+            });
+            invariants.Add(new()
+            {
+                Name = "authenticated_session_reconnect_resets_motion_sequence",
+                Passed = reconnectAccepted && oldTokenRejected,
+                Detail = useUdp
+                    ? "resumed session accepted sequence 1 and detached UDP token produced no motion relay"
+                    : "resumed session accepted sequence 1 on the authenticated WebSocket seam"
+            });
+            invariants.Add(new()
+            {
+                Name = "accepted_source_frames_accounted",
+                Passed = received == expectedAcceptedFrames,
+                Detail = $"accepted_source_frames={received}; expected={expectedAcceptedFrames}; setup traffic excluded"
+            });
+            invariants.Add(new()
+            {
+                Name = "primary_target_delivery_accounted",
+                Passed = primaryTargetDeliveries == expectedPrimaryTargetDeliveries,
+                Detail = $"primary_target_deliveries={primaryTargetDeliveries}; expected={expectedPrimaryTargetDeliveries}"
+            });
+            invariants.Add(new()
+            {
+                Name = "regional_fanout_accounted",
+                Passed = relayed == expectedRegionalRelayDeliveries,
+                Detail = $"aggregate_relay_deliveries={relayed}; expected={expectedRegionalRelayDeliveries}; topology=4x1+4x2+1x3+1x3"
+            });
+            predictions.Add(new()
+            {
+                Name = "sequence_guard_behavior",
+                Observed = "duplicate and old motion is dropped per session; gaps and ushort wrap preserve fresh motion"
+            });
+            predictions.Add(new()
+            {
+                Name = "reconnect_behavior",
+                Observed = useUdp
+                    ? "new authenticated session state accepts a fresh sequence and the detached UDP token no longer maps to a session"
+                    : "new authenticated session state accepts a fresh sequence after resume"
+            });
+            predictions.Add(new()
+            {
+                Name = "fanout_cost_behavior",
+                Observed = $"{received} accepted source frames produced {primaryTargetDeliveries} deliveries to the primary target and {relayed} aggregate deliveries across the changing region topology"
+            });
+
+            void RunFaultAttempt(
+                string caseName,
+                string sourceName,
+                ushort sequenceValue,
+                bool expectedAccepted,
+                long zdoUserId,
+                uint zdoId,
+                CapturingSession source,
+                UdpClient? sender)
+            {
+                var frame = BuildMotionFrame(
+                    sequenceValue,
+                    (sequenceValue, observations.Count),
+                    observations.Count * 50,
+                    zdoUserId,
+                    zdoId);
+                var before = fixture.MotionSnapshot();
+                var primaryTargetFramesBefore = target.Socket.SentFrames.Count;
+
+                if (useUdp)
+                    SendUdp(sender!, source.Session.UdpToken, frame.Frame, fixture.Transport.Port);
+                else
+                    fixture.Transport
+                        .HandleValheimMotionFrameAsync(
+                            source,
+                            frame.Header,
+                            frame.Payload,
+                            frame.Frame,
+                            "websocket")
+                        .GetAwaiter()
+                        .GetResult();
+
+                var counterChanged = SpinWait.SpinUntil(
+                    () =>
+                    {
+                        var current = fixture.MotionSnapshot();
+                        return MotionCount(current, useUdp ? "received_udp" : "received_websocket") >
+                                   MotionCount(before, useUdp ? "received_udp" : "received_websocket") ||
+                               MotionCount(current, "dropped_stale") >
+                                   MotionCount(before, "dropped_stale");
+                    },
+                    TimeSpan.FromSeconds(2));
+                if (!counterChanged)
+                    throw new InvalidOperationException($"fault fixture did not settle: {caseName}");
+
+                var after = fixture.MotionSnapshot();
+                var accepted =
+                    MotionCount(after, useUdp ? "received_udp" : "received_websocket") >
+                    MotionCount(before, useUdp ? "received_udp" : "received_websocket");
+                var stale =
+                    MotionCount(after, "dropped_stale") >
+                    MotionCount(before, "dropped_stale");
+                if (useUdp && accepted)
+                {
+                    ReceiveUdp(targetUdp!);
+                    primaryTargetDeliveries++;
+                }
+                else if (!useUdp && accepted &&
+                         target.Socket.SentFrames.Count == primaryTargetFramesBefore + 1)
+                {
+                    primaryTargetDeliveries++;
+                }
+                var expectedResult = expectedAccepted ? "relayed" : "dropped_stale";
+                var observedResult = accepted ? "relayed" : stale ? "dropped_stale" : "unknown";
+                observations.Add(new(caseName, sourceName, sequenceValue, expectedResult, observedResult));
+                events.Add(FaultEvent(
+                    s,
+                    caseName,
+                    sourceName,
+                    sequenceValue,
+                    expectedResult,
+                    observedResult,
+                    useUdp));
+            }
+        }
+        finally
+        {
+            if (useUdp)
+                fixture.Transport.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+    }
+
+    private static long MotionCount(JsonElement snapshot, string property) =>
+        snapshot.GetProperty(property).GetInt64();
+
+    private static EventEnvelope FaultEvent(
+        Scenario s,
+        string caseName,
+        string source,
+        ushort sequence,
+        string expectedResult,
+        string observedResult,
+        bool useUdp) =>
+        Event(
+            s,
+            sequence,
+            $"cre-e03-{source}-{caseName}",
+            new Dictionary<string, object?>
+            {
+                ["fault_case"] = caseName,
+                ["source"] = source,
+                ["sequence"] = (int)sequence,
+                ["transport"] = useUdp ? "session_udp" : "binary_websocket_fallback",
+                ["expected_result"] = expectedResult,
+                ["observed_result"] = observedResult
+            },
+            "transport.fault_observed");
 
     private static RuntimePressureBand[] RuntimePressureBands(Scenario s) =>
     [
@@ -1241,13 +1536,18 @@ internal static class AuthorityEngine
         return receiver.ReceiveAsync(timeout.Token).GetAwaiter().GetResult().Buffer;
     }
 
-    private static (BinaryEnvelopeHeader Header, byte[] Payload, byte[] Frame) BuildMotionFrame(ushort sequence, (double x, double y) position, long sentMilliseconds)
+    private static (BinaryEnvelopeHeader Header, byte[] Payload, byte[] Frame) BuildMotionFrame(
+        ushort sequence,
+        (double x, double y) position,
+        long sentMilliseconds,
+        long zdoUserId = 100,
+        uint zdoId = 200)
     {
         var payload = new byte[PayloadSerializers.ValheimPlayerMotionBytes];
         var payloadLength = PayloadSerializers.WriteValheimPlayerMotion(
             payload,
-            zdoUserId: 100,
-            zdoId: 200,
+            zdoUserId,
+            zdoId,
             new Vec3((float)position.x, 0, (float)position.y),
             new Vec3(1, 0, 0),
             yaw: 90,
@@ -1284,6 +1584,17 @@ internal static class AuthorityEngine
             return new CapturingSession(session, socket);
         }
 
+        public CapturingSession DetachAndResume(CapturingSession current, string recipient)
+        {
+            var resumeToken = current.Session.ResumeToken;
+            sessions.Detach(current.Session);
+            var socket = new CapturingWebSocket();
+            var session = sessions.TryResume(resumeToken, socket)
+                ?? throw new InvalidOperationException("Gateway session did not resume");
+            session.ValheimRecipientId = recipient;
+            return new CapturingSession(session, socket);
+        }
+
         public JsonElement MotionSnapshot()
         {
             using var document = JsonDocument.Parse(JsonSerializer.Serialize(motionTelemetry.Snapshot()));
@@ -1295,6 +1606,13 @@ internal static class AuthorityEngine
     {
         public static implicit operator GameSession(CapturingSession capturing) => capturing.Session;
     }
+
+    private sealed record FaultObservation(
+        string Case,
+        string Source,
+        ushort Sequence,
+        string ExpectedResult,
+        string ObservedResult);
 
     private sealed class CapturingWebSocket : WebSocket
     {

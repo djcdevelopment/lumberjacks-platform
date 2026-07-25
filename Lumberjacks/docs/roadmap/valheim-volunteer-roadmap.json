@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy Ã— Valheim â€” Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-24T14:13:58.582Z",
+  "updated_at": "2026-07-25T02:46:08.634Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -502,7 +502,8 @@
       "inputs": [
         "M6 real-player correctness, quality, and capacity exit evidence.",
         "Lumberjacks interest-management design at docs/network/interest-management.md.",
-        "FieldLab native, shadow, and strict route fixtures."
+        "FieldLab native, shadow, and strict route fixtures.",
+        "Creative-runtime lab receipts now prove a deterministic pressure gate, both real Gateway motion routes, bounded sequence freshness, reconnect behavior, and topology-derived fanout accounting without changing live gameplay authority."
       ],
       "exit_evidence": []
     },
