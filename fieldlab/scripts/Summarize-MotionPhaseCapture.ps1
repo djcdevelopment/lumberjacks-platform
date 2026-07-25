@@ -70,6 +70,12 @@ function Read-Property([object] $Value, [string] $Name) {
     return $property.Value
 }
 
+function Read-BoolProperty([object] $Value, [string] $Name) {
+    $raw = Read-Property $Value $Name
+    if ($null -eq $raw) { return $null }
+    try { return [Convert]::ToBoolean($raw) } catch { return $null }
+}
+
 function Divide-OrNull([long] $Numerator, [long] $Denominator, [int] $Digits = 3) {
     if ($Denominator -le 0) { return $null }
     return [Math]::Round($Numerator / [double] $Denominator, $Digits)
@@ -90,6 +96,20 @@ $lastPhaseEnabled = $null
 $phaseContractSamples = 0
 $firstRemoteEntities = $null
 $lastRemoteEntities = $null
+$roleSamples = 0
+$roleObserved = [ordered]@{}
+$hasFirstRole = $false
+$firstApplyEnabled = $null
+$lastApplyEnabled = $null
+$currentRoleSet = $false
+$currentRole = $null
+$roleTransitions = 0
+$lastRoleSegmentSamples = 0
+$lastRoleSegmentFirstTimestamp = $null
+$lastRoleSegmentLastTimestamp = $null
+$roleTailPrevious = @{}
+$roleTailDeltas = @{}
+$roleTailResets = @{}
 
 foreach ($line in Get-Content -LiteralPath $SamplesPath) {
     if ([string]::IsNullOrWhiteSpace($line)) { continue }
@@ -111,6 +131,53 @@ foreach ($line in Get-Content -LiteralPath $SamplesPath) {
     $remoteEntities = Read-Int64Property $motion 'motion_remote_entities'
     if ($null -eq $firstRemoteEntities) { $firstRemoteEntities = $remoteEntities }
     $lastRemoteEntities = $remoteEntities
+
+    $applyEnabled = Read-BoolProperty $motion 'motion_apply_enabled'
+    if ($null -eq $applyEnabled) {
+        $applyEnabled = Read-BoolProperty $motion 'apply_enabled'
+    }
+    if ($null -ne $applyEnabled) {
+        $roleSamples++
+        $roleKey = $applyEnabled.ToString().ToLowerInvariant()
+        $roleObserved[$roleKey] = $applyEnabled
+        if (-not $hasFirstRole) {
+            $hasFirstRole = $true
+            $firstApplyEnabled = $applyEnabled
+        }
+        $lastApplyEnabled = $applyEnabled
+
+        if (-not $currentRoleSet -or $currentRole -ne $applyEnabled) {
+            if ($currentRoleSet) { $roleTransitions++ }
+            $currentRoleSet = $true
+            $currentRole = $applyEnabled
+            $lastRoleSegmentSamples = 0
+            $lastRoleSegmentFirstTimestamp = $timestamp
+            $roleTailPrevious = @{}
+            $roleTailDeltas = @{}
+            $roleTailResets = @{}
+        }
+        $lastRoleSegmentSamples++
+        $lastRoleSegmentLastTimestamp = $timestamp
+
+        foreach ($name in $counterNames) {
+            $current = Read-Int64Property $motion $name
+            if ($null -eq $current) { continue }
+            if (-not $roleTailPrevious.ContainsKey($name)) {
+                $roleTailPrevious[$name] = $current
+                $roleTailDeltas[$name] = [long] 0
+                $roleTailResets[$name] = 0
+                continue
+            }
+
+            $increment = $current - [long] $roleTailPrevious[$name]
+            if ($increment -lt 0) {
+                $roleTailResets[$name] = [int] $roleTailResets[$name] + 1
+                $increment = $current
+            }
+            $roleTailDeltas[$name] = [long] $roleTailDeltas[$name] + $increment
+            $roleTailPrevious[$name] = $current
+        }
+    }
 
     foreach ($name in $counterNames) {
         $current = Read-Int64Property $motion $name
@@ -169,6 +236,17 @@ foreach ($name in $maximumNames) {
     }
 }
 
+$roleTailDeltaOutput = [ordered] @{}
+$roleTailResetOutput = [ordered] @{}
+foreach ($name in $counterNames) {
+    if ($roleTailDeltas.ContainsKey($name)) {
+        $roleTailDeltaOutput[$name] = [long] $roleTailDeltas[$name]
+    }
+    if ($roleTailResets.ContainsKey($name) -and [int] $roleTailResets[$name] -gt 0) {
+        $roleTailResetOutput[$name] = [int] $roleTailResets[$name]
+    }
+}
+
 function Delta([string] $Name) {
     if ($deltas.ContainsKey($Name)) { return [long] $deltas[$Name] }
     return [long] 0
@@ -190,7 +268,7 @@ $derived = [ordered] @{
 }
 
 $result = [ordered] @{
-    schema_version = 1
+    schema_version = 2
     event_type = 'motion_phase.capture_summary'
     samples_path = $SamplesPath
     first_timestamp_utc = $firstTimestamp
@@ -203,12 +281,26 @@ $result = [ordered] @{
         beginning = $firstRemoteEntities
         ending = $lastRemoteEntities
     }
+    apply_role = [ordered] @{
+        samples = $roleSamples
+        observed_values = @($roleObserved.Values)
+        first = $firstApplyEnabled
+        last = $lastApplyEnabled
+        transitions = $roleTransitions
+        last_segment_samples = $lastRoleSegmentSamples
+        last_segment_first_timestamp_utc = $lastRoleSegmentFirstTimestamp
+        last_segment_last_timestamp_utc = $lastRoleSegmentLastTimestamp
+        last_segment_ready = ($currentRoleSet -and $lastRoleSegmentSamples -ge 2)
+        last_segment_counter_resets = $roleTailResetOutput
+        last_segment_deltas = $roleTailDeltaOutput
+    }
     counter_resets = $resetOutput
     deltas = $deltaOutput
     derived = $derived
     lifetime_maxima = $maximumOutput
     interpretation_limits = @(
         'Lifetime maxima are not capture-local unless changed_during_capture is true.',
+        'APPLY/OBSERVE attribution uses only the final contiguous role segment so setup-time role changes do not contaminate the control.',
         'Interframe displacement can reveal another transform writer or physics step, but cannot identify native Valheim as the cause.',
         'Receive intervals are monotonic arrival spacing, not one-way network latency.'
     )

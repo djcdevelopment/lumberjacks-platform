@@ -439,6 +439,22 @@ if ($captureError) {
     Write-Receipt $receipt 1
 }
 
+$phaseAttribution = $receipt.capture.receipt.motion_phase.attribution
+$receipt['phase_attribution'] = $phaseAttribution
+if (-not $phaseAttribution -or $phaseAttribution.status -ne 'ready') {
+    $receipt.verdict = if ($phaseAttribution -and $phaseAttribution.status -eq 'contradictory') {
+        'blocked_by_contradictory_phase_attribution'
+    } else {
+        'blocked_by_inconclusive_phase_attribution'
+    }
+    $receipt.next_action = if ($phaseAttribution) {
+        "Do not interpret the visual course. Motion phase attribution reported $($phaseAttribution.verdict); inspect its final role-segment evidence before another live run."
+    } else {
+        'Do not interpret the visual course. The capture did not produce a motion phase attribution receipt.'
+    }
+    Write-Receipt $receipt 1
+}
+
 $comparison = $receipt.capture.receipt.comparison
 if ($comparison -and $comparison.level -eq 'ok') {
     $receipt.verdict = 'transport_evidence_collected_human_visual_pending'
