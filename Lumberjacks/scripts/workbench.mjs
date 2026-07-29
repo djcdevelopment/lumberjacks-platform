@@ -37,6 +37,7 @@ const linkPrefixes = [
   'https://discord.com/channels/',
   'https://discord.gg/',
   'https://comfy-p7.duckdns.org/',
+  'https://am4.tail8e749c.ts.net/',
 ];
 
 // A /channels/ URL only resolves for someone already inside the server. It is a destination,

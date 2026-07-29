@@ -271,7 +271,7 @@
       "name": "Steam Self-Service Join",
       "one_liner": "An invite link, a Steam sign-in, and a mod-pack zip with your credentials already in it — no config file to hand-edit.",
       "status": "live",
-      "status_detail": "The join flow works end to end on comfy-p7.duckdns.org today: invite, Steam sign-in, personalized zip, self-service update and reissue. The operator runbook's own caveats stand and are not softened here — the endpoint is currently plain HTTP on a non-default, world-open port with TLS built and staged but not switched on, rate limiting is not in place yet (the runbook lists it as pre-widening work), it is open to the alpha cohort only, and volunteer platform readiness is recorded as NOT READY. Until TLS is armed, the enrollment credential crosses a plaintext public link. The Valheim world itself carries no password, by operator decision while the cohort is the operator and name-known friends: the invite gates this enrollment flow, not the world, so anyone who knows the address can direct-connect without it.",
+      "status_detail": "The join flow serves on the public AM4 endpoint today — invite, Steam sign-in, personalized zip, self-service update and reissue — over HTTPS end to end (Tailscale terminates TLS at the public edge, which retires the old plaintext-credential caveat). Stated plainly, what remains: the full Steam sign-in round-trip has not been walked on this host yet (that is exactly first task SJ-1), rate limiting is not in place, it is open to the alpha cohort only, and volunteer platform readiness is recorded as NOT READY. The Valheim world itself carries no password, by operator decision while the cohort is the operator and name-known friends: the invite gates this enrollment flow, not the world, so anyone who knows the address can direct-connect without it.",
       "what_it_does": "An invite link opens a page that hands off to Steam OpenID sign-in. A one-use bootstrap token is exchanged for a personalized mod-pack zip with the player's credentials already baked in. Self-service update and reissue run through the same path. The per-player token is stored only as a hash.",
       "who_its_for": "The next wave of playtesters — people who want to join and play without being told to edit a config file first.",
       "time_to_first_result": "about 5 minutes",
@@ -282,7 +282,7 @@
       ],
       "access": {
         "kind": "live-service",
-        "href": "https://comfy-p7.duckdns.org/join",
+        "href": "https://am4.tail8e749c.ts.net/join",
         "sha256": null,
         "size_bytes": null,
         "published_at": null
@@ -295,7 +295,7 @@
       "docs": [
         {
           "label": "Join the alpha (the live flow)",
-          "href": "https://comfy-p7.duckdns.org/join"
+          "href": "https://am4.tail8e749c.ts.net/join"
         },
         {
           "label": "Volunteer roadmap — the M2 and M5 gates this sits behind",
