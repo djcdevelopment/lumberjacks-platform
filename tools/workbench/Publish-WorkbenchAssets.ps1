@@ -64,10 +64,14 @@ foreach ($id in $zipMap.Keys) {
     }
 }
 
+# The key is 'downloads', not 'tools'. WorkbenchDownloadEndpoints deserializes into
+# DownloadPointer(int schema_version, List<DownloadEntry>? downloads) and treats a null list as an
+# invalid pointer, so a 'tools' key parses into a pointer with no downloads and every
+# /workbench/downloads/{id} answers 503. Caught on the first real deploy; nothing tests this shape.
 $pointer = [ordered]@{
     schema_version = 1
     generated_utc  = (Get-Date).ToUniversalTime().ToString('o')
-    tools          = $pointerTools
+    downloads      = $pointerTools
 }
 $pointerLocal = Join-Path ([System.IO.Path]::GetTempPath()) 'workbench-tools.json'
 [System.IO.File]::WriteAllText($pointerLocal, ($pointer | ConvertTo-Json -Depth 4), [System.Text.UTF8Encoding]::new($false))

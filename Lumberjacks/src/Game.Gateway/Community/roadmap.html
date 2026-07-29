@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-29T09:08:51.568Z</span>
+        <span>Updated 2026-07-29T09:40:15.062Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260729090851-close-four-workbench-trust-gaps-a-real-discord-i">
+        <div class="journal"><article class="journal-entry" id="note-20260729094015-rehearse-the-workbench-deploy-on-local-hardware-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-29T09:40:15.062Z">2026-07-29T09:40:15.062Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Rehearse the workbench deploy on local hardware instead of GCP, and fix the download pointer key mismatch it exposed</h3>
+      <p><strong>Impact:</strong> Every /workbench/downloads/{id} would have returned 503 on the real deploy: the publish script emitted the artifact array under &#39;tools&#39; while WorkbenchDownloadEndpoints deserializes &#39;downloads&#39; and treats a null list as an invalid pointer. No test covers that shape, so the first real deploy was the detector. GCP stays stopped, preserving the VM spend for actual UAT</p>
+      <details><summary>Verification (1)</summary><ul><li>Gateway image m31-workbench-20260729-r1 cut locally and verified from the shipped /app/Game.Gateway.dll (admits frozen mod m30-rolecontrol-20260723-r1). Deployed to local hardware over the tailnet: all seven Community routes return 200, X-Workbench-Sha256 matches the published artifact, and after the pointer fix both downloads stream 200 with X-Download-Sha256 equal to the sha256 the catalog page advertises</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260729090851-close-four-workbench-trust-gaps-a-real-discord-i">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
