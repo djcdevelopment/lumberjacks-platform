@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-29T07:36:20.270Z</span>
+        <span>Updated 2026-07-29T07:53:52.378Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260729073620-refresh-the-forum-handoff-with-what-is-actually-">
+        <div class="journal"><article class="journal-entry" id="note-20260729075352-name-the-credential-file-in-the-ignore-rules">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-29T07:53:52.378Z">2026-07-29T07:53:52.378Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Name the credential file in the ignore rules</h3>
+      <p><strong>Impact:</strong> The bot credential was already covered by a wildcard, but the file that actually appeared at the repository root is now listed by its own name as well, at the root and at any depth. A pattern is easy to skim past when someone is checking whether their secret is safe; a named line answers the question directly. Verified that the credential has never been committed on any branch: the path has never existed in any tree, no file of that kind has ever existed in the repository&#39;s history, and a content search across every reference finds no commit that ever added or removed the value.</p>
+      <details><summary>Verification (1)</summary><ul><li>Ignore rules exercised against the filename at the root, nested under the tool directory, and at arbitrary depth, plus the two wildcards, each reporting which rule catches it. History checked four ways - index, full-history path log across all refs, an object listing of every blob path ever recorded, and a content search of every reference for the value itself.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>.gitignore</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260729073620-refresh-the-forum-handoff-with-what-is-actually-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
