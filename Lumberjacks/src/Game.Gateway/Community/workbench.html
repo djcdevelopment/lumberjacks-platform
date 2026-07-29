@@ -177,6 +177,9 @@
     .task-size { padding: 1px 6px; border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.05); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; }
     .task-size.small { color: var(--green); background: var(--green-bg); }
     .task-size.medium { color: var(--amber); background: var(--amber-bg); }
+    .task-blocked { padding: 1px 7px; border-radius: 999px; color: var(--red); background: var(--red-bg); font-family: var(--mono); font-size: .62rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+    .task-blocked-reason { color: var(--red); font-size: .78rem; }
+    .task-blocked-reason em { color: var(--ink); font-style: normal; font-weight: 700; }
     .done-when { color: var(--muted); font-size: .78rem; }
     .done-when em { color: var(--ink); font-style: normal; font-weight: 700; }
     .recovery { margin-top: 12px; padding: 13px 14px; border-left: 3px solid var(--red); background: var(--red-bg); }
@@ -274,7 +277,7 @@
       </div>
       <p class="join-path">The path in: join → read <a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a> → post in a tool's thread. Those last two and the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a> are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span class="freshness">Published from 29e2698 · 2026-07-29 15:35 UTC</span>
+        <span class="freshness">Published from 9828ff0 · 2026-07-29 15:46 UTC</span>
         <span>3 live · 1 dev-only · 1 local-only · 2 recoverable</span>
         <a href="#tools">11 first tasks open</a>
       </div>
@@ -353,6 +356,7 @@
           <span class="task-flags"><span class="task-size small">small</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> validate.py accepts the file and a GM can author a quest through the gm-template seam without editing harvest.py. sources.json already points at this path (entry rangers-example, currently disabled) but the file has never been written.</span>
+        
         <span class="task-id">QP-1</span>
       </li><li class="first-task">
         <div class="first-task-top">
@@ -360,6 +364,7 @@
           <span class="task-flags"><span class="task-size medium">medium</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> A new catalog JSON renders in the picker and every anomaly the harvest reported has an explanation — zero left unexplained.</span>
+        
         <span class="task-id">QP-2</span>
       </li></ul>
       <div class="ownership-state unclaimed">
@@ -413,6 +418,7 @@
           <span class="task-flags"><span class="task-size small">small</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> A heatmap image from your own world is in the thread, with the build command you actually used and anything that tripped you up.</span>
+        
         <span class="task-id">SV-1</span>
       </li><li class="first-task">
         <div class="first-task-top">
@@ -420,6 +426,7 @@
           <span class="task-flags"><span class="task-size medium">medium</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> Each GM probe utility has one line saying what it answers and one copy-pasteable invocation, and a steward who has never opened the source can pick the right probe from that page alone.</span>
+        
         <span class="task-id">SV-2</span>
       </li></ul>
       <div class="ownership-state unclaimed">
@@ -477,6 +484,7 @@
           <span class="task-flags"><span class="task-suggested">good first pick</span><span class="task-size small">small</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> Any stack you like — a static page, a spreadsheet, a terminal script — renders live data from a v0 endpoint, and the thread has a screenshot plus how you made it. Needs no repo access; the starter kit includes a Python poller.</span>
+        
         <span class="task-id">CT-1</span>
       </li><li class="first-task">
         <div class="first-task-top">
@@ -484,6 +492,7 @@
           <span class="task-flags"><span class="task-size medium">medium</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> The compose stack runs on your machine and a new aggregate is exposed by the v0 API and rendered, with the existing privacy tests passing unmodified. This is the claim path — the source is already public, so nothing blocks you from starting today.</span>
+        
         <span class="task-id">CT-2</span>
       </li></ul>
       <div class="ownership-state unclaimed">
@@ -537,6 +546,7 @@
           <span class="task-flags"><span class="task-size small">small</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> You went from invite link to a running modded client, and every point where you hesitated, guessed, or had to ask is written down in the thread — including the ones that turned out to be your fault.</span>
+        
         <span class="task-id">SJ-1</span>
       </li><li class="first-task">
         <div class="first-task-top">
@@ -544,6 +554,7 @@
           <span class="task-flags"><span class="task-size medium">medium</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> A page answers the questions SJ-1 actually produced, in a tester&#39;s words rather than the operator&#39;s, and the next tester gets through without asking any of them.</span>
+        
         <span class="task-id">SJ-2</span>
       </li></ul>
       <div class="ownership-state unclaimed">
@@ -580,7 +591,7 @@
       <span class="access-button disabled" aria-disabled="true">Not published yet</span>
     </div>
     <div class="access-verify"><p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p></div>
-    <div class="tool-link-row"><span class="tool-link"><em>Discuss</em><span class="inert-link">thread opens with the announcement</span></span></div>
+    <div class="tool-link-row"><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">no thread yet — post in the #workbench forum</a></span></div>
     <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>The mod running locally</li><li>An MCP client</li><li>Optional: a local Ollama, only for the explanation tools</li></ul></div>
     <details class="tool-detail">
       <summary>How it works, in detail</summary>
@@ -596,7 +607,8 @@
           <strong>Run the gateway and list its tools from any MCP client, then post the tool list</strong>
           <span class="task-flags"><span class="task-size small">small</span></span>
         </div>
-        <span class="done-when"><em>Done when:</em> The tool list from your own client is in the thread, along with which client you used and anything in the setup that was not obvious.</span>
+        <span class="done-when"><em>Done when:</em> The tool list from your own client is posted in the #workbench forum — this tool&#39;s own thread has not opened yet — along with which client you used and anything in the setup that was not obvious.</span>
+        
         <span class="task-id">MC-1</span>
       </li></ul>
       <div class="ownership-state unclaimed">
@@ -650,6 +662,7 @@
           <span class="task-flags"><span class="task-size medium">medium</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> segment-1-emit-waypoints.py runs against a current ComfyStewardView build and writes a committed waypoints.sample.json that segment 3 can consume. This is the claiming task for this tool.</span>
+        
         <span class="task-id">CG-1</span>
       </li></ul>
       <div class="ownership-state unclaimed">
@@ -708,6 +721,7 @@
           <span class="task-flags"><span class="task-size medium">medium</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> A real in-game quest completion travels from the running mod through the consumer and comes out as one human-readable review record. This is the claiming task for this tool.</span>
+        
         <span class="task-id">QB-1</span>
       </li></ul>
       <div class="ownership-state unclaimed">
