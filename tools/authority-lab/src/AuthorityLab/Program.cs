@@ -452,6 +452,9 @@ internal static class AuthorityEngine
             case "cre-e07-presentation-replay":
                 ExecuteCreativePresentationReplay(scenario, events, invariants, predictions);
                 break;
+            case "cre-e08-adaptive-presentation-replay":
+                ExecuteCreativeAdaptivePresentationReplay(scenario, events, invariants, predictions);
+                break;
             default: throw new ScenarioException($"no pure executor for {scenario.ExperimentId}");
         }
         var ended = DateTimeOffset.UtcNow;
@@ -1515,6 +1518,289 @@ internal static class AuthorityEngine
         });
     }
 
+    private static void ExecuteCreativeAdaptivePresentationReplay(
+        Scenario s,
+        List<EventEnvelope> events,
+        List<InvariantResult> invariants,
+        List<PredictionObservation> predictions)
+    {
+        var sourceInterval = s.IntParameter("source_interval_ms", 50);
+        var frameRate = s.IntParameter("frame_rate_hz", 60);
+        var freshness = s.IntParameter("freshness_ms", 500);
+        var convergenceRate = s.DoubleParameter("convergence_rate", 18);
+        var fixedDelays = s.IntArrayParameter("fixed_control_delays_ms", [50, 100, 150, 200])
+            .Where(delay => delay >= 0)
+            .Distinct()
+            .OrderBy(delay => delay)
+            .ToArray();
+        if (fixedDelays.Length == 0)
+            throw new ScenarioException("cre-e08 requires at least one fixed control delay");
+        var baseLatency = s.IntParameter("base_latency_ms", 40);
+        var adaptiveMinimumDelay = s.IntParameter("adaptive_minimum_delay_ms", 50);
+        var adaptiveMaximumDelay = s.IntParameter("adaptive_maximum_delay_ms", 200);
+        var adaptiveDecay = s.DoubleParameter("adaptive_decay_ms_per_second", 25);
+        var discontinuityMeters = s.DoubleParameter("discontinuity_meters", 5);
+        var largeStepMeters = s.DoubleParameter("large_step_meters", 0.75);
+        var sampleCount = s.IntParameter("sample_count", 40);
+        var patterns = s.Actors.Select(actor => actor.Trajectory)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var profiles = new[]
+        {
+            "stable",
+            "three_sample_burst",
+            "isolated_burst",
+            "deterministic_jitter",
+            "periodic_loss"
+        };
+        var results = new Dictionary<(string pattern, string profile, string policy, int delay), MotionPresentationReplayMetrics>();
+        var tick = 0;
+
+        foreach (var pattern in patterns)
+        {
+            foreach (var profile in profiles)
+            {
+                var samples = MotionReplaySamples(
+                    pattern,
+                    profile,
+                    sampleCount,
+                    sourceInterval,
+                    baseLatency);
+                RecordResult(
+                    pattern,
+                    profile,
+                    MotionPresentationReplay.ChaseLatest,
+                    0,
+                    MotionPresentationReplay.Evaluate(
+                        samples,
+                        MotionPresentationReplay.ChaseLatest,
+                        frameRate,
+                        freshness,
+                        convergenceRate,
+                        0,
+                        discontinuityMeters,
+                        largeStepMeters));
+
+                foreach (var fixedDelay in fixedDelays)
+                {
+                    RecordResult(
+                        pattern,
+                        profile,
+                        MotionPresentationReplay.BufferedInterpolation,
+                        fixedDelay,
+                        MotionPresentationReplay.Evaluate(
+                            samples,
+                            MotionPresentationReplay.BufferedInterpolation,
+                            frameRate,
+                            freshness,
+                            convergenceRate,
+                            fixedDelay,
+                            discontinuityMeters,
+                            largeStepMeters));
+                }
+
+                RecordResult(
+                    pattern,
+                    profile,
+                    MotionPresentationReplay.AdaptiveInterpolation,
+                    -1,
+                    MotionPresentationReplay.Evaluate(
+                        samples,
+                        MotionPresentationReplay.AdaptiveInterpolation,
+                        frameRate,
+                        freshness,
+                        convergenceRate,
+                        0,
+                        discontinuityMeters,
+                        largeStepMeters,
+                        adaptiveMinimumDelay,
+                        adaptiveMaximumDelay,
+                        adaptiveDecay));
+            }
+        }
+
+        void RecordResult(
+            string pattern,
+            string profile,
+            string policy,
+            int delay,
+            MotionPresentationReplayMetrics result)
+        {
+            results[(pattern, profile, policy, delay)] = result;
+            events.Add(Event(
+                s,
+                tick++,
+                $"cre-e08-{pattern}-{profile}-{policy}-{delay:000}ms",
+                new Dictionary<string, object?>
+                {
+                    ["pattern"] = pattern,
+                    ["arrival_profile"] = profile,
+                    ["policy"] = policy,
+                    ["fixed_delay_ms"] = delay >= 0 ? delay : null,
+                    ["rendered_frames"] = result.RenderedFrames,
+                    ["applied_frames"] = result.AppliedFrames,
+                    ["stale_frames"] = result.StaleFrames,
+                    ["final_sequence"] = result.FinalSequence,
+                    ["mean_timeline_delay_ms"] = Math.Round(result.TimelineDelayMilliseconds, 3),
+                    ["minimum_timeline_delay_ms"] = Math.Round(result.MinimumTimelineDelayMilliseconds, 3),
+                    ["maximum_timeline_delay_ms"] = Math.Round(result.MaximumTimelineDelayMilliseconds, 3),
+                    ["delay_increase_events"] = result.DelayIncreaseEvents,
+                    ["delay_decrease_frames"] = result.DelayDecreaseFrames,
+                    ["mean_current_truth_error_m"] = Math.Round(result.MeanCurrentTruthErrorMeters, 6),
+                    ["mean_timeline_error_m"] = Math.Round(result.MeanTimelineErrorMeters, 6),
+                    ["final_error_m"] = Math.Round(result.FinalErrorMeters, 6),
+                    ["mean_step_m"] = Math.Round(result.MeanStepMeters, 6),
+                    ["max_step_m"] = Math.Round(result.MaximumStepMeters, 6),
+                    ["mean_step_change_m"] = Math.Round(result.MeanStepChangeMeters, 6),
+                    ["max_step_change_m"] = Math.Round(result.MaximumStepChangeMeters, 6),
+                    ["large_step_frames"] = result.LargeStepFrames,
+                    ["stalled_while_timeline_moving_frames"] = result.StalledWhileTimelineMovingFrames,
+                    ["discontinuity_guard_frames"] = result.DiscontinuityGuardFrames,
+                    ["interpolation_bounds_violations"] = result.InterpolationBoundsViolations,
+                    ["finite"] = result.Finite
+                },
+                "presentation.adaptive_replay_result"));
+        }
+
+        var expectedSequence = sampleCount;
+        var interpolationResults = results
+            .Where(pair => pair.Key.policy != MotionPresentationReplay.ChaseLatest)
+            .Select(pair => pair.Value)
+            .ToArray();
+        var adaptiveResults = results
+            .Where(pair => pair.Key.policy == MotionPresentationReplay.AdaptiveInterpolation)
+            .Select(pair => pair.Value)
+            .ToArray();
+        invariants.Add(new()
+        {
+            Name = "adaptive_replay_outputs_remain_finite",
+            Passed = results.Values.All(result => result.Finite),
+            Detail = $"evaluated={results.Count} policy/profile/pattern combinations"
+        });
+        invariants.Add(new()
+        {
+            Name = "adaptive_replay_consumes_final_sequence",
+            Passed = results.Values.All(result => result.FinalSequence == expectedSequence),
+            Detail = $"expected_final_sequence={expectedSequence}; loss profile always delivers the final sample"
+        });
+        invariants.Add(new()
+        {
+            Name = "adaptive_and_fixed_interpolation_do_not_extrapolate",
+            Passed = interpolationResults.All(result => result.InterpolationBoundsViolations == 0),
+            Detail = "all interpolation factors stayed within delivered source brackets"
+        });
+        invariants.Add(new()
+        {
+            Name = "adaptive_delay_stays_inside_declared_bounds",
+            Passed = adaptiveResults.All(result =>
+                result.MinimumTimelineDelayMilliseconds >= adaptiveMinimumDelay - 0.000001 &&
+                result.MaximumTimelineDelayMilliseconds <= adaptiveMaximumDelay + 0.000001),
+            Detail = $"declared_bounds_ms={adaptiveMinimumDelay}..{adaptiveMaximumDelay}"
+        });
+        var teleportResults = results
+            .Where(pair =>
+                pair.Key.pattern.Equals("teleport", StringComparison.OrdinalIgnoreCase) &&
+                pair.Key.policy != MotionPresentationReplay.ChaseLatest)
+            .Select(pair => pair.Value)
+            .ToArray();
+        invariants.Add(new()
+        {
+            Name = "adaptive_replay_does_not_smooth_teleports",
+            Passed = teleportResults.All(result =>
+                result.DiscontinuityGuardFrames > 0 ||
+                result.MaximumStepMeters >= discontinuityMeters),
+            Detail =
+                $"guarded_frames={string.Join(",", teleportResults.Select(result => result.DiscontinuityGuardFrames))}; " +
+                $"maximum_steps={string.Join(",", teleportResults.Select(result => result.MaximumStepMeters.ToString("F3")))}"
+        });
+
+        var nonTeleport = results.Keys
+            .Where(key => !key.pattern.Equals("teleport", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var disturbedProfiles = profiles.Where(profile => profile != "stable").ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var adaptiveDisturbed = nonTeleport
+            .Where(key => disturbedProfiles.Contains(key.profile) &&
+                          key.policy == MotionPresentationReplay.AdaptiveInterpolation)
+            .Select(key => results[key])
+            .ToArray();
+        var chaseDisturbed = nonTeleport
+            .Where(key => disturbedProfiles.Contains(key.profile) &&
+                          key.policy == MotionPresentationReplay.ChaseLatest)
+            .Select(key => results[key])
+            .ToArray();
+        var fixedMaximumDelay = fixedDelays.Max();
+        var fixedMaximumDisturbed = nonTeleport
+            .Where(key => disturbedProfiles.Contains(key.profile) &&
+                          key.policy == MotionPresentationReplay.BufferedInterpolation &&
+                          key.delay == fixedMaximumDelay)
+            .Select(key => results[key])
+            .ToArray();
+
+        var lowersStallsVersusChase =
+            adaptiveDisturbed.Sum(result => result.StalledWhileTimelineMovingFrames) <
+            chaseDisturbed.Sum(result => result.StalledWhileTimelineMovingFrames);
+        var lowersDelayVersusFixedMaximum =
+            adaptiveDisturbed.Average(result => result.TimelineDelayMilliseconds) <
+            fixedMaximumDisturbed.Average(result => result.TimelineDelayMilliseconds);
+        var lowersCurrentErrorVersusFixedMaximum =
+            adaptiveDisturbed.Average(result => result.MeanCurrentTruthErrorMeters) <
+            fixedMaximumDisturbed.Average(result => result.MeanCurrentTruthErrorMeters);
+        var controlsLargeStepsVersusChase =
+            adaptiveDisturbed.Sum(result => result.LargeStepFrames) <=
+            chaseDisturbed.Sum(result => result.LargeStepFrames);
+        var candidateEarnsLiveAb =
+            lowersStallsVersusChase &&
+            lowersDelayVersusFixedMaximum &&
+            lowersCurrentErrorVersusFixedMaximum &&
+            controlsLargeStepsVersusChase;
+
+        foreach (var profile in profiles)
+        {
+            var profileKeys = nonTeleport.Where(key => key.profile == profile).ToArray();
+            var chase = profileKeys
+                .Where(key => key.policy == MotionPresentationReplay.ChaseLatest)
+                .Select(key => results[key])
+                .ToArray();
+            var adaptive = profileKeys
+                .Where(key => key.policy == MotionPresentationReplay.AdaptiveInterpolation)
+                .Select(key => results[key])
+                .ToArray();
+            var fixedMaximum = profileKeys
+                .Where(key => key.policy == MotionPresentationReplay.BufferedInterpolation && key.delay == fixedMaximumDelay)
+                .Select(key => results[key])
+                .ToArray();
+            predictions.Add(new()
+            {
+                Name = $"adaptive_profile_{profile}",
+                Observed =
+                    $"stalls_chase/adaptive/fixed{fixedMaximumDelay}={chase.Sum(item => item.StalledWhileTimelineMovingFrames)}/{adaptive.Sum(item => item.StalledWhileTimelineMovingFrames)}/{fixedMaximum.Sum(item => item.StalledWhileTimelineMovingFrames)}; " +
+                    $"large_steps_chase/adaptive/fixed{fixedMaximumDelay}={chase.Sum(item => item.LargeStepFrames)}/{adaptive.Sum(item => item.LargeStepFrames)}/{fixedMaximum.Sum(item => item.LargeStepFrames)}; " +
+                    $"mean_delay_adaptive={adaptive.Average(item => item.TimelineDelayMilliseconds):F1}ms; " +
+                    $"mean_current_error_adaptive={adaptive.Average(item => item.MeanCurrentTruthErrorMeters):F3}m"
+            });
+        }
+        predictions.Add(new()
+        {
+            Name = "adaptive_candidate_gate",
+            Observed =
+                $"verdict={(candidateEarnsLiveAb ? "earns_reversible_live_ab" : "reject_or_revise")}; " +
+                $"lower_stalls_vs_chase={lowersStallsVersusChase}; " +
+                $"lower_delay_vs_fixed{fixedMaximumDelay}={lowersDelayVersusFixedMaximum}; " +
+                $"lower_current_error_vs_fixed{fixedMaximumDelay}={lowersCurrentErrorVersusFixedMaximum}; " +
+                $"large_steps_not_above_chase={controlsLargeStepsVersusChase}"
+        });
+        predictions.Add(new()
+        {
+            Name = "adaptive_clock_contract",
+            Observed = "candidate inputs are relative arrival-minus-send deltas and sequence gaps; synchronized client clocks are not required"
+        });
+        predictions.Add(new()
+        {
+            Name = "authority_limit",
+            Observed = "the replay excludes native transform writes, Unity physics, binding cost, and human feel; passing only permits a reversible live A/B candidate"
+        });
+    }
+
     private static MotionReplaySample[] MotionReplaySamples(
         string pattern,
         string profile,
@@ -1534,7 +1820,17 @@ internal static class AuthorityEngine
                 var blockEnd = index + (5 - index % 6);
                 arrival = blockEnd * sourceIntervalMilliseconds + baseLatencyMilliseconds;
             }
-            samples.Add(new(index + 1, produced, arrival, position.x, position.y));
+            if (profile == "isolated_burst" && index >= 12 && index <= 14)
+            {
+                arrival = 14 * sourceIntervalMilliseconds + baseLatencyMilliseconds;
+            }
+            if (profile == "deterministic_jitter")
+            {
+                var jitter = new[] { 0, 15, -5, 25, 5, 35, 10, 20 };
+                arrival += jitter[index % jitter.Length];
+            }
+            var delivered = profile != "periodic_loss" || index % 8 != 4 || index == sampleCount - 1;
+            samples.Add(new(index + 1, produced, arrival, position.x, position.y, delivered));
         }
         return samples.ToArray();
     }
