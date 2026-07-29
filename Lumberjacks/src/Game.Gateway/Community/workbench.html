@@ -163,6 +163,7 @@
     .dep { padding: 1px 5px; background: rgba(255,255,255,.06); border-radius: 4px; color: var(--ink); }
     .tool-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 8px; font-size: .8rem; }
     .tool-links strong { flex: 0 0 76px; color: var(--muted); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
+    .access-policy { margin: 8px 0 0; color: #c5d2cf; font-size: .78rem; }
     .source-note { margin: 8px 0 0; color: var(--muted); font-size: .78rem; }
     .first-tasks { margin-top: 14px; padding: 14px; border-left: 3px solid var(--wood); background: rgba(215,168,110,.08); }
     .first-tasks > strong { color: var(--wood); font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
@@ -277,7 +278,7 @@
       </div>
       <p class="join-path">The path in: join → read <a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a> → post in a tool's thread. Those last two and the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a> are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span class="freshness">Published from 9828ff0 · 2026-07-29 15:46 UTC</span>
+        <span class="freshness">Published from a3e14a2 · 2026-07-29 15:57 UTC</span>
         <span>3 live · 1 dev-only · 1 local-only · 2 recoverable</span>
         <a href="#tools">11 first tasks open</a>
       </div>
@@ -380,10 +381,11 @@
       <div class="tool-detail-body">
         <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/quest-view-schema.md" target="_blank" rel="noreferrer">Personal quest-view schema (quest-view-schema.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/sources.json" target="_blank" rel="noreferrer">Source config seam (sources.json)</a></div>
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/recipes/quest-catalogs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/recipes/quest-catalogs</a></div>
+        <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
         <p class="source-note">The same code lives in this repo at recipes/quest-catalogs/ and is byte-identical to the public copy.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>Harvested catalogs from a live guild tracker contain member names. The published sample uses synthetic data only — do not commit a real harvested catalog.</div>
-          <div class="license"><strong>License</strong>BUSL-1.1 in this repo (community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md). The byte-identical copies in the public comfy archive carry that repo&#39;s MIT license.</div>
+          <div class="license"><strong>License</strong>BUSL-1.1 in this repo (community-steward safe harbor, converting to AGPL-3.0-only; see <a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">LICENSING.md</a>). The byte-identical copies in the public comfy archive carry that repo&#39;s MIT license.</div>
         </div>
       </div>
     </details>
@@ -442,7 +444,8 @@
       <div class="tool-detail-body">
         
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/ComfyStewardView</a></div>
-        <p class="source-note">A standalone public repository, separate from baseline. Clone it and build; nothing here is gated.</p>
+        <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 does not open commit access here — the card above says what it grants.</p>
+        <p class="source-note">A standalone public repository, separate from baseline. Clone it and build.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>Run it on world copies, not the live save. Output can contain player names — share aggregates and screenshots, not raw dumps.</div>
           <div class="license"><strong>License</strong>Proprietary — all rights reserved per the repo&#39;s own LICENSE.md, which requires written permission and a paid license for reuse. Catalogued here for running it and giving feedback; the license posture is under review, and until it changes, contributions mean docs and feedback, not code redistribution.</div>
@@ -506,12 +509,13 @@
     <details class="tool-detail">
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
-        <div class="tool-links"><strong>More docs</strong><span class="inert-link">Telemetry v0 API reference — Lumberjacks/docs/api/telemetry-v0.md</span><span aria-hidden="true"> · </span><span class="inert-link">Viewing the surfaces — Lumberjacks/docs/dashboard/viewing-the-surfaces.md</span></div>
+        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/api/telemetry-v0.md" target="_blank" rel="noreferrer">Telemetry v0 API reference — Lumberjacks/docs/api/telemetry-v0.md</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/dashboard/viewing-the-surfaces.md" target="_blank" rel="noreferrer">Viewing the surfaces — Lumberjacks/docs/dashboard/viewing-the-surfaces.md</a></div>
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/tools/omen-dashboard" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/tools/omen-dashboard</a></div>
-        <p class="source-note">Public and readable now: Lumberjacks/infra/docker/docker-compose.yml for the stack, Lumberjacks/tools/omen-dashboard/ for the operator viewer. Nothing here is gated — what opens at ladder stage 3 is commit access, not the ability to read it.</p>
+        <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
+        <p class="source-note">Public and readable now: Lumberjacks/infra/docker/docker-compose.yml for the stack, Lumberjacks/tools/omen-dashboard/ for the operator viewer.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>The v0 API is aggregates-only by tested design — no player ID, no name, no position, ever. Keep that bar: a change that makes the privacy tests fail is a change that does not land.</div>
-          <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
+          <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see <a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">LICENSING.md</a>.</div>
         </div>
       </div>
     </details>
@@ -568,12 +572,13 @@
     <details class="tool-detail">
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
-        <div class="tool-links"><strong>More docs</strong><a href="/roadmap">Volunteer roadmap — the M2 and M5 gates this sits behind</a><span aria-hidden="true"> · </span><span class="inert-link">Operator runbook — infra/gcp/p7/VOLUNTEER-ENDPOINT.md</span></div>
+        <div class="tool-links"><strong>More docs</strong><a href="/roadmap">Volunteer roadmap — the M2 and M5 gates this sits behind</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/blob/main/infra/gcp/p7/VOLUNTEER-ENDPOINT.md" target="_blank" rel="noreferrer">Operator runbook — infra/gcp/p7/VOLUNTEER-ENDPOINT.md</a></div>
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/src/Game.Gateway/Valheim" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/src/Game.Gateway/Valheim</a></div>
-        <p class="source-note">Public and readable now — SteamEnrollmentEndpoints, SteamEnrollmentService, EnrollmentPages, ModpackReleaseCatalog, with real test suites, plus the operator runbook at infra/gcp/p7/VOLUNTEER-ENDPOINT.md. Nothing here is gated — what opens at ladder stage 3 is commit access, not the ability to read it.</p>
+        <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
+        <p class="source-note">Public and readable now — SteamEnrollmentEndpoints, SteamEnrollmentService, EnrollmentPages, ModpackReleaseCatalog, with real test suites, plus the operator runbook at infra/gcp/p7/VOLUNTEER-ENDPOINT.md.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>The per-player token is stored only as a hash. The zip you receive carries your own credential — do not re-share it; ask for a reissue instead.</div>
-          <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
+          <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see <a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">LICENSING.md</a>.</div>
         </div>
       </div>
     </details>
@@ -591,7 +596,7 @@
       <span class="access-button disabled" aria-disabled="true">Not published yet</span>
     </div>
     <div class="access-verify"><p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p></div>
-    <div class="tool-link-row"><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">no thread yet — post in the #workbench forum</a></span></div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://github.com/djcdevelopment/baseline/blob/main/network/mcp/contracts/commands.json" target="_blank" rel="noreferrer">Command contract — network/mcp/contracts/commands.json</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">no thread yet — post in the #workbench forum</a></span></div>
     <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>The mod running locally</li><li>An MCP client</li><li>Optional: a local Ollama, only for the explanation tools</li></ul></div>
     <details class="tool-detail">
       <summary>How it works, in detail</summary>
@@ -622,12 +627,13 @@
     <details class="tool-detail">
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
-        <div class="tool-links"><strong>More docs</strong><span class="inert-link">Command contract — network/mcp/contracts/commands.json</span></div>
+        
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/network/mcp" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/baseline/tree/main/network/mcp</a></div>
-        <p class="source-note">Public and readable now — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot also exists in the comfy repo. Nothing here is gated — what opens at ladder stage 3 is commit access, not the ability to read it.</p>
+        <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
+        <p class="source-note">Public and readable now — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot also exists in the comfy repo.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>Bound to 127.0.0.1 on purpose. Do not expose it — it drives a live game process, and its whole safety story is that only you can reach it.</div>
-          <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
+          <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see <a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">LICENSING.md</a>.</div>
         </div>
       </div>
     </details>
@@ -683,10 +689,11 @@
       <div class="tool-detail-body">
         <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/segment-3-flight-path-mod.md" target="_blank" rel="noreferrer">Segment 3 brief — the flight-path mod</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/tree/main/recipes/camera-gallery" target="_blank" rel="noreferrer">Landed raw material (recipes/camera-gallery/)</a></div>
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs</a></div>
+        <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
         <p class="source-note">Pruned from baseline, but fully preserved in the public comfy repo — nothing was lost.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>A flythrough shows other people&#39;s builds. Ask before publishing a gallery of a world you do not own.</div>
-          <div class="license"><strong>License</strong>MIT — everything recoverable here lives in the public comfy archive, which is MIT-licensed. A revival landing in this repo would land under BUSL-1.1; see LICENSING.md.</div>
+          <div class="license"><strong>License</strong>MIT — everything recoverable here lives in the public comfy archive, which is MIT-licensed. A revival landing in this repo would land under BUSL-1.1; see <a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">LICENSING.md</a>.</div>
         </div>
       </div>
     </details>
@@ -742,10 +749,11 @@
       <div class="tool-detail-body">
         <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/comfy-control-surface/PROOF.md" target="_blank" rel="noreferrer">What was proved (PROOF.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/tree/main/recipes/quest-submission-bridge" target="_blank" rel="noreferrer">Landed raw material (recipes/quest-submission-bridge/)</a></div>
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface</a></div>
+        <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
         <p class="source-note">The back half is preserved in the public comfy repo. The front half is live in this repo&#39;s mod at network/mod/ComfyNetworkSense/Core/Services/.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>A submission record carries a player&#39;s name and what they did. Keep the review inbox off any public surface.</div>
-          <div class="license"><strong>License</strong>Split: the live front half (in this repo&#39;s mod) is BUSL-1.1 per LICENSING.md; the recoverable back half lives in the public comfy archive under MIT.</div>
+          <div class="license"><strong>License</strong>Split: the live front half (in this repo&#39;s mod) is BUSL-1.1 per <a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">LICENSING.md</a>; the recoverable back half lives in the public comfy archive under MIT.</div>
         </div>
       </div>
     </details>
@@ -783,7 +791,7 @@
     </article><article class="ladder-step stage-4" role="listitem">
       <div class="ladder-stage">Stage 4</div>
       <h3>Owner</h3>
-      <p class="ladder-did">Sustained the contribution over time, and Derek agrees you are the person holding it.</p>
+      <p class="ladder-did">Sustained the contribution over time, and the project operator agrees you are the person holding it.</p>
       <div class="ladder-get"><strong>You get</strong>You set the tool&#39;s direction and you can say no. The ownership state moves to owned.</div>
       <div class="ladder-recorded"><a href="https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/OWNERS.md" target="_blank" rel="noreferrer">OWNERS.md</a>, plus the tool&#39;s ownership record.</div>
     </article></div>
