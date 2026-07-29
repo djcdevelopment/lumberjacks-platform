@@ -31,6 +31,66 @@
         "quest-submission-bridge"
       ],
       "url": "https://discord.com/channels/1531911987074957442/1531927004197425172"
+    },
+    "quest-picker": {
+      "key": "quest-picker",
+      "seed": "01-thread-seed-quest-picker.md",
+      "title": "Quest picker",
+      "thread_id": "1531977720790257866",
+      "message_ids": [
+        "1531977720790257866"
+      ],
+      "content_sha256": "89da56a67b73ac39682305a576aab6ecf09817895fdf09a03b05bbfcbc5cd81b",
+      "pinned": false,
+      "workbench_tools": [
+        "quest-picker"
+      ],
+      "url": "https://discord.com/channels/1531911987074957442/1531977720790257866"
+    },
+    "steward-view": {
+      "key": "steward-view",
+      "seed": "02-thread-seed-steward-view.md",
+      "title": "ComfyStewardView",
+      "thread_id": "1531977724711931956",
+      "message_ids": [
+        "1531977724711931956"
+      ],
+      "content_sha256": "c0c6fa7a9e5766da5a21e2814f0fb8f8f43a11954997502ae9e3a24327e6af11",
+      "pinned": false,
+      "workbench_tools": [
+        "steward-view"
+      ],
+      "url": "https://discord.com/channels/1531911987074957442/1531977724711931956"
+    },
+    "community-telemetry": {
+      "key": "community-telemetry",
+      "seed": "03-thread-seed-community-telemetry.md",
+      "title": "Community telemetry",
+      "thread_id": "1531977728390205613",
+      "message_ids": [
+        "1531977728390205613"
+      ],
+      "content_sha256": "7b5af032f866e95f45bd97a2ff56fe4b582e6a21528bb718ec8c59dbdb8f2190",
+      "pinned": false,
+      "workbench_tools": [
+        "community-telemetry"
+      ],
+      "url": "https://discord.com/channels/1531911987074957442/1531977728390205613"
+    },
+    "steam-join": {
+      "key": "steam-join",
+      "seed": "04-thread-seed-steam-join.md",
+      "title": "Steam join flow",
+      "thread_id": "1531977732769058898",
+      "message_ids": [
+        "1531977732769058898"
+      ],
+      "content_sha256": "f0952d45ce5ecff9bf02fbaa327ff0cbbbfa7ed7963cc71013d0db5177d59615",
+      "pinned": false,
+      "workbench_tools": [
+        "steam-join"
+      ],
+      "url": "https://discord.com/channels/1531911987074957442/1531977732769058898"
     }
   },
   "invite_href": "https://discord.gg/TSHTD38yV",
@@ -38,5 +98,5 @@
   "channel_id": "1531926985314668635",
   "channel_name": "workbench",
   "guild_id": "1531911987074957442",
-  "last_apply_utc": "2026-07-29T07:31:00Z"
+  "last_apply_utc": "2026-07-29T10:52:34Z"
 }
