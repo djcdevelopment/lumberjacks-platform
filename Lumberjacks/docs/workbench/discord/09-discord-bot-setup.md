@@ -1,56 +1,201 @@
-# Discord bot setup for feedback exports (one-time)
+# Discord bot setup (one-time)
 
-A read-only bot whose only job is letting you run
-[DiscordChatExporter](https://github.com/Tyrrrz/DiscordChatExporter) against the
-workbench forum category, producing the `--export-dir` input for
-`tools/workbench/distill_feedback.py`. The bot never posts; the distiller never
-calls Discord itself, it only reads files DiscordChatExporter already saved.
+One bot, three jobs, all of them plumbing:
 
-## Create and invite the bot
+1. **Provision the forum from this repo** — create `#workbench` as a Forum channel with
+   the 8-tag taxonomy in [`07-forum-tags-setup.md`](07-forum-tags-setup.md), open the six
+   posts from the seed files, pin the guideline post.
+2. **Keep the posts honest** — when a seed file changes in the repo, show the diff and
+   update the live post after you approve it.
+3. **Collect feedback** — export forum threads into the JSON that
+   `tools/workbench/distill_feedback.py` reads.
 
-1. [Discord Developer Portal](https://discord.com/developers/applications) > **New
-   Application** > name it > create.
-2. **Bot** > **Privileged Gateway Intents** > enable **Message Content Intent**
-   (otherwise every export comes back with empty `content`). Leave every other
-   permission toggle on that page off; permissions are granted at invite time.
-3. **Bot > Token > Reset Token**, confirm, copy immediately -- shown once. Treat
-   it like a password; it is not committed anywhere.
-4. **OAuth2 > General**, copy the **Application ID**, then open (replacing
-   `YOUR_APP_ID`; `66560` = View Channels + Read Message History and nothing
-   else -- "read messages" is the same bit as View Channels today, no separate
-   checkbox exists for it):
-   ```
-   https://discord.com/oauth2/authorize?scope=bot&permissions=66560&client_id=YOUR_APP_ID
-   ```
-5. Once it joins, open the workbench forum category's settings > **Permissions**
-   > add the bot > confirm only View Channels and Read Message History are
-   checked. Deny View Channels for the bot everywhere else so it only sees that
-   category.
+Everything runs through one script:
+[`tools/workbench/discord/workbench_discord.py`](../../../../tools/workbench/discord/workbench_discord.py).
+Standard library only, no install step, no dependency on the operator's local model
+fleet, and nothing left running between sessions — you run it, it converges, it exits.
 
-## Find your IDs
+## What this bot will never do
 
-**Settings > Advanced > Developer Mode**, then right-click a server or a
-channel/thread for **Copy Server ID** / **Copy Channel ID**.
+It does structure. It never does conversation. There is no code path that sends a
+sentence nobody wrote in this repo: every message body is a seed file, rendered verbatim.
+It never replies, reacts, DMs, or mentions anyone (`allowed_mentions` is empty on every
+write). Replies to the community come from you, on your batch rhythm.
 
-## Export, then distill
+`00-announcement.md` is on a hardcoded denylist. No flag posts it, because announcing is
+a decision, not a provisioning step. Posting it stays a manual action (DEREK-BATCH-1
+item 10). Making the bot able to do that would be a code change plus a checklist item.
 
+It also never deletes. A tag it doesn't recognise, a post you wrote by hand, a message
+that would have to disappear for content to shrink — each is reported and left alone.
+
+## 1. Create the application
+
+1. [Discord Developer Portal](https://discord.com/developers/applications) → **New
+   Application** → name it → create.
+2. **Bot** → **Privileged Gateway Intents** → enable **Message Content Intent**. Without
+   it every exported message comes back with empty `content`, so job 3 silently produces
+   nothing. Leave the other toggles off; permissions are granted at invite time.
+3. **Bot → Token → Reset Token**, confirm, copy immediately — it is shown once.
+
+## 2. Put the token outside this repo
+
+The token is a password. It never gets committed, pasted into a doc, or typed into a
+command line that lands in shell history. The script looks for it in this order:
+
+1. `$env:WORKBENCH_DISCORD_TOKEN`
+2. the file named by `$env:WORKBENCH_DISCORD_TOKEN_FILE`
+3. `%USERPROFILE%\.baseline\workbench-discord.token`
+
+The default file is the easy one — create it once:
+
+```bash
+mkdir -p ~/.baseline && printf '%s' 'PASTE_TOKEN_HERE' > ~/.baseline/workbench-discord.token
 ```
-# Whole guild, including forum threads, as JSON:
+
+The script refuses to read a token from anywhere inside the repository, and `.gitignore`
+blocks `*.token` / `.env` as a second line of defence. Neither is a substitute for
+keeping it in your profile directory.
+
+## 3. Invite it with the minimum permissions
+
+```bash
+python tools/workbench/discord/workbench_discord.py invite --app-id YOUR_APP_ID
+```
+
+That prints the permission set and the exact URL. The integer is **326417583120**:
+Manage Channels, View Channels, Send Messages, Read Message History, Manage Threads,
+Create Public Threads, Send Messages in Threads. No Administrator, no Manage Roles, no
+Manage Server, no Mention Everyone, no moderation bits.
+
+Manage Channels is the only broad one, and it is there so the bot can create the forum
+channel and edit its tag list. **Tighter alternative:** create the empty `#workbench`
+Forum channel yourself first, invite the bot without Manage Channels, then grant Manage
+Channels to the bot on that one channel in its permission settings. The script works
+either way — it adopts an existing channel by name.
+
+After it joins: open the `#workbench` channel settings → **Permissions** → add the bot,
+and deny **View Channels** for it at the server level so it can only see this one
+channel. It has no reason to read anything else.
+
+## 4. Provision the forum
+
+```bash
+python tools/workbench/discord/workbench_discord.py check
+```
+
+Repo-only sanity pass — no token, no network. Prints the taxonomy it parsed out of the
+07 doc, the six posts, their tags, and any post that cannot be published yet.
+
+```bash
+python tools/workbench/discord/workbench_discord.py plan
+```
+
+Reads the live server, computes the difference, prints it, and writes an approval receipt
+under `tools/workbench/discord/receipts/`. **Nothing is written to Discord by `plan`.**
+Add `--offline` to predict against an empty server without a token — that is how the
+pre-approval receipt in that folder was produced.
+
+Read the receipt. If it is what you want in the server:
+
+```bash
+python tools/workbench/discord/workbench_discord.py apply --yes --expect-plan <hash-from-the-receipt>
+```
+
+`--yes` is required; without it the script prints the plan and refuses. `--expect-plan`
+makes it refuse if anything changed since the receipt you read — drop it if you don't
+care. Thread ids and URLs land in `tools/workbench/discord/provision-state.json`, which
+is what fills `discussion.href` in `workbench.json` later.
+
+Re-running is safe and is the point: `apply` converges. A tag someone deleted comes back,
+an edited pin is restored to the repo text, a missing post is recreated. A run with
+nothing to do says so and exits.
+
+### The catalog links gate
+
+Seeds `01`–`04` carry `<ONEPAGER-URL>` and `<ACCESS-URL>`. Those resolve from
+`workbench.json` — the one-pager is the tool's anchor on the catalog page, the access
+link is its `access.href` — but only once the site is live. Until then those four posts
+are **blocked**, so the bot cannot put a literal `<ONEPAGER-URL>` in front of the
+community, and cannot link a page that 404s.
+
+Before the `/workbench` deploy you can still provision the channel, the tags, the pinned
+guideline post and the recoverable-pieces post. After the deploy, either set
+`site_base_url` in `provision.json` or pass it once:
+
+```bash
+python tools/workbench/discord/workbench_discord.py --site-base-url https://comfy-p7.duckdns.org plan
+```
+
+and the remaining four unblock.
+
+## 5. Content maintenance
+
+When a seed file changes, run `plan` again. It diffs the live post against the repo and
+lists what would be edited; `apply` performs the edit. Two limits worth knowing:
+
+- **A bot can only edit its own messages.** If a post was pasted by hand, the script
+  reports it as unmaintainable rather than pretending. That is the reason to let the bot
+  create the posts in the first place.
+- **Content can grow, not shrink.** Adding paragraphs appends a message; removing enough
+  text that a message would disappear is reported and left for you, because deleting a
+  posted message is not something a script should decide.
+
+Long seeds are split across several messages in the same thread on paragraph boundaries
+(Discord caps one message at 2000 characters). No "(1/2)" markers — that texture is
+exactly what this is avoiding.
+
+## 6. Feedback export → the candidate journal
+
+```bash
+python tools/workbench/discord/workbench_discord.py export --out ../workbench-exports
+python tools/workbench/distill_feedback.py --export-dir ../workbench-exports
+```
+
+`export` writes one DiscordChatExporter-shaped JSON file per thread — the same shape the
+distiller already reads, so nothing downstream changes. Messages the bot itself posted
+are left out: they are seed files this repo already holds, and the distiller's keyword
+heuristics would otherwise file our own "errors pasted verbatim" line as a bug report.
+
+Keep the export directory outside the repo (or gitignored). It contains real display
+names next to what people said — the same reason
+`tools/workbench/candidate-issues-README.md` calls the candidate journal internal-only.
+
+New candidates land in `Lumberjacks/docs/workbench/candidate-issues.jsonl` for your
+weekly skim; anything by you or already recorded is skipped.
+
+### DiscordChatExporter still works
+
+[DiscordChatExporter](https://github.com/Tyrrrz/DiscordChatExporter) remains a valid way
+to produce the same input, and is the better tool if you want HTML transcripts or a whole
+guild at once. The same bot token works:
+
+```bash
 DiscordChatExporter.Cli exportguild -t "BOT_TOKEN" -g GUILD_ID -f Json --include-threads all -o ./exports/
-
-# One channel or thread by ID instead:
-DiscordChatExporter.Cli export -t "BOT_TOKEN" -c CHANNEL_ID -f Json -o ./exports/
-
-# List channel/thread IDs first, if you don't have them:
-DiscordChatExporter.Cli channels -t "BOT_TOKEN" -g GUILD_ID
 ```
 
-`-f Json` is required -- the distiller only reads DiscordChatExporter's JSON
-export shape, not HTML or plain text. Then:
+`-f Json` is required — the distiller reads that shape only. Note that DCE exports the
+bot's own posts too, so a DCE-fed run will surface a few candidates from our own seed
+text; dismiss them once.
 
-```
-python tools/workbench/distill_feedback.py --export-dir ./exports
-```
+## Finding IDs
 
-New candidates land in `Lumberjacks/docs/workbench/candidate-issues.jsonl` for
-your weekly skim; anything by you or already recorded is skipped.
+**Settings → Advanced → Developer Mode**, then right-click a server or channel for **Copy
+Server ID** / **Copy Channel ID**. The guild id is already in
+`tools/workbench/discord/provision.json`.
+
+## When something goes wrong
+
+| Symptom | Cause |
+|---|---|
+| `error: no bot token` | Step 2 — env var unset and no token file. |
+| `HTTP 401` | Token was reset in the portal; copy the new one. |
+| `HTTP 403 Missing Access` | The bot cannot see `#workbench`; add it in the channel's permission settings. |
+| `HTTP 403 Missing Permissions` on create | Invited without Manage Channels — re-invite with the URL from step 3, or create the channel by hand. |
+| Exported messages have empty `content` | Message Content Intent is off (step 1.2). |
+| `expected 8 tags ... parsed N` | `07-forum-tags-setup.md` changed shape. Fix the doc or the parser — the tool refuses to guess a taxonomy. |
+| Post reported as created by hand | A human pasted it. Delete it and let the bot recreate it, or keep maintaining that one by hand. |
+
+`python tools/workbench/discord/workbench_discord.py self-test` runs the whole thing —
+parsing, placeholder guard, chunking, provisioning, drift repair, export, and the
+handoff into `distill_feedback.py` — against a simulated guild. No token, no network.

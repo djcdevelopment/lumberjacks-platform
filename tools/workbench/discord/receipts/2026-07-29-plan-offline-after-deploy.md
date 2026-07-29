@@ -1,0 +1,169 @@
+# Workbench Discord provisioning receipt
+
+- Generated: 2026-07-29T06:58:59Z (UTC)
+- Guild: `1531911987074957442`
+- Channel: `#workbench` (forum)
+- Plan hash: `af1ec8477a6d`
+- Mode: **OFFLINE PREDICTION** -- nothing was written to Discord.
+
+> Offline mode assumes the server is empty (no `#workbench` channel, no posts). It is a prediction from repo files, not a reading of the live server. Re-run `plan` with a token to confirm against Discord before applying.
+
+## What this run will never do
+
+- Post `00-announcement.md`. It is on a hardcoded denylist; no flag posts it.
+- Write a sentence nobody wrote in the repo. Every message body is a seed file, verbatim.
+- Reply, react, DM, or mention anyone (`allowed_mentions` is empty on every write).
+- Delete a tag, a post, or a message. Shrinking content is reported and left to a human.
+
+## Channel
+
+- Post guidelines: "One post per topic. Pick one tag; it's how the reading pass gets sorted."
+- Require people to select tags: ON
+- Sort: recent_activity
+
+## Tag taxonomy
+
+Parsed from `Lumberjacks/docs/workbench/discord/07-forum-tags-setup.md` -- the doc is the source of truth.
+
+| # | Tag | Who can apply it |
+|---|---|---|
+| 1 | `question` | anyone posting |
+| 2 | `bug` | anyone posting |
+| 3 | `claiming a task` | anyone posting |
+| 4 | `first task done` | anyone posting |
+| 5 | `needs-derek` | status -- Derek + contributors with triage rights |
+| 6 | `answered` | status -- Derek + contributors with triage rights |
+| 7 | `resolved` | status -- Derek + contributors with triage rights |
+| 8 | `ladder: claimed` | status -- Derek + contributors with triage rights |
+
+## Posts
+
+| Post title | Seed | Tag | Pinned | Messages | State |
+|---|---|---|---|---|---|
+| How this works (read me first) | `05-pinned-how-this-works.md` | (none) | yes | 2 | to create |
+| Quest picker | `01-thread-seed-quest-picker.md` | question | no | 1 | to create |
+| ComfyStewardView | `02-thread-seed-steward-view.md` | question | no | 1 | to create |
+| Community telemetry | `03-thread-seed-community-telemetry.md` | question | no | 1 | to create |
+| Steam join flow | `04-thread-seed-steam-join.md` | question | no | 1 | to create |
+| Recoverable pieces | `06-thread-seed-recoverable.md` | question | no | 2 | to create |
+
+### How this works (read me first)
+
+First message (1993 chars of 2000):
+
+```
+**How this works (read me first)**
+
+One read, and every thread below makes sense.
+
+**Reply rhythm**
+
+I'm one person running this alongside everything else. I read every thread. Replies land in
+batches, roughly twice a week — not the minute you post. If a thread goes quiet for a few days,
+... (31 more lines)
+```
+
+Continues in 1 more message(s) in the same thread (the body is 2813 chars; Discord caps one message at 2000). Split on paragraph boundaries, no part markers.
+
+### Quest picker
+
+First message (1581 chars of 2000):
+
+```
+**Quest picker + absorption engine**
+
+What it is: your guild's real quest tracker, harvested into one self-contained web page. Open it,
+check off the quests you're actually chasing, and it saves a small `quest-view.json` file to your
+computer — your own personal list, nobody else sees it unless you use it further. The already-built
+page is sitting in the repo, so opening it needs nothing installed, just a browser.
+
+If you already run the ComfyNetworkSense mod, the file you save gets read by the mod too — that
+... (21 more lines)
+```
+
+### ComfyStewardView
+
+First message (1671 chars of 2000):
+
+```
+**ComfyStewardView**
+
+What it is: a separate little app (Java, runs on your own machine) that reads a Valheim world save
+file — the `.db` — and turns it into a map you can click around: build density, portals, players,
+containers, tombstones, signs, who owns what. It's not connected to the live server and it doesn't
+watch anyone play. You point it at a copy of a save file and it parses locally, once.
+
+It's already real — the public repo builds a working app, and it's been used to steward
+... (24 more lines)
+```
+
+### Community telemetry
+
+First message (1814 chars of 2000):
+
+```
+**Community telemetry**
+
+What it is: a live, aggregates-only view of what's happening on the server — a tick-health panel,
+a gameplay-events timeline, a local-testing panel. The API behind it is tested to refuse to ever
+return a player ID, name, or position — that's enforced by a test suite, not just a promise. The
+live page reads straight off the real server and is open right now, no install, no login.
+
+Honest status: what's local-only, at least for now, is the rest of it — the full stack that
+... (23 more lines)
+```
+
+### Steam join flow
+
+First message (1591 chars of 2000):
+
+```
+**Steam join flow**
+
+What it is: the mechanism meant to get a new player from clicking a link to playing with the mod
+installed, no config file to hand-edit. An invite link hands off to a Steam sign-in, a one-time
+token turns into a personalized mod-pack zip with your setup already baked in, and the same path
+handles later updates and reissue.
+
+To be clear up front: it works, end to end, today — but it isn't open. It only runs for a small
+... (22 more lines)
+```
+
+### Recoverable pieces
+
+First message (1888 chars of 2000):
+
+```
+**Two pieces that got cut for time — up for revival**
+
+These two got pruned out of the repo a while back. Not because they failed — both proved
+themselves before I ran out of time to carry them further. Nothing runs today; both are sitting in
+the public archive as working code, just not wired back in.
+
+**Camera flythrough → gallery**
+
+... (20 more lines)
+```
+
+Continues in 1 more message(s) in the same thread (the body is 2935 chars; Discord caps one message at 2000). Split on paragraph boundaries, no part markers.
+
+## Actions
+
+- **CREATE** #workbench -- forum channel, sort=recent_activity, 8 tags, guidelines set
+- **UPDATE** #workbench -- turn on Require people to select tags
+- **CREATE** "How this works (read me first)" -- forum post from 05-pinned-how-this-works.md (2 message(s), tag: no tag), pinned
+- **CREATE** "Quest picker" -- forum post from 01-thread-seed-quest-picker.md (1 message(s), tag: question)
+- **CREATE** "ComfyStewardView" -- forum post from 02-thread-seed-steward-view.md (1 message(s), tag: question)
+- **CREATE** "Community telemetry" -- forum post from 03-thread-seed-community-telemetry.md (1 message(s), tag: question)
+- **CREATE** "Steam join flow" -- forum post from 04-thread-seed-steam-join.md (1 message(s), tag: question)
+- **CREATE** "Recoverable pieces" -- forum post from 06-thread-seed-recoverable.md (2 message(s), tag: question)
+
+## Approval
+
+Derek: if the above is what you want to appear in the server, run
+
+```
+python tools/workbench/discord/workbench_discord.py apply --yes --expect-plan af1ec8477a6d
+```
+
+Thread ids and URLs land in `tools/workbench/discord/provision-state.json` for the workbench.json `discussion.href` fill.

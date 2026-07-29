@@ -1,0 +1,123 @@
+# Workbench Discord provisioning receipt
+
+- Generated: 2026-07-29T06:58:59Z (UTC)
+- Guild: `1531911987074957442`
+- Channel: `#workbench` (forum)
+- Plan hash: `6aba648cba55`
+- Mode: **OFFLINE PREDICTION** -- nothing was written to Discord.
+
+> Offline mode assumes the server is empty (no `#workbench` channel, no posts). It is a prediction from repo files, not a reading of the live server. Re-run `plan` with a token to confirm against Discord before applying.
+
+## What this run will never do
+
+- Post `00-announcement.md`. It is on a hardcoded denylist; no flag posts it.
+- Write a sentence nobody wrote in the repo. Every message body is a seed file, verbatim.
+- Reply, react, DM, or mention anyone (`allowed_mentions` is empty on every write).
+- Delete a tag, a post, or a message. Shrinking content is reported and left to a human.
+
+## Channel
+
+- Post guidelines: "One post per topic. Pick one tag; it's how the reading pass gets sorted."
+- Require people to select tags: ON
+- Sort: recent_activity
+
+## Tag taxonomy
+
+Parsed from `Lumberjacks/docs/workbench/discord/07-forum-tags-setup.md` -- the doc is the source of truth.
+
+| # | Tag | Who can apply it |
+|---|---|---|
+| 1 | `question` | anyone posting |
+| 2 | `bug` | anyone posting |
+| 3 | `claiming a task` | anyone posting |
+| 4 | `first task done` | anyone posting |
+| 5 | `needs-derek` | status -- Derek + contributors with triage rights |
+| 6 | `answered` | status -- Derek + contributors with triage rights |
+| 7 | `resolved` | status -- Derek + contributors with triage rights |
+| 8 | `ladder: claimed` | status -- Derek + contributors with triage rights |
+
+## Posts
+
+| Post title | Seed | Tag | Pinned | Messages | State |
+|---|---|---|---|---|---|
+| How this works (read me first) | `05-pinned-how-this-works.md` | (none) | yes | 2 | to create |
+| Quest picker | `01-thread-seed-quest-picker.md` | question | no | 1 | BLOCKED |
+| ComfyStewardView | `02-thread-seed-steward-view.md` | question | no | 1 | BLOCKED |
+| Community telemetry | `03-thread-seed-community-telemetry.md` | question | no | 1 | BLOCKED |
+| Steam join flow | `04-thread-seed-steam-join.md` | question | no | 1 | BLOCKED |
+| Recoverable pieces | `06-thread-seed-recoverable.md` | question | no | 2 | to create |
+
+### How this works (read me first)
+
+First message (1993 chars of 2000):
+
+```
+**How this works (read me first)**
+
+One read, and every thread below makes sense.
+
+**Reply rhythm**
+
+I'm one person running this alongside everything else. I read every thread. Replies land in
+batches, roughly twice a week — not the minute you post. If a thread goes quiet for a few days,
+... (31 more lines)
+```
+
+Continues in 1 more message(s) in the same thread (the body is 2813 chars; Discord caps one message at 2000). Split on paragraph boundaries, no part markers.
+
+### Quest picker
+
+**BLOCKED** -- unresolved placeholder(s) <ACCESS-URL>, <ONEPAGER-URL> -- site_base_url is not set, so the catalog page and download links do not exist yet (fill it after the /workbench deploy)
+
+### ComfyStewardView
+
+**BLOCKED** -- unresolved placeholder(s) <ACCESS-URL>, <ONEPAGER-URL> -- site_base_url is not set, so the catalog page and download links do not exist yet (fill it after the /workbench deploy)
+
+### Community telemetry
+
+**BLOCKED** -- unresolved placeholder(s) <ACCESS-URL>, <ONEPAGER-URL> -- site_base_url is not set, so the catalog page and download links do not exist yet (fill it after the /workbench deploy)
+
+### Steam join flow
+
+**BLOCKED** -- unresolved placeholder(s) <ACCESS-URL>, <ONEPAGER-URL> -- site_base_url is not set, so the catalog page and download links do not exist yet (fill it after the /workbench deploy)
+
+### Recoverable pieces
+
+First message (1888 chars of 2000):
+
+```
+**Two pieces that got cut for time — up for revival**
+
+These two got pruned out of the repo a while back. Not because they failed — both proved
+themselves before I ran out of time to carry them further. Nothing runs today; both are sitting in
+the public archive as working code, just not wired back in.
+
+**Camera flythrough → gallery**
+
+... (20 more lines)
+```
+
+Continues in 1 more message(s) in the same thread (the body is 2935 chars; Discord caps one message at 2000). Split on paragraph boundaries, no part markers.
+
+## Actions
+
+- **CREATE** #workbench -- forum channel, sort=recent_activity, 8 tags, guidelines set
+- **UPDATE** #workbench -- turn on Require people to select tags
+- **CREATE** "How this works (read me first)" -- forum post from 05-pinned-how-this-works.md (2 message(s), tag: no tag), pinned
+- **BLOCKED** "Quest picker" -- unresolved placeholder(s) <ACCESS-URL>, <ONEPAGER-URL> -- site_base_url is not set, so the catalog page and download links do not exist yet (fill it after the /workbench deploy)
+- **BLOCKED** "ComfyStewardView" -- unresolved placeholder(s) <ACCESS-URL>, <ONEPAGER-URL> -- site_base_url is not set, so the catalog page and download links do not exist yet (fill it after the /workbench deploy)
+- **BLOCKED** "Community telemetry" -- unresolved placeholder(s) <ACCESS-URL>, <ONEPAGER-URL> -- site_base_url is not set, so the catalog page and download links do not exist yet (fill it after the /workbench deploy)
+- **BLOCKED** "Steam join flow" -- unresolved placeholder(s) <ACCESS-URL>, <ONEPAGER-URL> -- site_base_url is not set, so the catalog page and download links do not exist yet (fill it after the /workbench deploy)
+- **CREATE** "Recoverable pieces" -- forum post from 06-thread-seed-recoverable.md (2 message(s), tag: question)
+
+## Approval
+
+4 item(s) are blocked and will be skipped. Resolve them or accept the partial run.
+
+Derek: if the above is what you want to appear in the server, run
+
+```
+python tools/workbench/discord/workbench_discord.py apply --yes --expect-plan 6aba648cba55
+```
+
+Thread ids and URLs land in `tools/workbench/discord/provision-state.json` for the workbench.json `discussion.href` fill.

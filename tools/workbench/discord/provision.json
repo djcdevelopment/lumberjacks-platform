@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "_what_this_is": [
+    "Config-as-code for the #workbench Discord forum. The tag taxonomy and the post",
+    "guidelines are NOT duplicated here -- they are parsed out of",
+    "Lumberjacks/docs/workbench/discord/07-forum-tags-setup.md so that the doc Derek",
+    "reads stays the single source of truth. This file only says which seed file",
+    "becomes which post, what tag it opens with, and which workbench.json tool it",
+    "belongs to (that mapping is what fills discussion.href and the <ONEPAGER-URL> /",
+    "<ACCESS-URL> links after the deploy).",
+    "site_base_url stays null until /workbench is live. While it is null the four",
+    "posts carrying catalog links are BLOCKED from posting -- see the receipt."
+  ],
+  "guild_id": "1531911987074957442",
+  "site_base_url": null,
+  "tags_source": "07-forum-tags-setup.md",
+  "channel": {
+    "name": "workbench",
+    "require_tag": true,
+    "sort_order": "recent_activity"
+  },
+  "never_post": [
+    "00-announcement.md",
+    "08-saved-replies.md",
+    "09-discord-bot-setup.md"
+  ],
+  "posts": [
+    {
+      "key": "how-this-works",
+      "seed": "05-pinned-how-this-works.md",
+      "tags": [],
+      "pinned": true,
+      "workbench_tools": []
+    },
+    {
+      "key": "quest-picker",
+      "seed": "01-thread-seed-quest-picker.md",
+      "tags": ["question"],
+      "pinned": false,
+      "workbench_tools": ["quest-picker"]
+    },
+    {
+      "key": "steward-view",
+      "seed": "02-thread-seed-steward-view.md",
+      "tags": ["question"],
+      "pinned": false,
+      "workbench_tools": ["steward-view"]
+    },
+    {
+      "key": "community-telemetry",
+      "seed": "03-thread-seed-community-telemetry.md",
+      "tags": ["question"],
+      "pinned": false,
+      "workbench_tools": ["community-telemetry"]
+    },
+    {
+      "key": "steam-join",
+      "seed": "04-thread-seed-steam-join.md",
+      "tags": ["question"],
+      "pinned": false,
+      "workbench_tools": ["steam-join"]
+    },
+    {
+      "key": "recoverable",
+      "seed": "06-thread-seed-recoverable.md",
+      "tags": ["question"],
+      "pinned": false,
+      "workbench_tools": ["camera-gallery", "quest-submission-bridge"]
+    }
+  ]
+}
