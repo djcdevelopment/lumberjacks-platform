@@ -138,6 +138,16 @@ function validateNoSecrets(text) {
   }
 }
 
+function validateLicenseWording(text, label) {
+  // The project is public source under BSL 1.1 (converting to AGPL-3.0-only) — not an
+  // OSI-approved license, so the public page must not call it "open source". Historic
+  // journal records are append-only and exempt; everything newly written uses the
+  // accurate term. See LICENSING.md and the roadmap glossary entry.
+  if (/open[- ]source/i.test(text)) {
+    fail(`${label} says "open source" — this project is public source under BSL 1.1; use that term instead`);
+  }
+}
+
 function validate(roadmap, notes, rawText = '') {
   if (roadmap.schema_version !== 2) fail('roadmap.schema_version must be 2');
   requireString(roadmap.title, 'roadmap.title');
@@ -333,6 +343,7 @@ function validate(roadmap, notes, rawText = '') {
   }
 
   validateNoSecrets(rawText || `${JSON.stringify(roadmap)}\n${notes.map((note) => JSON.stringify(note)).join('\n')}`);
+  validateLicenseWording(JSON.stringify(roadmap), 'roadmap JSON');
 }
 
 function escapeHtml(value) {
@@ -1091,6 +1102,10 @@ function addNote(args) {
     verification: many(options, 'verification'),
     evidence: many(options, 'evidence'),
   };
+  validateLicenseWording(
+    [note.summary, note.impact, ...note.verification, ...note.evidence].join(' '),
+    'new roadmap note',
+  );
   const nextNotes = [...notes, note];
   roadmap.updated_at = at;
   const roadmapRaw = `${JSON.stringify(roadmap, null, 2)}\n`;
@@ -1138,6 +1153,7 @@ function checkStaged() {
   const removals = diff.split(/\r?\n/).filter((line) => line.startsWith('-{'));
   if (additions.length !== 1) fail(`staged commit must append exactly one journal record; found ${additions.length}`);
   if (removals.length !== 0) fail('historic roadmap journal records are append-only and may not be removed or modified');
+  for (const line of additions) validateLicenseWording(line, 'newly appended journal record');
 
   const stagedHtml = git(['show', `:${outputTracked}`]);
   const workingHtml = fs.readFileSync(outputPath, 'utf8');

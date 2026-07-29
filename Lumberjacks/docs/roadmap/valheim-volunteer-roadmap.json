@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy Ã— Valheim â€” Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-07-29T01:01:44.427Z",
+  "updated_at": "2026-07-29T01:03:14.328Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -91,6 +91,10 @@
     {
       "term": "Producer outbox",
       "definition": "Server-side retry state that preserves an eligible revision until the Gateway confirms durable acceptance."
+    },
+    {
+      "term": "Public source (BSL 1.1)",
+      "definition": "This project's source is publicly visible and licensed under Business Source License 1.1 with the community-steward safe harbor, converting to AGPL-3.0-only at the recorded Change Date. That is not an OSI-approved license, so the accurate term is public source, not the similar-sounding common one. See LICENSE and LICENSING.md. A 2026-07-23 journal record used the imprecise term; journal records are append-only, so it stands with this correction beside it."
     }
   ],
   "status_axes": [

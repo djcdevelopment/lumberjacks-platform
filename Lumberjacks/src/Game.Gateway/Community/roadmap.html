@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-29T01:01:44.427Z</span>
+        <span>Updated 2026-07-29T01:03:14.328Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -397,7 +397,7 @@
     <p>Acknowledge only an applied or safely superseded terminal outcome and retain the accounting result.</p>
     <div class="flow-boundary"><strong>Boundary</strong>Per-run retained volunteer proof is M3 work.</div>
   </article></div>
-          <details class="glossary"><summary>Terms used on this page</summary><dl><div><dt>ZDO</dt><dd>Zone Data Object: Valheim&#39;s persistent networked world-state record for an object such as a structure piece, item, creature, or environmental object.</dd></div><div><dt>Eligible revision</dt><dd>A ZDO revision selected by Valheim for the declared intercepted delivery scope during the strict test window. It is the denominator for the current cutover claim.</dd></div><div><dt>Strict window</dt><dd>A named evidence-producing interval in which eligible ZDO delivery must use Lumberjacks and any eligible native send is a failure.</dd></div><div><dt>Candidate relevance</dt><dd>The judgment that decides which world objects a particular peer should receive. Valheim still owns this plane today.</dd></div><div><dt>Recipient</dt><dd>An opaque Gateway delivery subject derived from an enrolled Steam account; clients never choose another recipient&#39;s identity.</dd></div><div><dt>Safely superseded</dt><dd>A received revision that no longer needs application because a validated newer state already makes its effect redundant.</dd></div><div><dt>Durable receipt</dt><dd>Gateway confirmation that an envelope is persisted and can survive normal process restart and replay.</dd></div><div><dt>Producer outbox</dt><dd>Server-side retry state that preserves an eligible revision until the Gateway confirms durable acceptance.</dd></div></dl></details>
+          <details class="glossary"><summary>Terms used on this page</summary><dl><div><dt>ZDO</dt><dd>Zone Data Object: Valheim&#39;s persistent networked world-state record for an object such as a structure piece, item, creature, or environmental object.</dd></div><div><dt>Eligible revision</dt><dd>A ZDO revision selected by Valheim for the declared intercepted delivery scope during the strict test window. It is the denominator for the current cutover claim.</dd></div><div><dt>Strict window</dt><dd>A named evidence-producing interval in which eligible ZDO delivery must use Lumberjacks and any eligible native send is a failure.</dd></div><div><dt>Candidate relevance</dt><dd>The judgment that decides which world objects a particular peer should receive. Valheim still owns this plane today.</dd></div><div><dt>Recipient</dt><dd>An opaque Gateway delivery subject derived from an enrolled Steam account; clients never choose another recipient&#39;s identity.</dd></div><div><dt>Safely superseded</dt><dd>A received revision that no longer needs application because a validated newer state already makes its effect redundant.</dd></div><div><dt>Durable receipt</dt><dd>Gateway confirmation that an envelope is persisted and can survive normal process restart and replay.</dd></div><div><dt>Producer outbox</dt><dd>Server-side retry state that preserves an eligible revision until the Gateway confirms durable acceptance.</dd></div><div><dt>Public source (BSL 1.1)</dt><dd>This project&#39;s source is publicly visible and licensed under Business Source License 1.1 with the community-steward safe harbor, converting to AGPL-3.0-only at the recorded Change Date. That is not an OSI-approved license, so the accurate term is public source, not the similar-sounding common one. See LICENSE and LICENSING.md. A 2026-07-23 journal record used the imprecise term; journal records are append-only, so it stands with this correction beside it.</dd></div></dl></details>
         </article>
       </div>
     </section>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260729010144-open-the-workbench-catalog-surface">
+        <div class="journal"><article class="journal-entry" id="note-20260729010314-correct-the-licensing-term-on-the-public-journal">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-29T01:03:14.328Z">2026-07-29T01:03:14.328Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Correct the licensing term on the public journal</h3>
+      <p><strong>Impact:</strong> A 2026-07-23 journal record used the wrong licensing term for this project. The accurate term is public source under Business Source License 1.1 with the community-steward safe harbor, converting to AGPL-3.0-only at the recorded Change Date. Journal records are append-only, so the original stands with this correction beside it; a glossary entry now defines the term, and the generator refuses the inaccurate phrase in any newly written note or roadmap field.</p>
+      <details><summary>Verification (1)</summary><ul><li>Guard proven fail-closed: a deliberately mislabeled test note was rejected before any file was written; render and check pass with the glossary entry present.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/scripts/roadmap.mjs; LICENSING.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260729010144-open-the-workbench-catalog-surface">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
