@@ -7,6 +7,26 @@ Grounding: [`docs/audit/2026-07-25-gcp-burn-rate-review.md`](../../../docs/audit
 (the burn memo — all dollar figures are its list-price estimates, ±20%, no invoiced truth yet),
 [`README.md`](README.md), [`RECONCILE-GAP.md`](RECONCILE-GAP.md).
 
+## Operator corrections — 2026-07-29 (these override the memo's framing)
+
+Derek's ground truth, recorded before tonight's driving session:
+
+1. **The spec history is deliberate, not waste.** The machine was vastly overspecced early
+   on purpose — limit-testing with **800+ headless connections** to simulate Gateway volume
+   and find the knee points. That era is over and its findings are banked.
+2. **2 vCPU / 16 GB is the floor.** The current shape (`n2-highmem-2` = 2/16) is *plenty
+   and correct* — the memo's 8 GB downsize options are **rejected** (see lever D, rewritten).
+3. **The disk keeps exploding because of us, not the game**: production-grade world backups
+   and push-time snapshot ceremony running during *dev iteration loops*. The world itself is
+   a saved world from another era on another server — an heirloom copy, already preserved
+   elsewhere. Good to know the machinery exists; it should not run at prod cadence during
+   dev. (New lever E.)
+4. **The "cohort" today is Derek's own three accounts** plus people who know him by name.
+   Downtime coordination is a ping to friends, not a product-hours commitment — C and D's
+   warnings are scaled accordingly.
+5. **Posture: local-first as much as possible; when on GCP, lean and mean** through
+   tonight's session, then a **full shakedown at end of night** (sequence at the bottom).
+
 ## Hard rule
 
 > **Do NOT `terraform apply` from `infra/gcp/p7`.** RECONCILE-GAP is OPEN: plan against the
@@ -145,12 +165,14 @@ kept) remain.
 
 ---
 
-## C. VM duty-cycle scheduling — the biggest lever, and a cohort decision
+## C. VM duty-cycle scheduling — the biggest lever
 
-> **⚠️ This VM is the LIVE alpha: the Valheim world AND the Gateway. While it is stopped, the
-> alpha cohort has no game world to join and no Gateway.** Before enabling any schedule, **post
-> the service hours in Discord first** and treat them as a commitment. This is a product-hours
-> decision wearing a cost hat.
+> The VM hosts the Valheim world + Gateway, so they're offline while it's stopped — but per
+> operator correction 4, today's players are Derek's own accounts and name-known friends.
+> **A quick ping to the handful is courteous; no product-hours commitment exists yet.** Revisit
+> the loud version of this warning when a real external cohort clears the readiness gates.
+> Given that, the **aggressive end (stopped except session windows) is the natural dev-season
+> default**, not the cautious 8h-nightly compromise.
 
 **What it saves (at ~$0.105/hr compute):**
 
@@ -233,30 +255,19 @@ log them mentally for the RECONCILE-GAP close-out; do not "fix" it with an apply
 
 ---
 
-## D. Right-size the machine type — ~$25–45/mo, needs one stop/start window
+## D. Machine type — REJECTED as written; one optional family check remains
 
-> **⚠️ Same live-alpha warning as C: the world and Gateway are down for the window (~5–10 min
-> including world reload). Post it in Discord first.**
+**Operator call (correction 2): the 8 GB downsizes are dead.** 2 vCPU / 16 GB is the declared
+floor — the ~9.1M-ZDO world + five-service stack keep the highmem shape. Do not run the
+memo's `n2-standard-2` / `e2-standard-2` triplet.
 
-**Options (memo's list, cheapest last):**
+**The one thing left worth a look at shakedown time:** a *same-shape family swap* —
+`n2-highmem-2` → `e2-highmem-2` (still 2 vCPU / 16 GB). The e2 family lists cheaper for the
+same shape, but **no number is stated here on purpose**: price it from lever A's invoiced
+data once it lands, and only bother if the delta is real. Same stop → `set-machine-type` →
+start mechanics as below, same three verifies, minutes to roll back.
 
-| Target | RAM | Saves vs n2-highmem-2 |
-|---|---|---|
-| `n2-standard-2` | 8 GB | ~$25/mo |
-| `e2-standard-2` | 8 GB | ~$45/mo |
-
-**The judgment call is memory headroom, and it's yours:** 16 GB is generous for a Valheim
-dedicated server, but this one carries a ~9.1M-ZDO world plus the five-service Lumberjacks
-stack. You know the real footprint. Measure before committing:
-
-```
-ssh comfy-p7 "free -h; sudo docker stats --no-stream"
-```
-
-If steady-state RSS + page cache comfortably fits under ~6–7 GB, 8 GB flies. If it's marginal,
-this lever waits — a swapping world server is worse than $45.
-
-**Do (memo's exact command triplet):**
+**Do (only for the optional e2-highmem-2 check — same-shape swap):**
 
 ```
 gcloud compute instances stop comfy-lumberjacks-p7 \
@@ -264,7 +275,7 @@ gcloud compute instances stop comfy-lumberjacks-p7 \
 
 gcloud compute instances set-machine-type comfy-lumberjacks-p7 \
   --project=lumberjacks-exp-20260711-djc --zone=us-west1-b \
-  --machine-type=n2-standard-2      # or e2-standard-2
+  --machine-type=e2-highmem-2      # same 2 vCPU / 16 GB shape — the floor holds
 
 gcloud compute instances start comfy-lumberjacks-p7 \
   --project=lumberjacks-exp-20260711-djc --zone=us-west1-b
@@ -289,17 +300,55 @@ verifies. Minutes, not drama.
 
 ---
 
+## E. Backup posture: prod cadence during dev is the disk bleed
+
+**What's happening (operator correction 3):** the valheim-server container's hourly
+production-grade world backups — plus push-time snapshot ceremony — run at prod cadence
+while the work is dev iteration. On a ~9.1M-ZDO world that compounds fast, and it's the
+actual reason "the HD keeps exploding." The world is an heirloom copy (saved world from an
+earlier era on another server) already preserved outside this VM; the dev/prod backup split
+already exists in this repo (env-driven — dev runs with backups OFF *on purpose*).
+
+**Do — confirm the exact switch on-box first (one grep), then flip to dev posture:**
+
+```
+ssh comfy-p7 "grep -i backup /etc/comfy-p7/environment; sudo docker inspect \$(sudo docker ps -qf name=valheim) --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -i backup"
+```
+
+Expect the image's `BACKUPS*` family (`BACKUPS=true/false`, cadence/retention vars). Then set
+the dev posture in `/etc/comfy-p7/environment` (back the file up first — same discipline as
+the promote script) and `sudo docker compose up -d --no-deps valheim-server` from
+`/opt/comfy/infra/gcp/p7`. **Re-arm rule:** prod cadence comes back on before any real
+external-cohort window — write that in the same environment-file comment so it can't be
+forgotten.
+
+**Verify:** the backups dir stops growing (`ssh comfy-p7 "du -sh <backups-path>"` before/after
+an hour); world saves themselves are untouched (the .db atomic-write save is a different
+mechanism — verify in files, not logs, per standing practice).
+
+**Rollback:** flip the env back, `up -d --no-deps valheim-server`. Minutes.
+
+Also at shakedown time: the daily `state-v2` snapshot schedule (7-day retention) is sized for
+prod trust; during dev season a sparser cadence is defensible — decide when the invoiced
+numbers from A show what it actually costs.
+
+---
+
 ## Decision table
 
 | Lever | $/mo saved | Risk | Your minutes |
 |---|---|---|---|
 | **A** Billing export (+budget) | $0 (buys truth) | none | ~10 |
 | **B** Delete 7 dead auto-snapshots | ~$4.6 (+$1.9 if precutover goes) | permanent; list-first; precutover = cutover rollback point | ~5 |
-| **C** Duty-cycle schedule | ~$25 (8h nightly) → ~$50–75 (aggressive) | **live alpha offline during window**; IP bills more while stopped; first-restart proof | ~15 + a Discord post |
-| **D** Right-size to 8 GB | ~$25 (n2) / ~$45 (e2) | **one live outage window**; memory headroom is your call | ~15 + a Discord post |
+| **C** Duty-cycle: stopped except sessions | up to ~$65–75 | world offline while stopped — ping the friends; first-restart proof pending | ~15 |
+| **D** e2-highmem-2 family swap (optional) | unknown until A prices it | one ~10-min outage window; same 2/16 shape | ~15, at shakedown |
+| **E** Dev backup posture | disk growth stops compounding | must re-arm before a real cohort window | ~10 |
 
-**Suggested tonight:** A now — it only pays if it starts accruing. B: run the list, eyeball,
-delete the seven; sleep on the precutover one if the cutover isn't fully trusted yet. C and D
-are real decisions, not chores — they stack (~$70–95/mo combined at the aggressive end), but
-both put the cohort's world offline on a rhythm, so pick with the cohort in mind and post the
-hours before the hours exist.
+**Tonight (lean and mean, per the operator):** run **A now** (export only accrues forward) and
+otherwise leave GCP alone while you drive the finish line.
+**End-of-night full shakedown, in order:** **B** (list, eyeball, delete the seven; precutover
+is a trust call) → **E** (flip to dev backup posture, write the re-arm rule) → **C** (set the
+schedule or just stop it when you log off; **watch the first restart once** — it's the last
+unproven claim) → **D-prime** (only if A's invoiced data shows the e2 swap is worth a window).
+Combined with the corrections, the realistic dev-season burn floor is the ~$14/mo
+storage+IP floor plus compute only for hours you're actually on.

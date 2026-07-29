@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-29T05:28:44.923Z</span>
+        <span>Updated 2026-07-29T05:38:43.959Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260729052844-stage-the-gcp-cost-and-cycle-time-runbook">
+        <div class="journal"><article class="journal-entry" id="note-20260729053843-correct-the-cost-runbook-to-operator-truth">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-29T05:38:43.959Z">2026-07-29T05:38:43.959Z</time>
+        <span class="pill note-kind">decision</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Correct the cost runbook to operator truth</h3>
+      <p><strong>Impact:</strong> The operator&#39;s corrections override the burn memo&#39;s framing: the early overspec was deliberate limit-testing with 800-plus headless connections, and 2 vCPU with 16 GB is the declared floor, so the 8 GB downsizes are rejected and only a same-shape e2-highmem-2 family swap remains, priced after invoiced data exists. The disk growth is self-inflicted prod-cadence backups running during dev loops on an heirloom world preserved elsewhere - a new lever flips the valheim-server to the existing dev backup posture with a written re-arm rule. Today&#39;s cohort is the operator&#39;s own three accounts plus name-known friends, so duty-cycle scheduling loses its product-hours weight and the aggressive stopped-except-sessions default becomes natural. Sequencing set: billing export tonight, full shakedown at end of night, first scheduled restart watched once as the last unproven claim.</p>
+      <details><summary>Verification (1)</summary><ul><li>Every changed dollar figure either traces to the memo or is explicitly deferred to invoiced data; the backup lever stages an on-box grep before any env change and preserves the atomic world-save mechanism untouched.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>infra/gcp/p7/RUNBOOK-cost-and-cycle.md; DECISIONS-PENDING.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260729052844-stage-the-gcp-cost-and-cycle-time-runbook">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
