@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "posts": {
+    "how-this-works": {
+      "key": "how-this-works",
+      "seed": "05-pinned-how-this-works.md",
+      "title": "How this works (read me first)",
+      "thread_id": "1531926993442967654",
+      "message_ids": [
+        "1531926993442967654",
+        "1531926998660812802"
+      ],
+      "content_sha256": "1cd6d54dffdef1aafb7df958e42780694da264d4530485846e9b8a1d80116cf2",
+      "pinned": true,
+      "workbench_tools": [],
+      "url": "https://discord.com/channels/1531911987074957442/1531926993442967654"
+    },
+    "recoverable": {
+      "key": "recoverable",
+      "seed": "06-thread-seed-recoverable.md",
+      "title": "Recoverable pieces",
+      "thread_id": "1531927004197425172",
+      "message_ids": [
+        "1531927004197425172",
+        "1531927007745806386"
+      ],
+      "content_sha256": "b169e95c8916773cecd0ac5fd6b4a0e65a5c45bed94999ff27175705dfc8b7cb",
+      "pinned": false,
+      "workbench_tools": [
+        "camera-gallery",
+        "quest-submission-bridge"
+      ],
+      "url": "https://discord.com/channels/1531911987074957442/1531927004197425172"
+    }
+  },
+  "channel_id": "1531926985314668635",
+  "channel_name": "workbench",
+  "guild_id": "1531911987074957442",
+  "last_apply_utc": "2026-07-29T07:31:00Z"
+}
