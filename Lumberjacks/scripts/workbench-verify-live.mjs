@@ -34,7 +34,32 @@ const workbenchPath = path.join(repoRoot, 'docs/workbench/workbench.json');
 const provisionStatePath = path.join(repoRoot, '../tools/workbench/discord/provision-state.json');
 const localHtmlPath = path.join(repoRoot, 'src/Game.Gateway/Community/workbench.html');
 const receiptPath = path.join(repoRoot, '../captures/workbench-verify-live.json');
-const tokenPath = path.join(os.homedir(), '.baseline', 'workbench-discord.token');
+
+// Token resolution mirrors tools/workbench/discord/workbench_discord.py exactly: the env var,
+// then an env-named file, then the two default files under ~/.baseline (a raw token, or a
+// KEY=VALUE env file). One resolution rule for both tools, so "the bot works but the verifier
+// cannot see the token" is not a reachable state.
+const tokenCandidatePaths = [
+  path.join(os.homedir(), '.baseline', 'workbench-discord.token'),
+  path.join(os.homedir(), '.baseline', 'discord.env'),
+];
+const TOKEN_KEY_NAMES = ['WORKBENCH_DISCORD_TOKEN', 'DISCORD_BOT_TOKEN', 'DISCORD_TOKEN', 'BOT_TOKEN', 'TOKEN', 'KEY'];
+
+function loadBotToken() {
+  if (process.env.WORKBENCH_DISCORD_TOKEN?.trim()) return process.env.WORKBENCH_DISCORD_TOKEN.trim();
+  const envFile = process.env.WORKBENCH_DISCORD_TOKEN_FILE;
+  for (const candidate of envFile ? [envFile, ...tokenCandidatePaths] : tokenCandidatePaths) {
+    if (!fs.existsSync(candidate)) continue;
+    const text = fs.readFileSync(candidate, 'utf8').trim();
+    if (!text) continue;
+    if (!text.includes('=')) return text;
+    for (const line of text.split(/\r?\n/)) {
+      const match = line.match(/^([A-Z_]+)\s*=\s*(.+)$/);
+      if (match && TOKEN_KEY_NAMES.includes(match[1])) return match[2].trim();
+    }
+  }
+  return null;
+}
 
 const DEFAULT_BASE_URL = 'https://am4.tail8e749c.ts.net';
 const DISCORD_API = 'https://discord.com/api/v10';
@@ -183,7 +208,7 @@ async function runChecks(options) {
     if (!botToken) {
       record('discord', `${label} destination is live`, href, allowUnverifiedThreads
         ? { ok: true, warn: 'unverified — no bot token available' }
-        : { ok: false, detail: `no bot token at ${tokenPath} — the thread cannot be verified (pass --allow-unverified-threads to downgrade to a warning)` });
+        : { ok: false, detail: 'no bot token found (env WORKBENCH_DISCORD_TOKEN, or ~/.baseline/workbench-discord.token / discord.env) — the thread cannot be verified (pass --allow-unverified-threads to downgrade to a warning)' });
       continue;
     }
     try {
@@ -353,9 +378,10 @@ Options:
   --base-url <url>            public origin to verify against (default ${DEFAULT_BASE_URL})
   --allow-unverified-threads  downgrade missing-bot-token thread checks to warnings
 
-The bot token is read from ${tokenPath} when present. The receipt lands at
-captures/workbench-verify-live.json. This never runs from render/check — live state belongs to
-the release path only.`);
+The bot token resolves like the provisioning bot's: WORKBENCH_DISCORD_TOKEN, then
+WORKBENCH_DISCORD_TOKEN_FILE, then ~/.baseline/workbench-discord.token or discord.env. The
+receipt lands at captures/workbench-verify-live.json. This never runs from render/check — live
+state belongs to the release path only.`);
 }
 
 export {
@@ -385,7 +411,7 @@ if (invokedAsCli) {
     usage();
     process.exitCode = 2;
   } else {
-    const botToken = fs.existsSync(tokenPath) ? fs.readFileSync(tokenPath, 'utf8').trim() : null;
+    const botToken = loadBotToken();
     try {
       const receipt = await runChecks({
         mode,
