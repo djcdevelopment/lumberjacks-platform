@@ -33,7 +33,7 @@ reviewed by a human, approved, and turned into an exact guild command on the oth
 Both are archived here, working code and all: <https://github.com/djcdevelopment/comfy/tree/main/handoffs>
 
 Reviving either one — getting the core loop running again, even rough — is a real claim on it, not
-a warm-up exercise. It jumps you straight to Steward on the ladder (see the pinned post).
+a warm-up exercise. It jumps you straight to Contributor on the ladder (see the pinned post).
 
 First things to try:
 

@@ -13,7 +13,7 @@ live page reads straight off the real server and is open right now, no install, 
 Honest status: what's local-only, at least for now, is the rest of it — the full stack that
 produces this (the database, gateway, and telemetry services together) and the private operator
 viewer both currently only run on my machine, and that code isn't public yet. It opens once
-someone's a Steward on this piece (see the pinned how-this-works post). So today's version of
+someone's a Contributor on this piece (see the pinned how-this-works post). So today's version of
 "running" this tool is watching the live page closely, not standing up your own copy — that part's
 still a step ahead.
 
@@ -26,7 +26,7 @@ First things to try:
   few minutes — it's most interesting while someone's actually playing. Tell us if the numbers
   make sense, and whether the "sample data" banners are clear about what's real and what isn't.
 - **CT-2** — Tell us what aggregate you wish this page showed and doesn't. You don't need the code
-  for this one — it's genuinely useful on its own, and it's the list whoever ends up stewarding
+  for this one — it's genuinely useful on its own, and it's the list whoever ends up contributing to
   this piece will work from first.
 
 What a useful reply looks like:

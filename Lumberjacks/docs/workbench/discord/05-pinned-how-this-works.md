@@ -18,7 +18,7 @@ that's pacing, not me ignoring you.
 When you post, pick one tag: **question**, **bug**, **claiming a task**, or **first task done**.
 That's it — the tag is how I sort my reading pass, so a good tag literally gets you a faster
 answer. You'll also see status tags (**needs-derek**, **answered**, **resolved**) come and go on
-posts; those are mine (and stewards', for their own tools). Don't worry about them.
+posts; those are mine (and contributors', for their own tools). Don't worry about them.
 
 **The ownership ladder**
 
@@ -31,10 +31,10 @@ Nothing here requires asking permission to start.
   worked.
 - **2 — Fixed one thing.** You completed one of the first tasks listed in a tool's thread and it
   landed. You get credited in `OWNERS.md`; the tool's state moves from unclaimed to **trying**.
-- **3 — Steward.** Two landed changes, or you revived a pruned piece back into something that
+- **3 — Contributor.** Two landed changes, or you revived a pruned piece back into something that
   runs, on your own. You get code access to that one piece — not the whole repo — and you triage
   its thread: you're the first read on new replies there. State moves to **claimed**.
-- **4 — Owner.** Sustained stewardship of a piece over time, and I agree you're the one holding
+- **4 — Owner.** Sustained contribution to a piece over time, and I agree you're the one holding
   it. You set direction for that piece. You can say no to a change — including from me. State
   moves to **owned**.
 

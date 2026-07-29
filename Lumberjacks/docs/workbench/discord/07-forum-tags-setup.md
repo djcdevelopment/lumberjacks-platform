@@ -20,7 +20,7 @@ Member-facing (people pick one when posting):
 3. `claiming a task` — announcing you're taking a listed first task
 4. `first task done` — evidence post for a finished first task
 
-Status (applied by you — and by a Stage-3 Steward on their own tool only):
+Status (applied by you — and by a Stage-3 Contributor on their own tool only):
 5. `needs-derek` — filtered view for the batch pass; apply on first skim, remove when answered
 6. `answered` — replied, waiting on the poster
 7. `resolved` — closed out
@@ -35,9 +35,9 @@ don't add tags until a real sorting need shows up twice.
 Filter the forum by `needs-derek` instead of reading every thread top to bottom. Apply
 tags as you close each one — tagging at close is faster than the re-scan it replaces.
 
-## Steward handoff (already in the pinned post's rules)
+## Contributor handoff (already in the pinned post's rules)
 
-Stage-3 Stewards re-tag posts on their own tool's threads. That's the first concrete thing
+Stage-3 Contributors re-tag posts on their own tool's threads. That's the first concrete thing
 "triage rights" means, and it costs you nothing to grant — the ledger already records who
 holds it.
 

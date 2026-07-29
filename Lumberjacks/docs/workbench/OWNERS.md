@@ -19,8 +19,8 @@ for it.
 | 0 | Curious | Read a tool's one-pager or thread and decided whether it's worth your evening. | A straight answer about what runs, what doesn't, and what it would cost you. Reading owes nobody anything. | Nowhere. No sign-up, no list. |
 | 1 | Ran it | Ran the tool locally and posted what happened in its thread — including the part where it broke. | Named in the thread. A report that it failed is worth exactly as much as a report that it worked. | The tool's Discord thread. |
 | 2 | Fixed one thing | Completed one of the first tasks listed on a tool's thread. | Credited here; the tool's ownership state moves from **unclaimed** to **trying**. | An entry below, stage 2. |
-| 3 | Steward | Landed two changes on a tool, or revived a recoverable piece back into something that runs, solo. | Code access to that one piece (not the whole repo) and triage rights on its thread. State moves to **claimed**. | An entry below, stage 3. |
-| 4 | Owner | Sustained the stewardship over time, and Derek agrees you're the one holding it. | Sets direction for that piece. Can say no to a change, including from Derek. State moves to **owned**. | An entry below, stage 4. |
+| 3 | Contributor | Landed two changes on a tool, or revived a recoverable piece back into something that runs, solo. | Code access to that one piece (not the whole repo) and triage rights on its thread. State moves to **claimed**. | An entry below, stage 3. |
+| 4 | Owner | Sustained the contribution over time, and Derek agrees you're the one holding it. | Sets direction for that piece. Can say no to a change, including from Derek. State moves to **owned**. | An entry below, stage 4. |
 
 Stepping back from a claim at any stage is one message in the tool's thread — no explanation
 required. It gets recorded as a new entry here too (see format below), moving the tool back toward

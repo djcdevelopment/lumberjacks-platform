@@ -34,7 +34,7 @@
     },
     {
       "stage": 3,
-      "name": "Steward",
+      "name": "Contributor",
       "what_you_did": "Landed two changes on a tool, or revived a recoverable piece back into something that runs.",
       "what_you_get": "Code access to that piece and you triage its thread. The tool's ownership state moves to claimed.",
       "recorded_in": "OWNERS.md, plus the tool's ownership record."
@@ -42,7 +42,7 @@
     {
       "stage": 4,
       "name": "Owner",
-      "what_you_did": "Sustained the stewardship over time, and Derek agrees you are the person holding it.",
+      "what_you_did": "Sustained the contribution over time, and Derek agrees you are the person holding it.",
       "what_you_get": "You set the tool's direction and you can say no. The ownership state moves to owned.",
       "recorded_in": "OWNERS.md, plus the tool's ownership record."
     }

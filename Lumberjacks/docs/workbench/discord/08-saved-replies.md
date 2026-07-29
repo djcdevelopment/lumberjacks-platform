@@ -42,7 +42,7 @@ becomes both a new saved reply AND an "Already answered" line in that tool's one
 ## SR-6 — Why is the main repo private / can I see the code
 
 > The archive repo (github.com/djcdevelopment/comfy) is public and holds the recoverable
-> pieces. The live repo opens per-piece: reach Steward on a tool (two landed changes, or
+> pieces. The live repo opens per-piece: reach Contributor on a tool (two landed changes, or
 > revive a pruned piece) and you get code access to that piece. That's the ladder working
 > as designed, not a paywall — the whole path is in the pinned post.
 
