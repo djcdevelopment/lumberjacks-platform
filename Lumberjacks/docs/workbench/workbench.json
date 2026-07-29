@@ -381,7 +381,12 @@
           "id": "MC-1",
           "title": "Run the gateway and list its tools from any MCP client, then post the tool list",
           "size": "small",
-          "done_when": "The tool list from your own client is in the thread, along with which client you used and anything in the setup that was not obvious."
+          "done_when": "The tool list from your own client is posted in the #workbench forum — this tool's own thread has not opened yet — along with which client you used and anything in the setup that was not obvious.",
+          "completion": {
+            "destination_kind": "main-forum",
+            "href": null,
+            "state": "actionable"
+          }
         }
       ],
       "ownership": {

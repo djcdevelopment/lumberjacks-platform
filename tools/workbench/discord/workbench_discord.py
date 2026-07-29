@@ -385,7 +385,10 @@ def resolve_urls(body: str, spec: PostSpec, tools: dict[str, dict], site_base: O
 
     Both are derived, never typed twice: the one-pager is the tool's anchor on the
     catalog page (workbench.mjs renders `<article id="{tool.id}">`), and the access
-    link is the tool's own access.href, made absolute when it is site-relative."""
+    link is the tool's own access.href, made absolute when it is site-relative. A
+    not-published tool has no access.href; there "get it" honestly means "read the
+    source", so the tool's public source.href stands in — never invented, only the
+    other field the catalog already carries."""
     if "<ONEPAGER-URL>" not in body and "<ACCESS-URL>" not in body:
         return body
     if not site_base:
@@ -399,6 +402,11 @@ def resolve_urls(body: str, spec: PostSpec, tools: dict[str, dict], site_base: O
     body = body.replace("<ONEPAGER-URL>", f"{site_base}/workbench#{tool['id']}")
     access = tool.get("access") or {}
     href = access.get("href")
+    if not (isinstance(href, str) and href):
+        source = tool.get("source") or {}
+        source_href = source.get("href")
+        if isinstance(source_href, str) and source_href:
+            href = source_href
     if isinstance(href, str) and href:
         absolute = f"{site_base}{href}" if href.startswith("/") else href
         body = body.replace("<ACCESS-URL>", absolute)
@@ -1645,7 +1653,7 @@ def run_self_test() -> bool:
     check([t.name for t in cfg.tags][:4] == ["question", "bug", "claiming a task", "first task done"], "member-facing tags parsed in order", f"{[t.name for t in cfg.tags][:4]}")
     check(all(t.moderated for t in cfg.tags[4:]) and not any(t.moderated for t in cfg.tags[:4]), "status tags marked moderated, member-facing tags not")
     check("ladder: claimed" in {t.name for t in cfg.tags}, "the ladder tag is present")
-    check(len(cfg.posts) == 6, "6 posts configured", f"got {len(cfg.posts)}")
+    check(len(cfg.posts) == 7, "7 posts configured", f"got {len(cfg.posts)}")
     check(any(p.pinned for p in cfg.posts), "one post is marked pinned")
     check(cfg.guidelines.startswith("One post per topic"), "post guidelines parsed from the doc", cfg.guidelines[:40])
     check("Contributor" in (DISCORD_DOCS / "05-pinned-how-this-works.md").read_text(encoding="utf-8"), "pinned seed uses the current ladder wording (Contributor)")
@@ -1657,13 +1665,15 @@ def run_self_test() -> bool:
     # --- placeholder guard ------------------------------------------------- #
     pre_deploy = [render_post(p, tools, None) for p in cfg.posts]
     blocked = [r for r in pre_deploy if r.blocked_reason]
-    check(len(blocked) == 4, "4 posts blocked pre-deploy on unresolved URLs", f"got {[r.title for r in blocked]}")
+    check(len(blocked) == 5, "5 posts blocked pre-deploy on unresolved URLs", f"got {[r.title for r in blocked]}")
     check(all("ONEPAGER-URL" in r.blocked_reason or "ACCESS-URL" in r.blocked_reason for r in blocked), "block reasons name the placeholder")
 
     post_deploy = [render_post(p, tools, "https://example.test") for p in cfg.posts]
     check(not any(r.blocked_reason for r in post_deploy), "every post renders clean once site_base_url is set", f"{[r.blocked_reason for r in post_deploy if r.blocked_reason]}")
     qp = next(r for r in post_deploy if r.spec.key == "quest-picker")
     check("https://example.test/workbench#quest-picker" in qp.body, "one-pager URL derived from the catalog anchor")
+    mc = next(r for r in post_deploy if r.spec.key == "mcp-mod-channel")
+    check("https://github.com/djcdevelopment/baseline/tree/main/network/mcp" in mc.body, "a not-published tool's access URL falls back to its public source href")
     check("https://example.test/workbench/downloads/quest-picker" in qp.body, "access URL derived from workbench.json access.href")
     check(not PLACEHOLDER_RE.search(qp.body), "no placeholder survives substitution")
 
@@ -1687,7 +1697,7 @@ def run_self_test() -> bool:
     plan0 = build_plan(cfg_live, live0, tools)
     check(live0.channel is None, "greenfield: no forum channel found")
     check(any(a.apply == "create_channel" for a in plan0.actions), "plan creates the forum channel")
-    check(sum(1 for a in plan0.actions if isinstance(a.apply, tuple) and a.apply[0] == "create_post") == 6, "plan creates 6 posts")
+    check(sum(1 for a in plan0.actions if isinstance(a.apply, tuple) and a.apply[0] == "create_post") == 7, "plan creates 7 posts")
     check(not plan0.blocked, "nothing blocked once URLs resolve", f"{[a.detail for a in plan0.blocked]}")
     receipt = render_receipt(plan0, offline=False, state_path=DEFAULT_STATE)
     check("00-announcement.md" in receipt and "denylist" in receipt, "receipt states the announcement is never posted")
@@ -1698,11 +1708,11 @@ def run_self_test() -> bool:
     check(int(forum["flags"]) & CHANNEL_FLAG_REQUIRE_TAG != 0, "required tags left ON after apply", f"flags={forum['flags']}")
     check(len(forum["available_tags"]) == 8, "8 tags live on the channel", f"{len(forum['available_tags'])}")
     check(forum["topic"] == cfg.guidelines, "post guidelines written to the channel")
-    check(len(fake.threads) == 6, "6 forum posts created", f"{len(fake.threads)}")
+    check(len(fake.threads) == 7, "7 forum posts created", f"{len(fake.threads)}")
     pinned = [t for t in fake.threads.values() if int(t.get("flags") or 0) & CHANNEL_FLAG_PINNED]
     check(len(pinned) == 1 and pinned[0]["name"].startswith("How this works"), "the guideline post is pinned", f"{[t['name'] for t in pinned]}")
     check(all(t["applied_tags"] for t in fake.threads.values() if t["name"] != pinned[0]["name"]), "every tool post carries a tag")
-    check(len(state["posts"]) == 6, "state records 6 posts")
+    check(len(state["posts"]) == 7, "state records 7 posts")
     check(all(entry["url"].startswith("https://discord.com/channels/") for entry in state["posts"].values()), "state records thread URLs")
 
     # --- idempotency ------------------------------------------------------- #

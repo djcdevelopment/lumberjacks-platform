@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-29T15:35:32.322Z</span>
+        <span>Updated 2026-07-29T15:46:44.712Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260729153532-land-the-first-production-stamped-workbench-rend">
+        <div class="journal"><article class="journal-entry" id="note-20260729154644-make-the-task-count-mean-actionable-now-and-fix-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-29T15:46:44.712Z">2026-07-29T15:46:44.712Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Make the task count mean actionable-now and fix the MC-1 contradiction</h3>
+      <p><strong>Impact:</strong> First tasks gain a completion model: by default a task completes in its tool&#39;s thread and is actionable exactly when that thread exists - a thread-less tool now fails the build instead of shipping an uncompletable task, which is how MC-1 shipped. An explicit completion object routes a task to the main forum meanwhile or marks it blocked with a reason; blocked tasks render visibly with the reason and leave the hero count, which now means actionable-now (with a separate blocked tally when nonzero). MC-1 becomes completable today: its done_when names the forum honestly and the card&#39;s Discuss row links it. Thread-creation prep landed for the operator&#39;s next provisioning run: seed 10, a provision.json entry, and the bot now resolves ACCESS-URL from source.href for not-published tools. Hardcoded task-count prose and a wrong headline tool count are build failures. Also removed a stray NUL byte in the generator that made grep treat it as binary.</p>
+      <details><summary>Verification (1)</summary><ul><li>workbench:test 14/14 including negatives 1-3 and the completion derivation matrix; discord bot self-test 87/87; live catalog renders 11 actionable, MC-1 Discuss row resolves to the forum.</li></ul></details>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260729153532-land-the-first-production-stamped-workbench-rend">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

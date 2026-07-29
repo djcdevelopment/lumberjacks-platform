@@ -10,7 +10,24 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import { baseWorkbench, makeFixtureRepo } from './workbench.testutil.mjs';
-import { validate, render } from './workbench.mjs';
+import { validate, render, resolveTaskCompletion, computeTaskCounts } from './workbench.mjs';
+
+/// A second task, explicitly blocked — the shape MC-1 would take if its interim forum
+/// destination did not exist either.
+function blockedTask() {
+  return {
+    id: 'ST-2',
+    title: 'Wire the sample into the relay',
+    size: 'small',
+    done_when: 'The relay run is posted.',
+    completion: {
+      destination_kind: 'tool-thread',
+      href: null,
+      state: 'blocked',
+      blocked_reason: 'The relay endpoint has not been stood up yet.',
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Provenance stamps (black-box, fixture repos)
@@ -108,6 +125,135 @@ test('check refuses to vouch for provenance without a git checkout', (t) => {
   const checked = fixture.run('check');
   assert.equal(checked.status, 1);
   assert.match(checked.stderr, /check requires a git checkout/);
+});
+
+// ---------------------------------------------------------------------------
+// Task completion and actionability (trust review §1–§2)
+// ---------------------------------------------------------------------------
+
+// Negative test 1 (trust review §8): a task that completes "in the thread" while
+// discussion.href is null and no completion is declared — MC-1's original shape.
+test('a thread-completing task with no thread and no completion fails render, naming the three options', (t) => {
+  const workbench = baseWorkbench();
+  workbench.tools[0].discussion.href = null;
+  const fixture = makeFixtureRepo({ workbench });
+  t.after(fixture.dispose);
+
+  const rendered = fixture.run('render');
+  assert.equal(rendered.status, 1);
+  assert.match(rendered.stderr, /the task completes in the tool's thread but discussion\.href is null/);
+  assert.match(rendered.stderr, /wire discussion\.href/);
+  assert.match(rendered.stderr, /main-forum/);
+  assert.match(rendered.stderr, /"state":"blocked"/);
+
+  // Restore and prove determinism.
+  fixture.writeWorkbench(baseWorkbench());
+  assert.equal(fixture.run('render').status, 0);
+  const first = fixture.readHtml();
+  assert.equal(fixture.run('render').status, 0);
+  assert.equal(fixture.readHtml(), first);
+});
+
+// Negative test 2 (trust review §8): a blocked task must never inflate the actionable count,
+// and the rendered count must be load-bearing.
+test('a blocked task is excluded from the hero count, rendered visibly, and the count cannot be hand-edited', (t) => {
+  const workbench = baseWorkbench();
+  workbench.tools[0].first_tasks.push(blockedTask());
+  assert.deepEqual(computeTaskCounts(workbench), { present: 2, actionable: 1, blocked: 1 });
+
+  const fixture = makeFixtureRepo({ workbench });
+  t.after(fixture.dispose);
+  assert.equal(fixture.run('render').status, 0);
+  const html = fixture.readHtml();
+  assert.match(html, /<a href="#tools">1 first tasks open · 1 blocked<\/a>/);
+  assert.match(html, /Pick one to start · 1 open · 1 blocked/);
+  assert.match(html, /<span class="task-blocked">blocked<\/span>/);
+  assert.match(html, /<em>Blocked:<\/em> The relay endpoint has not been stood up yet\./);
+  assert.match(html, /1 open · 1 blocked<\/span>/); // index row tally
+
+  // Tampering with the rendered hero count fails check — the computed count is load-bearing.
+  fs.writeFileSync(fixture.htmlPath, html.replace('1 first tasks open · 1 blocked', '2 first tasks open'), 'utf8');
+  const checked = fixture.run('check');
+  assert.equal(checked.status, 1);
+  assert.match(checked.stderr, /is stale/);
+
+  assert.equal(fixture.run('render').status, 0);
+  assert.equal(fixture.readHtml(), html);
+});
+
+// Negative test 3 (trust review §8): hardcoded counts disagreeing with the data.
+test('a headline tool count that disagrees with the catalog fails render', (t) => {
+  const workbench = baseWorkbench();
+  workbench.headline = 'Eight tools. A fixture catalog exercised by the generator’s own tests.';
+  const fixture = makeFixtureRepo({ workbench });
+  t.after(fixture.dispose);
+
+  const rendered = fixture.run('render');
+  assert.equal(rendered.status, 1);
+  assert.match(rendered.stderr, /headline says Eight tools but the catalog holds 1/);
+});
+
+test('hardcoded task-count prose anywhere in the catalog fails render', (t) => {
+  const workbench = baseWorkbench();
+  workbench.invitation_line = 'There are 11 first tasks open right now.';
+  const fixture = makeFixtureRepo({ workbench });
+  t.after(fixture.dispose);
+
+  const rendered = fixture.run('render');
+  assert.equal(rendered.status, 1);
+  assert.match(rendered.stderr, /hardcoded task-count prose is forbidden/);
+});
+
+test('completion resolution derivation matrix', () => {
+  const workbench = baseWorkbench();
+  const tool = workbench.tools[0];
+  const task = tool.first_tasks[0];
+
+  // Default: derived tool-thread, actionable, href from the discussion.
+  assert.deepEqual(resolveTaskCompletion(workbench, tool, task, 't'), {
+    destination_kind: 'tool-thread',
+    state: 'actionable',
+    href: tool.discussion.href,
+    blocked_reason: null,
+  });
+
+  // Explicit main-forum interim (MC-1's shape) resolves to the forum href.
+  task.completion = { destination_kind: 'main-forum', href: null, state: 'actionable' };
+  assert.equal(resolveTaskCompletion(workbench, tool, task, 't').href, workbench.feedback.forum_href);
+
+  // An authored href is a second copy of a derived fact.
+  task.completion = { destination_kind: 'main-forum', href: 'https://discord.com/channels/1/2', state: 'actionable' };
+  assert.throws(() => resolveTaskCompletion(workbench, tool, task, 't'), /must be null/);
+
+  // Actionable requires the destination to exist.
+  task.completion = { destination_kind: 'main-forum', href: null, state: 'actionable' };
+  workbench.feedback.forum_href = null;
+  assert.throws(() => resolveTaskCompletion(workbench, tool, task, 't'), /cannot be actionable while its destination is absent/);
+  workbench.feedback.forum_href = baseWorkbench().feedback.forum_href;
+
+  // Blocked requires a reason, and a blocked task cannot be the suggested first pick.
+  task.completion = { destination_kind: 'tool-thread', href: null, state: 'blocked' };
+  assert.throws(() => resolveTaskCompletion(workbench, tool, task, 't'), /blocked_reason/);
+  task.completion.blocked_reason = 'Waiting on the relay.';
+  assert.equal(resolveTaskCompletion(workbench, tool, task, 't').href, null);
+  task.suggested = true;
+  assert.throws(() => resolveTaskCompletion(workbench, tool, task, 't'), /may not be the suggested first pick/);
+  delete task.suggested;
+
+  // A reason on an actionable task is stale data waiting to mislead.
+  task.completion = { destination_kind: 'tool-thread', href: null, state: 'actionable', blocked_reason: 'stale' };
+  assert.throws(() => resolveTaskCompletion(workbench, tool, task, 't'), /unless the state is blocked/);
+});
+
+test('zero blocked tasks keep the original hero wording', (t) => {
+  const fixture = makeFixtureRepo();
+  t.after(fixture.dispose);
+  assert.equal(fixture.run('render').status, 0);
+  const html = fixture.readHtml();
+  assert.match(html, /<a href="#tools">1 first tasks open<\/a>/);
+  // Visible text only — the stylesheet always carries the .task-blocked rules.
+  const text = html.replace(/<style>[\s\S]*?<\/style>/, ' ').replace(/<[^>]*>/g, ' ');
+  assert.doesNotMatch(text, /\bblocked\b/i);
 });
 
 // ---------------------------------------------------------------------------

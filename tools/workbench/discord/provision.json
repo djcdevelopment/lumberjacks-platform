@@ -66,6 +66,13 @@
       "tags": ["question"],
       "pinned": false,
       "workbench_tools": ["camera-gallery", "quest-submission-bridge"]
+    },
+    {
+      "key": "mcp-mod-channel",
+      "seed": "10-thread-seed-mcp-mod-channel.md",
+      "tags": ["question"],
+      "pinned": false,
+      "workbench_tools": ["mcp-mod-channel"]
     }
   ]
 }

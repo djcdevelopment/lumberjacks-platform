@@ -29,6 +29,8 @@ const accessKinds = new Set(['site-download', 'public-repo', 'live-service', 'no
 const sourceKinds = new Set(['public-repo', 'private-until-claimed']);
 const taskSizes = new Set(['small', 'medium']);
 const ownershipStates = new Set(['unclaimed', 'trying', 'claimed', 'owned']);
+const completionDestinations = new Set(['tool-thread', 'main-forum']);
+const completionStates = new Set(['actionable', 'blocked']);
 
 // Every href that reaches the rendered page must start with one of these. Anything else degrades
 // to inert text rather than becoming a live link on a public surface.
@@ -274,7 +276,69 @@ function validateContribution(contribution, label, license) {
   }
 }
 
-function validateTool(tool, index, seenIds) {
+/// Where a first task is completed, and whether a stranger can act on it right now.
+///
+/// The default is derived, not typed: a task completes in its tool's own thread, and it is
+/// actionable exactly when that thread exists. A tool with no thread is a build failure for
+/// every completion-less task — never a silent downgrade to blocked — because the page must
+/// not offer a task whose only completion path does not exist (MC-1 shipped that way once).
+/// The explicit `completion` object overrides the default: `main-forum` routes the task to
+/// the page-level forum until a thread opens; `blocked` takes the task out of the actionable
+/// count and must say why. Destination hrefs are always derived from discussion.href or
+/// feedback.forum_href — an authored completion.href would be a second copy of a fact that
+/// already has one home, so it must stay null.
+function resolveTaskCompletion(workbench, tool, task, label) {
+  const completion = task.completion;
+  if (completion === undefined) {
+    if (!tool.discussion.href) {
+      fail(`${label} (${tool.id}/${task.id}): the task completes in the tool's thread but discussion.href is null. `
+        + 'Either wire discussion.href to the real thread, declare completion '
+        + '{"destination_kind":"main-forum","href":null,"state":"actionable"} to use the forum meanwhile, '
+        + 'or declare completion {"state":"blocked","blocked_reason":"..."} so the actionable count stays honest');
+    }
+    return { destination_kind: 'tool-thread', state: 'actionable', href: tool.discussion.href, blocked_reason: null };
+  }
+  requireObject(completion, `${label}.completion`);
+  if (!completionDestinations.has(completion.destination_kind)) {
+    fail(`${label}.completion.destination_kind is not allowed: ${completion.destination_kind}`);
+  }
+  if (!completionStates.has(completion.state)) {
+    fail(`${label}.completion.state is not allowed: ${completion.state}`);
+  }
+  requireNull(completion.href, `${label}.completion.href`,
+    '— the destination derives from discussion.href or feedback.forum_href, never typed twice');
+
+  if (completion.state === 'blocked') {
+    requireString(completion.blocked_reason, `${label}.completion.blocked_reason`);
+    if (task.suggested) fail(`${label} (${task.id}) is blocked and may not be the suggested first pick`);
+    return { destination_kind: completion.destination_kind, state: 'blocked', href: null, blocked_reason: completion.blocked_reason };
+  }
+
+  requireNull(completion.blocked_reason, `${label}.completion.blocked_reason`, 'unless the state is blocked');
+  const href = completion.destination_kind === 'tool-thread' ? tool.discussion.href : workbench.feedback.forum_href;
+  if (!href) {
+    fail(`${label} (${tool.id}/${task.id}): completion.state is actionable but its ${completion.destination_kind} `
+      + 'destination is null — a task cannot be actionable while its destination is absent');
+  }
+  return { destination_kind: completion.destination_kind, state: 'actionable', href, blocked_reason: null };
+}
+
+/// One computation, used by the hero, the per-card header, the index rows, and the tests —
+/// a second copy of this arithmetic is how a count drifts from what the cards show.
+function computeTaskCounts(workbench) {
+  let actionable = 0;
+  let blocked = 0;
+  workbench.tools.forEach((tool, index) => {
+    tool.first_tasks.forEach((task, taskIndex) => {
+      const resolved = resolveTaskCompletion(workbench, tool, task, `workbench.tools[${index}].first_tasks[${taskIndex}]`);
+      if (resolved.state === 'blocked') blocked += 1;
+      else actionable += 1;
+    });
+  });
+  return { present: actionable + blocked, actionable, blocked };
+}
+
+function validateTool(workbench, tool, index, seenIds) {
   const label = `workbench.tools[${index}]`;
   requireObject(tool, label);
   requireString(tool.id, `${label}.id`);
@@ -327,6 +391,7 @@ function validateTool(tool, index, seenIds) {
     if (task.suggested !== undefined && typeof task.suggested !== 'boolean') {
       fail(`${taskLabel}.suggested must be a boolean when present`);
     }
+    resolveTaskCompletion(workbench, tool, task, taskLabel);
   });
 
   validateOwnership(tool.ownership, `${label}.ownership`);
@@ -376,7 +441,25 @@ function validate(workbench, rawText = '') {
 
   if (!Array.isArray(workbench.tools) || workbench.tools.length === 0) fail('workbench.tools must not be empty');
   const seenIds = new Set();
-  workbench.tools.forEach((tool, index) => validateTool(tool, index, seenIds));
+  workbench.tools.forEach((tool, index) => validateTool(workbench, tool, index, seenIds));
+
+  // Counts are computed, never typed. The headline may name the tool count as prose, but only
+  // while it agrees with the data it sits beside; task counts may not be typed anywhere at all,
+  // because the hero's actionable count moves whenever a task blocks or a thread opens.
+  const headlineCount = workbench.headline.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\s+tools?\b/i);
+  if (headlineCount) {
+    const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+    const claimed = words.indexOf(headlineCount[1].toLowerCase()) >= 0
+      ? words.indexOf(headlineCount[1].toLowerCase()) + 1
+      : Number(headlineCount[1]);
+    if (claimed !== workbench.tools.length) {
+      fail(`workbench.headline says ${headlineCount[1]} tools but the catalog holds ${workbench.tools.length} — the prose count must match the data or leave the number out`);
+    }
+  }
+  const countProse = (rawText || '').match(/\b\d+\s+(?:first\s+)?tasks?\s+open\b|\b\d+\s+(?:tasks?\s+)?(?:actionable|blocked)\b/i);
+  if (countProse) {
+    fail(`hardcoded task-count prose is forbidden (found "${countProse[0]}") — the renderer computes every count from first_tasks`);
+  }
 
   // A recommended entry point only works if there is exactly one of them. Two suggestions is
   // a comparison to make, which is the thing the suggestion exists to spare a newcomer.
@@ -543,25 +626,63 @@ function renderDocs(tool) {
   return `<div class="tool-links"><strong>More docs</strong>${items}</div>`;
 }
 
-/// Stays in the always-visible zone whether or not it resolves. When a thread exists this is the
-/// conversion destination; when it does not, the inert label is itself the honest answer, and
-/// the page-level forum link is the fallback that keeps it from being a dead end.
-function renderDiscussionLink(tool) {
-  const thread = safeLink(tool.discussion.href)
-    ? renderLink(tool.discussion)
-    : '<span class="inert-link">thread opens with the announcement</span>';
+/// Stays in the always-visible zone whether or not it resolves. When a thread exists this is
+/// the conversion destination. When it does not, but a task explicitly completes in the main
+/// forum, the row links the forum and says so — the temporary destination has to be reachable
+/// from the card that names it. Only when no destination exists at all does the row stay
+/// inert, and the inert label is itself the honest answer.
+function renderDiscussionLink(workbench, tool) {
+  if (safeLink(tool.discussion.href)) {
+    return `<span class="tool-link"><em>Discuss</em>${renderLink(tool.discussion)}</span>`;
+  }
+  const forumInterim = safeLink(workbench.feedback.forum_href)
+    && tool.first_tasks.some((task, taskIndex) => {
+      const resolved = resolveTaskCompletion(workbench, tool, task, `${tool.id}.first_tasks[${taskIndex}]`);
+      return resolved.state === 'actionable' && resolved.destination_kind === 'main-forum';
+    });
+  const thread = forumInterim
+    ? renderLink({ label: `no thread yet — post in the ${workbench.feedback.forum_label}`, href: workbench.feedback.forum_href })
+    : '<span class="inert-link">no thread yet</span>';
   return `<span class="tool-link"><em>Discuss</em>${thread}</span>`;
 }
 
-function renderFirstTasks(tool) {
-  const rows = tool.first_tasks.map((task) => `<li class="first-task${task.suggested ? ' suggested' : ''}">
+/// Per-tool actionable/blocked split, shared by the card header and the index row.
+function toolTaskCounts(workbench, tool) {
+  let actionable = 0;
+  let blocked = 0;
+  tool.first_tasks.forEach((task, taskIndex) => {
+    const resolved = resolveTaskCompletion(workbench, tool, task, `${tool.id}.first_tasks[${taskIndex}]`);
+    if (resolved.state === 'blocked') blocked += 1;
+    else actionable += 1;
+  });
+  return { actionable, blocked };
+}
+
+function renderFirstTasks(workbench, tool) {
+  const rows = tool.first_tasks.map((task, taskIndex) => {
+    const resolved = resolveTaskCompletion(workbench, tool, task, `${tool.id}.first_tasks[${taskIndex}]`);
+    // A blocked task stays on the page with its reason in the same typeface as the invitation —
+    // hiding it would make the catalog look more complete than it is.
+    const blockedChip = resolved.state === 'blocked' ? '<span class="task-blocked">blocked</span>' : '';
+    const blockedReason = resolved.state === 'blocked'
+      ? `<span class="task-blocked-reason"><em>Blocked:</em> ${escapeHtml(resolved.blocked_reason)}</span>`
+      : '';
+    return `<li class="first-task${task.suggested ? ' suggested' : ''}">
         <div class="first-task-top">
           <strong>${escapeHtml(task.title)}</strong>
-          <span class="task-flags">${task.suggested ? '<span class="task-suggested">good first pick</span>' : ''}<span class="task-size ${cssToken(task.size)}">${escapeHtml(task.size)}</span></span>
+          <span class="task-flags">${blockedChip}${task.suggested ? '<span class="task-suggested">good first pick</span>' : ''}<span class="task-size ${cssToken(task.size)}">${escapeHtml(task.size)}</span></span>
         </div>
         <span class="done-when"><em>Done when:</em> ${escapeHtml(task.done_when)}</span>
+        ${blockedReason}
         <span class="task-id">${escapeHtml(task.id)}</span>
-      </li>`).join('');
+      </li>`;
+  }).join('');
+  const counts = toolTaskCounts(workbench, tool);
+  const header = counts.blocked === 0
+    ? `Pick one to start · ${escapeHtml(String(counts.actionable))} open`
+    : counts.actionable === 0
+      ? `Nothing to start yet · ${escapeHtml(String(counts.blocked))} blocked`
+      : `Pick one to start · ${escapeHtml(String(counts.actionable))} open · ${escapeHtml(String(counts.blocked))} blocked`;
   // Ownership lives inside this box rather than beside it: it is the answer to "what happens if
   // I do one of these", not a fact of equal standing with the tasks themselves.
   const ownership = `<div class="ownership-state ${escapeHtml(cssToken(tool.ownership.state))}">
@@ -571,7 +692,7 @@ function renderFirstTasks(tool) {
       </div>
       <p class="stage-3-right"><strong>At stage 3</strong>${escapeHtml(tool.contribution.stage_3_reward)}</p>`;
   return `<div class="first-tasks">
-      <strong>Pick one to start · ${escapeHtml(String(tool.first_tasks.length))} open</strong>
+      <strong>${header}</strong>
       <ul class="first-task-list">${rows}</ul>
       ${ownership}
     </div>`;
@@ -588,7 +709,7 @@ function renderRecovery(tool) {
     </div>`;
 }
 
-function renderTool(tool) {
+function renderTool(workbench, tool) {
   const token = cssToken(tool.status);
   const milestones = tool.roadmap_milestones.length > 0
     ? tool.roadmap_milestones.map((id) => `<span class="dep">${escapeHtml(id)}</span>`).join('')
@@ -614,7 +735,7 @@ function renderTool(tool) {
       ${renderAccessButton(tool)}
     </div>
     ${renderAccessDetail(tool)}
-    <div class="tool-link-row">${renderPrimaryDoc(tool)}${renderDiscussionLink(tool)}</div>
+    <div class="tool-link-row">${renderPrimaryDoc(tool)}${renderDiscussionLink(workbench, tool)}</div>
     ${renderRequires(tool)}
     <details class="tool-detail">
       <summary>How it works, in detail</summary>
@@ -623,7 +744,7 @@ function renderTool(tool) {
         <p class="deps">roadmap ${milestones}</p>
       </div>
     </details>
-    ${renderFirstTasks(tool)}
+    ${renderFirstTasks(workbench, tool)}
     ${renderRecovery(tool)}
     <details class="tool-detail">
       <summary>Source, privacy &amp; licence</summary>
@@ -664,14 +785,18 @@ function renderLadder(ladder, ownersHref) {
 /// Rows, not tiles. A grid of mini-cards sitting above a grid of real cards reads as
 /// duplication and makes the eye run the same scan twice; one dense row per tool is visibly a
 /// different kind of object from the thing it indexes, and reads top-to-bottom in one sweep.
-function renderToolIndex(tools) {
+function renderToolIndex(workbench, tools) {
   const rows = tools.map((tool) => {
     const token = cssToken(tool.status);
+    const counts = toolTaskCounts(workbench, tool);
+    const tally = counts.blocked === 0
+      ? `${counts.actionable} open`
+      : `${counts.actionable} open · ${counts.blocked} blocked`;
     return `<a class="index-row ${escapeHtml(token)}" href="#${escapeHtml(tool.id)}">
           <span class="pill ${escapeHtml(token)}">${statusLabel(tool.status)}</span>
           <span class="index-name">${escapeHtml(tool.name)}</span>
           <span class="index-time">${escapeHtml(tool.time_to_first_result)}</span>
-          <span class="index-tasks">${escapeHtml(String(tool.first_tasks.length))} open</span>
+          <span class="index-tasks">${escapeHtml(tally)}</span>
         </a>`;
   }).join('');
   return `<nav class="tool-index" aria-label="All tools">${rows}</nav>`;
@@ -687,12 +812,12 @@ function statusSummary(tools) {
 }
 
 function render(workbench) {
-  const tools = workbench.tools.map(renderTool).join('\n');
+  const tools = workbench.tools.map((tool) => renderTool(workbench, tool)).join('\n');
   const ladder = renderLadder(workbench.ladder, workbench.owners_href);
-  const toolIndex = renderToolIndex(workbench.tools);
+  const toolIndex = renderToolIndex(workbench, workbench.tools);
   const freshness = provenance().text;
   const summary = statusSummary(workbench.tools);
-  const claimable = workbench.tools.reduce((total, tool) => total + tool.first_tasks.length, 0);
+  const counts = computeTaskCounts(workbench);
   const forum = safeLink(workbench.feedback.forum_href)
     ? renderLink({ label: workbench.feedback.forum_label, href: workbench.feedback.forum_href })
     : `<span class="inert-link">${escapeHtml(workbench.feedback.forum_label)}</span>`;
@@ -882,6 +1007,9 @@ function render(workbench) {
     .task-size { padding: 1px 6px; border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.05); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; }
     .task-size.small { color: var(--green); background: var(--green-bg); }
     .task-size.medium { color: var(--amber); background: var(--amber-bg); }
+    .task-blocked { padding: 1px 7px; border-radius: 999px; color: var(--red); background: var(--red-bg); font-family: var(--mono); font-size: .62rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+    .task-blocked-reason { color: var(--red); font-size: .78rem; }
+    .task-blocked-reason em { color: var(--ink); font-style: normal; font-weight: 700; }
     .done-when { color: var(--muted); font-size: .78rem; }
     .done-when em { color: var(--ink); font-style: normal; font-weight: 700; }
     .recovery { margin-top: 12px; padding: 13px 14px; border-left: 3px solid var(--red); background: var(--red-bg); }
@@ -981,7 +1109,7 @@ function render(workbench) {
       <div class="hero-meta">
         <span class="freshness">${escapeHtml(freshness)}</span>
         <span>${escapeHtml(summary)}</span>
-        <a href="#tools">${escapeHtml(String(claimable))} first tasks open</a>
+        <a href="#tools">${escapeHtml(String(counts.actionable))} first tasks open${counts.blocked > 0 ? ` · ${escapeHtml(String(counts.blocked))} blocked` : ''}</a>
       </div>
     </div>
 
@@ -1092,7 +1220,7 @@ function check(args) {
   // Every promise of a named repository document has to be a link the reader can open. Count
   // text nodes only: the href itself ends in OWNERS.md, so counting raw occurrences would score
   // each correctly-linked mention twice.
-  const renderedText = actual.replace(/<[^>]*>/g, ' ');
+  const renderedText = actual.replace(/<[^>]*>/g, ' ');
   const ownersNamed = (renderedText.match(/OWNERS\.md/g) ?? []).length;
   const ownersLinked = (actual.match(/<a [^>]*>OWNERS\.md<\/a>/g) ?? []).length;
   if (ownersNamed !== ownersLinked) {
@@ -1171,6 +1299,8 @@ export {
   writeRendered,
   statusSummary,
   escapeHtml,
+  resolveTaskCompletion,
+  computeTaskCounts,
   workbenchRelative,
   outputRelative,
   workbenchPath,
