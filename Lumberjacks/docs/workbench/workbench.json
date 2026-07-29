@@ -4,11 +4,15 @@
   "headline": "Seven tools. What each one actually does today, what it costs you to run it, and exactly how to take one over.",
   "updated_at": "2026-07-29T01:00:00Z",
   "honesty_statement": "Every status below is what the thing actually does today.",
+  "not_a_verdict_summary": "Volunteers carried this community. An unclaimed tool is not a verdict on anyone.",
   "not_a_verdict": "This catalog is an invitation to run and own tools. It is not a judgment on anyone's past effort and it is not a verdict on anyone's burnout — volunteers already carried this community, and the work they did is why any of this exists. Nothing here is owed by anyone. A tool sitting unclaimed is a description of this catalog, never a mark against the people who came before.",
+  "invitation_line": "Running one of these once and saying what happened — including that it broke — is a complete contribution.",
   "feedback": {
     "rhythm": "Replies land in batches, about twice a week — this is a solo-operator project.",
-    "forum_href": null,
-    "forum_label": "Discord forum (opens with the announcement)"
+    "forum_href": "https://discord.com/channels/1531911987074957442/1531926985314668635",
+    "forum_label": "#workbench forum",
+    "start_here_href": "https://discord.com/channels/1531911987074957442/1531926993442967654",
+    "start_here_label": "How this works — read me first"
   },
   "ladder": [
     {
@@ -227,6 +231,7 @@
           "id": "CT-1",
           "title": "Build one chart, tile, or widget from the public v0 API and post it",
           "size": "small",
+          "suggested": true,
           "done_when": "Any stack you like — a static page, a spreadsheet, a terminal script — renders live data from a v0 endpoint, and the thread has a screenshot plus how you made it. Needs no repo access; the starter kit includes a Python poller."
         },
         {
@@ -410,8 +415,8 @@
         }
       ],
       "discussion": {
-        "label": "Camera flythrough thread",
-        "href": null
+        "label": "Recoverable pieces thread",
+        "href": "https://discord.com/channels/1531911987074957442/1531927004197425172"
       },
       "first_tasks": [
         {
@@ -481,8 +486,8 @@
         }
       ],
       "discussion": {
-        "label": "Quest submission bridge thread",
-        "href": null
+        "label": "Recoverable pieces thread",
+        "href": "https://discord.com/channels/1531911987074957442/1531927004197425172"
       },
       "first_tasks": [
         {

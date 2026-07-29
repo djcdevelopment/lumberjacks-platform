@@ -37,6 +37,9 @@
     a:hover { color: #b7e7ff; }
     code { font-family: var(--mono); color: #d8ece7; overflow-wrap: anywhere; }
     .wrap { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    /* The topbar is sticky, so anything the index or a #id link jumps to has to clear it. */
+    .tool, .ladder-step, section[id] { scroll-margin-top: 76px; }
+    summary:focus-visible, a:focus-visible { outline: 2px solid var(--wood); outline-offset: 2px; }
     .topbar { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,.08); background: rgba(11,16,19,.92); backdrop-filter: blur(14px); }
     .topbar-inner { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
     .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .02em; }
@@ -44,16 +47,24 @@
     nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 14px; font-size: .85rem; }
     nav a { color: var(--muted); text-decoration: none; }
     nav a[aria-current="page"] { color: var(--ink); }
-    .hero { padding: 72px 0 38px; }
+    .hero { padding: 40px 0 22px; }
     .eyebrow { color: var(--wood); text-transform: uppercase; letter-spacing: .16em; font-size: .76rem; font-weight: 800; }
-    h1 { max-width: 920px; margin: 12px 0 18px; font-size: clamp(2.25rem, 7vw, 5.7rem); line-height: .94; letter-spacing: -.055em; }
-    .headline { max-width: 900px; color: var(--amber); font-family: var(--mono); font-size: clamp(.9rem, 2vw, 1.18rem); font-weight: 800; }
-    .lede { max-width: 920px; margin: 24px 0; color: #c4d2cf; font-size: 1.06rem; }
+    h1 { max-width: 920px; margin: 10px 0 14px; font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1; letter-spacing: -.04em; }
+    .headline { max-width: 900px; color: var(--amber); font-family: var(--mono); font-size: clamp(.88rem, 1.6vw, 1.04rem); font-weight: 800; line-height: 1.5; }
+    /* honesty_statement is not repeated here: it is the tools section's own h2, one screen
+       below, and printing it twice inside a single fold read as a stutter. */
+    .invitation { max-width: 920px; margin: 16px 0 14px; color: var(--green); font-size: .98rem; font-weight: 600; }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 14px 0 12px; }
+    .hero-cta { display: inline-block; padding: 10px 18px; border: 1px solid var(--green); border-radius: 8px; color: var(--green); background: var(--green-bg); font-weight: 800; font-size: .9rem; text-decoration: none; }
+    .hero-cta:hover { color: var(--ink); border-color: var(--ink); }
+    .hero-link { font-size: .86rem; }
     .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; }
-    .hero-meta span { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; color: var(--muted); background: rgba(255,255,255,.025); font-size: .78rem; }
-    section { padding: 38px 0; }
+    .hero-meta span, .hero-meta a { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; color: var(--muted); background: rgba(255,255,255,.025); font-size: .78rem; }
+    .hero-meta a { color: var(--blue); text-decoration: none; }
+    .hero-meta a:hover { border-color: var(--blue); }
+    section { padding: 30px 0 38px; }
     section + section { border-top: 1px solid rgba(255,255,255,.07); }
-    .section-head { display: grid; grid-template-columns: minmax(160px, .35fr) 1fr; gap: 28px; margin-bottom: 24px; }
+    .section-head { display: grid; grid-template-columns: minmax(160px, .35fr) 1fr; gap: 28px; margin-bottom: 18px; }
     .section-number { color: var(--wood); font-family: var(--mono); font-size: .78rem; letter-spacing: .12em; }
     h2 { margin: 0 0 8px; font-size: clamp(1.45rem, 3vw, 2.35rem); letter-spacing: -.025em; }
     h3 { margin: 0; line-height: 1.25; }
@@ -65,26 +76,38 @@
     .pill.dev-only { color: var(--blue); background: var(--blue-bg); }
     .pill.local-only { color: var(--amber); background: var(--amber-bg); }
     .pill.recoverable-not-running { color: var(--red); background: var(--red-bg); }
-    .pill.ownership { font-size: .62rem; }
+    .pill.ownership { font-size: .66rem; }
     .pill.ownership.unclaimed { color: var(--muted); background: rgba(158,176,173,.08); }
     .pill.ownership.trying { color: var(--amber); background: var(--amber-bg); }
     .pill.ownership.claimed { color: var(--blue); background: var(--blue-bg); }
     .pill.ownership.owned { color: var(--green); background: var(--green-bg); }
-    .inert-link { color: #70827e; font-style: italic; }
-    .not-a-verdict { max-width: 920px; margin: 4px 0 24px; padding: 16px 18px; border-left: 3px solid var(--wood); background: rgba(215,168,110,.09); color: #d9cdb8; font-size: .92rem; }
-    .not-a-verdict strong { display: block; margin-bottom: 4px; color: var(--wood); font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
+    .inert-link { color: #8a9c98; font-style: italic; }
+    .not-a-verdict { max-width: 920px; margin: 4px 0 0; padding: 12px 16px; border-left: 3px solid var(--wood); background: rgba(215,168,110,.09); color: #d9cdb8; font-size: .9rem; }
+    .not-a-verdict > summary { cursor: pointer; color: var(--wood); font-weight: 700; }
+    .not-a-verdict > p { margin: 10px 0 0; }
+    .tool-index { display: grid; gap: 3px; margin-bottom: 18px; }
+    .index-row { display: grid; grid-template-columns: minmax(0, 168px) minmax(0, 1fr) minmax(0, 1.05fr) minmax(0, 68px); align-items: center; gap: 12px; padding: 7px 12px; border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.16); color: var(--ink); text-decoration: none; }
+    .index-row:hover { background: rgba(255,255,255,.05); color: var(--ink); }
+    .index-row.live { border-left-color: var(--green); }
+    .index-row.dev-only { border-left-color: var(--blue); }
+    .index-row.local-only { border-left-color: var(--amber); }
+    .index-row.recoverable-not-running { border-left-color: var(--red); }
+    .index-row .pill { justify-self: start; }
+    .index-name { font-weight: 700; font-size: .9rem; }
+    .index-time { color: var(--muted); font-size: .76rem; }
+    .index-tasks { justify-self: end; color: var(--wood); font-family: var(--mono); font-size: .72rem; font-weight: 800; white-space: nowrap; }
     .ladder { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
     .ladder-step { position: relative; min-width: 0; display: grid; align-content: start; gap: 6px; padding: 14px; border: 1px solid var(--line); border-top: 3px solid var(--blue); border-radius: 9px; background: rgba(0,0,0,.16); }
     .ladder-step.stage-0 { border-top-color: var(--muted); }
     .ladder-step.stage-3 { border-top-color: var(--violet); }
     .ladder-step.stage-4 { border-top-color: var(--green); }
     .ladder-step:not(:last-child)::after { content: "→"; position: absolute; right: -8px; top: 46px; z-index: 2; color: var(--wood); font-weight: 900; }
-    .ladder-stage { color: var(--wood); font-family: var(--mono); font-size: .63rem; font-weight: 900; letter-spacing: .07em; }
+    .ladder-stage { color: var(--wood); font-family: var(--mono); font-size: .66rem; font-weight: 900; letter-spacing: .07em; }
     .ladder-step h3 { font-size: .95rem; }
     .ladder-did { margin: 0; color: #c5d2cf; font-size: .78rem; }
     .ladder-get { padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: .74rem; }
-    .ladder-get strong { display: block; color: var(--green); font-family: var(--mono); font-size: .58rem; text-transform: uppercase; letter-spacing: .06em; }
-    .ladder-recorded { color: #70827e; font-family: var(--mono); font-size: .63rem; }
+    .ladder-get strong { display: block; color: var(--green); font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; }
+    .ladder-recorded { color: #8a9c98; font-family: var(--mono); font-size: .7rem; }
     .tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
     .tool { padding: 22px; border: 1px solid var(--line); border-top: 4px solid var(--blue); border-radius: 13px; background: linear-gradient(155deg, var(--panel), var(--paper)); box-shadow: var(--shadow); }
     .tool.live { border-top-color: var(--green); }
@@ -92,9 +115,10 @@
     .tool.local-only { border-top-color: var(--amber); }
     .tool.recoverable-not-running { border-top-color: var(--red); }
     .tool-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
-    .tool-head > div { display: grid; gap: 2px; }
-    .tool-id { color: var(--wood); font-family: var(--mono); font-size: .72rem; font-weight: 800; }
-    .one-liner { margin: 12px 0; color: #cad7d4; }
+    .tool-head > div { display: grid; gap: 3px; }
+    .tool-head h3 { font-size: 1.06rem; }
+    .tool-id { color: var(--wood); font-family: var(--mono); font-size: .7rem; font-weight: 700; opacity: .85; }
+    .one-liner { margin: 12px 0 0; color: #cad7d4; }
     .status-detail { padding: 13px 14px; border-left: 3px solid var(--blue); background: var(--blue-bg); color: #c8d7d3; font-size: .84rem; }
     .status-detail strong { display: block; margin-bottom: 3px; color: var(--blue); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .07em; }
     .status-detail.live { border-left-color: var(--green); background: var(--green-bg); }
@@ -103,65 +127,78 @@
     .status-detail.local-only strong { color: var(--amber); }
     .status-detail.recoverable-not-running { border-left-color: var(--red); background: var(--red-bg); }
     .status-detail.recoverable-not-running strong { color: var(--red); }
-    .tool-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
-    .tool-facts > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); font-size: .78rem; }
-    .tool-facts strong { display: block; margin-bottom: 2px; color: var(--ink); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
-    .meta-line { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 12px 0; color: var(--muted); font-family: var(--mono); font-size: .72rem; text-transform: uppercase; }
-    .deps { display: flex; align-items: center; gap: 5px; }
-    .dep { padding: 1px 5px; background: rgba(255,255,255,.06); border-radius: 4px; color: var(--ink); }
-    .tool-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; }
-    .requires, .access { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.14); }
-    .requires strong { display: block; color: var(--muted); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
-    .requires-list { margin: 5px 0 0; color: #c5d2cf; font-size: .78rem; }
-    .requires-list li { margin: 4px 0; }
-    .access-button { display: inline-block; padding: 8px 13px; border: 1px solid var(--green); border-radius: 7px; color: var(--green); background: var(--green-bg); font-family: var(--mono); font-size: .74rem; font-weight: 800; text-decoration: none; }
+    .tool-audience { margin: 12px 0 0; color: var(--muted); font-size: .82rem; }
+    .tool-audience strong { margin-right: 7px; color: var(--ink); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
+    .tool-action { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+    .first-result { display: inline-flex; align-items: baseline; gap: 7px; color: var(--ink); font-size: .84rem; font-weight: 700; }
+    .first-result em { color: var(--muted); font-family: var(--mono); font-size: .62rem; font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
+    .access-button { display: inline-block; padding: 9px 15px; border: 1px solid var(--green); border-radius: 7px; color: var(--green); background: var(--green-bg); font-family: var(--mono); font-size: .76rem; font-weight: 800; text-decoration: none; white-space: nowrap; }
     .access-button:hover { color: var(--ink); border-color: var(--ink); }
-    .access.public-repo .access-button { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
-    .access.live-service .access-button { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
-    .access-button.disabled { border-color: var(--line); color: #70827e; background: rgba(158,176,173,.06); cursor: not-allowed; }
-    .access-note { margin: 8px 0 0; color: var(--muted); font-size: .74rem; }
-    .access-detail { display: flex; gap: 8px; margin-top: 7px; font-size: .68rem; }
-    .access-detail span { flex: 0 0 68px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; }
-    .tool-link-row { display: grid; gap: 6px; margin-top: 12px; }
-    .tool-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: .78rem; }
+    .access-button.public-repo { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+    .access-button.live-service { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+    .access-button.disabled { border-color: var(--line); color: #8a9c98; background: rgba(158,176,173,.06); cursor: not-allowed; }
+    .access-verify { margin-top: 9px; }
+    .access-note { margin: 0; color: var(--muted); font-size: .78rem; }
+    .access-detail { display: flex; gap: 8px; margin-top: 5px; font-size: .72rem; }
+    .access-detail span { flex: 0 0 74px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; }
+    .tool-link-row { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; }
+    .tool-link { display: inline-flex; align-items: baseline; gap: 7px; font-size: .8rem; }
+    .tool-link em { color: var(--muted); font-family: var(--mono); font-size: .62rem; font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
+    .requires { margin-top: 12px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.14); }
+    .requires strong { display: block; color: var(--muted); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
+    .requires-list { margin: 6px 0 0; color: #c5d2cf; font-size: .8rem; }
+    .requires-list li { margin: 3px 0; }
+    .tool-detail { margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.1); }
+    .tool-detail > summary { padding: 9px 13px; cursor: pointer; color: var(--muted); font-family: var(--mono); font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+    .tool-detail > summary:hover { color: var(--ink); }
+    .tool-detail[open] > summary { border-bottom: 1px solid var(--line); }
+    .tool-detail-body { padding: 12px 13px; }
+    .tool-detail-body > p { margin: 0 0 9px; color: #c5d2cf; font-size: .8rem; }
+    .deps { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0; color: var(--muted); font-family: var(--mono); font-size: .7rem; text-transform: uppercase; }
+    .dep { padding: 1px 5px; background: rgba(255,255,255,.06); border-radius: 4px; color: var(--ink); }
+    .tool-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 8px; font-size: .8rem; }
     .tool-links strong { flex: 0 0 76px; color: var(--muted); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
-    .source-note { margin: 8px 0 0; color: var(--muted); font-size: .76rem; }
-    .first-tasks { margin-top: 16px; padding: 14px; border-left: 3px solid var(--wood); background: rgba(215,168,110,.08); }
-    .first-tasks > strong { color: var(--wood); font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
+    .source-note { margin: 8px 0 0; color: var(--muted); font-size: .78rem; }
+    .first-tasks { margin-top: 14px; padding: 14px; border-left: 3px solid var(--wood); background: rgba(215,168,110,.08); }
+    .first-tasks > strong { color: var(--wood); font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
     .first-task-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
-    .first-task { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.18); }
-    .first-task-head { display: flex; align-items: center; gap: 8px; }
-    .task-id { color: var(--wood); font-family: var(--mono); font-size: .7rem; font-weight: 900; }
-    .task-size { padding: 1px 6px; border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.05); font-family: var(--mono); font-size: .6rem; text-transform: uppercase; }
+    .first-task { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.18); }
+    .first-task.suggested { border-color: var(--green); background: rgba(104,211,145,.07); }
+    .first-task-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .first-task strong { font-size: .88rem; }
+    .task-flags { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+    .task-suggested { padding: 1px 7px; border-radius: 999px; color: var(--green); background: var(--green-bg); font-family: var(--mono); font-size: .62rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+    .task-id { color: var(--wood); font-family: var(--mono); font-size: .7rem; font-weight: 800; }
+    .task-size { padding: 1px 6px; border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.05); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; }
     .task-size.small { color: var(--green); background: var(--green-bg); }
     .task-size.medium { color: var(--amber); background: var(--amber-bg); }
-    .first-task strong { font-size: .86rem; }
-    .done-when { color: var(--muted); font-size: .76rem; }
+    .done-when { color: var(--muted); font-size: .78rem; }
     .done-when em { color: var(--ink); font-style: normal; font-weight: 700; }
     .recovery { margin-top: 12px; padding: 13px 14px; border-left: 3px solid var(--red); background: var(--red-bg); }
-    .recovery > strong { color: var(--red); font-family: var(--mono); font-size: .64rem; text-transform: uppercase; letter-spacing: .07em; }
+    .recovery > strong { color: var(--red); font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .07em; }
     .recovery p { margin: 6px 0 0; color: #d5c3c1; font-size: .78rem; }
     .recovery-origin { font-family: var(--mono); font-size: .72rem; overflow-wrap: anywhere; }
-    .recovery-paths { margin: 8px 0 0; padding-left: 1.05rem; color: var(--muted); font-size: .72rem; }
+    .recovery-paths { margin: 8px 0 0; padding-left: 1.05rem; color: var(--muted); font-size: .74rem; }
     .recovery-paths li { margin: 3px 0; }
-    .ownership-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: .78rem; }
-    .ownership-record { color: #70827e; font-family: var(--mono); font-size: .68rem; }
-    .tool-footnotes { display: grid; gap: 6px; margin-top: 12px; font-size: .74rem; color: var(--muted); }
-    .tool-footnotes strong { margin-right: 6px; color: var(--ink); font-family: var(--mono); font-size: .6rem; text-transform: uppercase; letter-spacing: .06em; }
+    .ownership-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.14); color: var(--muted); font-size: .78rem; }
+    .ownership-record { color: #8a9c98; font-family: var(--mono); font-size: .7rem; }
+    .tool-footnotes { display: grid; gap: 6px; margin-top: 10px; font-size: .78rem; color: var(--muted); }
+    .tool-footnotes strong { margin-right: 6px; color: var(--ink); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
     .privacy { padding: 9px 11px; border-left: 3px solid var(--violet); background: rgba(199,167,255,.08); }
     footer { padding: 38px 0 60px; color: var(--muted); font-size: .82rem; }
     .feedback-rhythm { margin-bottom: 10px; padding: 12px 14px; border-left: 3px solid var(--blue); background: var(--blue-bg); color: #c8d7d3; }
-    .generated { color: #6f817e; font-family: var(--mono); font-size: .7rem; }
-    .baseline-provenance { margin-top: 14px; color: #6f817e; font-family: var(--mono); font-size: .62rem; letter-spacing: .015em; }
+    .generated { color: #8a9c98; font-family: var(--mono); font-size: .72rem; }
+    .baseline-provenance { margin-top: 14px; color: #8a9c98; font-family: var(--mono); font-size: .68rem; letter-spacing: .015em; }
     .baseline-provenance a { color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor; }
     @media (max-width: 820px) {
       .section-head { grid-template-columns: 1fr; gap: 10px; }
-      .tool-grid, .tool-facts, .tool-columns { grid-template-columns: 1fr; }
+      .tool-grid { grid-template-columns: 1fr; }
+      .index-row { grid-template-columns: minmax(0, 150px) minmax(0, 1fr); row-gap: 5px; }
       .ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .ladder-step::after { display: none; }
       .topbar-inner { align-items: flex-start; padding: 12px 0; }
       nav { gap: 8px; }
-      .hero { padding-top: 48px; }
+      .hero { padding-top: 32px; }
     }
     @media (max-width: 560px) {
       .wrap { width: min(1180px, calc(100% - 20px)); }
@@ -170,14 +207,25 @@
       .ladder { grid-template-columns: 1fr; }
       .tool-head { display: grid; }
       .tool-links strong { flex: 1 1 100%; }
+      .index-row { grid-template-columns: 1fr; }
+      .index-tasks { justify-self: start; }
+      .tool-action { justify-content: flex-start; }
+      .access-button { white-space: normal; }
     }
     @media print {
       :root { color-scheme: light; --bg: #fff; --paper: #fff; --panel: #f6f7f7; --panel-2: #eee; --line: #ccd2d0; --ink: #15201d; --muted: #53635e; }
       body { background: #fff; }
       .topbar { position: static; background: #fff; }
       .tool, .ladder-step { break-inside: avoid; box-shadow: none; }
-      nav { display: none; }
+      nav, .tool-index { display: none; }
       a { color: #075985; }
+      /* A printed copy has no way to expand anything, so force every disclosure open. Support
+         for styling a closed details' contents varies by engine — if an engine ignores this,
+         only the two per-card detail blocks are lost; status, requirements, digests, first
+         tasks, recovery and ownership all render outside <details> and always print. */
+      details > summary { list-style: none; font-weight: 700; }
+      details:not([open]) > *:not(summary) { display: block !important; }
+      .tool-detail[open] > summary, .tool-detail > summary { border-bottom: 1px solid var(--line); }
     }
   </style>
 </head>
@@ -202,19 +250,479 @@
       <div class="eyebrow">Comfy × Valheim · Lumberjacks P7</div>
       <h1>Community Workbench</h1>
       <div class="headline">Seven tools. What each one actually does today, what it costs you to run it, and exactly how to take one over.</div>
-      <p class="lede">Every status below is what the thing actually does today.</p>
-      <div class="not-a-verdict"><strong>This is not a verdict on anyone</strong>This catalog is an invitation to run and own tools. It is not a judgment on anyone&#39;s past effort and it is not a verdict on anyone&#39;s burnout — volunteers already carried this community, and the work they did is why any of this exists. Nothing here is owed by anyone. A tool sitting unclaimed is a description of this catalog, never a mark against the people who came before.</div>
+      <p class="invitation">Running one of these once and saying what happened — including that it broke — is a complete contribution.</p>
+      <details class="not-a-verdict">
+        <summary>Volunteers carried this community. An unclaimed tool is not a verdict on anyone.</summary>
+        <p>This catalog is an invitation to run and own tools. It is not a judgment on anyone&#39;s past effort and it is not a verdict on anyone&#39;s burnout — volunteers already carried this community, and the work they did is why any of this exists. Nothing here is owed by anyone. A tool sitting unclaimed is a description of this catalog, never a mark against the people who came before.</p>
+      </details>
+      <div class="hero-actions">
+        <a class="hero-cta" href="#tools">See the 7 tools</a>
+        <span class="hero-link"><a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a></span>
+        <span class="hero-link"><a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a></span>
+      </div>
       <div class="hero-meta">
         <span>Updated 2026-07-29T01:00:00Z</span>
-        <span>7 tools</span>
         <span>3 live · 1 dev-only · 1 local-only · 2 recoverable</span>
-        <span>11 first tasks open</span>
+        <a href="#tools">11 first tasks open</a>
+        <span>Replies land in batches, about twice a week — this is a solo-operator project.</span>
       </div>
     </div>
 
+    <section id="tools">
+      <div class="wrap">
+        <div class="section-head"><div class="section-number">01 · THE TOOLS</div><div><h2>Every status below is what the thing actually does today.</h2><p class="section-copy">A status chip here is never a mood. It is one of four declared states, and every one of them is qualified in prose by the person who wrote the code. Where something does not run, the card says so and points at where the pieces are.</p></div></div>
+        <nav class="tool-index" aria-label="All tools"><a class="index-row live" href="#quest-picker">
+          <span class="pill live">LIVE</span>
+          <span class="index-name">Quest Picker + Absorption Engine</span>
+          <span class="index-time">about 10 minutes</span>
+          <span class="index-tasks">2 open</span>
+        </a><a class="index-row live" href="#steward-view">
+          <span class="pill live">LIVE</span>
+          <span class="index-name">ComfyStewardView</span>
+          <span class="index-time">about 15 minutes</span>
+          <span class="index-tasks">2 open</span>
+        </a><a class="index-row local-only" href="#community-telemetry">
+          <span class="pill local-only">LOCAL ONLY</span>
+          <span class="index-name">Live Community Telemetry</span>
+          <span class="index-time">about 5 minutes against the live API; about 30 for the local stack once claimed</span>
+          <span class="index-tasks">2 open</span>
+        </a><a class="index-row live" href="#steam-join">
+          <span class="pill live">LIVE</span>
+          <span class="index-name">Steam Self-Service Join</span>
+          <span class="index-time">about 5 minutes</span>
+          <span class="index-tasks">2 open</span>
+        </a><a class="index-row dev-only" href="#mcp-mod-channel">
+          <span class="pill dev-only">DEV ONLY</span>
+          <span class="index-name">MCP Mod Channel</span>
+          <span class="index-time">about 20 minutes</span>
+          <span class="index-tasks">1 open</span>
+        </a><a class="index-row recoverable-not-running" href="#camera-gallery">
+          <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
+          <span class="index-name">Camera Flythrough → Gallery Pipeline</span>
+          <span class="index-time">Unknown — nothing runs yet. CG-1 produces the first honest estimate.</span>
+          <span class="index-tasks">1 open</span>
+        </a><a class="index-row recoverable-not-running" href="#quest-submission-bridge">
+          <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
+          <span class="index-name">Quest Submission → Review Bridge</span>
+          <span class="index-time">Unknown until QB-1 lands. The front half already runs, so the first honest measurement comes from the port.</span>
+          <span class="index-tasks">1 open</span>
+        </a></nav>
+        <div class="tool-grid"><article class="tool live" id="quest-picker">
+    <div class="tool-head">
+      <div><h3>Quest Picker + Absorption Engine</h3><span class="tool-id">quest-picker</span></div>
+      <span class="pill live">LIVE</span>
+    </div>
+    <p class="one-liner">Turns a guild&#39;s real quest tracker into a single offline page where a player checks the quests they care about — and the game mod reads the result.</p>
+    <div class="status-detail live"><strong>What that status actually means</strong>Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. The download below is a cold-start kit with a synthetic sample guild — verified to run from a fresh folder with nothing but Python and openpyxl.</div>
+    <p class="tool-audience"><strong>For</strong>Guild stewards and GMs who already keep a quest tracker and want it to reach players in-game instead of dying in a spreadsheet tab.</p>
+    <div class="tool-action">
+      <span class="first-result"><em>First result</em>about 10 minutes</span>
+      <a class="access-button site-download" href="/workbench/downloads/quest-picker" aria-label="Download Quest Picker + Absorption Engine">Download</a>
+    </div>
+    <div class="access-verify">
+      <div class="access-detail"><span>SHA-256</span><code>d0b53016cbce5febb6f35d24b581a2112298f3650d48cf3190e44ece7ac4b65a</code></div>
+      <div class="access-detail"><span>Size</span><code>35.5 KB</code></div>
+      <div class="access-detail"><span>Published</span><code>2026-07-29T01:12:00Z</code></div>
+    </div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/schema.md" target="_blank" rel="noreferrer">Catalog schema (schema.md)</a></span><span class="tool-link"><em>Discuss</em><span class="inert-link">thread opens with the announcement</span></span></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>openpyxl (only for .xlsx sources)</li><li>A browser — the picker is a local file:// page, not a service</li></ul></div>
+    <details class="tool-detail">
+      <summary>How it works, in detail</summary>
+      <div class="tool-detail-body">
+        <p>Python (standard library, plus openpyxl for .xlsx sources) harvests real guild quest trackers into one JSON catalog per guild. render_quest_picker.py folds a catalog into a single self-contained file:// HTML page with no server and no network calls. A player opens that page, checks the quests they want, and saves a personal quest-view.json that the game mod reads at runtime.</p>
+        <p class="deps">roadmap <span class="dep">A5</span><span class="dep">A7</span></p>
+      </div>
+    </details>
+    <div class="first-tasks">
+      <strong>Pick one to start · 2 open</strong>
+      <ul class="first-task-list"><li class="first-task">
+        <div class="first-task-top">
+          <strong>Write gm-template-example.json</strong>
+          <span class="task-flags"><span class="task-size small">small</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> validate.py accepts the file and a GM can author a quest through the gm-template seam without editing harvest.py. sources.json already points at this path (entry rangers-example, currently disabled) but the file has never been written.</span>
+        <span class="task-id">QP-1</span>
+      </li><li class="first-task">
+        <div class="first-task-top">
+          <strong>Run the harvest against your own guild&#39;s tracker export</strong>
+          <span class="task-flags"><span class="task-size medium">medium</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> A new catalog JSON renders in the picker and every anomaly the harvest reported has an explanation — zero left unexplained.</span>
+        <span class="task-id">QP-2</span>
+      </li></ul>
+      <div class="ownership-state unclaimed">
+        <span class="pill ownership unclaimed">UNCLAIMED</span>
+        <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
+        
+      </div>
+    </div>
+    
+    <details class="tool-detail">
+      <summary>Source, privacy &amp; licence</summary>
+      <div class="tool-detail-body">
+        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/quest-view-schema.md" target="_blank" rel="noreferrer">Personal quest-view schema (quest-view-schema.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/sources.json" target="_blank" rel="noreferrer">Source config seam (sources.json)</a></div>
+        <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/recipes/quest-catalogs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/recipes/quest-catalogs</a></div>
+        <p class="source-note">The same code lives in this repo at recipes/quest-catalogs/ and is byte-identical to the public copy.</p>
+        <div class="tool-footnotes">
+          <div class="privacy"><strong>Privacy</strong>Harvested catalogs from a live guild tracker contain member names. The published sample uses synthetic data only — do not commit a real harvested catalog.</div>
+          <div class="license"><strong>License</strong>BUSL-1.1 in this repo (community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md). The byte-identical copies in the public comfy archive carry that repo&#39;s MIT license.</div>
+        </div>
+      </div>
+    </details>
+  </article>
+<article class="tool live" id="steward-view">
+    <div class="tool-head">
+      <div><h3>ComfyStewardView</h3><span class="tool-id">steward-view</span></div>
+      <span class="pill live">LIVE</span>
+    </div>
+    <p class="one-liner">Reads a Valheim world file and answers the questions that stop being walkable once a server gets big: where is everyone building, and who owns this.</p>
+    <div class="status-detail live"><strong>What that status actually means</strong>The public repo builds a fat JAR that parses a real world .db, serves a localhost API, and draws a browser heatmap. It has been used to steward high-player worlds. What is missing is a quickstart for the roughly twenty GM probe utilities — they work, but today you have to read the source to know what each one does.</div>
+    <p class="tool-audience"><strong>For</strong>Server stewards and GMs on worlds big enough that walking around stopped being a way to find out what is happening.</p>
+    <div class="tool-action">
+      <span class="first-result"><em>First result</em>about 15 minutes</span>
+      <a class="access-button public-repo" href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer" aria-label="Open the public repository for ComfyStewardView">Open repository</a>
+    </div>
+    <div class="access-verify"><p class="access-note">Clone and build it yourself — there is no packaged download.</p></div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">ComfyStewardView repository and README</a></span><span class="tool-link"><em>Discuss</em><span class="inert-link">thread opens with the announcement</span></span></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Java</li><li>A copy of a Valheim world .db — a copy, never the live save</li><li>A browser</li></ul></div>
+    <details class="tool-detail">
+      <summary>How it works, in detail</summary>
+      <div class="tool-detail-body">
+        <p>A Java fat-JAR extracts and parses a Valheim world file (.db), exposes a REST API on localhost:7080 (/api/v1/heatmap, /api/v1/points), and serves a browser heatmap viewer. Around twenty GM probe utilities sit alongside it for build-density clustering and ownership investigation.</p>
+        <p class="deps">roadmap <span class="dep">A3</span><span class="dep">A7</span></p>
+      </div>
+    </details>
+    <div class="first-tasks">
+      <strong>Pick one to start · 2 open</strong>
+      <ul class="first-task-list"><li class="first-task">
+        <div class="first-task-top">
+          <strong>Run it against a copy of any world .db and post one heatmap screenshot</strong>
+          <span class="task-flags"><span class="task-size small">small</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> A heatmap image from your own world is in the thread, with the build command you actually used and anything that tripped you up.</span>
+        <span class="task-id">SV-1</span>
+      </li><li class="first-task">
+        <div class="first-task-top">
+          <strong>Write the missing quickstart for the probe utilities</strong>
+          <span class="task-flags"><span class="task-size medium">medium</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> Each GM probe utility has one line saying what it answers and one copy-pasteable invocation, and a steward who has never opened the source can pick the right probe from that page alone.</span>
+        <span class="task-id">SV-2</span>
+      </li></ul>
+      <div class="ownership-state unclaimed">
+        <span class="pill ownership unclaimed">UNCLAIMED</span>
+        <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
+        
+      </div>
+    </div>
+    
+    <details class="tool-detail">
+      <summary>Source, privacy &amp; licence</summary>
+      <div class="tool-detail-body">
+        
+        <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/ComfyStewardView</a></div>
+        <p class="source-note">A standalone public repository, separate from baseline. Clone it and build; nothing here is gated.</p>
+        <div class="tool-footnotes">
+          <div class="privacy"><strong>Privacy</strong>Run it on world copies, not the live save. Output can contain player names — share aggregates and screenshots, not raw dumps.</div>
+          <div class="license"><strong>License</strong>Proprietary — all rights reserved per the repo&#39;s own LICENSE.md, which requires written permission and a paid license for reuse. Catalogued here for running it and giving feedback; the license posture is under review, and until it changes, contributions mean docs and feedback, not code redistribution.</div>
+        </div>
+      </div>
+    </details>
+  </article>
+<article class="tool local-only" id="community-telemetry">
+    <div class="tool-head">
+      <div><h3>Live Community Telemetry</h3><span class="tool-id">community-telemetry</span></div>
+      <span class="pill local-only">LOCAL ONLY</span>
+    </div>
+    <p class="one-liner">An aggregates-only telemetry API with privacy tests that fail if a player ID, name, or position ever shows up — plus the whole stack, runnable on your machine.</p>
+    <div class="status-detail local-only"><strong>What that status actually means</strong>The aggregates API is live on P7 and the public /community page reads it. What is local-only is everything you would need to run or change it yourself: the docker stack that reproduces the whole thing and the loopback operator dashboard both run on your machine, and neither is published as a download.</div>
+    <p class="tool-audience"><strong>For</strong>Anyone who wants to run the telemetry surface themselves — and anyone who would rather check the privacy claim than take it on faith.</p>
+    <div class="tool-action">
+      <span class="first-result"><em>First result</em>about 5 minutes against the live API; about 30 for the local stack once claimed</span>
+      <a class="access-button site-download" href="/workbench/downloads/community-telemetry" aria-label="Download Live Community Telemetry">Download</a>
+    </div>
+    <div class="access-verify">
+      <div class="access-detail"><span>SHA-256</span><code>bf065eb47da01f3305ec10c4c6b8ec03d99329cf6a5dc02c2ba5f26eded32211</code></div>
+      <div class="access-detail"><span>Size</span><code>8.3 KB</code></div>
+      <div class="access-detail"><span>Published</span><code>2026-07-29T01:12:00Z</code></div>
+    </div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="/community">The live community view</a></span><span class="tool-link"><em>Discuss</em><span class="inert-link">thread opens with the announcement</span></span></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>A browser (or Python 3) for the live aggregates API — that is all CT-1 needs</li><li>Docker and docker compose, for the local stack (source access opens at ladder stage 3)</li><li>The .NET 9 SDK, only if you want to rebuild the gateway rather than run the composed image</li></ul></div>
+    <details class="tool-detail">
+      <summary>How it works, in detail</summary>
+      <div class="tool-detail-body">
+        <p>An aggregates-only v0 telemetry API (GET /api/v0/telemetry/server, /tick, /sessions, /delivery, /regions, /events, /valheim, /cutover) whose test suite asserts that no player ID, name, or position ever appears in a response. A self-contained /community page polls it. A local dev stack brings up the real thing end to end (docker compose: postgres 5435, gateway 4000, eventlog 4002, progression 4003, operatorapi 4004), and a loopback-only operator viewer renders it for a single operator.</p>
+        <p class="deps">roadmap <span class="dep">A4</span><span class="dep">A7</span></p>
+      </div>
+    </details>
+    <div class="first-tasks">
+      <strong>Pick one to start · 2 open</strong>
+      <ul class="first-task-list"><li class="first-task suggested">
+        <div class="first-task-top">
+          <strong>Build one chart, tile, or widget from the public v0 API and post it</strong>
+          <span class="task-flags"><span class="task-suggested">good first pick</span><span class="task-size small">small</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> Any stack you like — a static page, a spreadsheet, a terminal script — renders live data from a v0 endpoint, and the thread has a screenshot plus how you made it. Needs no repo access; the starter kit includes a Python poller.</span>
+        <span class="task-id">CT-1</span>
+      </li><li class="first-task">
+        <div class="first-task-top">
+          <strong>Bring the local stack up, then add one new aggregate tile the privacy tests still pass on</strong>
+          <span class="task-flags"><span class="task-size medium">medium</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> The compose stack runs on your machine and a new aggregate is exposed by the v0 API and rendered, with the existing privacy tests passing unmodified. This is the claim path — source access opens at ladder stage 3.</span>
+        <span class="task-id">CT-2</span>
+      </li></ul>
+      <div class="ownership-state unclaimed">
+        <span class="pill ownership unclaimed">UNCLAIMED</span>
+        <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
+        
+      </div>
+    </div>
+    
+    <details class="tool-detail">
+      <summary>Source, privacy &amp; licence</summary>
+      <div class="tool-detail-body">
+        <div class="tool-links"><strong>More docs</strong><span class="inert-link">Telemetry v0 API reference — Lumberjacks/docs/api/telemetry-v0.md</span><span aria-hidden="true"> · </span><span class="inert-link">Viewing the surfaces — Lumberjacks/docs/dashboard/viewing-the-surfaces.md</span></div>
+        <div class="tool-links"><strong>Source</strong><span class="inert-link">Private until claimed</span></div>
+        <p class="source-note">The code is in this repo — Lumberjacks/infra/docker/docker-compose.yml for the stack, Lumberjacks/tools/omen-dashboard/ for the operator viewer. Access opens at ladder stage 3.</p>
+        <div class="tool-footnotes">
+          <div class="privacy"><strong>Privacy</strong>The v0 API is aggregates-only by tested design — no player ID, no name, no position, ever. Keep that bar: a change that makes the privacy tests fail is a change that does not land.</div>
+          <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
+        </div>
+      </div>
+    </details>
+  </article>
+<article class="tool live" id="steam-join">
+    <div class="tool-head">
+      <div><h3>Steam Self-Service Join</h3><span class="tool-id">steam-join</span></div>
+      <span class="pill live">LIVE</span>
+    </div>
+    <p class="one-liner">An invite link, a Steam sign-in, and a mod-pack zip with your credentials already in it — no config file to hand-edit.</p>
+    <div class="status-detail live"><strong>What that status actually means</strong>The join flow works end to end on comfy-p7.duckdns.org today: invite, Steam sign-in, personalized zip, self-service update and reissue. The operator runbook&#39;s own caveats stand and are not softened here — the endpoint is currently plain HTTP on a non-default, world-open port with TLS built and staged but not switched on, rate limiting is not in place yet (the runbook lists it as pre-widening work), it is open to the alpha cohort only, and volunteer platform readiness is recorded as NOT READY. Until TLS is armed, the enrollment credential crosses a plaintext public link.</div>
+    <p class="tool-audience"><strong>For</strong>The next wave of playtesters — people who want to join and play without being told to edit a config file first.</p>
+    <div class="tool-action">
+      <span class="first-result"><em>First result</em>about 5 minutes</span>
+      <a class="access-button live-service" href="https://comfy-p7.duckdns.org/join" target="_blank" rel="noreferrer" aria-label="Open the live service for Steam Self-Service Join">Open live service</a>
+    </div>
+    <div class="access-verify"><p class="access-note">This one is a running service, not a file. There is nothing to download.</p></div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://comfy-p7.duckdns.org/join" target="_blank" rel="noreferrer">Join the alpha (the live flow)</a></span><span class="tool-link"><em>Discuss</em><span class="inert-link">thread opens with the announcement</span></span></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>A Steam account</li><li>Valheim</li><li>An invite link from the operator — the endpoint is alpha-cohort only</li></ul></div>
+    <details class="tool-detail">
+      <summary>How it works, in detail</summary>
+      <div class="tool-detail-body">
+        <p>An invite link opens a page that hands off to Steam OpenID sign-in. A one-use bootstrap token is exchanged for a personalized mod-pack zip with the player&#39;s credentials already baked in. Self-service update and reissue run through the same path. The per-player token is stored only as a hash.</p>
+        <p class="deps">roadmap <span class="dep">M2</span><span class="dep">M5</span><span class="dep">A7</span></p>
+      </div>
+    </details>
+    <div class="first-tasks">
+      <strong>Pick one to start · 2 open</strong>
+      <ul class="first-task-list"><li class="first-task">
+        <div class="first-task-top">
+          <strong>Walk the join flow end-to-end as a tester and file friction notes</strong>
+          <span class="task-flags"><span class="task-size small">small</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> You went from invite link to a running modded client, and every point where you hesitated, guessed, or had to ask is written down in the thread — including the ones that turned out to be your fault.</span>
+        <span class="task-id">SJ-1</span>
+      </li><li class="first-task">
+        <div class="first-task-top">
+          <strong>Write the tester-facing FAQ from the friction notes</strong>
+          <span class="task-flags"><span class="task-size medium">medium</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> A page answers the questions SJ-1 actually produced, in a tester&#39;s words rather than the operator&#39;s, and the next tester gets through without asking any of them.</span>
+        <span class="task-id">SJ-2</span>
+      </li></ul>
+      <div class="ownership-state unclaimed">
+        <span class="pill ownership unclaimed">UNCLAIMED</span>
+        <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
+        
+      </div>
+    </div>
+    
+    <details class="tool-detail">
+      <summary>Source, privacy &amp; licence</summary>
+      <div class="tool-detail-body">
+        <div class="tool-links"><strong>More docs</strong><a href="/roadmap">Volunteer roadmap — the M2 and M5 gates this sits behind</a><span aria-hidden="true"> · </span><span class="inert-link">Operator runbook — infra/gcp/p7/VOLUNTEER-ENDPOINT.md</span></div>
+        <div class="tool-links"><strong>Source</strong><span class="inert-link">Private until claimed</span></div>
+        <p class="source-note">Lumberjacks/src/Game.Gateway/Valheim/ in this repo — SteamEnrollmentEndpoints, SteamEnrollmentService, EnrollmentPages, ModpackReleaseCatalog — with real test suites, plus the operator runbook at infra/gcp/p7/VOLUNTEER-ENDPOINT.md. Access opens at ladder stage 3.</p>
+        <div class="tool-footnotes">
+          <div class="privacy"><strong>Privacy</strong>The per-player token is stored only as a hash. The zip you receive carries your own credential — do not re-share it; ask for a reissue instead.</div>
+          <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
+        </div>
+      </div>
+    </details>
+  </article>
+<article class="tool dev-only" id="mcp-mod-channel">
+    <div class="tool-head">
+      <div><h3>MCP Mod Channel</h3><span class="tool-id">mcp-mod-channel</span></div>
+      <span class="pill dev-only">DEV ONLY</span>
+    </div>
+    <p class="one-liner">A localhost MCP server that talks to the running game mod: apply a config profile, run a bounded lab test, read back what happened.</p>
+    <div class="status-detail dev-only"><strong>What that status actually means</strong>It runs, and it really does drive the live mod. It is reachable only from 127.0.0.1 with a dev key, and that is deliberate rather than unfinished: it is a development channel, never a console or shell bridge, and every mutation it can perform is whitelisted and bounded. There is no download and no remote mode.</div>
+    <p class="tool-audience"><strong>For</strong>Mod developers, and anyone curious about wiring an AI tool to a live game process without handing it a shell.</p>
+    <div class="tool-action">
+      <span class="first-result"><em>First result</em>about 20 minutes</span>
+      <span class="access-button disabled" aria-disabled="true">Not published yet</span>
+    </div>
+    <div class="access-verify"><p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p></div>
+    <div class="tool-link-row"><span class="tool-link"><em>Discuss</em><span class="inert-link">thread opens with the announcement</span></span></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>The mod running locally</li><li>An MCP client</li><li>Optional: a local Ollama, only for the explanation tools</li></ul></div>
+    <details class="tool-detail">
+      <summary>How it works, in detail</summary>
+      <div class="tool-detail-body">
+        <p>A local Python MCP server on 127.0.0.1:8720 (header X-Comfy-Key, dev value comfy-dev-local) speaks bidirectionally with the running mod: apply config profiles, run bounded lab motion tests through an atomic mailbox, tail mod telemetry and logs, assemble session bundles, and get local-Ollama explanations of what it just saw.</p>
+        <p class="deps">roadmap <span class="dep">A7</span></p>
+      </div>
+    </details>
+    <div class="first-tasks">
+      <strong>Pick one to start · 1 open</strong>
+      <ul class="first-task-list"><li class="first-task">
+        <div class="first-task-top">
+          <strong>Run the gateway and list its tools from any MCP client, then post the tool list</strong>
+          <span class="task-flags"><span class="task-size small">small</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> The tool list from your own client is in the thread, along with which client you used and anything in the setup that was not obvious.</span>
+        <span class="task-id">MC-1</span>
+      </li></ul>
+      <div class="ownership-state unclaimed">
+        <span class="pill ownership unclaimed">UNCLAIMED</span>
+        <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
+        
+      </div>
+    </div>
+    
+    <details class="tool-detail">
+      <summary>Source, privacy &amp; licence</summary>
+      <div class="tool-detail-body">
+        <div class="tool-links"><strong>More docs</strong><span class="inert-link">Command contract — network/mcp/contracts/commands.json</span></div>
+        <div class="tool-links"><strong>Source</strong><span class="inert-link">Private until claimed</span></div>
+        <p class="source-note">network/mcp/ in this repo — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot exists in the public comfy repo. Access opens at ladder stage 3.</p>
+        <div class="tool-footnotes">
+          <div class="privacy"><strong>Privacy</strong>Bound to 127.0.0.1 on purpose. Do not expose it — it drives a live game process, and its whole safety story is that only you can reach it.</div>
+          <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
+        </div>
+      </div>
+    </details>
+  </article>
+<article class="tool recoverable-not-running" id="camera-gallery">
+    <div class="tool-head">
+      <div><h3>Camera Flythrough → Gallery Pipeline</h3><span class="tool-id">camera-gallery</span></div>
+      <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
+    </div>
+    <p class="one-liner">Fly a camera along waypoints derived from a world save, then cut the capture into a gallery of what people actually built.</p>
+    <div class="status-detail recoverable-not-running"><strong>What that status actually means</strong>Not running. It was pruned from baseline on 2026-07-21 and nothing here executes today. Two of the four segments are real: segment 1 was built and produced real output, and segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. Every piece is still in the public comfy repo, so this is a revival rather than a rewrite.</div>
+    <p class="tool-audience"><strong>For</strong>Anyone who wants to show a server&#39;s builds to people who will never log into it.</p>
+    <div class="tool-action">
+      <span class="first-result"><em>First result</em>Unknown — nothing runs yet. CG-1 produces the first honest estimate.</span>
+      <span class="access-button disabled" aria-disabled="true">Not published yet</span>
+    </div>
+    <div class="access-verify"><p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p></div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/README.md" target="_blank" rel="noreferrer">Handoff overview (handoffs/README.md)</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531927004197425172" target="_blank" rel="noreferrer">Recoverable pieces thread</a></span></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>Java, for the ComfyStewardView side of segment 1</li><li>A BepInEx Valheim install, for segment 3</li><li>ffmpeg, for segment 4</li></ul></div>
+    <details class="tool-detail">
+      <summary>How it works, in detail</summary>
+      <div class="tool-detail-body">
+        <p>A four-segment pipeline: read a world save, emit camera waypoints via ComfyStewardView, fly those waypoints in-game with a BepInEx camera plugin, then cut the capture into a gallery with ffmpeg.</p>
+        <p class="deps">roadmap <span class="dep">A3</span><span class="dep">A7</span></p>
+      </div>
+    </details>
+    <div class="first-tasks">
+      <strong>Pick one to start · 1 open</strong>
+      <ul class="first-task-list"><li class="first-task">
+        <div class="first-task-top">
+          <strong>Revive segment 1 against ComfyStewardView and produce a waypoints.sample.json</strong>
+          <span class="task-flags"><span class="task-size medium">medium</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> segment-1-emit-waypoints.py runs against a current ComfyStewardView build and writes a committed waypoints.sample.json that segment 3 can consume. This is the claiming task for this tool.</span>
+        <span class="task-id">CG-1</span>
+      </li></ul>
+      <div class="ownership-state unclaimed">
+        <span class="pill ownership unclaimed">UNCLAIMED</span>
+        <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
+        
+      </div>
+    </div>
+    <div class="recovery">
+      <strong>Where the pieces are</strong>
+      <p>Segment 1 was built and produced real output. Segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. The baseline pre-prune ref is cc322ee.</p>
+      <p class="recovery-origin"><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs</a></p>
+      <ul class="recovery-paths"><li><code>handoffs/README.md</code></li><li><code>handoffs/segment-1-emit-waypoints.py</code></li><li><code>handoffs/segment-2-get-into-the-world.md</code></li><li><code>handoffs/segment-3-flight-path-mod.md</code></li><li><code>handoffs/segment-4-video-to-gallery.md</code></li><li><code>handoffs/video_to_gallery.py</code></li><li><code>handoffs/valheim-camera-proof/</code></li></ul>
+    </div>
+    <details class="tool-detail">
+      <summary>Source, privacy &amp; licence</summary>
+      <div class="tool-detail-body">
+        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/segment-3-flight-path-mod.md" target="_blank" rel="noreferrer">Segment 3 brief — the flight-path mod</a></div>
+        <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs</a></div>
+        <p class="source-note">Pruned from baseline, but fully preserved in the public comfy repo — nothing was lost.</p>
+        <div class="tool-footnotes">
+          <div class="privacy"><strong>Privacy</strong>A flythrough shows other people&#39;s builds. Ask before publishing a gallery of a world you do not own.</div>
+          <div class="license"><strong>License</strong>MIT — everything recoverable here lives in the public comfy archive, which is MIT-licensed. A revival landing in this repo would land under BUSL-1.1; see LICENSING.md.</div>
+        </div>
+      </div>
+    </details>
+  </article>
+<article class="tool recoverable-not-running" id="quest-submission-bridge">
+    <div class="tool-head">
+      <div><h3>Quest Submission → Review Bridge</h3><span class="tool-id">quest-submission-bridge</span></div>
+      <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
+    </div>
+    <p class="one-liner">The back half of quest capture: package what a player did in-game, land it in a review inbox, and turn it into a record a GM can read.</p>
+    <div class="status-detail recoverable-not-running"><strong>What that status actually means</strong>Not running. The front half is alive in the mod today with tests — QuestViewLoader.cs reads a player&#39;s quest-view and QuestTriggerEvaluator.cs evaluates triggers in-game. The back half, which packages a submission and turns it into a reviewable record, is not wired to anything; its code sits in the public comfy repo waiting to be pointed at the live mod&#39;s telemetry.</div>
+    <p class="tool-audience"><strong>For</strong>GMs who want players to submit completions without a screenshot and a Discord message.</p>
+    <div class="tool-action">
+      <span class="first-result"><em>First result</em>Unknown until QB-1 lands. The front half already runs, so the first honest measurement comes from the port.</span>
+      <span class="access-button disabled" aria-disabled="true">Not published yet</span>
+    </div>
+    <div class="access-verify"><p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p></div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/comfy-control-surface/QUEST.md" target="_blank" rel="noreferrer">Quest handoff brief (QUEST.md)</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531927004197425172" target="_blank" rel="noreferrer">Recoverable pieces thread</a></span></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3, for the bridge consumer</li><li>The mod running locally with quest telemetry enabled</li><li>.NET (net48), only if you take the C# submission service rather than the Python consumer</li></ul></div>
+    <details class="tool-detail">
+      <summary>How it works, in detail</summary>
+      <div class="tool-detail-body">
+        <p>Packages an in-game quest submission, lands it in a review inbox, and renders human-readable quest records a GM can act on without chasing screenshots.</p>
+        <p class="deps">roadmap <span class="dep">A5</span><span class="dep">A7</span></p>
+      </div>
+    </details>
+    <div class="first-tasks">
+      <strong>Pick one to start · 1 open</strong>
+      <ul class="first-task-list"><li class="first-task">
+        <div class="first-task-top">
+          <strong>Port bridge_consumer.py to read the live mod&#39;s quest telemetry and emit one review record</strong>
+          <span class="task-flags"><span class="task-size medium">medium</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> A real in-game quest completion travels from the running mod through the consumer and comes out as one human-readable review record. This is the claiming task for this tool.</span>
+        <span class="task-id">QB-1</span>
+      </li></ul>
+      <div class="ownership-state unclaimed">
+        <span class="pill ownership unclaimed">UNCLAIMED</span>
+        <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
+        
+      </div>
+    </div>
+    <div class="recovery">
+      <strong>Where the pieces are</strong>
+      <p>Front half is alive and tested in the live mod — network/mod/ComfyNetworkSense/Core/Services/QuestViewLoader.cs and QuestTriggerEvaluator.cs. Only the back half needs reviving, and it has fixtures to test against.</p>
+      <p class="recovery-origin"><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface</a></p>
+      <ul class="recovery-paths"><li><code>Core/SubmissionService.cs</code></li><li><code>bridge-consumer/bridge_consumer.py</code></li><li><code>bridge-consumer/fixtures/</code></li><li><code>QUEST.md</code></li><li><code>PROOF.md</code></li></ul>
+    </div>
+    <details class="tool-detail">
+      <summary>Source, privacy &amp; licence</summary>
+      <div class="tool-detail-body">
+        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/comfy-control-surface/PROOF.md" target="_blank" rel="noreferrer">What was proved (PROOF.md)</a></div>
+        <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface</a></div>
+        <p class="source-note">The back half is preserved in the public comfy repo. The front half is live in this repo&#39;s mod at network/mod/ComfyNetworkSense/Core/Services/.</p>
+        <div class="tool-footnotes">
+          <div class="privacy"><strong>Privacy</strong>A submission record carries a player&#39;s name and what they did. Keep the review inbox off any public surface.</div>
+          <div class="license"><strong>License</strong>Split: the live front half (in this repo&#39;s mod) is BUSL-1.1 per LICENSING.md; the recoverable back half lives in the public comfy archive under MIT.</div>
+        </div>
+      </div>
+    </details>
+  </article></div>
+      </div>
+    </section>
+
     <section id="ladder">
       <div class="wrap">
-        <div class="section-head"><div class="section-number">01 · THE LADDER</div><div><h2>Five rungs, and you can stop on any of them.</h2><p class="section-copy">Nobody starts as an owner. Each rung says what you did, what you get for it, and where it is written down. Stopping at stage 1 is a complete and finished contribution.</p></div></div>
+        <div class="section-head"><div class="section-number">02 · THE LADDER</div><div><h2>Five rungs, and you can stop on any of them.</h2><p class="section-copy">Nobody starts as an owner. Each rung says what you did, what you get for it, and where it is written down. Stopping at stage 1 is a complete and finished contribution.</p></div></div>
         <div class="ladder" role="list" aria-label="Participation ladder"><article class="ladder-step stage-0" role="listitem">
       <div class="ladder-stage">Stage 0</div>
       <h3>Curious</h3>
@@ -248,354 +756,10 @@
     </article></div>
       </div>
     </section>
-
-    <section id="tools">
-      <div class="wrap">
-        <div class="section-head"><div class="section-number">02 · THE TOOLS</div><div><h2>Every status below is what the thing actually does today.</h2><p class="section-copy">A status chip here is never a mood. It is one of four declared states, and every one of them is qualified in prose by the person who wrote the code. Where something does not run, the card says so and points at where the pieces are.</p></div></div>
-        <div class="tool-grid"><article class="tool live" id="quest-picker">
-    <div class="tool-head">
-      <div><span class="tool-id">quest-picker</span><h3>Quest Picker + Absorption Engine</h3></div>
-      <span class="pill live">LIVE</span>
-    </div>
-    <p class="one-liner">Turns a guild&#39;s real quest tracker into a single offline page where a player checks the quests they care about — and the game mod reads the result.</p>
-    <div class="status-detail live"><strong>What that status actually means</strong>Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. The download below is a cold-start kit with a synthetic sample guild — verified to run from a fresh folder with nothing but Python and openpyxl.</div>
-    <div class="tool-facts">
-      <div><strong>What it does</strong>Python (standard library, plus openpyxl for .xlsx sources) harvests real guild quest trackers into one JSON catalog per guild. render_quest_picker.py folds a catalog into a single self-contained file:// HTML page with no server and no network calls. A player opens that page, checks the quests they want, and saves a personal quest-view.json that the game mod reads at runtime.</div>
-      <div><strong>Who it is for</strong>Guild stewards and GMs who already keep a quest tracker and want it to reach players in-game instead of dying in a spreadsheet tab.</div>
-    </div>
-    <div class="meta-line"><span>first result · about 10 minutes</span><span class="deps">roadmap <span class="dep">A5</span><span class="dep">A7</span></span></div>
-    <div class="tool-columns">
-      <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>openpyxl (only for .xlsx sources)</li><li>A browser — the picker is a local file:// page, not a service</li></ul></div>
-      <div class="access site-download">
-      <a class="access-button" href="/workbench/downloads/quest-picker">Download Quest Picker + Absorption Engine</a>
-      <div class="access-detail"><span>SHA-256</span><code>d0b53016cbce5febb6f35d24b581a2112298f3650d48cf3190e44ece7ac4b65a</code></div>
-      <div class="access-detail"><span>Size</span><code>35.5 KB</code></div>
-      <div class="access-detail"><span>Published</span><code>2026-07-29T01:12:00Z</code></div>
-    </div>
-    </div>
-    <div class="tool-link-row">
-      <div class="tool-links"><strong>Docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/schema.md" target="_blank" rel="noreferrer">Catalog schema (schema.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/quest-view-schema.md" target="_blank" rel="noreferrer">Personal quest-view schema (quest-view-schema.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/sources.json" target="_blank" rel="noreferrer">Source config seam (sources.json)</a></div>
-      <div class="tool-links"><strong>Discussion</strong><span class="inert-link">thread opens with the announcement</span></div>
-      <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/recipes/quest-catalogs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/recipes/quest-catalogs</a></div>
-    </div>
-    <p class="source-note">The same code lives in this repo at recipes/quest-catalogs/ and is byte-identical to the public copy.</p>
-    <div class="first-tasks">
-      <strong>Pick one to start</strong>
-      <ul class="first-task-list"><li class="first-task">
-        <div class="first-task-head"><span class="task-id">QP-1</span><span class="task-size small">small</span></div>
-        <strong>Write gm-template-example.json</strong>
-        <span class="done-when"><em>Done when:</em> validate.py accepts the file and a GM can author a quest through the gm-template seam without editing harvest.py. sources.json already points at this path (entry rangers-example, currently disabled) but the file has never been written.</span>
-      </li><li class="first-task">
-        <div class="first-task-head"><span class="task-id">QP-2</span><span class="task-size medium">medium</span></div>
-        <strong>Run the harvest against your own guild&#39;s tracker export</strong>
-        <span class="done-when"><em>Done when:</em> A new catalog JSON renders in the picker and every anomaly the harvest reported has an explanation — zero left unexplained.</span>
-      </li></ul>
-    </div>
-    
-    <div class="ownership-state unclaimed">
-      <span class="pill ownership unclaimed">UNCLAIMED</span>
-      <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
-      
-    </div>
-    <div class="tool-footnotes">
-      <div class="privacy"><strong>Privacy</strong>Harvested catalogs from a live guild tracker contain member names. The published sample uses synthetic data only — do not commit a real harvested catalog.</div>
-      <div class="license"><strong>License</strong>BUSL-1.1 in this repo (community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md). The byte-identical copies in the public comfy archive carry that repo&#39;s MIT license.</div>
-    </div>
-  </article>
-<article class="tool live" id="steward-view">
-    <div class="tool-head">
-      <div><span class="tool-id">steward-view</span><h3>ComfyStewardView</h3></div>
-      <span class="pill live">LIVE</span>
-    </div>
-    <p class="one-liner">Reads a Valheim world file and answers the questions that stop being walkable once a server gets big: where is everyone building, and who owns this.</p>
-    <div class="status-detail live"><strong>What that status actually means</strong>The public repo builds a fat JAR that parses a real world .db, serves a localhost API, and draws a browser heatmap. It has been used to steward high-player worlds. What is missing is a quickstart for the roughly twenty GM probe utilities — they work, but today you have to read the source to know what each one does.</div>
-    <div class="tool-facts">
-      <div><strong>What it does</strong>A Java fat-JAR extracts and parses a Valheim world file (.db), exposes a REST API on localhost:7080 (/api/v1/heatmap, /api/v1/points), and serves a browser heatmap viewer. Around twenty GM probe utilities sit alongside it for build-density clustering and ownership investigation.</div>
-      <div><strong>Who it is for</strong>Server stewards and GMs on worlds big enough that walking around stopped being a way to find out what is happening.</div>
-    </div>
-    <div class="meta-line"><span>first result · about 15 minutes</span><span class="deps">roadmap <span class="dep">A3</span><span class="dep">A7</span></span></div>
-    <div class="tool-columns">
-      <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Java</li><li>A copy of a Valheim world .db — a copy, never the live save</li><li>A browser</li></ul></div>
-      <div class="access public-repo">
-      <a class="access-button" href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">Open the public repository</a>
-      <p class="access-note">Clone and build it yourself — there is no packaged download.</p>
-    </div>
-    </div>
-    <div class="tool-link-row">
-      <div class="tool-links"><strong>Docs</strong><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">ComfyStewardView repository and README</a></div>
-      <div class="tool-links"><strong>Discussion</strong><span class="inert-link">thread opens with the announcement</span></div>
-      <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/ComfyStewardView</a></div>
-    </div>
-    <p class="source-note">A standalone public repository, separate from baseline. Clone it and build; nothing here is gated.</p>
-    <div class="first-tasks">
-      <strong>Pick one to start</strong>
-      <ul class="first-task-list"><li class="first-task">
-        <div class="first-task-head"><span class="task-id">SV-1</span><span class="task-size small">small</span></div>
-        <strong>Run it against a copy of any world .db and post one heatmap screenshot</strong>
-        <span class="done-when"><em>Done when:</em> A heatmap image from your own world is in the thread, with the build command you actually used and anything that tripped you up.</span>
-      </li><li class="first-task">
-        <div class="first-task-head"><span class="task-id">SV-2</span><span class="task-size medium">medium</span></div>
-        <strong>Write the missing quickstart for the probe utilities</strong>
-        <span class="done-when"><em>Done when:</em> Each GM probe utility has one line saying what it answers and one copy-pasteable invocation, and a steward who has never opened the source can pick the right probe from that page alone.</span>
-      </li></ul>
-    </div>
-    
-    <div class="ownership-state unclaimed">
-      <span class="pill ownership unclaimed">UNCLAIMED</span>
-      <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
-      
-    </div>
-    <div class="tool-footnotes">
-      <div class="privacy"><strong>Privacy</strong>Run it on world copies, not the live save. Output can contain player names — share aggregates and screenshots, not raw dumps.</div>
-      <div class="license"><strong>License</strong>Proprietary — all rights reserved per the repo&#39;s own LICENSE.md, which requires written permission and a paid license for reuse. Catalogued here for running it and giving feedback; the license posture is under review, and until it changes, contributions mean docs and feedback, not code redistribution.</div>
-    </div>
-  </article>
-<article class="tool local-only" id="community-telemetry">
-    <div class="tool-head">
-      <div><span class="tool-id">community-telemetry</span><h3>Live Community Telemetry</h3></div>
-      <span class="pill local-only">LOCAL ONLY</span>
-    </div>
-    <p class="one-liner">An aggregates-only telemetry API with privacy tests that fail if a player ID, name, or position ever shows up — plus the whole stack, runnable on your machine.</p>
-    <div class="status-detail local-only"><strong>What that status actually means</strong>The aggregates API is live on P7 and the public /community page reads it. What is local-only is everything you would need to run or change it yourself: the docker stack that reproduces the whole thing and the loopback operator dashboard both run on your machine, and neither is published as a download.</div>
-    <div class="tool-facts">
-      <div><strong>What it does</strong>An aggregates-only v0 telemetry API (GET /api/v0/telemetry/server, /tick, /sessions, /delivery, /regions, /events, /valheim, /cutover) whose test suite asserts that no player ID, name, or position ever appears in a response. A self-contained /community page polls it. A local dev stack brings up the real thing end to end (docker compose: postgres 5435, gateway 4000, eventlog 4002, progression 4003, operatorapi 4004), and a loopback-only operator viewer renders it for a single operator.</div>
-      <div><strong>Who it is for</strong>Anyone who wants to run the telemetry surface themselves — and anyone who would rather check the privacy claim than take it on faith.</div>
-    </div>
-    <div class="meta-line"><span>first result · about 5 minutes against the live API; about 30 for the local stack once claimed</span><span class="deps">roadmap <span class="dep">A4</span><span class="dep">A7</span></span></div>
-    <div class="tool-columns">
-      <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>A browser (or Python 3) for the live aggregates API — that is all CT-1 needs</li><li>Docker and docker compose, for the local stack (source access opens at ladder stage 3)</li><li>The .NET 9 SDK, only if you want to rebuild the gateway rather than run the composed image</li></ul></div>
-      <div class="access site-download">
-      <a class="access-button" href="/workbench/downloads/community-telemetry">Download Live Community Telemetry</a>
-      <div class="access-detail"><span>SHA-256</span><code>bf065eb47da01f3305ec10c4c6b8ec03d99329cf6a5dc02c2ba5f26eded32211</code></div>
-      <div class="access-detail"><span>Size</span><code>8.3 KB</code></div>
-      <div class="access-detail"><span>Published</span><code>2026-07-29T01:12:00Z</code></div>
-    </div>
-    </div>
-    <div class="tool-link-row">
-      <div class="tool-links"><strong>Docs</strong><a href="/community">The live community view</a><span aria-hidden="true"> · </span><span class="inert-link">Telemetry v0 API reference — Lumberjacks/docs/api/telemetry-v0.md</span><span aria-hidden="true"> · </span><span class="inert-link">Viewing the surfaces — Lumberjacks/docs/dashboard/viewing-the-surfaces.md</span></div>
-      <div class="tool-links"><strong>Discussion</strong><span class="inert-link">thread opens with the announcement</span></div>
-      <div class="tool-links"><strong>Source</strong><span class="inert-link">Private until claimed</span></div>
-    </div>
-    <p class="source-note">The code is in this repo — Lumberjacks/infra/docker/docker-compose.yml for the stack, Lumberjacks/tools/omen-dashboard/ for the operator viewer. Access opens at ladder stage 3.</p>
-    <div class="first-tasks">
-      <strong>Pick one to start</strong>
-      <ul class="first-task-list"><li class="first-task">
-        <div class="first-task-head"><span class="task-id">CT-1</span><span class="task-size small">small</span></div>
-        <strong>Build one chart, tile, or widget from the public v0 API and post it</strong>
-        <span class="done-when"><em>Done when:</em> Any stack you like — a static page, a spreadsheet, a terminal script — renders live data from a v0 endpoint, and the thread has a screenshot plus how you made it. Needs no repo access; the starter kit includes a Python poller.</span>
-      </li><li class="first-task">
-        <div class="first-task-head"><span class="task-id">CT-2</span><span class="task-size medium">medium</span></div>
-        <strong>Bring the local stack up, then add one new aggregate tile the privacy tests still pass on</strong>
-        <span class="done-when"><em>Done when:</em> The compose stack runs on your machine and a new aggregate is exposed by the v0 API and rendered, with the existing privacy tests passing unmodified. This is the claim path — source access opens at ladder stage 3.</span>
-      </li></ul>
-    </div>
-    
-    <div class="ownership-state unclaimed">
-      <span class="pill ownership unclaimed">UNCLAIMED</span>
-      <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
-      
-    </div>
-    <div class="tool-footnotes">
-      <div class="privacy"><strong>Privacy</strong>The v0 API is aggregates-only by tested design — no player ID, no name, no position, ever. Keep that bar: a change that makes the privacy tests fail is a change that does not land.</div>
-      <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
-    </div>
-  </article>
-<article class="tool live" id="steam-join">
-    <div class="tool-head">
-      <div><span class="tool-id">steam-join</span><h3>Steam Self-Service Join</h3></div>
-      <span class="pill live">LIVE</span>
-    </div>
-    <p class="one-liner">An invite link, a Steam sign-in, and a mod-pack zip with your credentials already in it — no config file to hand-edit.</p>
-    <div class="status-detail live"><strong>What that status actually means</strong>The join flow works end to end on comfy-p7.duckdns.org today: invite, Steam sign-in, personalized zip, self-service update and reissue. The operator runbook&#39;s own caveats stand and are not softened here — the endpoint is currently plain HTTP on a non-default, world-open port with TLS built and staged but not switched on, rate limiting is not in place yet (the runbook lists it as pre-widening work), it is open to the alpha cohort only, and volunteer platform readiness is recorded as NOT READY. Until TLS is armed, the enrollment credential crosses a plaintext public link.</div>
-    <div class="tool-facts">
-      <div><strong>What it does</strong>An invite link opens a page that hands off to Steam OpenID sign-in. A one-use bootstrap token is exchanged for a personalized mod-pack zip with the player&#39;s credentials already baked in. Self-service update and reissue run through the same path. The per-player token is stored only as a hash.</div>
-      <div><strong>Who it is for</strong>The next wave of playtesters — people who want to join and play without being told to edit a config file first.</div>
-    </div>
-    <div class="meta-line"><span>first result · about 5 minutes</span><span class="deps">roadmap <span class="dep">M2</span><span class="dep">M5</span><span class="dep">A7</span></span></div>
-    <div class="tool-columns">
-      <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>A Steam account</li><li>Valheim</li><li>An invite link from the operator — the endpoint is alpha-cohort only</li></ul></div>
-      <div class="access live-service">
-      <a class="access-button" href="https://comfy-p7.duckdns.org/join" target="_blank" rel="noreferrer">Open the live service</a>
-      <p class="access-note">This one is a running service, not a file. There is nothing to download.</p>
-    </div>
-    </div>
-    <div class="tool-link-row">
-      <div class="tool-links"><strong>Docs</strong><a href="https://comfy-p7.duckdns.org/join" target="_blank" rel="noreferrer">Join the alpha (the live flow)</a><span aria-hidden="true"> · </span><a href="/roadmap">Volunteer roadmap — the M2 and M5 gates this sits behind</a><span aria-hidden="true"> · </span><span class="inert-link">Operator runbook — infra/gcp/p7/VOLUNTEER-ENDPOINT.md</span></div>
-      <div class="tool-links"><strong>Discussion</strong><span class="inert-link">thread opens with the announcement</span></div>
-      <div class="tool-links"><strong>Source</strong><span class="inert-link">Private until claimed</span></div>
-    </div>
-    <p class="source-note">Lumberjacks/src/Game.Gateway/Valheim/ in this repo — SteamEnrollmentEndpoints, SteamEnrollmentService, EnrollmentPages, ModpackReleaseCatalog — with real test suites, plus the operator runbook at infra/gcp/p7/VOLUNTEER-ENDPOINT.md. Access opens at ladder stage 3.</p>
-    <div class="first-tasks">
-      <strong>Pick one to start</strong>
-      <ul class="first-task-list"><li class="first-task">
-        <div class="first-task-head"><span class="task-id">SJ-1</span><span class="task-size small">small</span></div>
-        <strong>Walk the join flow end-to-end as a tester and file friction notes</strong>
-        <span class="done-when"><em>Done when:</em> You went from invite link to a running modded client, and every point where you hesitated, guessed, or had to ask is written down in the thread — including the ones that turned out to be your fault.</span>
-      </li><li class="first-task">
-        <div class="first-task-head"><span class="task-id">SJ-2</span><span class="task-size medium">medium</span></div>
-        <strong>Write the tester-facing FAQ from the friction notes</strong>
-        <span class="done-when"><em>Done when:</em> A page answers the questions SJ-1 actually produced, in a tester&#39;s words rather than the operator&#39;s, and the next tester gets through without asking any of them.</span>
-      </li></ul>
-    </div>
-    
-    <div class="ownership-state unclaimed">
-      <span class="pill ownership unclaimed">UNCLAIMED</span>
-      <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
-      
-    </div>
-    <div class="tool-footnotes">
-      <div class="privacy"><strong>Privacy</strong>The per-player token is stored only as a hash. The zip you receive carries your own credential — do not re-share it; ask for a reissue instead.</div>
-      <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
-    </div>
-  </article>
-<article class="tool dev-only" id="mcp-mod-channel">
-    <div class="tool-head">
-      <div><span class="tool-id">mcp-mod-channel</span><h3>MCP Mod Channel</h3></div>
-      <span class="pill dev-only">DEV ONLY</span>
-    </div>
-    <p class="one-liner">A localhost MCP server that talks to the running game mod: apply a config profile, run a bounded lab test, read back what happened.</p>
-    <div class="status-detail dev-only"><strong>What that status actually means</strong>It runs, and it really does drive the live mod. It is reachable only from 127.0.0.1 with a dev key, and that is deliberate rather than unfinished: it is a development channel, never a console or shell bridge, and every mutation it can perform is whitelisted and bounded. There is no download and no remote mode.</div>
-    <div class="tool-facts">
-      <div><strong>What it does</strong>A local Python MCP server on 127.0.0.1:8720 (header X-Comfy-Key, dev value comfy-dev-local) speaks bidirectionally with the running mod: apply config profiles, run bounded lab motion tests through an atomic mailbox, tail mod telemetry and logs, assemble session bundles, and get local-Ollama explanations of what it just saw.</div>
-      <div><strong>Who it is for</strong>Mod developers, and anyone curious about wiring an AI tool to a live game process without handing it a shell.</div>
-    </div>
-    <div class="meta-line"><span>first result · about 20 minutes</span><span class="deps">roadmap <span class="dep">A7</span></span></div>
-    <div class="tool-columns">
-      <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>The mod running locally</li><li>An MCP client</li><li>Optional: a local Ollama, only for the explanation tools</li></ul></div>
-      <div class="access not-published">
-    <span class="access-button disabled" aria-disabled="true">Not published yet</span>
-    <p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p>
-  </div>
-    </div>
-    <div class="tool-link-row">
-      <div class="tool-links"><strong>Docs</strong><span class="inert-link">Command contract — network/mcp/contracts/commands.json</span></div>
-      <div class="tool-links"><strong>Discussion</strong><span class="inert-link">thread opens with the announcement</span></div>
-      <div class="tool-links"><strong>Source</strong><span class="inert-link">Private until claimed</span></div>
-    </div>
-    <p class="source-note">network/mcp/ in this repo — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot exists in the public comfy repo. Access opens at ladder stage 3.</p>
-    <div class="first-tasks">
-      <strong>Pick one to start</strong>
-      <ul class="first-task-list"><li class="first-task">
-        <div class="first-task-head"><span class="task-id">MC-1</span><span class="task-size small">small</span></div>
-        <strong>Run the gateway and list its tools from any MCP client, then post the tool list</strong>
-        <span class="done-when"><em>Done when:</em> The tool list from your own client is in the thread, along with which client you used and anything in the setup that was not obvious.</span>
-      </li></ul>
-    </div>
-    
-    <div class="ownership-state unclaimed">
-      <span class="pill ownership unclaimed">UNCLAIMED</span>
-      <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
-      
-    </div>
-    <div class="tool-footnotes">
-      <div class="privacy"><strong>Privacy</strong>Bound to 127.0.0.1 on purpose. Do not expose it — it drives a live game process, and its whole safety story is that only you can reach it.</div>
-      <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
-    </div>
-  </article>
-<article class="tool recoverable-not-running" id="camera-gallery">
-    <div class="tool-head">
-      <div><span class="tool-id">camera-gallery</span><h3>Camera Flythrough → Gallery Pipeline</h3></div>
-      <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
-    </div>
-    <p class="one-liner">Fly a camera along waypoints derived from a world save, then cut the capture into a gallery of what people actually built.</p>
-    <div class="status-detail recoverable-not-running"><strong>What that status actually means</strong>Not running. It was pruned from baseline on 2026-07-21 and nothing here executes today. Two of the four segments are real: segment 1 was built and produced real output, and segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. Every piece is still in the public comfy repo, so this is a revival rather than a rewrite.</div>
-    <div class="tool-facts">
-      <div><strong>What it does</strong>A four-segment pipeline: read a world save, emit camera waypoints via ComfyStewardView, fly those waypoints in-game with a BepInEx camera plugin, then cut the capture into a gallery with ffmpeg.</div>
-      <div><strong>Who it is for</strong>Anyone who wants to show a server&#39;s builds to people who will never log into it.</div>
-    </div>
-    <div class="meta-line"><span>first result · Unknown — nothing runs yet. CG-1 produces the first honest estimate.</span><span class="deps">roadmap <span class="dep">A3</span><span class="dep">A7</span></span></div>
-    <div class="tool-columns">
-      <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>Java, for the ComfyStewardView side of segment 1</li><li>A BepInEx Valheim install, for segment 3</li><li>ffmpeg, for segment 4</li></ul></div>
-      <div class="access not-published">
-    <span class="access-button disabled" aria-disabled="true">Not published yet</span>
-    <p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p>
-  </div>
-    </div>
-    <div class="tool-link-row">
-      <div class="tool-links"><strong>Docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/README.md" target="_blank" rel="noreferrer">Handoff overview (handoffs/README.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/segment-3-flight-path-mod.md" target="_blank" rel="noreferrer">Segment 3 brief — the flight-path mod</a></div>
-      <div class="tool-links"><strong>Discussion</strong><span class="inert-link">thread opens with the announcement</span></div>
-      <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs</a></div>
-    </div>
-    <p class="source-note">Pruned from baseline, but fully preserved in the public comfy repo — nothing was lost.</p>
-    <div class="first-tasks">
-      <strong>Pick one to start</strong>
-      <ul class="first-task-list"><li class="first-task">
-        <div class="first-task-head"><span class="task-id">CG-1</span><span class="task-size medium">medium</span></div>
-        <strong>Revive segment 1 against ComfyStewardView and produce a waypoints.sample.json</strong>
-        <span class="done-when"><em>Done when:</em> segment-1-emit-waypoints.py runs against a current ComfyStewardView build and writes a committed waypoints.sample.json that segment 3 can consume. This is the claiming task for this tool.</span>
-      </li></ul>
-    </div>
-    <div class="recovery">
-      <strong>Where the pieces are</strong>
-      <p>Segment 1 was built and produced real output. Segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. The baseline pre-prune ref is cc322ee.</p>
-      <p class="recovery-origin"><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs</a></p>
-      <ul class="recovery-paths"><li><code>handoffs/README.md</code></li><li><code>handoffs/segment-1-emit-waypoints.py</code></li><li><code>handoffs/segment-2-get-into-the-world.md</code></li><li><code>handoffs/segment-3-flight-path-mod.md</code></li><li><code>handoffs/segment-4-video-to-gallery.md</code></li><li><code>handoffs/video_to_gallery.py</code></li><li><code>handoffs/valheim-camera-proof/</code></li></ul>
-    </div>
-    <div class="ownership-state unclaimed">
-      <span class="pill ownership unclaimed">UNCLAIMED</span>
-      <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
-      
-    </div>
-    <div class="tool-footnotes">
-      <div class="privacy"><strong>Privacy</strong>A flythrough shows other people&#39;s builds. Ask before publishing a gallery of a world you do not own.</div>
-      <div class="license"><strong>License</strong>MIT — everything recoverable here lives in the public comfy archive, which is MIT-licensed. A revival landing in this repo would land under BUSL-1.1; see LICENSING.md.</div>
-    </div>
-  </article>
-<article class="tool recoverable-not-running" id="quest-submission-bridge">
-    <div class="tool-head">
-      <div><span class="tool-id">quest-submission-bridge</span><h3>Quest Submission → Review Bridge</h3></div>
-      <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
-    </div>
-    <p class="one-liner">The back half of quest capture: package what a player did in-game, land it in a review inbox, and turn it into a record a GM can read.</p>
-    <div class="status-detail recoverable-not-running"><strong>What that status actually means</strong>Not running. The front half is alive in the mod today with tests — QuestViewLoader.cs reads a player&#39;s quest-view and QuestTriggerEvaluator.cs evaluates triggers in-game. The back half, which packages a submission and turns it into a reviewable record, is not wired to anything; its code sits in the public comfy repo waiting to be pointed at the live mod&#39;s telemetry.</div>
-    <div class="tool-facts">
-      <div><strong>What it does</strong>Packages an in-game quest submission, lands it in a review inbox, and renders human-readable quest records a GM can act on without chasing screenshots.</div>
-      <div><strong>Who it is for</strong>GMs who want players to submit completions without a screenshot and a Discord message.</div>
-    </div>
-    <div class="meta-line"><span>first result · Unknown until QB-1 lands. The front half already runs, so the first honest measurement comes from the port.</span><span class="deps">roadmap <span class="dep">A5</span><span class="dep">A7</span></span></div>
-    <div class="tool-columns">
-      <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3, for the bridge consumer</li><li>The mod running locally with quest telemetry enabled</li><li>.NET (net48), only if you take the C# submission service rather than the Python consumer</li></ul></div>
-      <div class="access not-published">
-    <span class="access-button disabled" aria-disabled="true">Not published yet</span>
-    <p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p>
-  </div>
-    </div>
-    <div class="tool-link-row">
-      <div class="tool-links"><strong>Docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/comfy-control-surface/QUEST.md" target="_blank" rel="noreferrer">Quest handoff brief (QUEST.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/comfy-control-surface/PROOF.md" target="_blank" rel="noreferrer">What was proved (PROOF.md)</a></div>
-      <div class="tool-links"><strong>Discussion</strong><span class="inert-link">thread opens with the announcement</span></div>
-      <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface</a></div>
-    </div>
-    <p class="source-note">The back half is preserved in the public comfy repo. The front half is live in this repo&#39;s mod at network/mod/ComfyNetworkSense/Core/Services/.</p>
-    <div class="first-tasks">
-      <strong>Pick one to start</strong>
-      <ul class="first-task-list"><li class="first-task">
-        <div class="first-task-head"><span class="task-id">QB-1</span><span class="task-size medium">medium</span></div>
-        <strong>Port bridge_consumer.py to read the live mod&#39;s quest telemetry and emit one review record</strong>
-        <span class="done-when"><em>Done when:</em> A real in-game quest completion travels from the running mod through the consumer and comes out as one human-readable review record. This is the claiming task for this tool.</span>
-      </li></ul>
-    </div>
-    <div class="recovery">
-      <strong>Where the pieces are</strong>
-      <p>Front half is alive and tested in the live mod — network/mod/ComfyNetworkSense/Core/Services/QuestViewLoader.cs and QuestTriggerEvaluator.cs. Only the back half needs reviving, and it has fixtures to test against.</p>
-      <p class="recovery-origin"><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface</a></p>
-      <ul class="recovery-paths"><li><code>Core/SubmissionService.cs</code></li><li><code>bridge-consumer/bridge_consumer.py</code></li><li><code>bridge-consumer/fixtures/</code></li><li><code>QUEST.md</code></li><li><code>PROOF.md</code></li></ul>
-    </div>
-    <div class="ownership-state unclaimed">
-      <span class="pill ownership unclaimed">UNCLAIMED</span>
-      <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
-      
-    </div>
-    <div class="tool-footnotes">
-      <div class="privacy"><strong>Privacy</strong>A submission record carries a player&#39;s name and what they did. Keep the review inbox off any public surface.</div>
-      <div class="license"><strong>License</strong>Split: the live front half (in this repo&#39;s mod) is BUSL-1.1 per LICENSING.md; the recoverable back half lives in the public comfy archive under MIT.</div>
-    </div>
-  </article></div>
-      </div>
-    </section>
   </main>
 
   <footer class="wrap">
-    <div class="feedback-rhythm">Replies land in batches, about twice a week — this is a solo-operator project. Threads live in the <span class="inert-link">Discord forum (opens with the announcement)</span>.</div>
+    <div class="feedback-rhythm">Replies land in batches, about twice a week — this is a solo-operator project. Threads live in the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a>.</div>
     <div>If a card on this page is wrong, that is the most useful bug report you can file — the whole point is that the status matches reality.</div>
     <div class="generated">Generated deterministically from docs/workbench/workbench.json · do not hand-edit this file.</div>
     <nav class="baseline-provenance" aria-label="Project provenance"><a href="https://github.com/djcdevelopment/baseline" target="_blank" rel="noreferrer">Baseline</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/Lumberjacks" target="_blank" rel="noreferrer">Lumberjacks</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy" target="_blank" rel="noreferrer">Comfy</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">license details</a></nav>

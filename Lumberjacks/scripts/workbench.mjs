@@ -232,6 +232,9 @@ function validateTool(tool, index, seenIds) {
     requireString(task.title, `${taskLabel}.title`);
     if (!taskSizes.has(task.size)) fail(`${taskLabel}.size is not allowed: ${task.size}`);
     requireString(task.done_when, `${taskLabel}.done_when`);
+    if (task.suggested !== undefined && typeof task.suggested !== 'boolean') {
+      fail(`${taskLabel}.suggested must be a boolean when present`);
+    }
   });
 
   validateOwnership(tool.ownership, `${label}.ownership`);
@@ -249,17 +252,32 @@ function validate(workbench, rawText = '') {
   if (Number.isNaN(Date.parse(workbench.updated_at))) fail('workbench.updated_at must be an ISO timestamp');
   requireString(workbench.honesty_statement, 'workbench.honesty_statement');
   requireString(workbench.not_a_verdict, 'workbench.not_a_verdict');
+  // The summary is what a reader who never expands the disclosure actually sees, so it has to
+  // carry the protective claim on its own rather than merely pointing at it.
+  requireString(workbench.not_a_verdict_summary, 'workbench.not_a_verdict_summary');
+  // The ladder sits below the tools, so the hero is the only place left that can say a
+  // non-code contribution counts. Required, not optional.
+  requireString(workbench.invitation_line, 'workbench.invitation_line');
 
   requireObject(workbench.feedback, 'workbench.feedback');
   requireString(workbench.feedback.rhythm, 'workbench.feedback.rhythm');
   requireString(workbench.feedback.forum_label, 'workbench.feedback.forum_label');
   requireNullableLink(workbench.feedback.forum_href, 'workbench.feedback.forum_href');
+  requireString(workbench.feedback.start_here_label, 'workbench.feedback.start_here_label');
+  requireNullableLink(workbench.feedback.start_here_href, 'workbench.feedback.start_here_href');
 
   validateLadder(workbench.ladder);
 
   if (!Array.isArray(workbench.tools) || workbench.tools.length === 0) fail('workbench.tools must not be empty');
   const seenIds = new Set();
   workbench.tools.forEach((tool, index) => validateTool(tool, index, seenIds));
+
+  // A recommended entry point only works if there is exactly one of them. Two suggestions is
+  // a comparison to make, which is the thing the suggestion exists to spare a newcomer.
+  const suggested = workbench.tools.flatMap((tool) => tool.first_tasks.filter((task) => task.suggested));
+  if (suggested.length > 1) {
+    fail(`only one first task may be suggested; found ${suggested.length}: ${suggested.map((task) => task.id).join(', ')}`);
+  }
 
   validateNoSecrets(rawText || JSON.stringify(workbench));
 }
@@ -336,58 +354,108 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function renderAccess(tool) {
+/// The button alone. Its visible text is short so it can sit inline in the action row next to
+/// the first-result badge; the tool name rides in the accessible name instead, so a screen
+/// reader never hears seven undifferentiated "Download" links.
+function renderAccessButton(tool) {
   const access = tool.access;
   if (access.kind === 'site-download') {
-    return `<div class="access site-download">
-      <a class="access-button" href="${escapeHtml(access.href)}">Download ${escapeHtml(tool.name)}</a>
+    return `<a class="access-button site-download" href="${escapeHtml(access.href)}" aria-label="Download ${escapeHtml(tool.name)}">Download</a>`;
+  }
+  if (access.kind === 'public-repo') {
+    return `<a class="access-button public-repo" href="${escapeHtml(access.href)}" target="_blank" rel="noreferrer" aria-label="Open the public repository for ${escapeHtml(tool.name)}">Open repository</a>`;
+  }
+  if (access.kind === 'live-service') {
+    return `<a class="access-button live-service" href="${escapeHtml(access.href)}" target="_blank" rel="noreferrer" aria-label="Open the live service for ${escapeHtml(tool.name)}">Open live service</a>`;
+  }
+  return '<span class="access-button disabled" aria-disabled="true">Not published yet</span>';
+}
+
+/// Everything that qualifies the button: the digest triple that makes a download verifiable
+/// before anyone runs it, or the sentence explaining why there is no file. Rendered outside the
+/// button so a four-line verification block cannot inflate the call to action, and outside any
+/// <details> because both are load-bearing — check() enforces that.
+function renderAccessDetail(tool) {
+  const access = tool.access;
+  if (access.kind === 'site-download') {
+    return `<div class="access-verify">
       <div class="access-detail"><span>SHA-256</span><code>${escapeHtml(access.sha256)}</code></div>
       <div class="access-detail"><span>Size</span><code>${escapeHtml(formatBytes(access.size_bytes))}</code></div>
       <div class="access-detail"><span>Published</span><code>${escapeHtml(access.published_at)}</code></div>
     </div>`;
   }
-  if (access.kind === 'public-repo') {
-    return `<div class="access public-repo">
-      <a class="access-button" href="${escapeHtml(access.href)}" target="_blank" rel="noreferrer">Open the public repository</a>
-      <p class="access-note">Clone and build it yourself — there is no packaged download.</p>
-    </div>`;
-  }
-  if (access.kind === 'live-service') {
-    return `<div class="access live-service">
-      <a class="access-button" href="${escapeHtml(access.href)}" target="_blank" rel="noreferrer">Open the live service</a>
-      <p class="access-note">This one is a running service, not a file. There is nothing to download.</p>
-    </div>`;
-  }
-  return `<div class="access not-published">
-    <span class="access-button disabled" aria-disabled="true">Not published yet</span>
-    <p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p>
-  </div>`;
+  const note = {
+    'public-repo': 'Clone and build it yourself — there is no packaged download.',
+    'live-service': 'This one is a running service, not a file. There is nothing to download.',
+    'not-published': 'No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.',
+  }[access.kind];
+  return `<div class="access-verify"><p class="access-note">${escapeHtml(note)}</p></div>`;
 }
 
+/// A go/no-go gate — "do I have Java?" — so it stays out of the disclosures entirely. These are
+/// qualified sentences rather than tokens ("a copy, never the live save"), so they stay a list:
+/// chipping them would either truncate the qualifier or produce chips the width of the card.
+function renderRequires(tool) {
+  const body = tool.requires.length > 0
+    ? list(tool.requires, 'requires-list')
+    : '<p class="inert-link">Nothing beyond a browser.</p>';
+  return `<div class="requires"><strong>You will need</strong>${body}</div>`;
+}
+
+/// The first doc that actually resolves. A doc whose href is null degrades to inert text, which
+/// is the right thing in a list but dead weight in an action row, so the promoted slot skips it.
+function primaryDocIndex(tool) {
+  return tool.docs.findIndex((doc) => safeLink(doc.href));
+}
+
+function renderPrimaryDoc(tool) {
+  const index = primaryDocIndex(tool);
+  return index < 0 ? '' : `<span class="tool-link"><em>Docs</em>${renderLink(tool.docs[index])}</span>`;
+}
+
+/// Whatever the action row did not promote. Returns '' rather than an empty labelled row when
+/// the promoted link was the only one.
 function renderDocs(tool) {
   if (tool.docs.length === 0) {
     return '<div class="tool-links"><strong>Docs</strong><span class="inert-link">None written yet.</span></div>';
   }
-  const items = tool.docs.map((doc) => renderLink(doc)).join('<span aria-hidden="true"> · </span>');
-  return `<div class="tool-links"><strong>Docs</strong>${items}</div>`;
+  const skip = primaryDocIndex(tool);
+  const rest = tool.docs.filter((_, index) => index !== skip);
+  if (rest.length === 0) return '';
+  const items = rest.map((doc) => renderLink(doc)).join('<span aria-hidden="true"> · </span>');
+  return `<div class="tool-links"><strong>More docs</strong>${items}</div>`;
 }
 
-function renderDiscussion(tool) {
+/// Stays in the always-visible zone whether or not it resolves. When a thread exists this is the
+/// conversion destination; when it does not, the inert label is itself the honest answer, and
+/// the page-level forum link is the fallback that keeps it from being a dead end.
+function renderDiscussionLink(tool) {
   const thread = safeLink(tool.discussion.href)
     ? renderLink(tool.discussion)
     : '<span class="inert-link">thread opens with the announcement</span>';
-  return `<div class="tool-links"><strong>Discussion</strong>${thread}</div>`;
+  return `<span class="tool-link"><em>Discuss</em>${thread}</span>`;
 }
 
 function renderFirstTasks(tool) {
-  const rows = tool.first_tasks.map((task) => `<li class="first-task">
-        <div class="first-task-head"><span class="task-id">${escapeHtml(task.id)}</span><span class="task-size ${cssToken(task.size)}">${escapeHtml(task.size)}</span></div>
-        <strong>${escapeHtml(task.title)}</strong>
+  const rows = tool.first_tasks.map((task) => `<li class="first-task${task.suggested ? ' suggested' : ''}">
+        <div class="first-task-top">
+          <strong>${escapeHtml(task.title)}</strong>
+          <span class="task-flags">${task.suggested ? '<span class="task-suggested">good first pick</span>' : ''}<span class="task-size ${cssToken(task.size)}">${escapeHtml(task.size)}</span></span>
+        </div>
         <span class="done-when"><em>Done when:</em> ${escapeHtml(task.done_when)}</span>
+        <span class="task-id">${escapeHtml(task.id)}</span>
       </li>`).join('');
+  // Ownership lives inside this box rather than beside it: it is the answer to "what happens if
+  // I do one of these", not a fact of equal standing with the tasks themselves.
+  const ownership = `<div class="ownership-state ${escapeHtml(cssToken(tool.ownership.state))}">
+        <span class="pill ownership ${escapeHtml(cssToken(tool.ownership.state))}">${ownershipLabel(tool.ownership.state)}</span>
+        <span>${ownershipSentence(tool.ownership)}</span>
+        ${tool.ownership.record ? `<span class="ownership-record">recorded in ${escapeHtml(tool.ownership.record)}</span>` : ''}
+      </div>`;
   return `<div class="first-tasks">
-      <strong>Pick one to start</strong>
+      <strong>Pick one to start · ${escapeHtml(String(tool.first_tasks.length))} open</strong>
       <ul class="first-task-list">${rows}</ul>
+      ${ownership}
     </div>`;
 }
 
@@ -407,46 +475,50 @@ function renderTool(tool) {
   const milestones = tool.roadmap_milestones.length > 0
     ? tool.roadmap_milestones.map((id) => `<span class="dep">${escapeHtml(id)}</span>`).join('')
     : '<span class="dep">unlinked</span>';
-  const requires = tool.requires.length > 0
-    ? list(tool.requires, 'requires-list')
-    : '<p class="inert-link">Nothing beyond a browser.</p>';
   const sourceLine = safeLink(tool.source.href)
     ? renderLink({ label: tool.source.href, href: tool.source.href })
     : '<span class="inert-link">Private until claimed</span>';
+  const moreDocs = renderDocs(tool);
 
+  // Block order is deliberate and the rule behind it is: disclosure is for depth, never for
+  // gates. Anything a reader uses to rule themselves out — status, requirements, digest,
+  // first tasks — stays visible. Only what they read to go deeper collapses.
   return `<article class="tool ${escapeHtml(token)}" id="${escapeHtml(tool.id)}">
     <div class="tool-head">
-      <div><span class="tool-id">${escapeHtml(tool.id)}</span><h3>${escapeHtml(tool.name)}</h3></div>
+      <div><h3>${escapeHtml(tool.name)}</h3><span class="tool-id">${escapeHtml(tool.id)}</span></div>
       <span class="pill ${escapeHtml(token)}">${statusLabel(tool.status)}</span>
     </div>
     <p class="one-liner">${escapeHtml(tool.one_liner)}</p>
     <div class="status-detail ${escapeHtml(token)}"><strong>What that status actually means</strong>${escapeHtml(tool.status_detail)}</div>
-    <div class="tool-facts">
-      <div><strong>What it does</strong>${escapeHtml(tool.what_it_does)}</div>
-      <div><strong>Who it is for</strong>${escapeHtml(tool.who_its_for)}</div>
+    <p class="tool-audience"><strong>For</strong>${escapeHtml(tool.who_its_for)}</p>
+    <div class="tool-action">
+      <span class="first-result"><em>First result</em>${escapeHtml(tool.time_to_first_result)}</span>
+      ${renderAccessButton(tool)}
     </div>
-    <div class="meta-line"><span>first result · ${escapeHtml(tool.time_to_first_result)}</span><span class="deps">roadmap ${milestones}</span></div>
-    <div class="tool-columns">
-      <div class="requires"><strong>You will need</strong>${requires}</div>
-      ${renderAccess(tool)}
-    </div>
-    <div class="tool-link-row">
-      ${renderDocs(tool)}
-      ${renderDiscussion(tool)}
-      <div class="tool-links"><strong>Source</strong>${sourceLine}</div>
-    </div>
-    <p class="source-note">${escapeHtml(tool.source.note)}</p>
+    ${renderAccessDetail(tool)}
+    <div class="tool-link-row">${renderPrimaryDoc(tool)}${renderDiscussionLink(tool)}</div>
+    ${renderRequires(tool)}
+    <details class="tool-detail">
+      <summary>How it works, in detail</summary>
+      <div class="tool-detail-body">
+        <p>${escapeHtml(tool.what_it_does)}</p>
+        <p class="deps">roadmap ${milestones}</p>
+      </div>
+    </details>
     ${renderFirstTasks(tool)}
     ${renderRecovery(tool)}
-    <div class="ownership-state ${escapeHtml(cssToken(tool.ownership.state))}">
-      <span class="pill ownership ${escapeHtml(cssToken(tool.ownership.state))}">${ownershipLabel(tool.ownership.state)}</span>
-      <span>${ownershipSentence(tool.ownership)}</span>
-      ${tool.ownership.record ? `<span class="ownership-record">recorded in ${escapeHtml(tool.ownership.record)}</span>` : ''}
-    </div>
-    <div class="tool-footnotes">
-      <div class="privacy"><strong>Privacy</strong>${escapeHtml(tool.privacy_note)}</div>
-      <div class="license"><strong>License</strong>${escapeHtml(tool.license)}</div>
-    </div>
+    <details class="tool-detail">
+      <summary>Source, privacy &amp; licence</summary>
+      <div class="tool-detail-body">
+        ${moreDocs}
+        <div class="tool-links"><strong>Source</strong>${sourceLine}</div>
+        <p class="source-note">${escapeHtml(tool.source.note)}</p>
+        <div class="tool-footnotes">
+          <div class="privacy"><strong>Privacy</strong>${escapeHtml(tool.privacy_note)}</div>
+          <div class="license"><strong>License</strong>${escapeHtml(tool.license)}</div>
+        </div>
+      </div>
+    </details>
   </article>`;
 }
 
@@ -458,6 +530,22 @@ function renderLadder(ladder) {
       <div class="ladder-get"><strong>You get</strong>${escapeHtml(step.what_you_get)}</div>
       <div class="ladder-recorded">${escapeHtml(step.recorded_in)}</div>
     </article>`).join('')}</div>`;
+}
+
+/// Rows, not tiles. A grid of mini-cards sitting above a grid of real cards reads as
+/// duplication and makes the eye run the same scan twice; one dense row per tool is visibly a
+/// different kind of object from the thing it indexes, and reads top-to-bottom in one sweep.
+function renderToolIndex(tools) {
+  const rows = tools.map((tool) => {
+    const token = cssToken(tool.status);
+    return `<a class="index-row ${escapeHtml(token)}" href="#${escapeHtml(tool.id)}">
+          <span class="pill ${escapeHtml(token)}">${statusLabel(tool.status)}</span>
+          <span class="index-name">${escapeHtml(tool.name)}</span>
+          <span class="index-time">${escapeHtml(tool.time_to_first_result)}</span>
+          <span class="index-tasks">${escapeHtml(String(tool.first_tasks.length))} open</span>
+        </a>`;
+  }).join('');
+  return `<nav class="tool-index" aria-label="All tools">${rows}</nav>`;
 }
 
 function statusSummary(tools) {
@@ -472,11 +560,15 @@ function statusSummary(tools) {
 function render(workbench) {
   const tools = workbench.tools.map(renderTool).join('\n');
   const ladder = renderLadder(workbench.ladder);
+  const toolIndex = renderToolIndex(workbench.tools);
   const summary = statusSummary(workbench.tools);
   const claimable = workbench.tools.reduce((total, tool) => total + tool.first_tasks.length, 0);
   const forum = safeLink(workbench.feedback.forum_href)
     ? renderLink({ label: workbench.feedback.forum_label, href: workbench.feedback.forum_href })
     : `<span class="inert-link">${escapeHtml(workbench.feedback.forum_label)}</span>`;
+  const startHere = safeLink(workbench.feedback.start_here_href)
+    ? renderLink({ label: workbench.feedback.start_here_label, href: workbench.feedback.start_here_href })
+    : `<span class="inert-link">${escapeHtml(workbench.feedback.start_here_label)}</span>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -517,6 +609,9 @@ function render(workbench) {
     a:hover { color: #b7e7ff; }
     code { font-family: var(--mono); color: #d8ece7; overflow-wrap: anywhere; }
     .wrap { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    /* The topbar is sticky, so anything the index or a #id link jumps to has to clear it. */
+    .tool, .ladder-step, section[id] { scroll-margin-top: 76px; }
+    summary:focus-visible, a:focus-visible { outline: 2px solid var(--wood); outline-offset: 2px; }
     .topbar { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,.08); background: rgba(11,16,19,.92); backdrop-filter: blur(14px); }
     .topbar-inner { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
     .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .02em; }
@@ -524,16 +619,24 @@ function render(workbench) {
     nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 14px; font-size: .85rem; }
     nav a { color: var(--muted); text-decoration: none; }
     nav a[aria-current="page"] { color: var(--ink); }
-    .hero { padding: 72px 0 38px; }
+    .hero { padding: 40px 0 22px; }
     .eyebrow { color: var(--wood); text-transform: uppercase; letter-spacing: .16em; font-size: .76rem; font-weight: 800; }
-    h1 { max-width: 920px; margin: 12px 0 18px; font-size: clamp(2.25rem, 7vw, 5.7rem); line-height: .94; letter-spacing: -.055em; }
-    .headline { max-width: 900px; color: var(--amber); font-family: var(--mono); font-size: clamp(.9rem, 2vw, 1.18rem); font-weight: 800; }
-    .lede { max-width: 920px; margin: 24px 0; color: #c4d2cf; font-size: 1.06rem; }
+    h1 { max-width: 920px; margin: 10px 0 14px; font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1; letter-spacing: -.04em; }
+    .headline { max-width: 900px; color: var(--amber); font-family: var(--mono); font-size: clamp(.88rem, 1.6vw, 1.04rem); font-weight: 800; line-height: 1.5; }
+    /* honesty_statement is not repeated here: it is the tools section's own h2, one screen
+       below, and printing it twice inside a single fold read as a stutter. */
+    .invitation { max-width: 920px; margin: 16px 0 14px; color: var(--green); font-size: .98rem; font-weight: 600; }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 14px 0 12px; }
+    .hero-cta { display: inline-block; padding: 10px 18px; border: 1px solid var(--green); border-radius: 8px; color: var(--green); background: var(--green-bg); font-weight: 800; font-size: .9rem; text-decoration: none; }
+    .hero-cta:hover { color: var(--ink); border-color: var(--ink); }
+    .hero-link { font-size: .86rem; }
     .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; }
-    .hero-meta span { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; color: var(--muted); background: rgba(255,255,255,.025); font-size: .78rem; }
-    section { padding: 38px 0; }
+    .hero-meta span, .hero-meta a { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; color: var(--muted); background: rgba(255,255,255,.025); font-size: .78rem; }
+    .hero-meta a { color: var(--blue); text-decoration: none; }
+    .hero-meta a:hover { border-color: var(--blue); }
+    section { padding: 30px 0 38px; }
     section + section { border-top: 1px solid rgba(255,255,255,.07); }
-    .section-head { display: grid; grid-template-columns: minmax(160px, .35fr) 1fr; gap: 28px; margin-bottom: 24px; }
+    .section-head { display: grid; grid-template-columns: minmax(160px, .35fr) 1fr; gap: 28px; margin-bottom: 18px; }
     .section-number { color: var(--wood); font-family: var(--mono); font-size: .78rem; letter-spacing: .12em; }
     h2 { margin: 0 0 8px; font-size: clamp(1.45rem, 3vw, 2.35rem); letter-spacing: -.025em; }
     h3 { margin: 0; line-height: 1.25; }
@@ -545,26 +648,38 @@ function render(workbench) {
     .pill.dev-only { color: var(--blue); background: var(--blue-bg); }
     .pill.local-only { color: var(--amber); background: var(--amber-bg); }
     .pill.recoverable-not-running { color: var(--red); background: var(--red-bg); }
-    .pill.ownership { font-size: .62rem; }
+    .pill.ownership { font-size: .66rem; }
     .pill.ownership.unclaimed { color: var(--muted); background: rgba(158,176,173,.08); }
     .pill.ownership.trying { color: var(--amber); background: var(--amber-bg); }
     .pill.ownership.claimed { color: var(--blue); background: var(--blue-bg); }
     .pill.ownership.owned { color: var(--green); background: var(--green-bg); }
-    .inert-link { color: #70827e; font-style: italic; }
-    .not-a-verdict { max-width: 920px; margin: 4px 0 24px; padding: 16px 18px; border-left: 3px solid var(--wood); background: rgba(215,168,110,.09); color: #d9cdb8; font-size: .92rem; }
-    .not-a-verdict strong { display: block; margin-bottom: 4px; color: var(--wood); font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
+    .inert-link { color: #8a9c98; font-style: italic; }
+    .not-a-verdict { max-width: 920px; margin: 4px 0 0; padding: 12px 16px; border-left: 3px solid var(--wood); background: rgba(215,168,110,.09); color: #d9cdb8; font-size: .9rem; }
+    .not-a-verdict > summary { cursor: pointer; color: var(--wood); font-weight: 700; }
+    .not-a-verdict > p { margin: 10px 0 0; }
+    .tool-index { display: grid; gap: 3px; margin-bottom: 18px; }
+    .index-row { display: grid; grid-template-columns: minmax(0, 168px) minmax(0, 1fr) minmax(0, 1.05fr) minmax(0, 68px); align-items: center; gap: 12px; padding: 7px 12px; border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.16); color: var(--ink); text-decoration: none; }
+    .index-row:hover { background: rgba(255,255,255,.05); color: var(--ink); }
+    .index-row.live { border-left-color: var(--green); }
+    .index-row.dev-only { border-left-color: var(--blue); }
+    .index-row.local-only { border-left-color: var(--amber); }
+    .index-row.recoverable-not-running { border-left-color: var(--red); }
+    .index-row .pill { justify-self: start; }
+    .index-name { font-weight: 700; font-size: .9rem; }
+    .index-time { color: var(--muted); font-size: .76rem; }
+    .index-tasks { justify-self: end; color: var(--wood); font-family: var(--mono); font-size: .72rem; font-weight: 800; white-space: nowrap; }
     .ladder { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
     .ladder-step { position: relative; min-width: 0; display: grid; align-content: start; gap: 6px; padding: 14px; border: 1px solid var(--line); border-top: 3px solid var(--blue); border-radius: 9px; background: rgba(0,0,0,.16); }
     .ladder-step.stage-0 { border-top-color: var(--muted); }
     .ladder-step.stage-3 { border-top-color: var(--violet); }
     .ladder-step.stage-4 { border-top-color: var(--green); }
     .ladder-step:not(:last-child)::after { content: "→"; position: absolute; right: -8px; top: 46px; z-index: 2; color: var(--wood); font-weight: 900; }
-    .ladder-stage { color: var(--wood); font-family: var(--mono); font-size: .63rem; font-weight: 900; letter-spacing: .07em; }
+    .ladder-stage { color: var(--wood); font-family: var(--mono); font-size: .66rem; font-weight: 900; letter-spacing: .07em; }
     .ladder-step h3 { font-size: .95rem; }
     .ladder-did { margin: 0; color: #c5d2cf; font-size: .78rem; }
     .ladder-get { padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: .74rem; }
-    .ladder-get strong { display: block; color: var(--green); font-family: var(--mono); font-size: .58rem; text-transform: uppercase; letter-spacing: .06em; }
-    .ladder-recorded { color: #70827e; font-family: var(--mono); font-size: .63rem; }
+    .ladder-get strong { display: block; color: var(--green); font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; }
+    .ladder-recorded { color: #8a9c98; font-family: var(--mono); font-size: .7rem; }
     .tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
     .tool { padding: 22px; border: 1px solid var(--line); border-top: 4px solid var(--blue); border-radius: 13px; background: linear-gradient(155deg, var(--panel), var(--paper)); box-shadow: var(--shadow); }
     .tool.live { border-top-color: var(--green); }
@@ -572,9 +687,10 @@ function render(workbench) {
     .tool.local-only { border-top-color: var(--amber); }
     .tool.recoverable-not-running { border-top-color: var(--red); }
     .tool-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
-    .tool-head > div { display: grid; gap: 2px; }
-    .tool-id { color: var(--wood); font-family: var(--mono); font-size: .72rem; font-weight: 800; }
-    .one-liner { margin: 12px 0; color: #cad7d4; }
+    .tool-head > div { display: grid; gap: 3px; }
+    .tool-head h3 { font-size: 1.06rem; }
+    .tool-id { color: var(--wood); font-family: var(--mono); font-size: .7rem; font-weight: 700; opacity: .85; }
+    .one-liner { margin: 12px 0 0; color: #cad7d4; }
     .status-detail { padding: 13px 14px; border-left: 3px solid var(--blue); background: var(--blue-bg); color: #c8d7d3; font-size: .84rem; }
     .status-detail strong { display: block; margin-bottom: 3px; color: var(--blue); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .07em; }
     .status-detail.live { border-left-color: var(--green); background: var(--green-bg); }
@@ -583,65 +699,78 @@ function render(workbench) {
     .status-detail.local-only strong { color: var(--amber); }
     .status-detail.recoverable-not-running { border-left-color: var(--red); background: var(--red-bg); }
     .status-detail.recoverable-not-running strong { color: var(--red); }
-    .tool-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
-    .tool-facts > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); font-size: .78rem; }
-    .tool-facts strong { display: block; margin-bottom: 2px; color: var(--ink); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
-    .meta-line { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 12px 0; color: var(--muted); font-family: var(--mono); font-size: .72rem; text-transform: uppercase; }
-    .deps { display: flex; align-items: center; gap: 5px; }
-    .dep { padding: 1px 5px; background: rgba(255,255,255,.06); border-radius: 4px; color: var(--ink); }
-    .tool-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; }
-    .requires, .access { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.14); }
-    .requires strong { display: block; color: var(--muted); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
-    .requires-list { margin: 5px 0 0; color: #c5d2cf; font-size: .78rem; }
-    .requires-list li { margin: 4px 0; }
-    .access-button { display: inline-block; padding: 8px 13px; border: 1px solid var(--green); border-radius: 7px; color: var(--green); background: var(--green-bg); font-family: var(--mono); font-size: .74rem; font-weight: 800; text-decoration: none; }
+    .tool-audience { margin: 12px 0 0; color: var(--muted); font-size: .82rem; }
+    .tool-audience strong { margin-right: 7px; color: var(--ink); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
+    .tool-action { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+    .first-result { display: inline-flex; align-items: baseline; gap: 7px; color: var(--ink); font-size: .84rem; font-weight: 700; }
+    .first-result em { color: var(--muted); font-family: var(--mono); font-size: .62rem; font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
+    .access-button { display: inline-block; padding: 9px 15px; border: 1px solid var(--green); border-radius: 7px; color: var(--green); background: var(--green-bg); font-family: var(--mono); font-size: .76rem; font-weight: 800; text-decoration: none; white-space: nowrap; }
     .access-button:hover { color: var(--ink); border-color: var(--ink); }
-    .access.public-repo .access-button { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
-    .access.live-service .access-button { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
-    .access-button.disabled { border-color: var(--line); color: #70827e; background: rgba(158,176,173,.06); cursor: not-allowed; }
-    .access-note { margin: 8px 0 0; color: var(--muted); font-size: .74rem; }
-    .access-detail { display: flex; gap: 8px; margin-top: 7px; font-size: .68rem; }
-    .access-detail span { flex: 0 0 68px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; }
-    .tool-link-row { display: grid; gap: 6px; margin-top: 12px; }
-    .tool-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: .78rem; }
+    .access-button.public-repo { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+    .access-button.live-service { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+    .access-button.disabled { border-color: var(--line); color: #8a9c98; background: rgba(158,176,173,.06); cursor: not-allowed; }
+    .access-verify { margin-top: 9px; }
+    .access-note { margin: 0; color: var(--muted); font-size: .78rem; }
+    .access-detail { display: flex; gap: 8px; margin-top: 5px; font-size: .72rem; }
+    .access-detail span { flex: 0 0 74px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; }
+    .tool-link-row { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; }
+    .tool-link { display: inline-flex; align-items: baseline; gap: 7px; font-size: .8rem; }
+    .tool-link em { color: var(--muted); font-family: var(--mono); font-size: .62rem; font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
+    .requires { margin-top: 12px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.14); }
+    .requires strong { display: block; color: var(--muted); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
+    .requires-list { margin: 6px 0 0; color: #c5d2cf; font-size: .8rem; }
+    .requires-list li { margin: 3px 0; }
+    .tool-detail { margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.1); }
+    .tool-detail > summary { padding: 9px 13px; cursor: pointer; color: var(--muted); font-family: var(--mono); font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+    .tool-detail > summary:hover { color: var(--ink); }
+    .tool-detail[open] > summary { border-bottom: 1px solid var(--line); }
+    .tool-detail-body { padding: 12px 13px; }
+    .tool-detail-body > p { margin: 0 0 9px; color: #c5d2cf; font-size: .8rem; }
+    .deps { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0; color: var(--muted); font-family: var(--mono); font-size: .7rem; text-transform: uppercase; }
+    .dep { padding: 1px 5px; background: rgba(255,255,255,.06); border-radius: 4px; color: var(--ink); }
+    .tool-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 8px; font-size: .8rem; }
     .tool-links strong { flex: 0 0 76px; color: var(--muted); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
-    .source-note { margin: 8px 0 0; color: var(--muted); font-size: .76rem; }
-    .first-tasks { margin-top: 16px; padding: 14px; border-left: 3px solid var(--wood); background: rgba(215,168,110,.08); }
-    .first-tasks > strong { color: var(--wood); font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
+    .source-note { margin: 8px 0 0; color: var(--muted); font-size: .78rem; }
+    .first-tasks { margin-top: 14px; padding: 14px; border-left: 3px solid var(--wood); background: rgba(215,168,110,.08); }
+    .first-tasks > strong { color: var(--wood); font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
     .first-task-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
-    .first-task { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.18); }
-    .first-task-head { display: flex; align-items: center; gap: 8px; }
-    .task-id { color: var(--wood); font-family: var(--mono); font-size: .7rem; font-weight: 900; }
-    .task-size { padding: 1px 6px; border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.05); font-family: var(--mono); font-size: .6rem; text-transform: uppercase; }
+    .first-task { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.18); }
+    .first-task.suggested { border-color: var(--green); background: rgba(104,211,145,.07); }
+    .first-task-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .first-task strong { font-size: .88rem; }
+    .task-flags { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+    .task-suggested { padding: 1px 7px; border-radius: 999px; color: var(--green); background: var(--green-bg); font-family: var(--mono); font-size: .62rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+    .task-id { color: var(--wood); font-family: var(--mono); font-size: .7rem; font-weight: 800; }
+    .task-size { padding: 1px 6px; border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.05); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; }
     .task-size.small { color: var(--green); background: var(--green-bg); }
     .task-size.medium { color: var(--amber); background: var(--amber-bg); }
-    .first-task strong { font-size: .86rem; }
-    .done-when { color: var(--muted); font-size: .76rem; }
+    .done-when { color: var(--muted); font-size: .78rem; }
     .done-when em { color: var(--ink); font-style: normal; font-weight: 700; }
     .recovery { margin-top: 12px; padding: 13px 14px; border-left: 3px solid var(--red); background: var(--red-bg); }
-    .recovery > strong { color: var(--red); font-family: var(--mono); font-size: .64rem; text-transform: uppercase; letter-spacing: .07em; }
+    .recovery > strong { color: var(--red); font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .07em; }
     .recovery p { margin: 6px 0 0; color: #d5c3c1; font-size: .78rem; }
     .recovery-origin { font-family: var(--mono); font-size: .72rem; overflow-wrap: anywhere; }
-    .recovery-paths { margin: 8px 0 0; padding-left: 1.05rem; color: var(--muted); font-size: .72rem; }
+    .recovery-paths { margin: 8px 0 0; padding-left: 1.05rem; color: var(--muted); font-size: .74rem; }
     .recovery-paths li { margin: 3px 0; }
-    .ownership-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: .78rem; }
-    .ownership-record { color: #70827e; font-family: var(--mono); font-size: .68rem; }
-    .tool-footnotes { display: grid; gap: 6px; margin-top: 12px; font-size: .74rem; color: var(--muted); }
-    .tool-footnotes strong { margin-right: 6px; color: var(--ink); font-family: var(--mono); font-size: .6rem; text-transform: uppercase; letter-spacing: .06em; }
+    .ownership-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.14); color: var(--muted); font-size: .78rem; }
+    .ownership-record { color: #8a9c98; font-family: var(--mono); font-size: .7rem; }
+    .tool-footnotes { display: grid; gap: 6px; margin-top: 10px; font-size: .78rem; color: var(--muted); }
+    .tool-footnotes strong { margin-right: 6px; color: var(--ink); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
     .privacy { padding: 9px 11px; border-left: 3px solid var(--violet); background: rgba(199,167,255,.08); }
     footer { padding: 38px 0 60px; color: var(--muted); font-size: .82rem; }
     .feedback-rhythm { margin-bottom: 10px; padding: 12px 14px; border-left: 3px solid var(--blue); background: var(--blue-bg); color: #c8d7d3; }
-    .generated { color: #6f817e; font-family: var(--mono); font-size: .7rem; }
-    .baseline-provenance { margin-top: 14px; color: #6f817e; font-family: var(--mono); font-size: .62rem; letter-spacing: .015em; }
+    .generated { color: #8a9c98; font-family: var(--mono); font-size: .72rem; }
+    .baseline-provenance { margin-top: 14px; color: #8a9c98; font-family: var(--mono); font-size: .68rem; letter-spacing: .015em; }
     .baseline-provenance a { color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor; }
     @media (max-width: 820px) {
       .section-head { grid-template-columns: 1fr; gap: 10px; }
-      .tool-grid, .tool-facts, .tool-columns { grid-template-columns: 1fr; }
+      .tool-grid { grid-template-columns: 1fr; }
+      .index-row { grid-template-columns: minmax(0, 150px) minmax(0, 1fr); row-gap: 5px; }
       .ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .ladder-step::after { display: none; }
       .topbar-inner { align-items: flex-start; padding: 12px 0; }
       nav { gap: 8px; }
-      .hero { padding-top: 48px; }
+      .hero { padding-top: 32px; }
     }
     @media (max-width: 560px) {
       .wrap { width: min(1180px, calc(100% - 20px)); }
@@ -650,14 +779,25 @@ function render(workbench) {
       .ladder { grid-template-columns: 1fr; }
       .tool-head { display: grid; }
       .tool-links strong { flex: 1 1 100%; }
+      .index-row { grid-template-columns: 1fr; }
+      .index-tasks { justify-self: start; }
+      .tool-action { justify-content: flex-start; }
+      .access-button { white-space: normal; }
     }
     @media print {
       :root { color-scheme: light; --bg: #fff; --paper: #fff; --panel: #f6f7f7; --panel-2: #eee; --line: #ccd2d0; --ink: #15201d; --muted: #53635e; }
       body { background: #fff; }
       .topbar { position: static; background: #fff; }
       .tool, .ladder-step { break-inside: avoid; box-shadow: none; }
-      nav { display: none; }
+      nav, .tool-index { display: none; }
       a { color: #075985; }
+      /* A printed copy has no way to expand anything, so force every disclosure open. Support
+         for styling a closed details' contents varies by engine — if an engine ignores this,
+         only the two per-card detail blocks are lost; status, requirements, digests, first
+         tasks, recovery and ownership all render outside <details> and always print. */
+      details > summary { list-style: none; font-weight: 700; }
+      details:not([open]) > *:not(summary) { display: block !important; }
+      .tool-detail[open] > summary, .tool-detail > summary { border-bottom: 1px solid var(--line); }
     }
   </style>
 </head>
@@ -682,27 +822,36 @@ function render(workbench) {
       <div class="eyebrow">Comfy × Valheim · Lumberjacks P7</div>
       <h1>${escapeHtml(workbench.title.replace('Comfy × Valheim — ', ''))}</h1>
       <div class="headline">${escapeHtml(workbench.headline)}</div>
-      <p class="lede">${escapeHtml(workbench.honesty_statement)}</p>
-      <div class="not-a-verdict"><strong>This is not a verdict on anyone</strong>${escapeHtml(workbench.not_a_verdict)}</div>
+      <p class="invitation">${escapeHtml(workbench.invitation_line)}</p>
+      <details class="not-a-verdict">
+        <summary>${escapeHtml(workbench.not_a_verdict_summary)}</summary>
+        <p>${escapeHtml(workbench.not_a_verdict)}</p>
+      </details>
+      <div class="hero-actions">
+        <a class="hero-cta" href="#tools">See the ${escapeHtml(String(workbench.tools.length))} tools</a>
+        <span class="hero-link">${startHere}</span>
+        <span class="hero-link">${forum}</span>
+      </div>
       <div class="hero-meta">
         <span>Updated ${escapeHtml(workbench.updated_at)}</span>
-        <span>${escapeHtml(String(workbench.tools.length))} tools</span>
         <span>${escapeHtml(summary)}</span>
-        <span>${escapeHtml(String(claimable))} first tasks open</span>
+        <a href="#tools">${escapeHtml(String(claimable))} first tasks open</a>
+        <span>${escapeHtml(workbench.feedback.rhythm)}</span>
       </div>
     </div>
 
-    <section id="ladder">
+    <section id="tools">
       <div class="wrap">
-        <div class="section-head"><div class="section-number">01 · THE LADDER</div><div><h2>Five rungs, and you can stop on any of them.</h2><p class="section-copy">Nobody starts as an owner. Each rung says what you did, what you get for it, and where it is written down. Stopping at stage 1 is a complete and finished contribution.</p></div></div>
-        ${ladder}
+        <div class="section-head"><div class="section-number">01 · THE TOOLS</div><div><h2>${escapeHtml(workbench.honesty_statement)}</h2><p class="section-copy">A status chip here is never a mood. It is one of four declared states, and every one of them is qualified in prose by the person who wrote the code. Where something does not run, the card says so and points at where the pieces are.</p></div></div>
+        ${toolIndex}
+        <div class="tool-grid">${tools}</div>
       </div>
     </section>
 
-    <section id="tools">
+    <section id="ladder">
       <div class="wrap">
-        <div class="section-head"><div class="section-number">02 · THE TOOLS</div><div><h2>${escapeHtml(workbench.honesty_statement)}</h2><p class="section-copy">A status chip here is never a mood. It is one of four declared states, and every one of them is qualified in prose by the person who wrote the code. Where something does not run, the card says so and points at where the pieces are.</p></div></div>
-        <div class="tool-grid">${tools}</div>
+        <div class="section-head"><div class="section-number">02 · THE LADDER</div><div><h2>Five rungs, and you can stop on any of them.</h2><p class="section-copy">Nobody starts as an owner. Each rung says what you did, what you get for it, and where it is written down. Stopping at stage 1 is a complete and finished contribution.</p></div></div>
+        ${ladder}
       </div>
     </section>
   </main>
@@ -739,12 +888,28 @@ function check(args) {
   }
   if (actual !== expected) fail(`${outputRelative} is stale; run npm run workbench:render`);
 
-  if (!actual.includes('id="ladder"') || !actual.includes('id="tools"') || !actual.includes('02 · THE TOOLS')) {
+  if (!actual.includes('id="ladder"') || !actual.includes('id="tools"') || !actual.includes('01 · THE TOOLS')) {
     fail('generated workbench is missing a required section');
   }
   // The Gateway serves this file verbatim under a self-only CSP; a <script> or <link> would
   // either be blocked or, worse, turn a static catalog into a page that fetches something.
   if (/<(?:script|link)\b/i.test(actual)) fail('workbench HTML must remain self-contained and script-free');
+
+  // Progressive disclosure is for depth, never for the honesty. A status_detail behind a
+  // <summary> is a status chip a reader can take at face value without ever seeing what
+  // qualifies it — which is the exact failure this page exists to prevent.
+  if (/<details[^>]*>(?:(?!<\/details>)[\s\S])*?status-detail/.test(actual)) {
+    fail('status_detail must never render inside a <details> — it is the load-bearing honesty of this page');
+  }
+  const detailCount = (actual.match(/class="status-detail/g) ?? []).length;
+  if (detailCount !== workbench.tools.length) {
+    fail(`expected ${workbench.tools.length} status_detail blocks, found ${detailCount}`);
+  }
+  // Same argument for the two facts a volunteer uses to rule themselves out, and for the
+  // digest that makes a download verifiable before anyone runs it.
+  if (/<details[^>]*>(?:(?!<\/details>)[\s\S])*?(?:requires-list|access-verify)/.test(actual)) {
+    fail('requirements and download digests must stay visible — they are gates, not depth');
+  }
 
   const unclaimed = workbench.tools.filter((tool) => tool.ownership.state === 'unclaimed').length;
   console.log(`Workbench OK: ${workbench.tools.length} tools (${statusSummary(workbench.tools)}), ${unclaimed} unclaimed, generated HTML current.`);
