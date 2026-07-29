@@ -87,24 +87,37 @@ PowerShell 5.1** — `&&` is a parser error in this shell, so each command stand
 
 ## Handoff block — paste this to the next agent
 
-> The `#workbench` Discord forum is provisioned by
+*State as of 2026-07-29T07:31Z, verified against Discord.*
+
+> The `#workbench` Discord forum is live, provisioned by
 > `tools/workbench/discord/workbench_discord.py` (config-as-code from the repo's seed
 > files; setup doc `Lumberjacks/docs/workbench/discord/09-discord-bot-setup.md`).
 >
+> **What is actually posted right now:** the forum channel, 8 tags, required-tags on,
+> and **two** threads — the pinned "How this works (read me first)" and "Recoverable
+> pieces". Both are bot-authored, 2 messages each, **zero member replies so far**.
+>
 > **What you need from it:** `tools/workbench/discord/provision-state.json`. Each entry
 > has a `url` (the thread) and `workbench_tools` (the `workbench.json` tool ids that
-> thread covers). Six posts cover seven tools — `recoverable` maps to both
-> `camera-gallery` and `quest-submission-bridge`; `mcp-mod-channel` has no thread.
+> thread covers). Only `camera-gallery` and `quest-submission-bridge` resolve today —
+> both point at the one "Recoverable pieces" thread. The other five stay `null` until the
+> `/workbench` deploy unblocks the four catalog threads, and `mcp-mod-channel` never gets
+> one. **Nulls are the designed state, not missing data** — the page generator already
+> renders an inert label for a null `discussion.href`.
 >
 > **What to do with it:** set `discussion.href` per tool in
 > `Lumberjacks/docs/workbench/workbench.json`, and `feedback.forum_href` to the forum
-> channel URL. Then from `Lumberjacks/`: `npm run workbench:render` and
-> `npm run workbench:check`. **Never hand-edit `workbench.html`** — it is generated.
+> channel URL (currently `null`). Then from `Lumberjacks/`: `npm run workbench:render`
+> and `npm run workbench:check`. **Never hand-edit `workbench.html`** — it is generated.
+> The generator allowlists hrefs; `https://discord.com/channels/` is already on that list
+> (verified in `Lumberjacks/scripts/workbench.mjs`), so the thread URLs render as live
+> links, not inert text.
 >
 > **Feedback direction:** `workbench_discord.py export` → `tools/workbench/distill_feedback.py`
-> → `Lumberjacks/docs/workbench/candidate-issues.jsonl`. That journal is **internal
-> only** — real display names next to quotes; never link or publish it, and never paste
-> it into Discord (`tools/workbench/candidate-issues-README.md`).
+> → `Lumberjacks/docs/workbench/candidate-issues.jsonl`. Nothing has been exported yet and
+> that journal does not exist. When it does it is **internal only** — real display names
+> next to quotes; never link or publish it, and never paste it into Discord
+> (`tools/workbench/candidate-issues-README.md`).
 >
 > **Rules that bind you too:** the bot does structure, never conversation — no
 > auto-replies, no generated messages to members, no chat presence. `00-announcement.md`
