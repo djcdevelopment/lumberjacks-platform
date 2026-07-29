@@ -10,7 +10,7 @@
         "1531926993442967654",
         "1531926998660812802"
       ],
-      "content_sha256": "1cd6d54dffdef1aafb7df958e42780694da264d4530485846e9b8a1d80116cf2",
+      "content_sha256": "c2f40905cbe9974c2b7880e5ad1dd1c7fd1e1f994efe1741d2a940ed970eabae",
       "pinned": true,
       "workbench_tools": [],
       "url": "https://discord.com/channels/1531911987074957442/1531926993442967654"
@@ -98,5 +98,5 @@
   "channel_id": "1531926985314668635",
   "channel_name": "workbench",
   "guild_id": "1531911987074957442",
-  "last_apply_utc": "2026-07-29T10:52:34Z"
+  "last_apply_utc": "2026-07-29T11:07:22Z"
 }

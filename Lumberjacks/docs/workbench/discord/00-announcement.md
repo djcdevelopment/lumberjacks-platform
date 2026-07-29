@@ -47,7 +47,7 @@ recoverable-pieces thread. Reviving either one is a real claim on it, not a warm
 **How feedback works**
 
 Each tool gets one thread. Post what you tried there, not in DMs, so the next person who hits the
-same thing finds your answer instead of my inbox. Replies land in batches, roughly twice a week —
+same thing finds your answer instead of my inbox. Replies come when I check in —
 this is a solo-operator project. If a thread goes quiet for a few days, that's pacing, not me
 going silent on you.
 

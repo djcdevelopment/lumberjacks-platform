@@ -9,9 +9,9 @@ One read, and every thread below makes sense.
 
 **Reply rhythm**
 
-I'm one person running this alongside everything else. I read every thread. Replies land in
-batches, roughly twice a week — not the minute you post. If a thread goes quiet for a few days,
-that's pacing, not me ignoring you.
+I'm one person, currently splitting time across a few projects. I read every thread. Replies
+come when I check in — not the minute you post. If a thread goes quiet for a while, that's
+pacing, not me ignoring you.
 
 **Tags**
 
