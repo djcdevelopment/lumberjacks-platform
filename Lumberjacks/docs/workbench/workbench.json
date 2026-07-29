@@ -53,7 +53,7 @@
       "name": "Quest Picker + Absorption Engine",
       "one_liner": "Turns a guild's real quest tracker into a single offline page where a player checks the quests they care about — and the game mod reads the result.",
       "status": "live",
-      "status_detail": "Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. There is no download yet — running it means cloning the public repo and running Python locally.",
+      "status_detail": "Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. The download below is a cold-start kit with a synthetic sample guild — verified to run from a fresh folder with nothing but Python and openpyxl.",
       "what_it_does": "Python (standard library, plus openpyxl for .xlsx sources) harvests real guild quest trackers into one JSON catalog per guild. render_quest_picker.py folds a catalog into a single self-contained file:// HTML page with no server and no network calls. A player opens that page, checks the quests they want, and saves a personal quest-view.json that the game mod reads at runtime.",
       "who_its_for": "Guild stewards and GMs who already keep a quest tracker and want it to reach players in-game instead of dying in a spreadsheet tab.",
       "time_to_first_result": "about 10 minutes",
@@ -63,11 +63,11 @@
         "A browser — the picker is a local file:// page, not a service"
       ],
       "access": {
-        "kind": "not-published",
-        "href": null,
-        "sha256": null,
-        "size_bytes": null,
-        "published_at": null
+        "kind": "site-download",
+        "href": "/workbench/downloads/quest-picker",
+        "sha256": "d0b53016cbce5febb6f35d24b581a2112298f3650d48cf3190e44ece7ac4b65a",
+        "size_bytes": 36335,
+        "published_at": "2026-07-29T01:12:00Z"
       },
       "source": {
         "kind": "public-repo",
@@ -193,11 +193,11 @@
         "The .NET 9 SDK, only if you want to rebuild the gateway rather than run the composed image"
       ],
       "access": {
-        "kind": "not-published",
-        "href": null,
-        "sha256": null,
-        "size_bytes": null,
-        "published_at": null
+        "kind": "site-download",
+        "href": "/workbench/downloads/community-telemetry",
+        "sha256": "bf065eb47da01f3305ec10c4c6b8ec03d99329cf6a5dc02c2ba5f26eded32211",
+        "size_bytes": 8485,
+        "published_at": "2026-07-29T01:12:00Z"
       },
       "source": {
         "kind": "private-until-claimed",

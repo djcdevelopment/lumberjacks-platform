@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "sample-guild",
+      "guild": "Sample Guild",
+      "era": 1,
+      "adapter": "sheet-xlsx",
+      "path": "../sample/sample-guild-tracker.xlsx",
+      "tab": "Summons list for bot",
+      "url": null,
+      "retrieved": null,
+      "output": "../sample/quest-catalog-sample.json",
+      "note": "Synthetic demonstration data. Point path/tab at your own guild's tracker export to harvest it (first task QP-2)."
+    },
+    {
+      "id": "gm-template-example",
+      "guild": "Sample Guild",
+      "era": 1,
+      "adapter": "gm-template",
+      "path": "gm-template-example.json",
+      "output": null,
+      "enabled": false,
+      "note": "gm-template-example.json is not yet written. Writing it is Community Workbench first task QP-1; gm-template validates and passes through once the file exists."
+    },
+    {
+      "id": "discord-channel-export",
+      "guild": null,
+      "era": null,
+      "adapter": "discord-export",
+      "path": null,
+      "output": null,
+      "enabled": false,
+      "note": "Reserved seam for the absorption engine: harvest quests straight from a Discord channel export. Not implemented."
+    }
+  ]
+}

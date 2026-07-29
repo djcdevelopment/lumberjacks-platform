@@ -258,7 +258,7 @@
       <span class="pill live">LIVE</span>
     </div>
     <p class="one-liner">Turns a guild&#39;s real quest tracker into a single offline page where a player checks the quests they care about — and the game mod reads the result.</p>
-    <div class="status-detail live"><strong>What that status actually means</strong>Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. There is no download yet — running it means cloning the public repo and running Python locally.</div>
+    <div class="status-detail live"><strong>What that status actually means</strong>Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. The download below is a cold-start kit with a synthetic sample guild — verified to run from a fresh folder with nothing but Python and openpyxl.</div>
     <div class="tool-facts">
       <div><strong>What it does</strong>Python (standard library, plus openpyxl for .xlsx sources) harvests real guild quest trackers into one JSON catalog per guild. render_quest_picker.py folds a catalog into a single self-contained file:// HTML page with no server and no network calls. A player opens that page, checks the quests they want, and saves a personal quest-view.json that the game mod reads at runtime.</div>
       <div><strong>Who it is for</strong>Guild stewards and GMs who already keep a quest tracker and want it to reach players in-game instead of dying in a spreadsheet tab.</div>
@@ -266,10 +266,12 @@
     <div class="meta-line"><span>first result · about 10 minutes</span><span class="deps">roadmap <span class="dep">A5</span><span class="dep">A7</span></span></div>
     <div class="tool-columns">
       <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>openpyxl (only for .xlsx sources)</li><li>A browser — the picker is a local file:// page, not a service</li></ul></div>
-      <div class="access not-published">
-    <span class="access-button disabled" aria-disabled="true">Not published yet</span>
-    <p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p>
-  </div>
+      <div class="access site-download">
+      <a class="access-button" href="/workbench/downloads/quest-picker">Download Quest Picker + Absorption Engine</a>
+      <div class="access-detail"><span>SHA-256</span><code>d0b53016cbce5febb6f35d24b581a2112298f3650d48cf3190e44ece7ac4b65a</code></div>
+      <div class="access-detail"><span>Size</span><code>35.5 KB</code></div>
+      <div class="access-detail"><span>Published</span><code>2026-07-29T01:12:00Z</code></div>
+    </div>
     </div>
     <div class="tool-link-row">
       <div class="tool-links"><strong>Docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/schema.md" target="_blank" rel="noreferrer">Catalog schema (schema.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/quest-view-schema.md" target="_blank" rel="noreferrer">Personal quest-view schema (quest-view-schema.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/sources.json" target="_blank" rel="noreferrer">Source config seam (sources.json)</a></div>
@@ -362,10 +364,12 @@
     <div class="meta-line"><span>first result · about 5 minutes against the live API; about 30 for the local stack once claimed</span><span class="deps">roadmap <span class="dep">A4</span><span class="dep">A7</span></span></div>
     <div class="tool-columns">
       <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>A browser (or Python 3) for the live aggregates API — that is all CT-1 needs</li><li>Docker and docker compose, for the local stack (source access opens at ladder stage 3)</li><li>The .NET 9 SDK, only if you want to rebuild the gateway rather than run the composed image</li></ul></div>
-      <div class="access not-published">
-    <span class="access-button disabled" aria-disabled="true">Not published yet</span>
-    <p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p>
-  </div>
+      <div class="access site-download">
+      <a class="access-button" href="/workbench/downloads/community-telemetry">Download Live Community Telemetry</a>
+      <div class="access-detail"><span>SHA-256</span><code>bf065eb47da01f3305ec10c4c6b8ec03d99329cf6a5dc02c2ba5f26eded32211</code></div>
+      <div class="access-detail"><span>Size</span><code>8.3 KB</code></div>
+      <div class="access-detail"><span>Published</span><code>2026-07-29T01:12:00Z</code></div>
+    </div>
     </div>
     <div class="tool-link-row">
       <div class="tool-links"><strong>Docs</strong><a href="/community">The live community view</a><span aria-hidden="true"> · </span><span class="inert-link">Telemetry v0 API reference — Lumberjacks/docs/api/telemetry-v0.md</span><span aria-hidden="true"> · </span><span class="inert-link">Viewing the surfaces — Lumberjacks/docs/dashboard/viewing-the-surfaces.md</span></div>
