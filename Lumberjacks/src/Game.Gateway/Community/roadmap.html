@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-29T10:11:37.556Z</span>
+        <span>Updated 2026-07-29T10:29:27.053Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260729101137-verify-the-discord-invite-against-the-api-and-ad">
+        <div class="journal"><article class="journal-entry" id="note-20260729102927-resolve-the-valheim-server-password-question-acc">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-29T10:29:27.053Z">2026-07-29T10:29:27.053Z</time>
+        <span class="pill note-kind">decision</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Resolve the Valheim server password question: accept open direct-join with no password while the cohort is the operator and name-known friends</h3>
+      <p><strong>Impact:</strong> Closes the last blocking item before a deploy could bring a joinable world back up. The public docs that describe the server as Steam-unlisted but password-free are accurate as written and need no change. The consequence a volunteer would otherwise miss is now on the steam-join card: the invite gates the enrollment flow, not the world, so anyone who knows the address can direct-connect without it. Revisit at the first external cohort, the same gate that makes TLS and rate limiting non-optional</p>
+      <details><summary>Verification (1)</summary><ul><li>Confirmed nothing is joinable today regardless of the setting: the P7 VM is TERMINATED and the local host runs the Gateway container only, no Valheim server. New sentence renders outside any disclosure, workbench:check green, zero-loss holds at 235 strings, and the page republished to the local host</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260729101137-verify-the-discord-invite-against-the-api-and-ad">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
