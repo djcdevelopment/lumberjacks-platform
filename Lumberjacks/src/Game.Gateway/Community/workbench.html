@@ -447,7 +447,7 @@
       <div class="access-detail"><span>Published</span><code>2026-07-29T01:12:00Z</code></div>
     </div>
     <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="/community">The live community view</a></span><span class="tool-link"><em>Discuss</em><span class="inert-link">thread opens with the announcement</span></span></div>
-    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>A browser (or Python 3) for the live aggregates API — that is all CT-1 needs</li><li>Docker and docker compose, for the local stack (source access opens at ladder stage 3)</li><li>The .NET 9 SDK, only if you want to rebuild the gateway rather than run the composed image</li></ul></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>A browser (or Python 3) for the live aggregates API — that is all CT-1 needs</li><li>Docker and docker compose, for the local stack</li><li>The .NET 9 SDK, only if you want to rebuild the gateway rather than run the composed image</li></ul></div>
     <details class="tool-detail">
       <summary>How it works, in detail</summary>
       <div class="tool-detail-body">
@@ -469,7 +469,7 @@
           <strong>Bring the local stack up, then add one new aggregate tile the privacy tests still pass on</strong>
           <span class="task-flags"><span class="task-size medium">medium</span></span>
         </div>
-        <span class="done-when"><em>Done when:</em> The compose stack runs on your machine and a new aggregate is exposed by the v0 API and rendered, with the existing privacy tests passing unmodified. This is the claim path — source access opens at ladder stage 3.</span>
+        <span class="done-when"><em>Done when:</em> The compose stack runs on your machine and a new aggregate is exposed by the v0 API and rendered, with the existing privacy tests passing unmodified. This is the claim path — the source is already public, so nothing blocks you from starting today.</span>
         <span class="task-id">CT-2</span>
       </li></ul>
       <div class="ownership-state unclaimed">
@@ -483,8 +483,8 @@
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
         <div class="tool-links"><strong>More docs</strong><span class="inert-link">Telemetry v0 API reference — Lumberjacks/docs/api/telemetry-v0.md</span><span aria-hidden="true"> · </span><span class="inert-link">Viewing the surfaces — Lumberjacks/docs/dashboard/viewing-the-surfaces.md</span></div>
-        <div class="tool-links"><strong>Source</strong><span class="inert-link">Private until claimed</span></div>
-        <p class="source-note">The code is in this repo — Lumberjacks/infra/docker/docker-compose.yml for the stack, Lumberjacks/tools/omen-dashboard/ for the operator viewer. Access opens at ladder stage 3.</p>
+        <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/tools/omen-dashboard" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/tools/omen-dashboard</a></div>
+        <p class="source-note">Public and readable now: Lumberjacks/infra/docker/docker-compose.yml for the stack, Lumberjacks/tools/omen-dashboard/ for the operator viewer. Nothing here is gated — what opens at ladder stage 3 is commit access, not the ability to read it.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>The v0 API is aggregates-only by tested design — no player ID, no name, no position, ever. Keep that bar: a change that makes the privacy tests fail is a change that does not land.</div>
           <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
@@ -542,8 +542,8 @@
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
         <div class="tool-links"><strong>More docs</strong><a href="/roadmap">Volunteer roadmap — the M2 and M5 gates this sits behind</a><span aria-hidden="true"> · </span><span class="inert-link">Operator runbook — infra/gcp/p7/VOLUNTEER-ENDPOINT.md</span></div>
-        <div class="tool-links"><strong>Source</strong><span class="inert-link">Private until claimed</span></div>
-        <p class="source-note">Lumberjacks/src/Game.Gateway/Valheim/ in this repo — SteamEnrollmentEndpoints, SteamEnrollmentService, EnrollmentPages, ModpackReleaseCatalog — with real test suites, plus the operator runbook at infra/gcp/p7/VOLUNTEER-ENDPOINT.md. Access opens at ladder stage 3.</p>
+        <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/src/Game.Gateway/Valheim" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/src/Game.Gateway/Valheim</a></div>
+        <p class="source-note">Public and readable now — SteamEnrollmentEndpoints, SteamEnrollmentService, EnrollmentPages, ModpackReleaseCatalog, with real test suites, plus the operator runbook at infra/gcp/p7/VOLUNTEER-ENDPOINT.md. Nothing here is gated — what opens at ladder stage 3 is commit access, not the ability to read it.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>The per-player token is stored only as a hash. The zip you receive carries your own credential — do not re-share it; ask for a reissue instead.</div>
           <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
@@ -594,8 +594,8 @@
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
         <div class="tool-links"><strong>More docs</strong><span class="inert-link">Command contract — network/mcp/contracts/commands.json</span></div>
-        <div class="tool-links"><strong>Source</strong><span class="inert-link">Private until claimed</span></div>
-        <p class="source-note">network/mcp/ in this repo — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot exists in the public comfy repo. Access opens at ladder stage 3.</p>
+        <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/network/mcp" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/baseline/tree/main/network/mcp</a></div>
+        <p class="source-note">Public and readable now — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot also exists in the comfy repo. Nothing here is gated — what opens at ladder stage 3 is commit access, not the ability to read it.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>Bound to 127.0.0.1 on purpose. Do not expose it — it drives a live game process, and its whole safety story is that only you can reach it.</div>
           <div class="license"><strong>License</strong>BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md.</div>
@@ -745,7 +745,7 @@
       <div class="ladder-stage">Stage 3</div>
       <h3>Contributor</h3>
       <p class="ladder-did">Landed two changes on a tool, or revived a recoverable piece back into something that runs.</p>
-      <div class="ladder-get"><strong>You get</strong>Code access to that piece and you triage its thread. The tool&#39;s ownership state moves to claimed.</div>
+      <div class="ladder-get"><strong>You get</strong>Commit access to that piece and you triage its thread — the code was always readable, this is the right to change it. The tool&#39;s ownership state moves to claimed.</div>
       <div class="ladder-recorded">OWNERS.md, plus the tool&#39;s ownership record.</div>
     </article><article class="ladder-step stage-4" role="listitem">
       <div class="ladder-stage">Stage 4</div>
