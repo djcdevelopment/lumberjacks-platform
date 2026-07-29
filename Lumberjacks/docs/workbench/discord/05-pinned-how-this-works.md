@@ -13,6 +13,13 @@ I'm one person running this alongside everything else. I read every thread. Repl
 batches, roughly twice a week — not the minute you post. If a thread goes quiet for a few days,
 that's pacing, not me ignoring you.
 
+**Tags**
+
+When you post, pick one tag: **question**, **bug**, **claiming a task**, or **first task done**.
+That's it — the tag is how I sort my reading pass, so a good tag literally gets you a faster
+answer. You'll also see status tags (**needs-derek**, **answered**, **resolved**) come and go on
+posts; those are mine (and stewards', for their own tools). Don't worry about them.
+
 **The ownership ladder**
 
 Nothing here requires asking permission to start.

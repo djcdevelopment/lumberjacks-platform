@@ -67,8 +67,26 @@ anything they don't already have. Each one gets an id, a title, and a
 concrete "done when" — not "improve X" but a condition you could check
 without asking the author what they meant.
 
+Prefer small, bug-fix-shaped, clearly-bounded tasks over open-ended feature
+asks: across popular OSS projects, bug-fix-type newcomer tasks merge at
+~69% vs ~54% for feature-shaped ones, and review capacity — not task
+count — is the bottleneck (arxiv.org/html/2604.27532v2). Since the
+operator IS the review capacity here, a short list of finishable tasks
+beats a long list of interesting ones.
+
 - **ID-1 — title.** Done when: ...
 - **ID-2 — title.** Done when: ...
+
+## Already answered
+
+Recurring questions from this tool's thread, two lines each: the question
+as actually asked, then the answer as actually given (quote or tight
+paraphrase of the operator's real reply — never a synthesized answer).
+Populated as a byproduct of the regular feedback sweep: when the same
+question lands a second time, the line you write in the reply gets pasted
+here too. Lives in this file — not a separate FAQ doc — so the existing
+status-sync rule keeps it from rotting. Empty state: "None yet — this
+section fills from the thread."
 
 ## Where to talk about it
 
