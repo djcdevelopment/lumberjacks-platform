@@ -3,6 +3,7 @@
 Config-as-code for the `#workbench` forum on the community server. One script keeps the
 channel, its tag taxonomy and its opening posts equal to what is checked in here.
 
+**Tick-box wrap-up steps:** [`WORKBOOK.md`](WORKBOOK.md)
 **Setup and full walkthrough:**
 [`Lumberjacks/docs/workbench/discord/09-discord-bot-setup.md`](../../../Lumberjacks/docs/workbench/discord/09-discord-bot-setup.md)
 
