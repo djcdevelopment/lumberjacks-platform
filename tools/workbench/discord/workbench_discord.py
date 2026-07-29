@@ -553,6 +553,14 @@ class DiscordClient:
                 return None
             raise
 
+    def first_messages(self, channel_id: str, limit: int = 10) -> list[dict]:
+        """The oldest messages in a thread, ascending. Used to rediscover a managed
+        post when the state file has no record of it -- without this, a lost state
+        file would make a two-message post look one message short and append a
+        duplicate continuation."""
+        page = self._t.request("GET", f"/channels/{channel_id}/messages", query={"limit": limit, "after": 0}) or []
+        return list(reversed(page))
+
     def messages(self, channel_id: str) -> list[dict]:
         """Every message in a channel/thread, oldest first."""
         collected: list[dict] = []
@@ -671,6 +679,20 @@ class Plan:
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
 
 
+def _rediscover_post(client: DiscordClient, thread_id: str, bot_id: str) -> tuple[list[str], list[str], bool]:
+    messages = client.first_messages(thread_id)
+    if not messages:
+        return [thread_id], [""], False
+    if str((messages[0].get("author") or {}).get("id")) != bot_id:
+        return [str(messages[0]["id"])], [messages[0].get("content") or ""], False
+    ours: list[dict] = []
+    for msg in messages:
+        if str((msg.get("author") or {}).get("id")) != bot_id:
+            break
+        ours.append(msg)
+    return [str(m["id"]) for m in ours], [m.get("content") or "" for m in ours], True
+
+
 def read_live_state(client: DiscordClient, cfg: Config, state: dict) -> LiveState:
     channels = client.guild_channels(cfg.guild_id)
     channel = next(
@@ -692,17 +714,24 @@ def read_live_state(client: DiscordClient, cfg: Config, state: dict) -> LiveStat
     for thread in threads:
         tid = str(thread["id"])
         flags = int(thread.get("flags") or 0)
-        message_ids = list(known_messages.get(tid) or [tid])
-        contents: list[str] = []
-        authored_by_bot = True
-        for mid in message_ids:
-            msg = client.message(tid, mid)
-            if msg is None:
-                contents.append("")
-                continue
-            contents.append(msg.get("content") or "")
-            if str((msg.get("author") or {}).get("id")) != bot_id:
-                authored_by_bot = False
+        recorded = known_messages.get(tid)
+        if recorded:
+            message_ids = list(recorded)
+            contents = []
+            authored_by_bot = True
+            for mid in message_ids:
+                msg = client.message(tid, mid)
+                if msg is None:
+                    contents.append("")
+                    continue
+                contents.append(msg.get("content") or "")
+                if str((msg.get("author") or {}).get("id")) != bot_id:
+                    authored_by_bot = False
+        else:
+            # Nothing recorded for this thread: read it. A post we manage is the
+            # starter message plus the unbroken run of our own messages after it --
+            # anything from that point on is somebody else's reply, not our content.
+            message_ids, contents, authored_by_bot = _rediscover_post(client, tid, bot_id)
         posts[thread.get("name", "")] = LivePost(
             thread_id=tid,
             title=thread.get("name", ""),
@@ -1482,6 +1511,7 @@ class FakeTransport(Transport):
         raise ToolError(f"FakeTransport: unhandled {method} {path}")
 
     def _message(self, channel_id: str, message_id: str, content: str, author_id: Optional[str] = None) -> dict:
+        is_bot = author_id is None or author_id == self.bot_id
         return {
             "id": message_id,
             "type": 0,
@@ -1490,7 +1520,12 @@ class FakeTransport(Transport):
             "pinned": False,
             "content": content,
             "channel_id": channel_id,
-            "author": {"id": author_id or self.bot_id, "username": "workbench-bot", "discriminator": "0000", "bot": author_id is None},
+            "author": {
+                "id": author_id or self.bot_id,
+                "username": "workbench-bot" if is_bot else f"member{author_id}",
+                "discriminator": "0000",
+                "bot": is_bot,
+            },
             "attachments": [],
             "reactions": [],
             "mentions": [],
@@ -1576,6 +1611,18 @@ def run_self_test() -> bool:
     plan1 = build_plan(cfg_live, live1, tools)
     check(not plan1.changes, "second plan is a no-op (idempotent)", f"{[(a.verb, a.target, a.detail) for a in plan1.changes]}")
 
+    # --- state loss + a member reply must not produce duplicate messages ---- #
+    two_chunk_id = next(tid for tid, t in fake.threads.items() if t["name"] == "Recoverable pieces")
+    fake.messages[two_chunk_id].append(fake._message(two_chunk_id, fake._id(), "ran it, it broke", author_id="77"))
+    forgotten: dict = {"schema_version": 1, "posts": {}}
+    plan_lost = build_plan(cfg_live, read_live_state(client, cfg_live, forgotten), tools)
+    check(
+        not plan_lost.changes,
+        "a lost state file rediscovers posts instead of appending duplicates",
+        f"{[(a.verb, a.target, a.detail) for a in plan_lost.changes]}",
+    )
+    check(len(fake.messages[two_chunk_id]) == 3, "the member reply is still there, untouched", f"{len(fake.messages[two_chunk_id])}")
+
     # --- drift: an edited pin and a removed tag come back ------------------ #
     pin_thread = pinned[0]
     fake.messages[pin_thread["id"]][0]["content"] = "someone edited this by hand"
@@ -1620,7 +1667,8 @@ def run_self_test() -> bool:
         check({"id", "type", "categoryId", "category", "name", "topic"} <= set(doc["channel"]), "export channel block matches the exporter shape")
         check(doc["channel"]["category"] == cfg.channel_name, "thread export names the parent forum as its category")
         check(doc["messageCount"] == len(doc["messages"]), "messageCount matches what was written")
-        check(sum(len(d["messages"]) for d in docs) == 1, "the bot's own repo-sourced posts stay out of the export", f"{sum(len(d['messages']) for d in docs)}")
+        check(sum(len(d["messages"]) for d in docs) == 2, "only the two member messages reach the export; the bot's own posts stay out", f"{sum(len(d['messages']) for d in docs)}")
+        check(all(not m["author"]["isBot"] for d in docs for m in d["messages"]), "nothing bot-authored survives into an export file")
         msg = doc["messages"][0]
         check({"id", "type", "timestamp", "content", "author"} <= set(msg), "export message carries the fields the distiller reads")
         check(msg["type"] in CONTENT_TYPES_FOR_DISTILLER, "message type maps to a DiscordChatExporter kind the distiller accepts", msg["type"])
@@ -1634,8 +1682,10 @@ def run_self_test() -> bool:
             rc = distill_feedback.main(["--export-dir", str(out), "--output", str(out_jsonl)])
             check(rc == 0, "distill_feedback.py consumes this export without error", f"exit {rc}")
             rows = [json.loads(x) for x in out_jsonl.read_text(encoding="utf-8").splitlines() if x.strip()] if out_jsonl.exists() else []
-            check(len(rows) == 1 and rows[0]["kind"] == "question", "the distiller found exactly the one member question", f"{rows}")
-            check(rows and rows[0]["thread"] == "Quest picker", "the candidate carries the thread title", f"{rows}")
+            check(len(rows) == 2, "the distiller produced one candidate per member message and nothing else", f"{rows}")
+            check({r["kind"] for r in rows} == {"question", "bug"}, "both heuristics fired on the right messages", f"{[(r['kind'], r['excerpt']) for r in rows]}")
+            check(any(r["thread"] == "Quest picker" and r["kind"] == "question" for r in rows), "the candidate carries its thread title", f"{rows}")
+            check(all(r["author"] != "workbench-bot" for r in rows), "no candidate is attributed to the bot", f"{[r['author'] for r in rows]}")
         except ImportError as exc:  # pragma: no cover
             check(False, "distill_feedback.py importable for the contract test", str(exc))
         finally:
