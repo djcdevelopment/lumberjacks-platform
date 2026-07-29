@@ -2,13 +2,15 @@
   "schema_version": 1,
   "title": "Comfy × Valheim — Community Workbench",
   "headline": "Seven tools. What each one actually does today, what it costs you to run it, and exactly how to take one over.",
-  "updated_at": "2026-07-29T01:00:00Z",
+  "owners_href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/OWNERS.md",
   "honesty_statement": "Every status below is what the thing actually does today.",
   "not_a_verdict_summary": "Volunteers carried this community. An unclaimed tool is not a verdict on anyone.",
   "not_a_verdict": "This catalog is an invitation to run and own tools. It is not a judgment on anyone's past effort and it is not a verdict on anyone's burnout — volunteers already carried this community, and the work they did is why any of this exists. Nothing here is owed by anyone. A tool sitting unclaimed is a description of this catalog, never a mark against the people who came before.",
   "invitation_line": "Running one of these once and saying what happened — including that it broke — is a complete contribution.",
   "feedback": {
     "rhythm": "Replies land in batches, about twice a week — this is a solo-operator project.",
+    "invite_href": "https://discord.gg/TSHTD38yV",
+    "invite_label": "Join the Discord",
     "forum_href": "https://discord.com/channels/1531911987074957442/1531926985314668635",
     "forum_label": "#workbench forum",
     "start_here_href": "https://discord.com/channels/1531911987074957442/1531926993442967654",
@@ -40,7 +42,7 @@
       "stage": 3,
       "name": "Contributor",
       "what_you_did": "Landed two changes on a tool, or revived a recoverable piece back into something that runs.",
-      "what_you_get": "Commit access to that piece and you triage its thread — the code was always readable, this is the right to change it. The tool's ownership state moves to claimed.",
+      "what_you_get": "You triage that tool's thread, and you get the contribution right its own card names — the repositories differ, so the card is authoritative, not this rung. The tool's ownership state moves to claimed.",
       "recorded_in": "OWNERS.md, plus the tool's ownership record."
     },
     {
@@ -118,6 +120,10 @@
       },
       "recovery": null,
       "roadmap_milestones": ["A5", "A7"],
+      "contribution": {
+        "stage_3_reward": "Commit access to recipes/quest-catalogs/ in baseline, and you triage this tool's thread.",
+        "code_contributions": true
+      },
       "privacy_note": "Harvested catalogs from a live guild tracker contain member names. The published sample uses synthetic data only — do not commit a real harvested catalog.",
       "license": "BUSL-1.1 in this repo (community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md). The byte-identical copies in the public comfy archive carry that repo's MIT license."
     },
@@ -179,6 +185,10 @@
       },
       "recovery": null,
       "roadmap_milestones": ["A3", "A7"],
+      "contribution": {
+        "stage_3_reward": "Documentation and feedback stewardship: you own this tool's quickstart and probe-utility docs, and you triage its thread. The repository is all-rights-reserved, so code changes are not on offer here until that licence changes.",
+        "code_contributions": false
+      },
       "privacy_note": "Run it on world copies, not the live save. Output can contain player names — share aggregates and screenshots, not raw dumps.",
       "license": "Proprietary — all rights reserved per the repo's own LICENSE.md, which requires written permission and a paid license for reuse. Catalogued here for running it and giving feedback; the license posture is under review, and until it changes, contributions mean docs and feedback, not code redistribution."
     },
@@ -249,6 +259,10 @@
       },
       "recovery": null,
       "roadmap_milestones": ["A4", "A7"],
+      "contribution": {
+        "stage_3_reward": "Commit access to the telemetry stack and the operator viewer in baseline, and you triage this tool's thread.",
+        "code_contributions": true
+      },
       "privacy_note": "The v0 API is aggregates-only by tested design — no player ID, no name, no position, ever. Keep that bar: a change that makes the privacy tests fail is a change that does not land.",
       "license": "BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md."
     },
@@ -318,6 +332,10 @@
       },
       "recovery": null,
       "roadmap_milestones": ["M2", "M5", "A7"],
+      "contribution": {
+        "stage_3_reward": "Commit access to Lumberjacks/src/Game.Gateway/Valheim/ in baseline, and you triage this tool's thread.",
+        "code_contributions": true
+      },
       "privacy_note": "The per-player token is stored only as a hash. The zip you receive carries your own credential — do not re-share it; ask for a reissue instead.",
       "license": "BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md."
     },
@@ -374,6 +392,10 @@
       },
       "recovery": null,
       "roadmap_milestones": ["A7"],
+      "contribution": {
+        "stage_3_reward": "Commit access to network/mcp/ in baseline, and you triage this tool's thread.",
+        "code_contributions": true
+      },
       "privacy_note": "Bound to 127.0.0.1 on purpose. Do not expose it — it drives a live game process, and its whole safety story is that only you can reach it.",
       "license": "BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md."
     },
@@ -446,6 +468,10 @@
         "notes": "Segment 1 was built and produced real output. Segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. The baseline pre-prune ref is cc322ee."
       },
       "roadmap_milestones": ["A3", "A7"],
+      "contribution": {
+        "stage_3_reward": "Commit access to the revived pipeline once it lands in baseline, and you triage this tool's thread. The comfy archive it is recovered from stays read-only.",
+        "code_contributions": true
+      },
       "privacy_note": "A flythrough shows other people's builds. Ask before publishing a gallery of a world you do not own.",
       "license": "MIT — everything recoverable here lives in the public comfy archive, which is MIT-licensed. A revival landing in this repo would land under BUSL-1.1; see LICENSING.md."
     },
@@ -515,6 +541,10 @@
         "notes": "Front half is alive and tested in the live mod — network/mod/ComfyNetworkSense/Core/Services/QuestViewLoader.cs and QuestTriggerEvaluator.cs. Only the back half needs reviving, and it has fixtures to test against."
       },
       "roadmap_milestones": ["A5", "A7"],
+      "contribution": {
+        "stage_3_reward": "Commit access to the bridge once the back half lands in baseline, and you triage this tool's thread. The comfy archive it is recovered from stays read-only.",
+        "code_contributions": true
+      },
       "privacy_note": "A submission record carries a player's name and what they did. Keep the review inbox off any public surface.",
       "license": "Split: the live front half (in this repo's mod) is BUSL-1.1 per LICENSING.md; the recoverable back half lives in the public comfy archive under MIT."
     }

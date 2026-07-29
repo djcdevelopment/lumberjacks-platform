@@ -12,6 +12,7 @@
 // declared enum and must carry a non-empty, honest status_detail. A tool that does not run says
 // so in the same typeface as one that does.
 
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -34,11 +35,66 @@ const ownershipStates = new Set(['unclaimed', 'trying', 'claimed', 'owned']);
 const linkPrefixes = [
   'https://github.com/djcdevelopment/',
   'https://discord.com/channels/',
+  'https://discord.gg/',
   'https://comfy-p7.duckdns.org/',
 ];
 
+// A /channels/ URL only resolves for someone already inside the server. It is a destination,
+// never an entrance, so the page may not offer one without also offering an invite.
+const memberOnlyDiscord = 'https://discord.com/channels/';
+const inviteShape = /^https:\/\/discord\.gg\/[A-Za-z0-9-]{2,32}$/;
+
+const provisionStateRelative = '../tools/workbench/discord/provision-state.json';
+
 function fail(message) {
   throw new Error(message);
+}
+
+function formatUtc(iso) {
+  const when = new Date(iso);
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${when.getUTCFullYear()}-${pad(when.getUTCMonth() + 1)}-${pad(when.getUTCDate())} `
+    + `${pad(when.getUTCHours())}:${pad(when.getUTCMinutes())} UTC`;
+}
+
+/// The single source of truth for the freshness the page displays. Derived from git, never
+/// hand-entered: the previous hand-maintained `updated_at` was false within hours of a change,
+/// and a stale date on this page costs more trust than no date would.
+///
+/// This value is the one thing on the page that legitimately changes without the content
+/// changing: the moment the commit carrying a render lands, the commit timestamp that render
+/// would report moves. So check() cannot compare it byte-for-byte — it normalises the marked
+/// span away (see freshnessMarker) and compares everything else strictly.
+function contentFreshness() {
+  const git = (args) => execFileSync('git', args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  }).trim();
+
+  let committedAt = '';
+  let dirty = false;
+  try {
+    committedAt = git(['log', '-1', '--format=%cI', '--', workbenchRelative]);
+    dirty = git(['status', '--porcelain', '--', workbenchRelative]).length > 0;
+  } catch {
+    return 'Content freshness unknown — not rendered from a git checkout';
+  }
+
+  // A dirty tree means what is on screen is not what is in any commit. Say so, and timestamp
+  // the render rather than borrowing a commit's date that does not describe this content.
+  if (dirty || !committedAt) {
+    return `Rendered ${formatUtc(new Date().toISOString())} from an uncommitted working tree`;
+  }
+  return `Content updated ${formatUtc(committedAt)}`;
+}
+
+const freshnessMarker = /<span class="freshness">[^<]*<\/span>/;
+
+/// Blank the freshness span so a stale-artifact comparison is about content, not about the
+/// clock. Everything outside this one span is still compared byte-for-byte.
+function normaliseFreshness(html) {
+  return html.replace(freshnessMarker, '<span class="freshness">·</span>');
 }
 
 function readSource() {
@@ -182,6 +238,25 @@ function validateRecovery(recovery, label, status) {
   requireString(recovery.notes, `${label}.notes`);
 }
 
+/// Contribution rights are declared per tool, never inferred from licence prose, because the
+/// seven tools span four repositories with four different answers. The ladder describes the
+/// concept; this is what a volunteer actually gets.
+function validateContribution(contribution, label, license) {
+  requireObject(contribution, label);
+  requireString(contribution.stage_3_reward, `${label}.stage_3_reward`);
+  if (typeof contribution.code_contributions !== 'boolean') {
+    fail(`${label}.code_contributions must be an explicit boolean`);
+  }
+  if (!contribution.code_contributions && /commit access/i.test(contribution.stage_3_reward)) {
+    fail(`${label}.stage_3_reward promises commit access while code_contributions is false`);
+  }
+  // An all-rights-reserved licence is exactly where an unexamined "yes" does the most damage,
+  // so it has to be acknowledged in the data rather than assumed.
+  if (/proprietary/i.test(license) && contribution.code_contributions && contribution.proprietary_ack !== true) {
+    fail(`${label}: a proprietary licence with code_contributions true requires ${label}.proprietary_ack === true`);
+  }
+}
+
 function validateTool(tool, index, seenIds) {
   const label = `workbench.tools[${index}]`;
   requireObject(tool, label);
@@ -242,14 +317,19 @@ function validateTool(tool, index, seenIds) {
   requireStringArray(tool.roadmap_milestones, `${label}.roadmap_milestones`);
   requireString(tool.privacy_note, `${label}.privacy_note`);
   requireString(tool.license, `${label}.license`);
+  validateContribution(tool.contribution, `${label}.contribution`, tool.license);
 }
 
 function validate(workbench, rawText = '') {
   if (workbench.schema_version !== 1) fail('workbench.schema_version must be 1');
   requireString(workbench.title, 'workbench.title');
   requireString(workbench.headline, 'workbench.headline');
-  requireString(workbench.updated_at, 'workbench.updated_at');
-  if (Number.isNaN(Date.parse(workbench.updated_at))) fail('workbench.updated_at must be an ISO timestamp');
+  // Deliberately absent. Freshness is derived from git by contentFreshness(); a hand-entered
+  // date here would become a second, competing source of truth and go stale the same way.
+  if ('updated_at' in workbench) {
+    fail('workbench.updated_at must not exist — the displayed freshness is derived from git, not typed in');
+  }
+  requireLink(workbench.owners_href, 'workbench.owners_href');
   requireString(workbench.honesty_statement, 'workbench.honesty_statement');
   requireString(workbench.not_a_verdict, 'workbench.not_a_verdict');
   // The summary is what a reader who never expands the disclosure actually sees, so it has to
@@ -265,8 +345,17 @@ function validate(workbench, rawText = '') {
   requireNullableLink(workbench.feedback.forum_href, 'workbench.feedback.forum_href');
   requireString(workbench.feedback.start_here_label, 'workbench.feedback.start_here_label');
   requireNullableLink(workbench.feedback.start_here_href, 'workbench.feedback.start_here_href');
-
+  requireString(workbench.feedback.invite_label, 'workbench.feedback.invite_label');
+  requireNullableLink(workbench.feedback.invite_href, 'workbench.feedback.invite_href');
+  if (workbench.feedback.invite_href !== null && !inviteShape.test(workbench.feedback.invite_href)) {
+    fail(`workbench.feedback.invite_href must be a https://discord.gg/ invite: ${workbench.feedback.invite_href}`);
+  }
   validateLadder(workbench.ladder);
+  // Stage 3 describes the concept; the cards carry the concrete right. If the rung names a
+  // specific grant it will contradict at least one of the seven tools.
+  if (/commit access/i.test(workbench.ladder[3].what_you_get)) {
+    fail('workbench.ladder[3].what_you_get must not promise commit access globally — it differs per tool, so the card is authoritative');
+  }
 
   if (!Array.isArray(workbench.tools) || workbench.tools.length === 0) fail('workbench.tools must not be empty');
   const seenIds = new Set();
@@ -277,6 +366,17 @@ function validate(workbench, rawText = '') {
   const suggested = workbench.tools.flatMap((tool) => tool.first_tasks.filter((task) => task.suggested));
   if (suggested.length > 1) {
     fail(`only one first task may be suggested; found ${suggested.length}: ${suggested.map((task) => task.id).join(', ')}`);
+  }
+
+  // The rule that matters: a member-only link may not be the only way in. An inert discussion
+  // row renders no URL at all, so the five deliberate placeholders cannot trip this.
+  const memberOnlyLinks = [
+    workbench.feedback.forum_href,
+    workbench.feedback.start_here_href,
+    ...workbench.tools.map((tool) => tool.discussion.href),
+  ].filter((href) => typeof href === 'string' && href.startsWith(memberOnlyDiscord));
+  if (memberOnlyLinks.length > 0 && !workbench.feedback.invite_href) {
+    fail(`${memberOnlyLinks.length} member-only Discord link(s) render with no invite — a first-time visitor cannot reach any of them`);
   }
 
   validateNoSecrets(rawText || JSON.stringify(workbench));
@@ -451,7 +551,8 @@ function renderFirstTasks(tool) {
         <span class="pill ownership ${escapeHtml(cssToken(tool.ownership.state))}">${ownershipLabel(tool.ownership.state)}</span>
         <span>${ownershipSentence(tool.ownership)}</span>
         ${tool.ownership.record ? `<span class="ownership-record">recorded in ${escapeHtml(tool.ownership.record)}</span>` : ''}
-      </div>`;
+      </div>
+      <p class="stage-3-right"><strong>At stage 3</strong>${escapeHtml(tool.contribution.stage_3_reward)}</p>`;
   return `<div class="first-tasks">
       <strong>Pick one to start · ${escapeHtml(String(tool.first_tasks.length))} open</strong>
       <ul class="first-task-list">${rows}</ul>
@@ -522,13 +623,24 @@ function renderTool(tool) {
   </article>`;
 }
 
-function renderLadder(ladder) {
+/// The ladder pays out in "credited in OWNERS.md" three times over. Naming a file a reader
+/// cannot open is an unverifiable promise, so every mention becomes a link — from one stored
+/// href, never re-typed into the prose. Escaping runs first, so this can only ever wrap a
+/// literal token that survived escaping.
+function linkOwners(escaped, ownersHref) {
+  return escaped.replaceAll(
+    'OWNERS.md',
+    `<a href="${escapeHtml(ownersHref)}" target="_blank" rel="noreferrer">OWNERS.md</a>`,
+  );
+}
+
+function renderLadder(ladder, ownersHref) {
   return `<div class="ladder" role="list" aria-label="Participation ladder">${ladder.map((step) => `<article class="ladder-step stage-${escapeHtml(String(step.stage))}" role="listitem">
       <div class="ladder-stage">Stage ${escapeHtml(String(step.stage))}</div>
       <h3>${escapeHtml(step.name)}</h3>
       <p class="ladder-did">${escapeHtml(step.what_you_did)}</p>
-      <div class="ladder-get"><strong>You get</strong>${escapeHtml(step.what_you_get)}</div>
-      <div class="ladder-recorded">${escapeHtml(step.recorded_in)}</div>
+      <div class="ladder-get"><strong>You get</strong>${linkOwners(escapeHtml(step.what_you_get), ownersHref)}</div>
+      <div class="ladder-recorded">${linkOwners(escapeHtml(step.recorded_in), ownersHref)}</div>
     </article>`).join('')}</div>`;
 }
 
@@ -559,8 +671,9 @@ function statusSummary(tools) {
 
 function render(workbench) {
   const tools = workbench.tools.map(renderTool).join('\n');
-  const ladder = renderLadder(workbench.ladder);
+  const ladder = renderLadder(workbench.ladder, workbench.owners_href);
   const toolIndex = renderToolIndex(workbench.tools);
+  const freshness = contentFreshness();
   const summary = statusSummary(workbench.tools);
   const claimable = workbench.tools.reduce((total, tool) => total + tool.first_tasks.length, 0);
   const forum = safeLink(workbench.feedback.forum_href)
@@ -569,6 +682,9 @@ function render(workbench) {
   const startHere = safeLink(workbench.feedback.start_here_href)
     ? renderLink({ label: workbench.feedback.start_here_label, href: workbench.feedback.start_here_href })
     : `<span class="inert-link">${escapeHtml(workbench.feedback.start_here_label)}</span>`;
+  const invite = safeLink(workbench.feedback.invite_href)
+    ? `<a class="hero-join" href="${escapeHtml(workbench.feedback.invite_href)}" target="_blank" rel="noreferrer">${escapeHtml(workbench.feedback.invite_label)}</a>`
+    : `<span class="inert-link">${escapeHtml(workbench.feedback.invite_label)}</span>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -619,7 +735,7 @@ function render(workbench) {
     nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 14px; font-size: .85rem; }
     nav a { color: var(--muted); text-decoration: none; }
     nav a[aria-current="page"] { color: var(--ink); }
-    .hero { padding: 40px 0 22px; }
+    .hero { padding: 36px 0 18px; }
     .eyebrow { color: var(--wood); text-transform: uppercase; letter-spacing: .16em; font-size: .76rem; font-weight: 800; }
     h1 { max-width: 920px; margin: 10px 0 14px; font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1; letter-spacing: -.04em; }
     .headline { max-width: 900px; color: var(--amber); font-family: var(--mono); font-size: clamp(.88rem, 1.6vw, 1.04rem); font-weight: 800; line-height: 1.5; }
@@ -630,6 +746,11 @@ function render(workbench) {
     .hero-cta { display: inline-block; padding: 10px 18px; border: 1px solid var(--green); border-radius: 8px; color: var(--green); background: var(--green-bg); font-weight: 800; font-size: .9rem; text-decoration: none; }
     .hero-cta:hover { color: var(--ink); border-color: var(--ink); }
     .hero-link { font-size: .86rem; }
+    .hero-join { display: inline-block; padding: 10px 18px; border: 1px solid var(--violet); border-radius: 8px; color: var(--violet); background: rgba(199,167,255,.1); font-weight: 800; font-size: .9rem; text-decoration: none; }
+    .hero-join:hover { color: var(--ink); border-color: var(--ink); }
+    .join-path { max-width: 920px; margin: 0 0 12px; color: var(--muted); font-size: .82rem; }
+    .join-path .hero-join { padding: 1px 7px; border-radius: 999px; font-size: .8rem; }
+    .join-path strong { color: var(--ink); }
     .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; }
     .hero-meta span, .hero-meta a { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; color: var(--muted); background: rgba(255,255,255,.025); font-size: .78rem; }
     .hero-meta a { color: var(--blue); text-decoration: none; }
@@ -754,6 +875,8 @@ function render(workbench) {
     .recovery-paths li { margin: 3px 0; }
     .ownership-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.14); color: var(--muted); font-size: .78rem; }
     .ownership-record { color: #8a9c98; font-family: var(--mono); font-size: .7rem; }
+    .stage-3-right { margin: 8px 0 0; color: var(--muted); font-size: .78rem; }
+    .stage-3-right strong { margin-right: 7px; color: var(--violet); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
     .tool-footnotes { display: grid; gap: 6px; margin-top: 10px; font-size: .78rem; color: var(--muted); }
     .tool-footnotes strong { margin-right: 6px; color: var(--ink); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
     .privacy { padding: 9px 11px; border-left: 3px solid var(--violet); background: rgba(199,167,255,.08); }
@@ -829,14 +952,13 @@ function render(workbench) {
       </details>
       <div class="hero-actions">
         <a class="hero-cta" href="#tools">See the ${escapeHtml(String(workbench.tools.length))} tools</a>
-        <span class="hero-link">${startHere}</span>
-        <span class="hero-link">${forum}</span>
+        ${invite}
       </div>
+      <p class="join-path">The path in: join → read ${startHere} → post in a tool's thread. Those last two and the ${forum} are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span>Updated ${escapeHtml(workbench.updated_at)}</span>
+        <span class="freshness">${escapeHtml(freshness)}</span>
         <span>${escapeHtml(summary)}</span>
         <a href="#tools">${escapeHtml(String(claimable))} first tasks open</a>
-        <span>${escapeHtml(workbench.feedback.rhythm)}</span>
       </div>
     </div>
 
@@ -857,7 +979,7 @@ function render(workbench) {
   </main>
 
   <footer class="wrap">
-    <div class="feedback-rhythm">${escapeHtml(workbench.feedback.rhythm)} Threads live in the ${forum}.</div>
+    <div class="feedback-rhythm">${escapeHtml(workbench.feedback.rhythm)} Threads live in the ${forum}, which needs a server membership — ${invite} first if you have not joined.</div>
     <div>If a card on this page is wrong, that is the most useful bug report you can file — the whole point is that the status matches reality.</div>
     <div class="generated">Generated deterministically from ${escapeHtml(workbenchRelative)} · do not hand-edit this file.</div>
     <nav class="baseline-provenance" aria-label="Project provenance"><a href="https://github.com/djcdevelopment/baseline" target="_blank" rel="noreferrer">Baseline</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/Lumberjacks" target="_blank" rel="noreferrer">Lumberjacks</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy" target="_blank" rel="noreferrer">Comfy</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">license details</a></nav>
@@ -886,7 +1008,10 @@ function check(args) {
   } catch {
     fail(`${outputRelative} is missing; run npm run workbench:render`);
   }
-  if (actual !== expected) fail(`${outputRelative} is stale; run npm run workbench:render`);
+  if (normaliseFreshness(actual) !== normaliseFreshness(expected)) {
+    fail(`${outputRelative} is stale; run npm run workbench:render`);
+  }
+  if (!freshnessMarker.test(actual)) fail('the generated page is missing its derived freshness stamp');
 
   if (!actual.includes('id="ladder"') || !actual.includes('id="tools"') || !actual.includes('01 · THE TOOLS')) {
     fail('generated workbench is missing a required section');
@@ -909,6 +1034,40 @@ function check(args) {
   // digest that makes a download verifiable before anyone runs it.
   if (/<details[^>]*>(?:(?!<\/details>)[\s\S])*?(?:requires-list|access-verify)/.test(actual)) {
     fail('requirements and download digests must stay visible — they are gates, not depth');
+  }
+
+  // A rendered member-only Discord URL with no rendered invite strands every first-time visitor.
+  const memberOnlyRendered = (actual.match(/https:\/\/discord\.com\/channels\//g) ?? []).length;
+  const invitesRendered = (actual.match(/https:\/\/discord\.gg\//g) ?? []).length;
+  if (memberOnlyRendered > 0 && invitesRendered === 0) {
+    fail(`${memberOnlyRendered} member-only Discord link(s) rendered with no invite link on the page`);
+  }
+
+  // Every promise of a named repository document has to be a link the reader can open. Count
+  // text nodes only: the href itself ends in OWNERS.md, so counting raw occurrences would score
+  // each correctly-linked mention twice.
+  const renderedText = actual.replace(/<[^>]*>/g, ' ');
+  const ownersNamed = (renderedText.match(/OWNERS\.md/g) ?? []).length;
+  const ownersLinked = (actual.match(/<a [^>]*>OWNERS\.md<\/a>/g) ?? []).length;
+  if (ownersNamed !== ownersLinked) {
+    fail(`OWNERS.md is named ${ownersNamed} time(s) but linked only ${ownersLinked} — a promised document must be reachable`);
+  }
+
+  // The ladder defers to the cards, so every card must actually state its own right.
+  for (const tool of workbench.tools) {
+    if (!actual.includes(escapeHtml(tool.contribution.stage_3_reward))) {
+      fail(`${tool.id}: contribution.stage_3_reward is not rendered on the page`);
+    }
+  }
+
+  // The invite the page shows must be the invite the Discord side recorded. Skipped when the
+  // state file is absent so a checkout without the tools tree still builds.
+  const statePath = path.join(repoRoot, provisionStateRelative);
+  if (fs.existsSync(statePath)) {
+    const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    if (state.invite_href && state.invite_href !== workbench.feedback.invite_href) {
+      fail(`invite drift: workbench.json has ${workbench.feedback.invite_href}, provision-state.json has ${state.invite_href}`);
+    }
   }
 
   const unclaimed = workbench.tools.filter((tool) => tool.ownership.state === 'unclaimed').length;

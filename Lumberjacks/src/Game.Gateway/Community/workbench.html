@@ -47,7 +47,7 @@
     nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 14px; font-size: .85rem; }
     nav a { color: var(--muted); text-decoration: none; }
     nav a[aria-current="page"] { color: var(--ink); }
-    .hero { padding: 40px 0 22px; }
+    .hero { padding: 36px 0 18px; }
     .eyebrow { color: var(--wood); text-transform: uppercase; letter-spacing: .16em; font-size: .76rem; font-weight: 800; }
     h1 { max-width: 920px; margin: 10px 0 14px; font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1; letter-spacing: -.04em; }
     .headline { max-width: 900px; color: var(--amber); font-family: var(--mono); font-size: clamp(.88rem, 1.6vw, 1.04rem); font-weight: 800; line-height: 1.5; }
@@ -58,6 +58,11 @@
     .hero-cta { display: inline-block; padding: 10px 18px; border: 1px solid var(--green); border-radius: 8px; color: var(--green); background: var(--green-bg); font-weight: 800; font-size: .9rem; text-decoration: none; }
     .hero-cta:hover { color: var(--ink); border-color: var(--ink); }
     .hero-link { font-size: .86rem; }
+    .hero-join { display: inline-block; padding: 10px 18px; border: 1px solid var(--violet); border-radius: 8px; color: var(--violet); background: rgba(199,167,255,.1); font-weight: 800; font-size: .9rem; text-decoration: none; }
+    .hero-join:hover { color: var(--ink); border-color: var(--ink); }
+    .join-path { max-width: 920px; margin: 0 0 12px; color: var(--muted); font-size: .82rem; }
+    .join-path .hero-join { padding: 1px 7px; border-radius: 999px; font-size: .8rem; }
+    .join-path strong { color: var(--ink); }
     .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; }
     .hero-meta span, .hero-meta a { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; color: var(--muted); background: rgba(255,255,255,.025); font-size: .78rem; }
     .hero-meta a { color: var(--blue); text-decoration: none; }
@@ -182,6 +187,8 @@
     .recovery-paths li { margin: 3px 0; }
     .ownership-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.14); color: var(--muted); font-size: .78rem; }
     .ownership-record { color: #8a9c98; font-family: var(--mono); font-size: .7rem; }
+    .stage-3-right { margin: 8px 0 0; color: var(--muted); font-size: .78rem; }
+    .stage-3-right strong { margin-right: 7px; color: var(--violet); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
     .tool-footnotes { display: grid; gap: 6px; margin-top: 10px; font-size: .78rem; color: var(--muted); }
     .tool-footnotes strong { margin-right: 6px; color: var(--ink); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
     .privacy { padding: 9px 11px; border-left: 3px solid var(--violet); background: rgba(199,167,255,.08); }
@@ -257,14 +264,13 @@
       </details>
       <div class="hero-actions">
         <a class="hero-cta" href="#tools">See the 7 tools</a>
-        <span class="hero-link"><a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a></span>
-        <span class="hero-link"><a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a></span>
+        <a class="hero-join" href="https://discord.gg/TSHTD38yV" target="_blank" rel="noreferrer">Join the Discord</a>
       </div>
+      <p class="join-path">The path in: join → read <a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a> → post in a tool's thread. Those last two and the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a> are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-29T01:00:00Z</span>
+        <span class="freshness">Content updated 2026-07-29 09:09 UTC</span>
         <span>3 live · 1 dev-only · 1 local-only · 2 recoverable</span>
         <a href="#tools">11 first tasks open</a>
-        <span>Replies land in batches, about twice a week — this is a solo-operator project.</span>
       </div>
     </div>
 
@@ -355,6 +361,7 @@
         <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
         
       </div>
+      <p class="stage-3-right"><strong>At stage 3</strong>Commit access to recipes/quest-catalogs/ in baseline, and you triage this tool&#39;s thread.</p>
     </div>
     
     <details class="tool-detail">
@@ -414,6 +421,7 @@
         <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
         
       </div>
+      <p class="stage-3-right"><strong>At stage 3</strong>Documentation and feedback stewardship: you own this tool&#39;s quickstart and probe-utility docs, and you triage its thread. The repository is all-rights-reserved, so code changes are not on offer here until that licence changes.</p>
     </div>
     
     <details class="tool-detail">
@@ -477,6 +485,7 @@
         <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
         
       </div>
+      <p class="stage-3-right"><strong>At stage 3</strong>Commit access to the telemetry stack and the operator viewer in baseline, and you triage this tool&#39;s thread.</p>
     </div>
     
     <details class="tool-detail">
@@ -536,6 +545,7 @@
         <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
         
       </div>
+      <p class="stage-3-right"><strong>At stage 3</strong>Commit access to Lumberjacks/src/Game.Gateway/Valheim/ in baseline, and you triage this tool&#39;s thread.</p>
     </div>
     
     <details class="tool-detail">
@@ -588,6 +598,7 @@
         <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
         
       </div>
+      <p class="stage-3-right"><strong>At stage 3</strong>Commit access to network/mcp/ in baseline, and you triage this tool&#39;s thread.</p>
     </div>
     
     <details class="tool-detail">
@@ -640,6 +651,7 @@
         <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
         
       </div>
+      <p class="stage-3-right"><strong>At stage 3</strong>Commit access to the revived pipeline once it lands in baseline, and you triage this tool&#39;s thread. The comfy archive it is recovered from stays read-only.</p>
     </div>
     <div class="recovery">
       <strong>Where the pieces are</strong>
@@ -697,6 +709,7 @@
         <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
         
       </div>
+      <p class="stage-3-right"><strong>At stage 3</strong>Commit access to the bridge once the back half lands in baseline, and you triage this tool&#39;s thread. The comfy archive it is recovered from stays read-only.</p>
     </div>
     <div class="recovery">
       <strong>Where the pieces are</strong>
@@ -739,27 +752,27 @@
       <div class="ladder-stage">Stage 2</div>
       <h3>Fixed one thing</h3>
       <p class="ladder-did">Completed one of the first tasks listed on a tool card.</p>
-      <div class="ladder-get"><strong>You get</strong>Credited in OWNERS.md, and the tool&#39;s ownership state moves to trying.</div>
-      <div class="ladder-recorded">OWNERS.md, plus the tool&#39;s ownership record.</div>
+      <div class="ladder-get"><strong>You get</strong>Credited in <a href="https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/OWNERS.md" target="_blank" rel="noreferrer">OWNERS.md</a>, and the tool&#39;s ownership state moves to trying.</div>
+      <div class="ladder-recorded"><a href="https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/OWNERS.md" target="_blank" rel="noreferrer">OWNERS.md</a>, plus the tool&#39;s ownership record.</div>
     </article><article class="ladder-step stage-3" role="listitem">
       <div class="ladder-stage">Stage 3</div>
       <h3>Contributor</h3>
       <p class="ladder-did">Landed two changes on a tool, or revived a recoverable piece back into something that runs.</p>
-      <div class="ladder-get"><strong>You get</strong>Commit access to that piece and you triage its thread — the code was always readable, this is the right to change it. The tool&#39;s ownership state moves to claimed.</div>
-      <div class="ladder-recorded">OWNERS.md, plus the tool&#39;s ownership record.</div>
+      <div class="ladder-get"><strong>You get</strong>You triage that tool&#39;s thread, and you get the contribution right its own card names — the repositories differ, so the card is authoritative, not this rung. The tool&#39;s ownership state moves to claimed.</div>
+      <div class="ladder-recorded"><a href="https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/OWNERS.md" target="_blank" rel="noreferrer">OWNERS.md</a>, plus the tool&#39;s ownership record.</div>
     </article><article class="ladder-step stage-4" role="listitem">
       <div class="ladder-stage">Stage 4</div>
       <h3>Owner</h3>
       <p class="ladder-did">Sustained the contribution over time, and Derek agrees you are the person holding it.</p>
       <div class="ladder-get"><strong>You get</strong>You set the tool&#39;s direction and you can say no. The ownership state moves to owned.</div>
-      <div class="ladder-recorded">OWNERS.md, plus the tool&#39;s ownership record.</div>
+      <div class="ladder-recorded"><a href="https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/OWNERS.md" target="_blank" rel="noreferrer">OWNERS.md</a>, plus the tool&#39;s ownership record.</div>
     </article></div>
       </div>
     </section>
   </main>
 
   <footer class="wrap">
-    <div class="feedback-rhythm">Replies land in batches, about twice a week — this is a solo-operator project. Threads live in the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a>.</div>
+    <div class="feedback-rhythm">Replies land in batches, about twice a week — this is a solo-operator project. Threads live in the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a>, which needs a server membership — <a class="hero-join" href="https://discord.gg/TSHTD38yV" target="_blank" rel="noreferrer">Join the Discord</a> first if you have not joined.</div>
     <div>If a card on this page is wrong, that is the most useful bug report you can file — the whole point is that the status matches reality.</div>
     <div class="generated">Generated deterministically from docs/workbench/workbench.json · do not hand-edit this file.</div>
     <nav class="baseline-provenance" aria-label="Project provenance"><a href="https://github.com/djcdevelopment/baseline" target="_blank" rel="noreferrer">Baseline</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/Lumberjacks" target="_blank" rel="noreferrer">Lumberjacks</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy" target="_blank" rel="noreferrer">Comfy</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">license details</a></nav>
