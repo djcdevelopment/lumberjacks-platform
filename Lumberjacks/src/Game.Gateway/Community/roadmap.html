@@ -997,6 +997,21 @@
       <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
     </div>
   </article>
+<article class="journal-entry" id="note-20260729174909-make-the-guest-package-tests-runnable-on-a-fresh">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-29T17:49:09.607Z">2026-07-29T17:49:09.607Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>M2</span>
+      </div>
+      <h3>Make the guest-package tests runnable on a fresh checkout</h3>
+      <p><strong>Impact:</strong> tests/test_guest_package.py built every case against a sealed release bundle that .gitignore deliberately keeps out of the repo, so five of the six tests failed on any clean clone for want of a machine-local build artifact. The tooling tests now build against a committed synthetic release fixture under tests/fixtures/guest-package/, which exercises the same paths because no guest-package script parses the DLL. The one question a fixture cannot answer, whether the real sealed DLL still matches the manifest shipped beside it, became its own test that runs where the bundle exists and skips with an explicit reason where it does not.</p>
+      <details><summary>Verification (1)</summary><ul><li>python -m unittest discover -s tests is green on a clean worktree: 9 tests, 7 run, 2 skip. Both sealed-release tests pass with the bundle restored, and a one-bit flip of the sealed DLL fails the hash check, so it is not vacuous. The generator built the real release end-to-end after the refactor. Privacy scan of tests/ is clean, and three C:\Users\derek findings in the old test file are gone.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
 <article class="journal-entry" id="note-20260729160336-report-the-trust-review-completion-and-teach-the">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">

@@ -1,9 +1,11 @@
+import hashlib
 import http.server
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -11,11 +13,40 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 PS = "powershell"
+PYTHON = sys.executable
 GENERATOR = ROOT / "tools" / "guest-package" / "build-guest-package.ps1"
 PREFLIGHT = ROOT / "tools" / "guest-package" / "Invoke-GuestPreflight.ps1"
 INSTALLER = ROOT / "tools" / "guest-package" / "Install-ComfyGuest.ps1"
 UNINSTALLER = ROOT / "tools" / "guest-package" / "Uninstall-ComfyGuest.ps1"
-EXPECTED_DLL = "94a3843ef8042adceaca6bc4d5c0c38c7c8dc5a1aa05b5f2a3019879840ba3a8"
+
+# The tooling is exercised against a synthetic release, not against a real cut. Real
+# release bundles live under fieldlab/runs/releases/, which .gitignore keeps out of the
+# repo, so pinning the tests to one made every fresh checkout red for want of a machine-
+# local build artifact. Nothing in tools/guest-package/ parses the DLL -- each script only
+# hashes it, copies it, or compares its hash to the manifest -- so stand-in bytes exercise
+# every code path the real artifact would.
+FIXTURES = ROOT / "tests" / "fixtures" / "guest-package"
+FIXTURE_MANIFEST = FIXTURES / "release-manifest.json"
+FIXTURE_INPUTS = FIXTURES / "inputs.json"
+FIXTURE_DLL_BYTES = (
+    b"COMFY-GUEST-PACKAGE TEST FIXTURE - NOT A REAL ASSEMBLY\n"
+    b"\n"
+    b"This file stands in for the sealed ComfyNetworkSense.dll so the guest-package tests\n"
+    b"can run on a fresh checkout. No tool in tools/guest-package/ parses the DLL: each one\n"
+    b"only hashes it, copies it, or compares the hash to the release manifest. These bytes\n"
+    b"are fixed so the sha256 recorded in release-manifest.json stays stable.\n"
+)
+# Single source of truth: the generator refuses to build when the bundle DLL disagrees
+# with the manifest, so reading the expectation back from the manifest keeps the fixture
+# self-checking instead of duplicating the hash here.
+EXPECTED_DLL = json.loads(FIXTURE_MANIFEST.read_text(encoding="utf-8-sig"))["mod"]["clean_build_sha256"]
+
+# The real sealed cut, when this machine happens to have it. Absent on a clean clone.
+SEALED_RELEASE_ID = "m1-clean-20260717-r1"
+SEALED_MANIFEST = ROOT / "fieldlab" / "runs" / "releases" / f"{SEALED_RELEASE_ID}.json"
+SEALED_BUNDLE = ROOT / "fieldlab" / "runs" / "releases" / SEALED_RELEASE_ID
+SEALED_DLL = SEALED_BUNDLE / "mod" / "ComfyNetworkSense.dll"
+SEALED_PRESENT = SEALED_MANIFEST.is_file() and SEALED_DLL.is_file()
 
 
 class FixtureHandler(http.server.BaseHTTPRequestHandler):
@@ -40,8 +71,11 @@ class GuestPackageTests(unittest.TestCase):
     def setUp(self):
         FixtureHandler.state = {"bootstrap_status": 200, "bootstrap_body": "lumberjacksGatewayUrl=http://127.0.0.1\nlumberjacksAuthoritativeWindowId=w\nlumberjacksEnrollmentId=e\nlumberjacksClientAccessKey=fixture-access\n", "health_status": 200}
         self.tmp = Path(tempfile.mkdtemp(prefix="comfy-guest-test-"))
+        self.bundle = self.tmp / "release"
+        (self.bundle / "mod").mkdir(parents=True)
+        (self.bundle / "mod" / "ComfyNetworkSense.dll").write_bytes(FIXTURE_DLL_BYTES)
         self.package = self.tmp / "package"
-        self._ps(GENERATOR, "-OutputRoot", str(self.package))
+        self._build(self.package)
         self.valheim = self.tmp / "Valheim"
         (self.valheim / "BepInEx" / "plugins").mkdir(parents=True)
         (self.valheim / "BepInEx" / "config").mkdir(parents=True)
@@ -65,6 +99,12 @@ class GuestPackageTests(unittest.TestCase):
             raise AssertionError(result.stdout + result.stderr)
         return result
 
+    def _build(self, output_root):
+        return self._ps(GENERATOR, "-ManifestPath", FIXTURE_MANIFEST, "-BundleRoot", self.bundle, "-InputsPath", FIXTURE_INPUTS, "-OutputRoot", output_root)
+
+    def _render(self, *args):
+        return subprocess.run([PYTHON, str(ROOT / "tools" / "render_guest_guide.py"), *map(str, args)], capture_output=True, text=True)
+
     def _preflight(self, *args):
         result = self._ps(PREFLIGHT, "-PackageRoot", self.package, "-ValheimPath", self.valheim, *args)
         return json.loads(result.stdout)
@@ -72,14 +112,20 @@ class GuestPackageTests(unittest.TestCase):
     def _bootstrap(self):
         return self.base + "/join/bootstrap"
 
-    def test_generator_is_deterministic_and_dll_is_sealed_hash(self):
+    def test_generator_is_deterministic_and_packages_the_manifest_dll(self):
         second = self.tmp / "second"
-        self._ps(GENERATOR, "-OutputRoot", second)
+        self._build(second)
         self.assertEqual((self.package / "guest-index.json").read_bytes(), (second / "guest-index.json").read_bytes())
-        import hashlib
         self.assertEqual(hashlib.sha256((self.package / "ComfyNetworkSense.dll").read_bytes()).hexdigest(), EXPECTED_DLL)
         self.assertFalse((self.package / "gateway" / "gateway.oci.tar").exists())
         self.assertFalse((self.package / "source").exists())
+
+    def test_generator_refuses_a_bundle_that_disagrees_with_its_manifest(self):
+        tampered = self.bundle / "mod" / "ComfyNetworkSense.dll"
+        tampered.write_bytes(FIXTURE_DLL_BYTES + b"tampered")
+        with self.assertRaises(AssertionError) as caught:
+            self._build(self.tmp / "rejected")
+        self.assertIn("clean_build_sha256", str(caught.exception))
 
     def test_install_and_receipt_uninstall_restore_unrelated_files(self):
         config = self.valheim / "BepInEx" / "config" / "djcdevelopment.valheim.comfynetworksense.cfg"
@@ -113,16 +159,15 @@ class GuestPackageTests(unittest.TestCase):
         self.assertEqual(report["verdict"], "READY", report)
 
     def test_guide_check_mutation_and_diagnostics_redaction(self):
-        renderer = ROOT / "tools" / "render_guest_guide.py"
-        ok = subprocess.run([r"C:\Users\derek\AppData\Local\Programs\Python\Python312\python.exe", str(renderer), "--manifest", str(self.package / "manifest.json"), "--inputs", str(self.package / "guest-package-inputs.json"), "--output", str(self.package / "GUEST-GUIDE.md"), "--check"], capture_output=True, text=True)
+        ok = self._render("--manifest", self.package / "manifest.json", "--inputs", self.package / "guest-package-inputs.json", "--output", self.package / "GUEST-GUIDE.md", "--check")
         self.assertEqual(ok.returncode, 0, ok.stderr)
-        drift = subprocess.run([r"C:\Users\derek\AppData\Local\Programs\Python\Python312\python.exe", str(renderer), "--manifest", str(self.package / "manifest.json"), "--inputs", str(self.package / "guest-package-inputs.json"), "--output", str(self.package / "GUEST-GUIDE.md"), "--drift-scan"], capture_output=True, text=True)
+        drift = self._render("--manifest", self.package / "manifest.json", "--inputs", self.package / "guest-package-inputs.json", "--output", self.package / "GUEST-GUIDE.md", "--drift-scan")
         self.assertEqual(drift.returncode, 0, drift.stderr)
         scratch = self.tmp / "scratch-manifest.json"
         manifest = json.loads((self.package / "manifest.json").read_text(encoding="utf-8-sig"))
         manifest["mod"]["version"] = "0.5.99.0"
         scratch.write_text(json.dumps(manifest), encoding="utf-8")
-        bad = subprocess.run([r"C:\Users\derek\AppData\Local\Programs\Python\Python312\python.exe", str(renderer), "--manifest", str(scratch), "--inputs", str(self.package / "guest-package-inputs.json"), "--output", str(self.package / "GUEST-GUIDE.md"), "--check"], capture_output=True, text=True)
+        bad = self._render("--manifest", scratch, "--inputs", self.package / "guest-package-inputs.json", "--output", self.package / "GUEST-GUIDE.md", "--check")
         self.assertNotEqual(bad.returncode, 0)
         self._ps(INSTALLER, "-BootstrapUrl", self._bootstrap(), "-ValheimPath", self.valheim, "-PackageRoot", self.package)
         diagnostics = self.tmp / "diagnostics"
@@ -134,7 +179,7 @@ class GuestPackageTests(unittest.TestCase):
         cases = {}
         FixtureHandler.state["bootstrap_status"] = 200
         FixtureHandler.state["bootstrap_body"] = "lumberjacksGatewayUrl=http://127.0.0.1\nlumberjacksAuthoritativeWindowId=w\nlumberjacksEnrollmentId=e\nlumberjacksClientAccessKey=fixture-access\n"
-        self.assertEqual(self._preflight("-NoBootstrap")["verdict"], "NOT_READY")  # production health is intentionally unreachable here
+        self.assertEqual(self._preflight("-NoBootstrap")["verdict"], "NOT_READY")  # the fixture inputs point at a dead loopback port, so health cannot pass here
         original = (self.package / "ComfyNetworkSense.dll").read_bytes()
         (self.package / "ComfyNetworkSense.dll").write_bytes(original[:-1] + bytes([original[-1] ^ 1]))
         cases["wrong DLL hash"] = self._preflight("-NoBootstrap")
@@ -176,6 +221,33 @@ class GuestPackageTests(unittest.TestCase):
             self.assertTrue(all(c["remedy"] for c in failed), name)
             self.assertIn(expected[name], [c["id"] for c in failed], name)
         self.assertEqual(len(cases), 8)
+
+
+class SealedReleaseTests(unittest.TestCase):
+    """Supply-chain check on the real cut, which only this machine can answer.
+
+    The sealed bundle is a build artifact: .gitignore keeps fieldlab/runs/ out of the
+    repo, so a clone cannot carry the bytes and no fixture can stand in for them --
+    verifying a binary you do not have is not possible. Everything about the *tooling*
+    is covered unconditionally by GuestPackageTests above; this pair only asserts that
+    the sealed artifact on disk still matches the manifest that ships beside it.
+    """
+
+    @unittest.skipUnless(SEALED_PRESENT, f"sealed release {SEALED_RELEASE_ID} is not on this machine: restore the bundle to fieldlab/runs/releases/ to run this check (build artifacts are gitignored and never distributed with the repo)")
+    def test_sealed_dll_matches_its_release_manifest(self):
+        manifest = json.loads(SEALED_MANIFEST.read_text(encoding="utf-8-sig"))
+        self.assertEqual(manifest["release_id"], SEALED_RELEASE_ID)
+        self.assertEqual(
+            hashlib.sha256(SEALED_DLL.read_bytes()).hexdigest(),
+            manifest["mod"]["clean_build_sha256"].lower(),
+            "sealed DLL no longer matches the clean_build_sha256 recorded in its release manifest",
+        )
+
+    @unittest.skipUnless(SEALED_PRESENT, f"sealed release {SEALED_RELEASE_ID} is not on this machine: restore the bundle to fieldlab/runs/releases/ to run this check (build artifacts are gitignored and never distributed with the repo)")
+    def test_committed_inputs_still_describe_the_sealed_release(self):
+        inputs = json.loads((ROOT / "tools" / "guest-package" / "guest-package-inputs.json").read_text(encoding="utf-8-sig"))
+        manifest = json.loads(SEALED_MANIFEST.read_text(encoding="utf-8-sig"))
+        self.assertEqual(inputs["release_id"], manifest["release_id"])
 
 
 if __name__ == "__main__":
