@@ -58,42 +58,58 @@ function formatUtc(iso) {
     + `${pad(when.getUTCHours())}:${pad(when.getUTCMinutes())} UTC`;
 }
 
-/// The single source of truth for the freshness the page displays. Derived from git, never
+/// The single source of truth for the provenance the page displays. Derived from git, never
 /// hand-entered: the previous hand-maintained `updated_at` was false within hours of a change,
 /// and a stale date on this page costs more trust than no date would.
 ///
-/// This value is the one thing on the page that legitimately changes without the content
-/// changing: the moment the commit carrying a render lands, the commit timestamp that render
-/// would report moves. So check() cannot compare it byte-for-byte — it normalises the marked
-/// span away (see freshnessMarker) and compares everything else strictly.
-function contentFreshness() {
+/// Two modes, split by whether the provenance inputs (the JSON and this generator) carry
+/// uncommitted changes:
+///
+///   production — "Published from <sha7> · <date> UTC", naming the last commit that touched
+///     the inputs. Fully deterministic: the same clean checkout renders the same bytes, so
+///     check() compares the artifact byte-for-byte, stamp included.
+///   preview — "Preview rendered <now> UTC with uncommitted changes". What is on screen is in
+///     no commit; say so and timestamp the render. A preview artifact may be inspected locally
+///     but can never be published: check() fails a clean tree whose artifact still carries a
+///     preview stamp, and the publish gate refuses it outright.
+///
+/// The commit flow this implies is a pair: commit the inputs first, then render (the stamp
+/// names that fresh commit), then commit the regenerated HTML. HTML commits do not touch the
+/// inputs, so the stamp stays stable until the next input change.
+const provenanceInputs = [workbenchRelative, 'scripts/workbench.mjs'];
+
+function provenance() {
   const git = (args) => execFileSync('git', args, {
     cwd: repoRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
   }).trim();
 
-  let committedAt = '';
+  let committed = '';
   let dirty = false;
   try {
-    committedAt = git(['log', '-1', '--format=%cI', '--', workbenchRelative]);
-    dirty = git(['status', '--porcelain', '--', workbenchRelative]).length > 0;
+    committed = git(['log', '-1', '--format=%H %cI', '--', ...provenanceInputs]);
+    dirty = git(['status', '--porcelain', '--', ...provenanceInputs]).length > 0;
   } catch {
-    return 'Content freshness unknown — not rendered from a git checkout';
+    return { mode: 'no-git', text: 'Content freshness unknown — not rendered from a git checkout' };
   }
 
-  // A dirty tree means what is on screen is not what is in any commit. Say so, and timestamp
-  // the render rather than borrowing a commit's date that does not describe this content.
-  if (dirty || !committedAt) {
-    return `Rendered ${formatUtc(new Date().toISOString())} from an uncommitted working tree`;
+  if (dirty || !committed) {
+    return { mode: 'preview', text: `Preview rendered ${formatUtc(new Date().toISOString())} with uncommitted changes` };
   }
-  return `Content updated ${formatUtc(committedAt)}`;
+  const [sha, committedAt] = committed.split(' ');
+  // Slice %H here rather than asking git for %h: core.abbrev varies per machine, and the
+  // production stamp must be byte-identical wherever the same commit is rendered.
+  return { mode: 'production', text: `Published from ${sha.slice(0, 7)} · ${formatUtc(committedAt)}` };
 }
 
 const freshnessMarker = /<span class="freshness">[^<]*<\/span>/;
 
 /// Blank the freshness span so a stale-artifact comparison is about content, not about the
-/// clock. Everything outside this one span is still compared byte-for-byte.
+/// clock. Only the preview stamp carries a wall-clock time; the production stamp is
+/// deterministic, so check() uses this normalisation solely to separate "the content went
+/// stale" from "only the stamp is wrong" and to tolerate the moving clock while iterating on
+/// uncommitted changes.
 function normaliseFreshness(html) {
   return html.replace(freshnessMarker, '<span class="freshness">·</span>');
 }
@@ -674,7 +690,7 @@ function render(workbench) {
   const tools = workbench.tools.map(renderTool).join('\n');
   const ladder = renderLadder(workbench.ladder, workbench.owners_href);
   const toolIndex = renderToolIndex(workbench.tools);
-  const freshness = contentFreshness();
+  const freshness = provenance().text;
   const summary = statusSummary(workbench.tools);
   const claimable = workbench.tools.reduce((total, tool) => total + tool.first_tasks.length, 0);
   const forum = safeLink(workbench.feedback.forum_href)
@@ -1009,6 +1025,11 @@ function check(args) {
   const { workbench, raw } = readSource();
   validate(workbench, raw);
 
+  const prov = provenance();
+  if (prov.mode === 'no-git') {
+    fail('check requires a git checkout — the provenance stamp cannot be verified without one');
+  }
+
   const expected = render(workbench);
   let actual;
   try {
@@ -1020,6 +1041,23 @@ function check(args) {
     fail(`${outputRelative} is stale; run npm run workbench:render`);
   }
   if (!freshnessMarker.test(actual)) fail('the generated page is missing its derived freshness stamp');
+
+  // The stamp itself is part of the contract, asymmetrically. A clean tree renders
+  // deterministically, so the artifact must carry exactly the production stamp a fresh render
+  // would produce — a preview stamp surviving into a clean tree is a published false claim
+  // (this page once told every visitor it came from an uncommitted working tree while the
+  // source sat committed). The inverse fails too: a production stamp over dirty inputs names
+  // a commit that does not contain what is on screen.
+  if (prov.mode === 'production') {
+    if (/Preview rendered |from an uncommitted working tree/.test(actual)) {
+      fail(`${outputRelative} carries a preview stamp but the provenance inputs are clean — run npm run workbench:render so the published page names its source commit`);
+    }
+    if (actual !== expected) {
+      fail(`${outputRelative} provenance stamp is out of date; run npm run workbench:render`);
+    }
+  } else if (/Published from /.test(actual)) {
+    fail(`${outputRelative} carries a published provenance stamp but the provenance inputs have uncommitted changes — commit the inputs and re-render, or render the preview honestly`);
+  }
 
   if (!actual.includes('id="ladder"') || !actual.includes('id="tools"') || !actual.includes('01 · THE TOOLS')) {
     fail('generated workbench is missing a required section');
@@ -1111,19 +1149,54 @@ function usage() {
   node scripts/workbench.mjs render
   node scripts/workbench.mjs check
 
+render stamps provenance automatically: clean inputs produce "Published from <sha7> · <date>"
+naming the last commit that touched docs/workbench/workbench.json or scripts/workbench.mjs;
+uncommitted inputs produce a "Preview rendered ..." stamp that can never be published. The
+flow for a content change is therefore a pair: commit the inputs, render, commit the HTML.
+
 The workbench has no note/journal command: docs/workbench/workbench.json is the whole source
 of truth, and its history is the file's own diff.`);
 }
 
-try {
-  const [command, ...args] = process.argv.slice(2);
-  if (command === 'render') renderCommand(args);
-  else if (command === 'check') check(args);
-  else {
-    usage();
-    process.exitCode = command ? 1 : 0;
+export {
+  provenance,
+  provenanceInputs,
+  formatUtc,
+  freshnessMarker,
+  normaliseFreshness,
+  readSource,
+  validate,
+  render,
+  check,
+  writeRendered,
+  statusSummary,
+  escapeHtml,
+  workbenchRelative,
+  outputRelative,
+  workbenchPath,
+  outputPath,
+};
+
+// Importing this module (the test suite does) must not run the CLI; only a direct
+// `node scripts/workbench.mjs <command>` invocation dispatches. Windows paths can differ in
+// drive-letter case between argv and import.meta.url, so compare case-insensitively there.
+const cliPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
+const selfPath = fileURLToPath(import.meta.url);
+const invokedAsCli = process.platform === 'win32'
+  ? cliPath.toLowerCase() === selfPath.toLowerCase()
+  : cliPath === selfPath;
+
+if (invokedAsCli) {
+  try {
+    const [command, ...args] = process.argv.slice(2);
+    if (command === 'render') renderCommand(args);
+    else if (command === 'check') check(args);
+    else {
+      usage();
+      process.exitCode = command ? 1 : 0;
+    }
+  } catch (error) {
+    console.error(`workbench: ${error.message}`);
+    process.exitCode = 1;
   }
-} catch (error) {
-  console.error(`workbench: ${error.message}`);
-  process.exitCode = 1;
 }

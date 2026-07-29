@@ -10,6 +10,8 @@ base64-encoded remote script (BOM-proof) verifies every SHA-256 remote-side, ins
 with 0644, and atomically mv's the pointer + page into place.
 
 Publish gates (all fail closed):
+- The provenance inputs (workbench.json + workbench.mjs) must be committed and the page must
+  carry the production "Published from <sha7>" stamp — a preview artifact never publishes.
 - `node scripts/workbench.mjs check` must pass (page not stale, invariants hold).
 - Every zip's actual SHA-256 must equal the sha256 in workbench.json's access block —
   the public page can never claim a hash the artifact does not have.
@@ -23,7 +25,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\workbench\Publish-Work
 [CmdletBinding()]
 param(
     [string] $SshTarget = 'comfy-p7',
-    [string] $RemoteRoot = '/mnt/comfy-p7/lumberjacks/roadmap'
+    [string] $RemoteRoot = '/mnt/comfy-p7/lumberjacks/roadmap',
+    # The origin the published page is reached at. The live surface today is the AM4 funnel;
+    # comfy-p7.duckdns.org belongs to the future P7 cutover recipe.
+    [string] $PublicBaseUrl = 'https://am4.tail8e749c.ts.net'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -37,6 +42,24 @@ $dist = Join-Path $PSScriptRoot 'dist'
 $zipMap = [ordered]@{
     'quest-picker'        = 'quest-picker.zip'
     'community-telemetry' = 'telemetry-starter.zip'
+}
+
+# Gate 0: production provenance. A publish is a claim about a commit, so the provenance inputs
+# must be clean and the page must carry the "Published from <sha7>" production stamp. The
+# generator's check (Gate 1) enforces the same rule from the other side; this gate exists so a
+# publish failure says "publish" and names the dirty files, and so a preview artifact cannot
+# reach the upload path even if the gates below ever drift apart.
+if (-not (Test-Path $htmlPath)) { throw "workbench.html missing at $htmlPath - run npm run workbench:render first" }
+Push-Location $root
+try {
+    $dirtyInputs = & git status --porcelain -- 'Lumberjacks/docs/workbench/workbench.json' 'Lumberjacks/scripts/workbench.mjs'
+    if ($LASTEXITCODE -ne 0) { throw 'git status failed - publishing requires a git checkout' }
+    if ($dirtyInputs) {
+        throw "provenance inputs have uncommitted changes - commit and re-render before publishing:`n$($dirtyInputs -join "`n")"
+    }
+} finally { Pop-Location }
+if ([System.IO.File]::ReadAllText($htmlPath) -notmatch 'Published from [0-9a-f]{7}') {
+    throw 'workbench.html does not carry a production provenance stamp ("Published from <sha7>") - render from a clean tree before publishing'
 }
 
 # Gate 1: generator check (stale page or broken invariant blocks publish)
@@ -163,5 +186,5 @@ if ($LASTEXITCODE -ne 0) { throw 'remote publish failed' }
     workbench_html_sha256 = $htmlHash
     tools                 = $pointerTools | ForEach-Object { "$($_.id) $($_.sha256.Substring(0,12))..." }
     remote_root           = $RemoteRoot
-    verify_next           = "curl -s -o NUL -w '%{http_code}' https://comfy-p7.duckdns.org/workbench (expect 200 after the route deploy)"
+    verify_next           = "curl -s -o NUL -w '%{http_code}' $PublicBaseUrl/workbench (expect 200)"
 }
