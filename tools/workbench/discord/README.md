@@ -9,6 +9,7 @@ channel, its tag taxonomy and its opening posts equal to what is checked in here
 
 ```powershell
 python tools\workbench\discord\workbench_discord.py check       # repo-only, no token
+python tools\workbench\discord\workbench_discord.py whoami      # token + invite check, read-only
 python tools\workbench\discord\workbench_discord.py plan        # dry run + approval receipt
 python tools\workbench\discord\workbench_discord.py apply --yes # converge (writes to Discord)
 python tools\workbench\discord\workbench_discord.py export --out ..\workbench-exports

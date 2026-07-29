@@ -68,7 +68,13 @@ DEFAULT_RECEIPT_DIR = TOOL_DIR / "receipts"
 # WORKBENCH_DISCORD_TOKEN_FILE; then this default under the user profile.
 ENV_TOKEN = "WORKBENCH_DISCORD_TOKEN"
 ENV_TOKEN_FILE = "WORKBENCH_DISCORD_TOKEN_FILE"
-DEFAULT_TOKEN_FILE = Path.home() / ".baseline" / "workbench-discord.token"
+# Searched in order. Both live under the user profile, never in the repo.
+DEFAULT_TOKEN_FILES = (
+    Path.home() / ".baseline" / "workbench-discord.token",
+    Path.home() / ".baseline" / "discord.env",
+)
+# Key names accepted in a KEY=VALUE token file when it holds more than one entry.
+TOKEN_KEY_NAMES = ("WORKBENCH_DISCORD_TOKEN", "DISCORD_BOT_TOKEN", "DISCORD_TOKEN", "BOT_TOKEN", "TOKEN", "KEY")
 
 # Seed files this tool will never post, whatever a config says. Announcing is Derek's.
 NEVER_POST = frozenset({"00-announcement.md"})
@@ -1268,30 +1274,91 @@ def save_state(path: Path, state: dict) -> None:
     path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def load_token() -> str:
-    token = os.environ.get(ENV_TOKEN, "").strip()
-    if token:
-        return token
-    token_file = Path(os.environ.get(ENV_TOKEN_FILE) or DEFAULT_TOKEN_FILE).expanduser()
-    if not token_file.exists():
+def parse_token_file(path: Path) -> str:
+    """Read a token from either a bare-token file or a KEY=VALUE env file.
+
+    Both shapes exist in the wild and both are fine, so neither is a trap: a file
+    holding nothing but the token works, and so does `KEY=<token>` (or
+    `DISCORD_TOKEN=`, or `export TOKEN=`, quoted or not). A single entry is used
+    whatever it is named; only a file with several entries has to name one this
+    tool recognises."""
+    # utf-8-sig, not utf-8: PowerShell 5.1's Out-File/Set-Content -Encoding utf8
+    # writes a BOM, and a BOM in front of the token turns into a baffling HTTP 401.
+    text = path.read_text(encoding="utf-8-sig")
+    entries: list[tuple[str, str]] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.lower().startswith("export "):
+            line = line[len("export "):].lstrip()
+        if "=" in line:
+            name, value = line.split("=", 1)
+            name = name.strip().upper()
+        else:
+            name, value = "", line
+        value = value.strip().strip('"').strip("'").strip()
+        if value.lower().startswith("bot "):  # someone pasted the Authorization header
+            value = value[4:].strip()
+        if value:
+            entries.append((name, value))
+
+    if not entries:
+        raise ToolError(f"{path} holds no token. Expected either the token on its own line, or a line like KEY=<token>.")
+    if len(entries) == 1:
+        token = entries[0][1]
+    else:
+        named = {name: value for name, value in entries}
+        token = next((named[k] for k in TOKEN_KEY_NAMES if k in named), "")
+        if not token:
+            raise ToolError(
+                f"{path} has {len(entries)} entries ({', '.join(sorted(n or '(unnamed)' for n, _ in entries))}) "
+                f"and none is named one of: {', '.join(TOKEN_KEY_NAMES)}. Rename the token's line or point "
+                f"{ENV_TOKEN_FILE} at a file holding only the token."
+            )
+
+    # Bot tokens are ~59-72 chars of dot-separated base64 and never contain a space.
+    # 50 is a floor with headroom, chosen to catch the real mistakes -- a placeholder
+    # left in place, an app id, a key name read as its own value -- before they turn
+    # into an HTTP 401 nobody can explain. Length only; the value is never echoed.
+    if " " in token or len(token) < 50:
         raise ToolError(
-            f"no bot token. Set {ENV_TOKEN}, or put the token in {token_file} "
-            f"(or point {ENV_TOKEN_FILE} at another file outside this repo). "
+            f"the value read from {path} does not look like a bot token: {len(token)} chars"
+            f"{', contains a space' if ' ' in token else ''}. A Discord bot token is around 60-72 "
+            "characters. Check the file holds the token itself, not a placeholder or an application id."
+        )
+    return token
+
+
+def load_token(explicit: Optional[Path] = None) -> str:
+    token = os.environ.get(ENV_TOKEN, "").strip()
+    if token and explicit is None:
+        return token
+
+    if explicit is not None:
+        candidates = [explicit.expanduser()]
+    elif os.environ.get(ENV_TOKEN_FILE):
+        candidates = [Path(os.environ[ENV_TOKEN_FILE]).expanduser()]
+    else:
+        candidates = [p.expanduser() for p in DEFAULT_TOKEN_FILES]
+
+    token_file = next((p for p in candidates if p.exists()), None)
+    if token_file is None:
+        looked = "\n  ".join(str(p) for p in candidates)
+        raise ToolError(
+            f"no bot token. Set {ENV_TOKEN}, pass --token-file, point {ENV_TOKEN_FILE} at a file, "
+            f"or create one of these:\n  {looked}\n"
+            "The file may hold the bare token or a line like KEY=<token>. "
             "See Lumberjacks/docs/workbench/discord/09-discord-bot-setup.md."
         )
     resolved = token_file.resolve()
     if resolved == REPO_ROOT or REPO_ROOT in resolved.parents:
-        raise ToolError(f"refusing to read a token from inside the repository: {resolved}. Keep credentials outside {REPO_ROOT}.")
-    # utf-8-sig, not utf-8: PowerShell 5.1's Out-File/Set-Content -Encoding utf8 writes a
-    # BOM, and a BOM in front of the token turns into a baffling HTTP 401.
-    raw = token_file.read_text(encoding="utf-8-sig").strip()
-    for line in raw.splitlines():
-        line = line.strip()
-        if line.startswith(f"{ENV_TOKEN}="):
-            return line.split("=", 1)[1].strip().strip('"').strip("'")
-    if not raw:
-        raise ToolError(f"{token_file} is empty")
-    return raw.splitlines()[0].strip()
+        raise ToolError(
+            f"refusing to read a token from inside the repository: {resolved}\n"
+            f"Move it under {Path.home() / '.baseline'} instead. A credential in the working tree is one "
+            "`git add -A` away from being committed, and this repo's automation commits and pushes on its own."
+        )
+    return parse_token_file(token_file)
 
 
 def invite_url(app_id: str) -> str:
@@ -1349,7 +1416,7 @@ def _plan_and_receipt(args: argparse.Namespace) -> tuple[Plan, Optional[DiscordC
     if args.offline:
         live = LiveState(known=False)
     else:
-        client = DiscordClient(HttpTransport(load_token()))
+        client = DiscordClient(HttpTransport(load_token(args.token_file)))
         live = read_live_state(client, cfg, state)
     return build_plan(cfg, live, tools), client, state
 
@@ -1405,10 +1472,32 @@ def cmd_apply(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_whoami(args: argparse.Namespace) -> int:
+    """Prove the credential works before anything else is attempted."""
+    cfg = load_config(args.config, args.guild_id, args.site_base_url)
+    client = DiscordClient(HttpTransport(load_token(args.token_file)))
+    me = client.me()
+    print(f"token   OK -- authenticated as {me.get('username')} (id {me.get('id')}, bot={me.get('bot')})")
+    try:
+        guild = client.guild(cfg.guild_id)
+    except ToolError as exc:
+        detail = "the bot is not in this server, or cannot see it" if "HTTP 403" in str(exc) or "HTTP 404" in str(exc) else str(exc)
+        print(f"guild   FAILED for {cfg.guild_id} -- {detail}")
+        # A bot user's id is its application id, so the invite link needs nothing else.
+        print(f"\nOpen this, pick the server, authorize:\n  {invite_url(str(me.get('id')))}")
+        return 1
+    print(f"guild   OK -- {guild.get('name')} ({guild.get('id')})")
+    channels = client.guild_channels(cfg.guild_id)
+    forum = next((c for c in channels if c.get("type") == CHANNEL_TYPE_FORUM and c.get("name") == cfg.channel_name), None)
+    print(f"channel {'OK -- #' + cfg.channel_name + ' exists (' + str(forum['id']) + ')' if forum else 'not created yet -- that is what `apply` does'}")
+    print("\nReady. Next: plan")
+    return 0
+
+
 def cmd_export(args: argparse.Namespace) -> int:
     cfg = load_config(args.config, args.guild_id, args.site_base_url)
     state = load_state(args.state)
-    client = DiscordClient(HttpTransport(load_token()))
+    client = DiscordClient(HttpTransport(load_token(args.token_file)))
     print(f"Exporting #{cfg.channel_name} threads to {args.out} ...")
     written = export_threads(client, cfg, state, args.out)
     print(f"\n{len(written)} thread(s) exported. Next:")
@@ -1532,6 +1621,14 @@ class FakeTransport(Transport):
             "reactions": [],
             "mentions": [],
         }
+
+
+def _raises(fn) -> bool:
+    try:
+        fn()
+    except ToolError:
+        return True
+    return False
 
 
 def run_self_test() -> bool:
@@ -1693,6 +1790,59 @@ def run_self_test() -> bool:
         finally:
             sys.path.pop(0)
 
+    # --- token files: every shape an operator actually produces ------------ #
+    # Deliberately NOT shaped like a real bot token. GitHub push protection scans for
+    # the genuine pattern, and a realistic-looking fixture blocks the push -- it did,
+    # on 2026-07-29. parse_token_file only cares about length and the absence of
+    # spaces, so a self-labelling string exercises every path just as well. Do not
+    # "improve" this back into something that looks authentic.
+    fake_token = "SELF-TEST-NOT-A-REAL-TOKEN-" + "0123456789" * 3
+    with tempfile.TemporaryDirectory(prefix="workbench-token-selftest-") as tmp:
+        tdir = Path(tmp)
+        cases = [
+            ("bare token", fake_token.encode()),
+            ("bare token, trailing CRLF", fake_token.encode() + b"\r\n"),
+            ("BOM + CRLF (PS 5.1 -Encoding utf8)", b"\xef\xbb\xbf" + fake_token.encode() + b"\r\n"),
+            ("KEY= form, no quotes", f"KEY={fake_token}\r\n".encode()),
+            ("DISCORD_TOKEN= form", f"DISCORD_TOKEN={fake_token}\n".encode()),
+            ("quoted value", f'WORKBENCH_DISCORD_TOKEN="{fake_token}"\n'.encode()),
+            ("export prefix", f"export TOKEN={fake_token}\n".encode()),
+            ("pasted Authorization header", f"KEY=Bot {fake_token}\n".encode()),
+            ("comments and blank lines", f"# my bot\n\nKEY={fake_token}\n\n".encode()),
+            ("several keys, one recognised", f"APP_ID=123456\nKEY={fake_token}\nNOTE=x\n".encode()),
+        ]
+        for label, blob in cases:
+            f = tdir / "t.env"
+            f.write_bytes(blob)
+            try:
+                got = parse_token_file(f)
+            except ToolError as exc:
+                got = f"<error: {exc}>"
+            check(got == fake_token, f"token file parsed: {label}", f"got {got!r}")
+
+        f = tdir / "t.env"
+        f.write_bytes(b"KEY=\n")
+        check(_raises(lambda: parse_token_file(f)), "an empty value is rejected, not returned as ''")
+        f.write_bytes(b"APP_ID=123456\nSECRET_THING=abcdefghijklmnopqrstuvwxyz\n")
+        check(_raises(lambda: parse_token_file(f)), "several unrecognised keys is an error, not a guess")
+        f.write_bytes(b"KEY=paste_your_token_here\n")
+        check(_raises(lambda: parse_token_file(f)), "an unreplaced placeholder is rejected on length")
+        f.write_bytes(b"KEY=1531911987074957442\n")
+        check(_raises(lambda: parse_token_file(f)), "an id pasted where the token goes is rejected")
+        check(len(fake_token) >= 50, "the self-test's own fixture clears the length floor", f"{len(fake_token)}")
+
+    in_repo = TOOL_DIR / "selftest-scratch.token"
+    in_repo.write_text("x" * 60, encoding="utf-8")
+    try:
+        message = ""
+        try:
+            load_token(in_repo)
+        except ToolError as exc:
+            message = str(exc)
+        check("inside the repository" in message, "a token file inside the repo is refused outright", message or "no error raised")
+    finally:
+        in_repo.unlink(missing_ok=True)
+
     # --- permissions ------------------------------------------------------- #
     check(PERMISSIONS_INT == sum(PERMISSIONS.values()), "permission integer is the sum of the named bits")
     check("ADMINISTRATOR" not in PERMISSIONS and PERMISSIONS_INT & (1 << 3) == 0, "no Administrator bit")
@@ -1729,7 +1879,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--state", type=Path, default=DEFAULT_STATE, help=f"state file (default: {_rel(DEFAULT_STATE)})")
     parser.add_argument("--guild-id", default=None, help="override the config's guild id")
     parser.add_argument("--site-base-url", default=None, help="e.g. https://comfy-p7.duckdns.org -- fills the catalog/download links after the deploy")
+    parser.add_argument(
+        "--token-file",
+        type=Path,
+        default=None,
+        help="file holding the bot token (bare, or a KEY=<token> line). Must be outside this repo. "
+        f"Default search: {', '.join(str(p) for p in DEFAULT_TOKEN_FILES)}",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("whoami", help="prove the token works and the bot can see the server")
+    p.set_defaults(func=cmd_whoami)
 
     p = sub.add_parser("check", help="repo-only invariants; no network, no token")
     p.set_defaults(func=cmd_check)

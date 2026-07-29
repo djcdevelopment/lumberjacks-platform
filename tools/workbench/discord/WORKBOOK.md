@@ -16,21 +16,26 @@ PowerShell 5.1** — `&&` is a parser error in this shell, so each command stand
       Intent**. (Without it, feedback exports come back with empty message text.) Leave
       the rest off.
 - [ ] **A3.** **Bot → Token → Reset Token** → copy it. Shown once.
-- [ ] **A4.** Save it outside the repo — two commands, `-Encoding ascii` on purpose
-      (PS 5.1's `utf8` writes a BOM):
+- [ ] **A4.** Save it **outside the repo** — `%USERPROFILE%\.baseline\` is searched by
+      default. A credential in the working tree is one `git add -A` from being committed,
+      and this repo's automation pushes on its own; the script refuses to read one from
+      inside the repo at all. Either format works — bare token, or `KEY=<token>`:
       ```powershell
       New-Item -ItemType Directory -Force "$env:USERPROFILE\.baseline" | Out-Null
       ```
       ```powershell
-      Set-Content -Path "$env:USERPROFILE\.baseline\workbench-discord.token" -Value 'PASTE_TOKEN_HERE' -NoNewline -Encoding ascii
+      Set-Content -Path "$env:USERPROFILE\.baseline\discord.env" -Value 'KEY=PASTE_TOKEN_HERE' -NoNewline -Encoding ascii
       ```
-- [ ] **A5.** Copy the **Application ID** (OAuth2 → General), then:
+- [ ] **A5.** Prove the credential before anything else. Read-only, writes nothing:
       ```powershell
-      python tools\workbench\discord\workbench_discord.py invite --app-id YOUR_APP_ID
+      python tools\workbench\discord\workbench_discord.py whoami
       ```
-      Open the URL it prints, pick the community server, authorize.
-- [ ] **A6.** Server Settings → Roles → the bot's role → deny **View Channels** at the
-      server level. It only needs to see `#workbench`, which it will get through the
+      It names the bot, says whether it can see the server, and **prints the invite URL
+      if it hasn't been authorized yet**. No need to hunt for the Application ID.
+- [ ] **A6.** Open that invite URL, pick the community server, authorize. Re-run
+      `whoami` — all three lines should read OK.
+- [ ] **A7.** Server Settings → Roles → the bot's role → deny **View Channels** at the
+      server level. It only needs to see `#workbench`, which it gets through the
       channel's own permissions.
 
 ## B. Provision the forum (tonight)

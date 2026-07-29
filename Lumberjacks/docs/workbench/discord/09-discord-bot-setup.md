@@ -40,28 +40,45 @@ that would have to disappear for content to shrink — each is reported and left
 
 ## 2. Put the token outside this repo
 
-The token is a password. It never gets committed, pasted into a doc, or typed into a
-command line that lands in shell history. The script looks for it in this order:
+The token is a password. **It must live outside this repository.** A credential in the
+working tree is one `git add -A` away from being committed, and this repo's automation
+commits and pushes `main` on its own — so the script simply refuses to read a token from
+any path inside the repo, and `.gitignore` blocks `*.token` / `*.env` as a backstop.
+
+Where the script looks, in order:
 
 1. `$env:WORKBENCH_DISCORD_TOKEN`
-2. the file named by `$env:WORKBENCH_DISCORD_TOKEN_FILE`
+2. `--token-file <path>`, or the file named by `$env:WORKBENCH_DISCORD_TOKEN_FILE`
 3. `%USERPROFILE%\.baseline\workbench-discord.token`
+4. `%USERPROFILE%\.baseline\discord.env`
 
-The default file is the easy one — create it once. Windows PowerShell 5.1, so two
-commands (`&&` is a parser error in this shell) and `-Encoding ascii` deliberately, since
-PS 5.1's `utf8` writes a BOM and a BOM in front of the token reads back as an HTTP 401:
+**Either file format works.** A file holding nothing but the token is fine, and so is an
+env-style line — `KEY=<token>`, `DISCORD_TOKEN=<token>`, `export TOKEN=<token>`, quoted or
+not, with or without a BOM or CRLF endings. If a file holds several keys, name the token's
+line one of `WORKBENCH_DISCORD_TOKEN`, `DISCORD_BOT_TOKEN`, `DISCORD_TOKEN`, `BOT_TOKEN`,
+`TOKEN`, `KEY`.
+
+Windows PowerShell 5.1, so two commands (`&&` is a parser error in this shell) and
+`-Encoding ascii` deliberately — PS 5.1's `utf8` writes a BOM, and while the reader now
+strips one, not every tool does:
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.baseline" | Out-Null
 ```
 
 ```powershell
-Set-Content -Path "$env:USERPROFILE\.baseline\workbench-discord.token" -Value 'PASTE_TOKEN_HERE' -NoNewline -Encoding ascii
+Set-Content -Path "$env:USERPROFILE\.baseline\discord.env" -Value 'KEY=PASTE_TOKEN_HERE' -NoNewline -Encoding ascii
 ```
 
-The script refuses to read a token from anywhere inside the repository, and `.gitignore`
-blocks `*.token` / `.env` as a second line of defence. Neither is a substitute for
-keeping it in your profile directory.
+Then prove it works before anything else:
+
+```powershell
+python tools\workbench\discord\workbench_discord.py whoami
+```
+
+It reports the bot's identity, whether it can see the server, and whether `#workbench`
+exists yet — and if the bot has not been invited, it prints the exact invite URL for you.
+Read-only; it writes nothing.
 
 ## 3. Invite it with the minimum permissions
 
@@ -192,10 +209,15 @@ Server ID** / **Copy Channel ID**. The guild id is already in
 
 ## When something goes wrong
 
+Run `whoami` first whenever anything looks wrong — it separates "bad token" from "not
+invited" from "cannot see the channel" in one call.
+
 | Symptom | Cause |
 |---|---|
-| `error: no bot token` | Step 2 — env var unset and no token file. |
+| `error: no bot token` | Step 2 — env var unset and no file at any searched path. The error lists every path it tried. |
+| `does not look like a bot token` | The file holds a placeholder, an application id, or a key name. It never echoes the value; it reports the length. |
 | `HTTP 401` | Token was reset in the portal; copy the new one. |
+| `whoami` says guild FAILED | The bot is not on the server. Open the invite URL it prints. |
 | `HTTP 403 Missing Access` | The bot cannot see `#workbench`; add it in the channel's permission settings. |
 | `HTTP 403 Missing Permissions` on create | Invited without Manage Channels — re-invite with the URL from step 3, or create the channel by hand. |
 | Exported messages have empty `content` | Message Content Intent is off (step 1.2). |
