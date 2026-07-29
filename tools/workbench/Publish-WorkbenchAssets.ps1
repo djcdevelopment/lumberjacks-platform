@@ -18,6 +18,9 @@ Publish gates (all fail closed):
 - The emitted tools.json must round-trip into the shape WorkbenchDownloadEndpoints reads,
   checked against Lumberjacks/tests/Game.Gateway.Tests/Fixtures/workbench-pointer.sample.json.
   The first two gates each check one side alone, which is how a 'tools' key once shipped.
+- Live destinations must verify (scripts/workbench-verify-live.mjs --pre-publish): the Discord
+  invite and threads, every GitHub URL, and the site routes. After the upload, the full
+  --post-publish pass re-verifies downloads and the served page hash against this render.
 
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\workbench\Publish-WorkbenchAssets.ps1
@@ -133,6 +136,16 @@ foreach ($entry in $emitted) {
     if ($entry.size_bytes -le 0) { throw "pointer entry '$($entry.id)' has size_bytes '$($entry.size_bytes)'" }
 }
 
+# Gate 4: live destination verification. Everything the page asks a visitor to click — the
+# Discord invite and threads, every GitHub URL, the site's own routes — must answer correctly
+# before the upload, because a publish is also a claim that its destinations exist. Post-upload
+# the full pass (downloads + served hash) runs against the same origin.
+Push-Location $lumberjacks
+try {
+    & node scripts/workbench-verify-live.mjs --pre-publish --base-url $PublicBaseUrl
+    if ($LASTEXITCODE -ne 0) { throw 'live destination verification failed - see captures/workbench-verify-live.json; fix the destination or the page before publishing' }
+} finally { Pop-Location }
+
 $pointerLocal = Join-Path ([System.IO.Path]::GetTempPath()) 'workbench-tools.json'
 [System.IO.File]::WriteAllText($pointerLocal, $pointerJson, [System.Text.UTF8Encoding]::new($false))
 
@@ -182,9 +195,17 @@ $argLine = ($zipArgs | ForEach-Object { "'$_'" }) -join ' '
 & ssh $SshTarget "echo $encoded | base64 -d | sudo bash -s -- '$RemoteRoot' '$stamp' '$htmlHash' $argLine"
 if ($LASTEXITCODE -ne 0) { throw 'remote publish failed' }
 
+# Post-publish verification: the full pass, now that the upload is what the origin serves —
+# downloads stream with the claimed digest/size and the served page hash equals this render.
+Push-Location $lumberjacks
+try {
+    & node scripts/workbench-verify-live.mjs --post-publish --base-url $PublicBaseUrl
+    if ($LASTEXITCODE -ne 0) { throw 'post-publish verification failed - the live origin does not match what was just published; see captures/workbench-verify-live.json' }
+} finally { Pop-Location }
+
 [pscustomobject]@{
     workbench_html_sha256 = $htmlHash
     tools                 = $pointerTools | ForEach-Object { "$($_.id) $($_.sha256.Substring(0,12))..." }
     remote_root           = $RemoteRoot
-    verify_next           = "curl -s -o NUL -w '%{http_code}' $PublicBaseUrl/workbench (expect 200)"
+    verified              = "verify-live post-publish PASS against $PublicBaseUrl (receipt: captures/workbench-verify-live.json)"
 }
