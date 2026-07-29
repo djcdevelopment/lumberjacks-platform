@@ -13,6 +13,9 @@ Publish gates (all fail closed):
 - `node scripts/workbench.mjs check` must pass (page not stale, invariants hold).
 - Every zip's actual SHA-256 must equal the sha256 in workbench.json's access block —
   the public page can never claim a hash the artifact does not have.
+- The emitted tools.json must round-trip into the shape WorkbenchDownloadEndpoints reads,
+  checked against Lumberjacks/tests/Game.Gateway.Tests/Fixtures/workbench-pointer.sample.json.
+  The first two gates each check one side alone, which is how a 'tools' key once shipped.
 
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\workbench\Publish-WorkbenchAssets.ps1
@@ -73,8 +76,42 @@ $pointer = [ordered]@{
     generated_utc  = (Get-Date).ToUniversalTime().ToString('o')
     downloads      = $pointerTools
 }
+$pointerJson = $pointer | ConvertTo-Json -Depth 4
+
+# Gate 3: the emitted pointer must round-trip into the shape the endpoint reads.
+# Gates 1 and 2 both passed on the deploy that shipped a 'tools' key, because each checked one side
+# in isolation. This one re-parses the bytes about to be uploaded and compares their key shape to
+# Fixtures/workbench-pointer.sample.json - the same sample Game.Gateway.Tests deserializes into
+# WorkbenchDownloadEndpoints.DownloadPointer. Producer and consumer are then pinned to one file, and
+# a rename on either side fails here or in the test suite rather than on a deploy.
+$contractPath = Join-Path $lumberjacks 'tests\Game.Gateway.Tests\Fixtures\workbench-pointer.sample.json'
+if (-not (Test-Path $contractPath)) { throw "pointer contract sample missing at $contractPath" }
+$contract = [System.IO.File]::ReadAllText($contractPath) | ConvertFrom-Json
+$roundTripped = $pointerJson | ConvertFrom-Json
+
+$expectedKeys = $contract.PSObject.Properties.Name | Sort-Object
+$actualKeys = $roundTripped.PSObject.Properties.Name | Sort-Object
+if (Compare-Object $expectedKeys $actualKeys) {
+    throw "pointer key mismatch: contract has [$($expectedKeys -join ', ')], emitted [$($actualKeys -join ', ')]. The endpoint reads 'downloads'; a different key parses into an empty pointer and every /workbench/downloads/{id} answers 503."
+}
+if ($roundTripped.schema_version -ne 1) { throw "pointer schema_version is '$($roundTripped.schema_version)', not 1" }
+
+$expectedEntryKeys = $contract.downloads[0].PSObject.Properties.Name | Sort-Object
+$emitted = @($roundTripped.downloads)
+if ($emitted.Count -ne $pointerTools.Count) {
+    throw "pointer round-trip lost entries: built $($pointerTools.Count), parsed $($emitted.Count)"
+}
+foreach ($entry in $emitted) {
+    $entryKeys = $entry.PSObject.Properties.Name | Sort-Object
+    if (Compare-Object $expectedEntryKeys $entryKeys) {
+        throw "pointer entry '$($entry.id)' has keys [$($entryKeys -join ', ')], contract expects [$($expectedEntryKeys -join ', ')]"
+    }
+    if ($entry.sha256 -notmatch '^[0-9a-f]{64}$') { throw "pointer entry '$($entry.id)' sha256 is not 64 lowercase hex chars" }
+    if ($entry.size_bytes -le 0) { throw "pointer entry '$($entry.id)' has size_bytes '$($entry.size_bytes)'" }
+}
+
 $pointerLocal = Join-Path ([System.IO.Path]::GetTempPath()) 'workbench-tools.json'
-[System.IO.File]::WriteAllText($pointerLocal, ($pointer | ConvertTo-Json -Depth 4), [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($pointerLocal, $pointerJson, [System.Text.UTF8Encoding]::new($false))
 
 $htmlHash = (Get-FileHash -LiteralPath $htmlPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $stamp = [guid]::NewGuid().ToString('N').Substring(0, 8)

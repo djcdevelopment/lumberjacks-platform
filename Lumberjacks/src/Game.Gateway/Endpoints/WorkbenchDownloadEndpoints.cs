@@ -33,10 +33,16 @@ namespace Game.Gateway.Endpoints;
 /// <c>id</c> matches the tool id in docs/workbench/workbench.json, and that catalog's
 /// <c>access.sha256</c> must equal the digest here — the page tells a visitor which bytes to
 /// expect, and this endpoint refuses to serve any others.
+///
+/// The key is <c>downloads</c>. It is spelled out here because the producer
+/// (tools/workbench/Publish-WorkbenchAssets.ps1) once wrote the array under <c>tools</c>, which
+/// deserializes into a pointer with a null list — an invalid pointer, so every download answered
+/// 503 until the first real deploy caught it. tests/Game.Gateway.Tests pins both spellings, and
+/// Fixtures/workbench-pointer.sample.json is the shape both sides are checked against.
 /// </summary>
 public static class WorkbenchDownloadEndpoints
 {
-    private const string PointerFile = "tools.json";
+    public const string PointerFile = "tools.json";
     private const string DirectoryVariable = "LUMBERJACKS_WORKBENCH_DOWNLOADS_DIR";
     private const string ShaHeader = "X-Download-Sha256";
 
@@ -54,86 +60,141 @@ public static class WorkbenchDownloadEndpoints
 
         app.MapGet("/workbench/downloads/{id}", (HttpContext context, string id) =>
         {
-            // Reject anything that is not a catalog-shaped id before it reaches the filesystem.
-            // The containment check below is the real guard; this one keeps traversal attempts
-            // out of the logs as ordinary 404s.
-            if (!IsCatalogId(id))
-                return Results.NotFound();
-
-            var root = ResolveDownloadsDirectory();
-            if (root is null)
-                // Every argument is named because the 4-parameter Results.Text overload declares
-                // no defaults; the 3-parameter one has no statusCode to set.
-                return Results.Text(
-                    NotPublished,
-                    "text/plain; charset=utf-8",
-                    contentEncoding: null,
-                    statusCode: StatusCodes.Status404NotFound);
-
-            if (!TryReadPointer(root, logger, out var entries, out var pointerError))
-                return Results.Problem(pointerError, statusCode: StatusCodes.Status503ServiceUnavailable);
-
-            var entry = entries.FirstOrDefault(item => string.Equals(item.id, id, StringComparison.Ordinal));
-            if (entry is null || string.IsNullOrWhiteSpace(entry.file) || string.IsNullOrWhiteSpace(entry.sha256))
-                return Results.NotFound();
-
-            // Containment: a pointer entry is operator-authored, but an entry of "../../secrets"
-            // must still resolve to nothing servable. Compare the fully-resolved path against the
-            // fully-resolved root with a trailing separator, so "/downloads-evil" cannot pass as a
-            // prefix match of "/downloads".
-            var packagePath = Path.GetFullPath(Path.Combine(root, entry.file));
-            if (!packagePath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            var resolution = Resolve(id, logger);
+            switch (resolution.Outcome)
             {
-                logger.LogWarning(
-                    "Workbench download {Id} points outside the downloads directory and was refused.", id);
-                return Results.NotFound();
-            }
+                case DownloadOutcome.NotPublished:
+                    // Every argument is named because the 4-parameter Results.Text overload declares
+                    // no defaults; the 3-parameter one has no statusCode to set.
+                    return Results.Text(
+                        NotPublished,
+                        "text/plain; charset=utf-8",
+                        contentEncoding: null,
+                        statusCode: StatusCodes.Status404NotFound);
 
-            if (!File.Exists(packagePath))
-                return Results.NotFound();
+                case DownloadOutcome.Unavailable:
+                    return Results.Problem(resolution.Error, statusCode: StatusCodes.Status503ServiceUnavailable);
 
-            string actualHash;
-            long actualLength;
-            try
-            {
-                actualHash = Sha256File(packagePath);
-                actualLength = new FileInfo(packagePath).Length;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                logger.LogWarning(ex, "Could not read workbench download {Id} at {Path}.", id, packagePath);
-                return Results.Problem(
-                    $"workbench download '{id}' could not be read",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
-            }
+                case DownloadOutcome.Served:
+                    context.Response.Headers[ShaHeader] = resolution.Sha256!;
+                    var fileName = $"{id}-{resolution.Sha256![..12]}.zip";
+                    return Results.File(
+                        File.OpenRead(resolution.PackagePath!),
+                        "application/zip",
+                        fileName,
+                        enableRangeProcessing: true);
 
-            // The published page advertises a digest. Serving bytes that do not match it would
-            // quietly turn a verifiable download into an unverifiable one, so this is a refusal
-            // with an honest reason rather than a best-effort stream.
-            if (!string.Equals(actualHash, entry.sha256, StringComparison.OrdinalIgnoreCase))
-            {
-                logger.LogError(
-                    "Workbench download {Id} hash mismatch: pointer says {Expected}, file is {Actual}.",
-                    id, entry.sha256, actualHash);
-                return Results.Problem(
-                    $"workbench download '{id}' does not match the SHA-256 recorded in {PointerFile}; it will not be served",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
+                default:
+                    return Results.NotFound();
             }
-
-            if (entry.size_bytes > 0 && entry.size_bytes != actualLength)
-            {
-                logger.LogError(
-                    "Workbench download {Id} size mismatch: pointer says {Expected}, file is {Actual}.",
-                    id, entry.size_bytes, actualLength);
-                return Results.Problem(
-                    $"workbench download '{id}' does not match the size recorded in {PointerFile}; it will not be served",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
-            }
-
-            context.Response.Headers[ShaHeader] = actualHash;
-            var fileName = $"{id}-{actualHash[..12]}.zip";
-            return Results.File(File.OpenRead(packagePath), "application/zip", fileName, enableRangeProcessing: true);
         });
+    }
+
+    /// <summary>What the endpoint will do with a request, decided before any bytes are opened.</summary>
+    public enum DownloadOutcome
+    {
+        /// <summary>No such download: unknown id, absent file, or an entry that escapes the root.</summary>
+        NotFound,
+
+        /// <summary>This instance mounts no downloads directory at all.</summary>
+        NotPublished,
+
+        /// <summary>The pointer or the artifact failed verification — a 503, never a download.</summary>
+        Unavailable,
+
+        /// <summary>Verified: <see cref="DownloadResolution.PackagePath"/> may be streamed.</summary>
+        Served,
+    }
+
+    /// <summary>
+    /// The decision, separated from the streaming so a refusal cannot accidentally become a
+    /// download: <see cref="PackagePath"/> is non-null only for <see cref="DownloadOutcome.Served"/>,
+    /// and <see cref="Map"/> opens a file only in that arm.
+    /// </summary>
+    public sealed record DownloadResolution(
+        DownloadOutcome Outcome,
+        string? PackagePath = null,
+        string? Sha256 = null,
+        string? Error = null);
+
+    /// <summary>
+    /// Resolve a request against the mounted downloads directory: pointer shape, containment,
+    /// digest, and size, all before a byte is read out. Public so the contract can be tested
+    /// without a host — this project has no WebApplicationFactory harness.
+    /// </summary>
+    public static DownloadResolution Resolve(string id, ILogger logger)
+    {
+        // Reject anything that is not a catalog-shaped id before it reaches the filesystem.
+        // The containment check below is the real guard; this one keeps traversal attempts
+        // out of the logs as ordinary 404s.
+        if (!IsCatalogId(id))
+            return new DownloadResolution(DownloadOutcome.NotFound);
+
+        var root = ResolveDownloadsDirectory();
+        if (root is null)
+            return new DownloadResolution(DownloadOutcome.NotPublished);
+
+        if (!TryReadPointer(root, logger, out var entries, out var pointerError))
+            return new DownloadResolution(DownloadOutcome.Unavailable, Error: pointerError);
+
+        var entry = entries.FirstOrDefault(item => string.Equals(item.id, id, StringComparison.Ordinal));
+        if (entry is null || string.IsNullOrWhiteSpace(entry.file) || string.IsNullOrWhiteSpace(entry.sha256))
+            return new DownloadResolution(DownloadOutcome.NotFound);
+
+        // Containment: a pointer entry is operator-authored, but an entry of "../../secrets"
+        // must still resolve to nothing servable. Compare the fully-resolved path against the
+        // fully-resolved root with a trailing separator, so "/downloads-evil" cannot pass as a
+        // prefix match of "/downloads".
+        var packagePath = Path.GetFullPath(Path.Combine(root, entry.file));
+        if (!packagePath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+        {
+            logger.LogWarning(
+                "Workbench download {Id} points outside the downloads directory and was refused.", id);
+            return new DownloadResolution(DownloadOutcome.NotFound);
+        }
+
+        if (!File.Exists(packagePath))
+            return new DownloadResolution(DownloadOutcome.NotFound);
+
+        string actualHash;
+        long actualLength;
+        try
+        {
+            actualHash = Sha256File(packagePath);
+            actualLength = new FileInfo(packagePath).Length;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(ex, "Could not read workbench download {Id} at {Path}.", id, packagePath);
+            return new DownloadResolution(
+                DownloadOutcome.Unavailable,
+                Error: $"workbench download '{id}' could not be read");
+        }
+
+        // The published page advertises a digest. Serving bytes that do not match it would
+        // quietly turn a verifiable download into an unverifiable one, so this is a refusal
+        // with an honest reason rather than a best-effort stream.
+        if (!string.Equals(actualHash, entry.sha256, StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogError(
+                "Workbench download {Id} hash mismatch: pointer says {Expected}, file is {Actual}.",
+                id, entry.sha256, actualHash);
+            return new DownloadResolution(
+                DownloadOutcome.Unavailable,
+                Error: $"workbench download '{id}' does not match the SHA-256 recorded in {PointerFile}; it will not be served");
+        }
+
+        if (entry.size_bytes > 0 && entry.size_bytes != actualLength)
+        {
+            logger.LogError(
+                "Workbench download {Id} size mismatch: pointer says {Expected}, file is {Actual}.",
+                id, entry.size_bytes, actualLength);
+            return new DownloadResolution(
+                DownloadOutcome.Unavailable,
+                Error: $"workbench download '{id}' does not match the size recorded in {PointerFile}; it will not be served");
+        }
+
+        return new DownloadResolution(DownloadOutcome.Served, packagePath, actualHash);
     }
 
     /// <summary>
@@ -162,7 +223,12 @@ public static class WorkbenchDownloadEndpoints
         return null;
     }
 
-    private static bool TryReadPointer(
+    /// <summary>
+    /// Read and validate <c>tools.json</c> under <paramref name="root"/>. A pointer that names its
+    /// array anything other than <c>downloads</c> deserializes to a null list and is invalid here —
+    /// that is the producer/consumer mismatch this contract exists to catch.
+    /// </summary>
+    public static bool TryReadPointer(
         string root,
         ILogger logger,
         out IReadOnlyList<DownloadEntry> entries,
@@ -215,7 +281,19 @@ public static class WorkbenchDownloadEndpoints
         return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
     }
 
-    private sealed record DownloadPointer(int schema_version, List<DownloadEntry>? downloads);
+    /// <summary>
+    /// The <c>tools.json</c> contract. Property names are the wire names on purpose: this record is
+    /// the single definition of the shape the publish script must emit, and tests deserialize the
+    /// committed sample into it so a rename on either side fails before a deploy does.
+    /// </summary>
+    public sealed record DownloadPointer(int schema_version, List<DownloadEntry>? downloads);
 
-    private sealed record DownloadEntry(string id, string file, string sha256, long size_bytes);
+    /// <summary>One published artifact. All four fields are load-bearing; see <see cref="Resolve"/>.</summary>
+    public sealed record DownloadEntry(string id, string file, string sha256, long size_bytes);
+
+    /// <summary>
+    /// The options the endpoint parses with, exposed so a contract test verifies the real naming
+    /// policy rather than a hand-rolled copy of it.
+    /// </summary>
+    public static JsonSerializerOptions PointerJsonOptions => Json;
 }

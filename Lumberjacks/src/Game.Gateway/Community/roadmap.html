@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-29T09:43:14.897Z</span>
+        <span>Updated 2026-07-29T09:53:33.038Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260729094314-reconcile-the-gate-files-to-the-post-builder-sta">
+        <div class="journal"><article class="journal-entry" id="note-20260729095333-pin-the-workbench-download-pointer-contract-with">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-29T09:53:33.038Z">2026-07-29T09:53:33.038Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Pin the workbench download pointer contract with tests so producer and consumer cannot drift again</h3>
+      <p><strong>Impact:</strong> The tools.json key mismatch that made every /workbench/downloads/{id} answer 503 is now a test failure rather than a deploy failure. Seven tests pin the documented shape, the exact &#39;tools&#39;-key regression, and the refusals for a mismatched digest or size; a committed sample pointer is deserialized into the endpoint&#39;s own record, and the publish script gained a third gate that re-parses the JSON it is about to upload and compares its key shape to that same sample. Both sides are now pinned to one file</p>
+      <details><summary>Verification (1)</summary><ul><li>Full solution suite green in the sdk:9.0 container (580 passed, 0 failed; Game.Gateway.Tests 200 to 207). Proven load-bearing by mutation: renaming the consumer record&#39;s downloads field to tools fails compilation, and the revert rebuilt byte-identical to the passing layer digest. The publish gate was exercised by extracting its shipped text and running it under PowerShell 5.1 - &#39;downloads&#39; accepted, &#39;tools&#39; refused, malformed sha256 refused</li></ul></details>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260729094314-reconcile-the-gate-files-to-the-post-builder-sta">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

@@ -7,6 +7,11 @@
     <ProjectReference Include="..\..\src\Game.Gateway\Game.Gateway.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The workbench download pointer contract is checked against this committed sample; the
+         publish script compares its emitted pointer to the same file. -->
+    <Content Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
