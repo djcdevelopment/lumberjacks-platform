@@ -56,13 +56,25 @@ design, old and new, is local files and human review in the loop.
 Not running as a whole. The front half is alive in the mod today with
 tests — `QuestViewLoader.cs` and `QuestTriggerEvaluator.cs`. The back half
 that would turn a completion into a GM-reviewable record sits in the
-public `comfy` repo, unwired to the live mod's output.
+public `comfy` repo, unwired to the live mod's output. Since 2026-07-29
+that back half also sits in this repo — byte-exact, still unwired — at
+`recipes/quest-submission-bridge/` (provenance in its `PROVENANCE.md`);
+the retired C# mod stays archive-only.
 
 ## Run it in about 10 minutes — what actually works today
 
 This runs the **old** demo end to end, against its own fixture data — it
 does not touch the live mod. It's real, working code, and it's the honest
 starting point for understanding the shape QB-1 needs to fill.
+
+From a `baseline` checkout, no clone needed:
+
+```
+python recipes/quest-submission-bridge/bridge-consumer/bridge_consumer.py recipes/quest-submission-bridge/bridge-consumer/mikers-demo
+python recipes/quest-submission-bridge/bridge-consumer/review_inbox.py recipes/quest-submission-bridge/bridge-consumer/mikers-demo list
+```
+
+Or from the archive:
 
 1. Clone the public archive:
    `git clone https://github.com/djcdevelopment/comfy` (or fetch
@@ -74,9 +86,10 @@ starting point for understanding the shape QB-1 needs to fill.
    python handoffs/comfy-control-surface/bridge-consumer/review_inbox.py handoffs/comfy-control-surface/bridge-consumer/mikers-demo show 20260701-210000-slayer-rank-thrall-demo
    python handoffs/comfy-control-surface/bridge-consumer/review_inbox.py handoffs/comfy-control-surface/bridge-consumer/mikers-demo accept 20260701-210000-slayer-rank-thrall-demo
    ```
-3. Read `QUEST.md` and `PROOF.md` in that folder — `QUEST.md` is the
-   original volunteer-facing brief this pipeline was built from, and
-   `PROOF.md` is the checklist that was used to prove it worked.
+3. Read `QUEST.md` and `PROOF.md` in that folder (also landed at
+   `recipes/quest-submission-bridge/`) — `QUEST.md` is the original
+   volunteer-facing brief this pipeline was built from, and `PROOF.md` is
+   the checklist that was used to prove it worked.
 
 ## What you'll see
 
@@ -130,8 +143,10 @@ before you copy from it:
   their tests) is in `network/mod/` in this repo: BSL 1.1 public-source
   posture, root `LICENSE` / `LICENSING.md`.
 - **Back half** (`bridge_consumer.py`, `review_inbox.py`, the old
-  `ComfyControlSurface` mod) lives entirely in the public `comfy` repo,
-  which is MIT-licensed (`comfy/LICENSE`) — not BSL 1.1.
+  `ComfyControlSurface` mod) originates in the public `comfy` repo, which
+  is MIT-licensed (`comfy/LICENSE`) — not BSL 1.1. The copies landed at
+  `recipes/quest-submission-bridge/` retain those MIT terms, recorded in
+  that folder's `PROVENANCE.md` and in the root `THIRD_PARTY_NOTICES.md`.
 
 Privacy: a submission record carries a real player's name, world, and
 position, and the old design bundled a screenshot with it. None of that

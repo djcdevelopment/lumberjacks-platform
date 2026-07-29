@@ -68,10 +68,14 @@ Not a finished mod. There is no BepInEx plugin today that takes
 
 ## Status
 
-Not running. It was pruned from `baseline` on 2026-07-21 (the prune audit
-lists the whole `handoffs/` tree, commit `cc322ee` is the last point it
-existed here) and nothing here executes in this repo today. Every piece is
-preserved in the public `comfy` repo, so this is a revival, not a rewrite.
+Not running. It was pruned from `baseline` on 2026-07-21 in commit `d75ffb2`
+(the prune audit lists the whole `handoffs/` tree; the last ref that still
+contains it is `57654fd`) and nothing here executes in this repo today. Every
+piece is preserved in the public `comfy` repo, so this is a revival, not a
+rewrite — and since 2026-07-29 the revivable raw material (both scripts, the
+segment briefs, and the two sample fixtures, byte-exact from the archive) is
+back in this repo, unwired, at `recipes/camera-gallery/` with provenance in
+its `PROVENANCE.md`. The camera proof-of-concept kit stays archive-only.
 
 ## Run it today (about 10 minutes) — the one thing that actually runs
 
@@ -85,10 +89,13 @@ its own fixture:
 2. From that checkout:
    `python .\handoffs\video_to_gallery.py flythrough.mp4 .\handoffs\timeline.sample.json --dry-run --duration 60`
    — this needs a placeholder `flythrough.mp4` path but no real video and
-   no ffmpeg for a dry run.
-3. Read `handoffs/segment-1-waypoints-from-world.md` and
-   `handoffs/valheim-camera-proof/README.md` before touching CG-1 below —
-   they're short and specific about what "done" looks like for each piece.
+   no ffmpeg for a dry run. From a `baseline` checkout the same dry run
+   needs no clone at all:
+   `python .\recipes\camera-gallery\video_to_gallery.py flythrough.mp4 .\recipes\camera-gallery\timeline.sample.json --dry-run --duration 60`
+3. Read `segment-1-waypoints-from-world.md` (in the archive, or landed at
+   `recipes/camera-gallery/`) and `handoffs/valheim-camera-proof/README.md`
+   (archive-only) before touching CG-1 below — they're short and specific
+   about what "done" looks like for each piece.
 
 ## What you'll see
 

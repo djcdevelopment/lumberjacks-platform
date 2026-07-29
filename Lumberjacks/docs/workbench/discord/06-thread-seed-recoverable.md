@@ -52,3 +52,11 @@ What a useful reply looks like:
 
 Worth knowing: a flythrough shows other people's builds, and a submission record carries a
 player's name and what they did — ask before publishing either one anywhere public.
+
+---
+
+*Update 2026-07-29: the revivable raw material for both pieces now also lives in the baseline
+repo itself — `recipes/camera-gallery/` and `recipes/quest-submission-bridge/`, byte-exact from
+the archive with provenance recorded in each folder's `PROVENANCE.md`. You can start CG-1 or
+QB-1 from a baseline checkout without cloning the archive. The C# pieces (the old control-surface
+mod and the camera proof kit) stay in the archive, and the claiming tasks are unchanged.*
