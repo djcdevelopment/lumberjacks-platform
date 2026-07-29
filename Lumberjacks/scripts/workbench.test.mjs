@@ -257,6 +257,70 @@ test('zero blocked tasks keep the original hero wording', (t) => {
 });
 
 // ---------------------------------------------------------------------------
+// Copy derived from structured policy (trust review §4–§5)
+// ---------------------------------------------------------------------------
+
+// Negative test 6 (trust review §8): source prose promising commit access while the
+// structured field says false.
+test('a source note promising commit access while code_contributions is false fails validation', () => {
+  const workbench = baseWorkbench();
+  workbench.tools[0].contribution.code_contributions = false;
+  workbench.tools[0].contribution.stage_3_reward = 'Triage rights on the fixture thread.';
+  workbench.tools[0].source.note = 'Stage 3 gets you commit access here.';
+  assert.throws(
+    () => validate(workbench, JSON.stringify(workbench)),
+    /source\.note promises commit access while code_contributions is false/,
+  );
+});
+
+test('policy vocabulary in a source note fails validation even without a contradiction', () => {
+  const workbench = baseWorkbench();
+  workbench.tools[0].source.note = 'Nothing here is gated — read it all.';
+  assert.throws(
+    () => validate(workbench, JSON.stringify(workbench)),
+    /restates access policy/,
+  );
+});
+
+test('naming a person in the catalog fails validation', () => {
+  const workbench = baseWorkbench();
+  workbench.ladder[4].what_you_did = 'Sustained the contribution over time, and Derek agrees you are the person holding it.';
+  assert.throws(
+    () => validate(workbench, JSON.stringify(workbench)),
+    /must not name a person/,
+  );
+});
+
+test('the access-policy line is derived from code_contributions', () => {
+  const granting = baseWorkbench();
+  assert.ok(render(granting).includes('Ladder stage 3 opens commit access for this tool.'));
+
+  const withheld = baseWorkbench();
+  withheld.tools[0].contribution.code_contributions = false;
+  withheld.tools[0].contribution.stage_3_reward = 'Triage rights on the fixture thread.';
+  assert.ok(render(withheld).includes('Ladder stage 3 does not open commit access here'));
+});
+
+test('LICENSING.md renders as a link where named, and an unlinked mention fails check', (t) => {
+  const workbench = baseWorkbench();
+  workbench.tools[0].license = 'Public source (BSL 1.1) — see LICENSING.md.';
+  const fixture = makeFixtureRepo({ workbench });
+  t.after(fixture.dispose);
+
+  assert.equal(fixture.run('render').status, 0);
+  assert.match(fixture.readHtml(), /<a [^>]*>LICENSING\.md<\/a>/);
+  assert.equal(fixture.run('check').status, 0);
+
+  // A mention outside the linkified fields is a named document a reader cannot open.
+  workbench.tools[0].what_it_does = 'Exists so LICENSING.md coverage can be proven.';
+  fixture.writeWorkbench(workbench);
+  assert.equal(fixture.run('render').status, 0);
+  const checked = fixture.run('check');
+  assert.equal(checked.status, 1);
+  assert.match(checked.stderr, /LICENSING\.md is named \d+ time\(s\) but linked only/);
+});
+
+// ---------------------------------------------------------------------------
 // Pins on pre-existing guards (unit, in-process) — so refactoring cannot drop them.
 // ---------------------------------------------------------------------------
 

@@ -359,6 +359,16 @@ function validateTool(workbench, tool, index, seenIds) {
   validateAccess(tool.access, `${label}.access`, tool.status);
   validateSource(tool.source, `${label}.source`);
 
+  // The contribution schema is authoritative; a source note may not restate or contradict it.
+  // Ordered: the specific contradiction first, so the sharper message wins when both would fire.
+  if (!tool.contribution?.code_contributions && /commit access/i.test(tool.source.note)) {
+    fail(`${label}.source.note promises commit access while code_contributions is false`);
+  }
+  const policyVocab = tool.source.note.match(/nothing here is gated|ladder stage|commit access|\bgated\b/i);
+  if (policyVocab) {
+    fail(`${label}.source.note restates access policy ("${policyVocab[0]}") — the renderer derives that line from source.kind and code_contributions; keep the note to tool-specific facts`);
+  }
+
   if (!Array.isArray(tool.docs)) fail(`${label}.docs must be an array`);
   tool.docs.forEach((doc, docIndex) => {
     const docLabel = `${label}.docs[${docIndex}]`;
@@ -459,6 +469,12 @@ function validate(workbench, rawText = '') {
   const countProse = (rawText || '').match(/\b\d+\s+(?:first\s+)?tasks?\s+open\b|\b\d+\s+(?:tasks?\s+)?(?:actionable|blocked)\b/i);
   if (countProse) {
     fail(`hardcoded task-count prose is forbidden (found "${countProse[0]}") — the renderer computes every count from first_tasks`);
+  }
+
+  // Governance is impersonal on this page: authority belongs to "the project operator", a role
+  // a stranger can locate in OWNERS.md, not to a first name they have never been introduced to.
+  if (/\bDerek\b/.test(rawText || '')) {
+    fail('workbench.json must not name a person — write "the project operator"; identity and ownership live in OWNERS.md');
   }
 
   // A recommended entry point only works if there is exactly one of them. Two suggestions is
@@ -751,10 +767,11 @@ function renderTool(workbench, tool) {
       <div class="tool-detail-body">
         ${moreDocs}
         <div class="tool-links"><strong>Source</strong>${sourceLine}</div>
-        <p class="source-note">${escapeHtml(tool.source.note)}</p>
+        <p class="access-policy">${escapeHtml(accessPolicyLine(tool))}</p>
+        <p class="source-note">${linkLicensing(escapeHtml(tool.source.note))}</p>
         <div class="tool-footnotes">
-          <div class="privacy"><strong>Privacy</strong>${escapeHtml(tool.privacy_note)}</div>
-          <div class="license"><strong>License</strong>${escapeHtml(tool.license)}</div>
+          <div class="privacy"><strong>Privacy</strong>${linkLicensing(escapeHtml(tool.privacy_note))}</div>
+          <div class="license"><strong>License</strong>${linkLicensing(escapeHtml(tool.license))}</div>
         </div>
       </div>
     </details>
@@ -770,6 +787,30 @@ function linkOwners(escaped, ownersHref) {
     'OWNERS.md',
     `<a href="${escapeHtml(ownersHref)}" target="_blank" rel="noreferrer">OWNERS.md</a>`,
   );
+}
+
+/// Same argument for the licence file: six cards end "see LICENSING.md." and a named document
+/// must be reachable. One stored href — the same one the footer's "license details" uses.
+const licensingHref = 'https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md';
+
+function linkLicensing(escaped) {
+  return escaped.replaceAll(
+    'LICENSING.md',
+    `<a href="${escapeHtml(licensingHref)}" target="_blank" rel="noreferrer">LICENSING.md</a>`,
+  );
+}
+
+/// The compact access-policy line, derived from structured fields only. This used to be prose
+/// repeated per tool in source.note — three byte-identical copies and one near-miss — which is
+/// a drift surface: the schema (source.kind, contribution.code_contributions) is authoritative,
+/// so the sentence is computed from it and the notes keep only tool-specific facts.
+function accessPolicyLine(tool) {
+  if (tool.source.kind !== 'public-repo') {
+    return 'The source opens when the tool is claimed — until then it is the one gated thing on this card.';
+  }
+  return tool.contribution.code_contributions
+    ? 'Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.'
+    : 'Nothing here is gated — the source is readable now. Ladder stage 3 does not open commit access here — the card above says what it grants.';
 }
 
 function renderLadder(ladder, ownersHref) {
@@ -993,6 +1034,7 @@ function render(workbench) {
     .dep { padding: 1px 5px; background: rgba(255,255,255,.06); border-radius: 4px; color: var(--ink); }
     .tool-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 8px; font-size: .8rem; }
     .tool-links strong { flex: 0 0 76px; color: var(--muted); font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
+    .access-policy { margin: 8px 0 0; color: #c5d2cf; font-size: .78rem; }
     .source-note { margin: 8px 0 0; color: var(--muted); font-size: .78rem; }
     .first-tasks { margin-top: 14px; padding: 14px; border-left: 3px solid var(--wood); background: rgba(215,168,110,.08); }
     .first-tasks > strong { color: var(--wood); font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
@@ -1134,7 +1176,7 @@ function render(workbench) {
     <p class="print-note">Printed copy: each card's <strong>How it works, in detail</strong> and <strong>Source, privacy &amp; licence</strong> sections are collapsed and do not print — no stylesheet can force them open. Expand them in a browser to read them. Everything a decision rests on prints: the status and what it means, what you will need, download digests, the first tasks, where recoverable pieces are, and what stage 3 grants for that tool.</p>
     <div>If a card on this page is wrong, that is the most useful bug report you can file — the whole point is that the status matches reality.</div>
     <div class="generated">Generated deterministically from ${escapeHtml(workbenchRelative)} · do not hand-edit this file.</div>
-    <nav class="baseline-provenance" aria-label="Project provenance"><a href="https://github.com/djcdevelopment/baseline" target="_blank" rel="noreferrer">Baseline</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/Lumberjacks" target="_blank" rel="noreferrer">Lumberjacks</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy" target="_blank" rel="noreferrer">Comfy</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">license details</a></nav>
+    <nav class="baseline-provenance" aria-label="Project provenance"><a href="https://github.com/djcdevelopment/baseline" target="_blank" rel="noreferrer">Baseline</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/Lumberjacks" target="_blank" rel="noreferrer">Lumberjacks</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy" target="_blank" rel="noreferrer">Comfy</a><span aria-hidden="true"> · </span><a href="${escapeHtml(licensingHref)}" target="_blank" rel="noreferrer">license details</a></nav>
   </footer>
 </body>
 </html>
@@ -1225,6 +1267,11 @@ function check(args) {
   const ownersLinked = (actual.match(/<a [^>]*>OWNERS\.md<\/a>/g) ?? []).length;
   if (ownersNamed !== ownersLinked) {
     fail(`OWNERS.md is named ${ownersNamed} time(s) but linked only ${ownersLinked} — a promised document must be reachable`);
+  }
+  const licensingNamed = (renderedText.match(/LICENSING\.md/g) ?? []).length;
+  const licensingLinked = (actual.match(/<a [^>]*>LICENSING\.md<\/a>/g) ?? []).length;
+  if (licensingNamed !== licensingLinked) {
+    fail(`LICENSING.md is named ${licensingNamed} time(s) but linked only ${licensingLinked} — a promised document must be reachable`);
   }
 
   // The ladder defers to the cards, so every card must actually state its own right.

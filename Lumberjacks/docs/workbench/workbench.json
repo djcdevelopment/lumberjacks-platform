@@ -48,7 +48,7 @@
     {
       "stage": 4,
       "name": "Owner",
-      "what_you_did": "Sustained the contribution over time, and Derek agrees you are the person holding it.",
+      "what_you_did": "Sustained the contribution over time, and the project operator agrees you are the person holding it.",
       "what_you_get": "You set the tool's direction and you can say no. The ownership state moves to owned.",
       "recorded_in": "OWNERS.md, plus the tool's ownership record."
     }
@@ -151,7 +151,7 @@
       "source": {
         "kind": "public-repo",
         "href": "https://github.com/djcdevelopment/ComfyStewardView",
-        "note": "A standalone public repository, separate from baseline. Clone it and build; nothing here is gated."
+        "note": "A standalone public repository, separate from baseline. Clone it and build."
       },
       "docs": [
         {
@@ -216,7 +216,7 @@
       "source": {
         "kind": "public-repo",
         "href": "https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/tools/omen-dashboard",
-        "note": "Public and readable now: Lumberjacks/infra/docker/docker-compose.yml for the stack, Lumberjacks/tools/omen-dashboard/ for the operator viewer. Nothing here is gated — what opens at ladder stage 3 is commit access, not the ability to read it."
+        "note": "Public and readable now: Lumberjacks/infra/docker/docker-compose.yml for the stack, Lumberjacks/tools/omen-dashboard/ for the operator viewer."
       },
       "docs": [
         {
@@ -225,11 +225,11 @@
         },
         {
           "label": "Telemetry v0 API reference — Lumberjacks/docs/api/telemetry-v0.md",
-          "href": null
+          "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/api/telemetry-v0.md"
         },
         {
           "label": "Viewing the surfaces — Lumberjacks/docs/dashboard/viewing-the-surfaces.md",
-          "href": null
+          "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/dashboard/viewing-the-surfaces.md"
         }
       ],
       "discussion": {
@@ -290,7 +290,7 @@
       "source": {
         "kind": "public-repo",
         "href": "https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/src/Game.Gateway/Valheim",
-        "note": "Public and readable now — SteamEnrollmentEndpoints, SteamEnrollmentService, EnrollmentPages, ModpackReleaseCatalog, with real test suites, plus the operator runbook at infra/gcp/p7/VOLUNTEER-ENDPOINT.md. Nothing here is gated — what opens at ladder stage 3 is commit access, not the ability to read it."
+        "note": "Public and readable now — SteamEnrollmentEndpoints, SteamEnrollmentService, EnrollmentPages, ModpackReleaseCatalog, with real test suites, plus the operator runbook at infra/gcp/p7/VOLUNTEER-ENDPOINT.md."
       },
       "docs": [
         {
@@ -303,7 +303,7 @@
         },
         {
           "label": "Operator runbook — infra/gcp/p7/VOLUNTEER-ENDPOINT.md",
-          "href": null
+          "href": "https://github.com/djcdevelopment/baseline/blob/main/infra/gcp/p7/VOLUNTEER-ENDPOINT.md"
         }
       ],
       "discussion": {
@@ -364,12 +364,12 @@
       "source": {
         "kind": "public-repo",
         "href": "https://github.com/djcdevelopment/baseline/tree/main/network/mcp",
-        "note": "Public and readable now — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot also exists in the comfy repo. Nothing here is gated — what opens at ladder stage 3 is commit access, not the ability to read it."
+        "note": "Public and readable now — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot also exists in the comfy repo."
       },
       "docs": [
         {
           "label": "Command contract — network/mcp/contracts/commands.json",
-          "href": null
+          "href": "https://github.com/djcdevelopment/baseline/blob/main/network/mcp/contracts/commands.json"
         }
       ],
       "discussion": {
