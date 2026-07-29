@@ -3,7 +3,8 @@
 Derek's steps, in order. Everything else is already built and committed. Full reference:
 [`09-discord-bot-setup.md`](../../../Lumberjacks/docs/workbench/discord/09-discord-bot-setup.md).
 
-Run commands from the repo root (`C:\work\baseline`).
+Run commands from the repo root (`C:\work\baseline`). Everything here is **Windows
+PowerShell 5.1** — `&&` is a parser error in this shell, so each command stands alone.
 
 ---
 
@@ -15,13 +16,17 @@ Run commands from the repo root (`C:\work\baseline`).
       Intent**. (Without it, feedback exports come back with empty message text.) Leave
       the rest off.
 - [ ] **A3.** **Bot → Token → Reset Token** → copy it. Shown once.
-- [ ] **A4.** Save it outside the repo:
-      ```bash
-      mkdir -p ~/.baseline && printf '%s' 'PASTE_TOKEN_HERE' > ~/.baseline/workbench-discord.token
+- [ ] **A4.** Save it outside the repo — two commands, `-Encoding ascii` on purpose
+      (PS 5.1's `utf8` writes a BOM):
+      ```powershell
+      New-Item -ItemType Directory -Force "$env:USERPROFILE\.baseline" | Out-Null
+      ```
+      ```powershell
+      Set-Content -Path "$env:USERPROFILE\.baseline\workbench-discord.token" -Value 'PASTE_TOKEN_HERE' -NoNewline -Encoding ascii
       ```
 - [ ] **A5.** Copy the **Application ID** (OAuth2 → General), then:
-      ```bash
-      python tools/workbench/discord/workbench_discord.py invite --app-id YOUR_APP_ID
+      ```powershell
+      python tools\workbench\discord\workbench_discord.py invite --app-id YOUR_APP_ID
       ```
       Open the URL it prints, pick the community server, authorize.
 - [ ] **A6.** Server Settings → Roles → the bot's role → deny **View Channels** at the
@@ -31,15 +36,15 @@ Run commands from the repo root (`C:\work\baseline`).
 ## B. Provision the forum (tonight)
 
 - [ ] **B1.** Confirm the plan against the live server:
-      ```bash
-      python tools/workbench/discord/workbench_discord.py plan
+      ```powershell
+      python tools\workbench\discord\workbench_discord.py plan
       ```
       On an untouched server this reproduces plan hash **`6aba648cba55`** — the same one
       in the receipt you already read. A different hash means something already exists;
       read the new receipt before continuing.
 - [ ] **B2.** Go live:
-      ```bash
-      python tools/workbench/discord/workbench_discord.py apply --yes --expect-plan 6aba648cba55
+      ```powershell
+      python tools\workbench\discord\workbench_discord.py apply --yes --expect-plan 6aba648cba55
       ```
 - [ ] **B3.** Eyeball it in Discord: `#workbench` is a Forum, 8 tags present, "Require
       people to select tags" on, guidelines box filled, **How this works** pinned at the
@@ -49,8 +54,8 @@ Run commands from the repo root (`C:\work\baseline`).
 ## C. After the `/workbench` deploy (batch item 7)
 
 - [ ] **C1.** The four remaining posts carry catalog links, so they need the live site:
-      ```bash
-      python tools/workbench/discord/workbench_discord.py --site-base-url https://comfy-p7.duckdns.org plan
+      ```powershell
+      python tools\workbench\discord\workbench_discord.py --site-base-url https://comfy-p7.duckdns.org plan
       ```
       then `apply --yes --expect-plan <hash from that receipt>`.
 - [ ] **C2.** Optional, so you stop passing the flag: set `"site_base_url"` in
@@ -63,9 +68,11 @@ Run commands from the repo root (`C:\work\baseline`).
 - [ ] **D1.** Batch 2 — post `00-announcement.md` yourself. The bot cannot; that is on
       purpose.
 - [ ] **D2.** Once threads have traffic:
-      ```bash
-      python tools/workbench/discord/workbench_discord.py export --out ../workbench-exports
-      python tools/workbench/distill_feedback.py --export-dir ../workbench-exports
+      ```powershell
+      python tools\workbench\discord\workbench_discord.py export --out ..\workbench-exports
+      ```
+      ```powershell
+      python tools\workbench\distill_feedback.py --export-dir ..\workbench-exports
       ```
       Keep the export directory outside the repo — real names next to real quotes.
 - [ ] **D3.** Edited a seed file? `plan` shows the diff, `apply` pushes it to the live

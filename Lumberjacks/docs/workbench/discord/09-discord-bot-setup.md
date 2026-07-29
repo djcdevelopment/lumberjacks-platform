@@ -47,10 +47,16 @@ command line that lands in shell history. The script looks for it in this order:
 2. the file named by `$env:WORKBENCH_DISCORD_TOKEN_FILE`
 3. `%USERPROFILE%\.baseline\workbench-discord.token`
 
-The default file is the easy one — create it once:
+The default file is the easy one — create it once. Windows PowerShell 5.1, so two
+commands (`&&` is a parser error in this shell) and `-Encoding ascii` deliberately, since
+PS 5.1's `utf8` writes a BOM and a BOM in front of the token reads back as an HTTP 401:
 
-```bash
-mkdir -p ~/.baseline && printf '%s' 'PASTE_TOKEN_HERE' > ~/.baseline/workbench-discord.token
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.baseline" | Out-Null
+```
+
+```powershell
+Set-Content -Path "$env:USERPROFILE\.baseline\workbench-discord.token" -Value 'PASTE_TOKEN_HERE' -NoNewline -Encoding ascii
 ```
 
 The script refuses to read a token from anywhere inside the repository, and `.gitignore`
@@ -59,8 +65,8 @@ keeping it in your profile directory.
 
 ## 3. Invite it with the minimum permissions
 
-```bash
-python tools/workbench/discord/workbench_discord.py invite --app-id YOUR_APP_ID
+```powershell
+python tools\workbench\discord\workbench_discord.py invite --app-id YOUR_APP_ID
 ```
 
 That prints the permission set and the exact URL. The integer is **326417583120**:
@@ -80,15 +86,15 @@ channel. It has no reason to read anything else.
 
 ## 4. Provision the forum
 
-```bash
-python tools/workbench/discord/workbench_discord.py check
+```powershell
+python tools\workbench\discord\workbench_discord.py check
 ```
 
 Repo-only sanity pass — no token, no network. Prints the taxonomy it parsed out of the
 07 doc, the six posts, their tags, and any post that cannot be published yet.
 
-```bash
-python tools/workbench/discord/workbench_discord.py plan
+```powershell
+python tools\workbench\discord\workbench_discord.py plan
 ```
 
 Reads the live server, computes the difference, prints it, and writes an approval receipt
@@ -98,8 +104,8 @@ pre-approval receipt in that folder was produced.
 
 Read the receipt. If it is what you want in the server:
 
-```bash
-python tools/workbench/discord/workbench_discord.py apply --yes --expect-plan <hash-from-the-receipt>
+```powershell
+python tools\workbench\discord\workbench_discord.py apply --yes --expect-plan <hash-from-the-receipt>
 ```
 
 `--yes` is required; without it the script prints the plan and refuses. `--expect-plan`
@@ -123,8 +129,8 @@ Before the `/workbench` deploy you can still provision the channel, the tags, th
 guideline post and the recoverable-pieces post. After the deploy, either set
 `site_base_url` in `provision.json` or pass it once:
 
-```bash
-python tools/workbench/discord/workbench_discord.py --site-base-url https://comfy-p7.duckdns.org plan
+```powershell
+python tools\workbench\discord\workbench_discord.py --site-base-url https://comfy-p7.duckdns.org plan
 ```
 
 and the remaining four unblock.
@@ -147,9 +153,9 @@ exactly what this is avoiding.
 
 ## 6. Feedback export → the candidate journal
 
-```bash
-python tools/workbench/discord/workbench_discord.py export --out ../workbench-exports
-python tools/workbench/distill_feedback.py --export-dir ../workbench-exports
+```powershell
+python tools\workbench\discord\workbench_discord.py export --out ..\workbench-exports
+python tools\workbench\distill_feedback.py --export-dir ..\workbench-exports
 ```
 
 `export` writes one DiscordChatExporter-shaped JSON file per thread — the same shape the
@@ -170,7 +176,7 @@ weekly skim; anything by you or already recorded is skipped.
 to produce the same input, and is the better tool if you want HTML transcripts or a whole
 guild at once. The same bot token works:
 
-```bash
+```powershell
 DiscordChatExporter.Cli exportguild -t "BOT_TOKEN" -g GUILD_ID -f Json --include-threads all -o ./exports/
 ```
 

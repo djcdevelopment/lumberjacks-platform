@@ -1282,7 +1282,9 @@ def load_token() -> str:
     resolved = token_file.resolve()
     if resolved == REPO_ROOT or REPO_ROOT in resolved.parents:
         raise ToolError(f"refusing to read a token from inside the repository: {resolved}. Keep credentials outside {REPO_ROOT}.")
-    raw = token_file.read_text(encoding="utf-8").strip()
+    # utf-8-sig, not utf-8: PowerShell 5.1's Out-File/Set-Content -Encoding utf8 writes a
+    # BOM, and a BOM in front of the token turns into a baffling HTTP 401.
+    raw = token_file.read_text(encoding="utf-8-sig").strip()
     for line in raw.splitlines():
         line = line.strip()
         if line.startswith(f"{ENV_TOKEN}="):

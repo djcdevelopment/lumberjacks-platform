@@ -7,12 +7,12 @@ channel, its tag taxonomy and its opening posts equal to what is checked in here
 **Setup and full walkthrough:**
 [`Lumberjacks/docs/workbench/discord/09-discord-bot-setup.md`](../../../Lumberjacks/docs/workbench/discord/09-discord-bot-setup.md)
 
-```bash
-python tools/workbench/discord/workbench_discord.py check       # repo-only, no token
-python tools/workbench/discord/workbench_discord.py plan        # dry run + approval receipt
-python tools/workbench/discord/workbench_discord.py apply --yes # converge (writes to Discord)
-python tools/workbench/discord/workbench_discord.py export --out ../workbench-exports
-python tools/workbench/discord/workbench_discord.py self-test
+```powershell
+python tools\workbench\discord\workbench_discord.py check       # repo-only, no token
+python tools\workbench\discord\workbench_discord.py plan        # dry run + approval receipt
+python tools\workbench\discord\workbench_discord.py apply --yes # converge (writes to Discord)
+python tools\workbench\discord\workbench_discord.py export --out ..\workbench-exports
+python tools\workbench\discord\workbench_discord.py self-test
 ```
 
 | File | What it is |
