@@ -1075,6 +1075,22 @@ function check(args) {
     if (state.invite_href && state.invite_href !== workbench.feedback.invite_href) {
       fail(`invite drift: workbench.json has ${workbench.feedback.invite_href}, provision-state.json has ${state.invite_href}`);
     }
+    // An expiring invite is the one failure no other guard can see: the href stays well-formed
+    // and allowlisted forever while the destination quietly stops existing, and the page's only
+    // entry point for a non-member dies with it. Recording the date turns that into something
+    // the build can say out loud. Hand-maintained, so it fails safe: a regenerated invite whose
+    // date was not updated warns early rather than late. null means a non-expiring invite.
+    if (state.invite_expires_at !== null && state.invite_expires_at !== undefined) {
+      const expiresAt = Date.parse(state.invite_expires_at);
+      if (Number.isNaN(expiresAt)) fail(`provision-state.json invite_expires_at is not a timestamp: ${state.invite_expires_at}`);
+      const daysLeft = Math.floor((expiresAt - Date.now()) / 86_400_000);
+      if (daysLeft <= 0) {
+        fail(`the Discord invite expired ${state.invite_expires_at} — the page's only way in for a non-member is dead. Regenerate it as a never-expiring invite, then update workbench.json and provision-state.json.`);
+      }
+      if (daysLeft <= 14) {
+        console.warn(`WARNING: the Discord invite expires in ${daysLeft} day(s) (${state.invite_expires_at}). Regenerate it as never-expiring before it strands every first-time visitor.`);
+      }
+    }
   }
 
   const unclaimed = workbench.tools.filter((tool) => tool.ownership.state === 'unclaimed').length;

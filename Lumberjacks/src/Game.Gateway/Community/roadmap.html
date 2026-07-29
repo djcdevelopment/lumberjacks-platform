@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-29T10:05:56.928Z</span>
+        <span>Updated 2026-07-29T10:11:37.556Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260729100556-close-the-print-question-honestly-the-rule-meant">
+        <div class="journal"><article class="journal-entry" id="note-20260729101137-verify-the-discord-invite-against-the-api-and-ad">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-29T10:11:37.556Z">2026-07-29T10:11:37.556Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Verify the Discord invite against the API and add a build guard for its expiry</h3>
+      <p><strong>Impact:</strong> The invite resolves but expires 2026-08-28, so on that date the page&#39;s only entry point for a non-member dies while the href stays well-formed and allowlisted — the one failure no existing guard could see. The date is now recorded beside the invite and workbench:check warns inside 14 days and fails once past it. Server verification level is 0, so no phone or email gate blocks a volunteer</p>
+      <details><summary>Verification (1)</summary><ul><li>GET /invites/TSHTD38yV confirmed VALID, guild 1531911987074957442, lands in #general, expires_at 2026-08-28T06:33:12+00:00. Guard negative-tested on all three branches: 4 days out warns and passes, an expired date fails with the regenerate instruction, null passes silently</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260729100556-close-the-print-question-honestly-the-rule-meant">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
