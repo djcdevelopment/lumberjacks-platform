@@ -882,6 +882,7 @@ function render(workbench) {
     .privacy { padding: 9px 11px; border-left: 3px solid var(--violet); background: rgba(199,167,255,.08); }
     footer { padding: 38px 0 60px; color: var(--muted); font-size: .82rem; }
     .feedback-rhythm { margin-bottom: 10px; padding: 12px 14px; border-left: 3px solid var(--blue); background: var(--blue-bg); color: #c8d7d3; }
+    .print-note { display: none; margin-bottom: 10px; padding: 10px 12px; border-left: 3px solid var(--wood); color: #d9cdb8; font-size: .82rem; }
     .generated { color: #8a9c98; font-family: var(--mono); font-size: .72rem; }
     .baseline-provenance { margin-top: 14px; color: #8a9c98; font-family: var(--mono); font-size: .68rem; letter-spacing: .015em; }
     .baseline-provenance a { color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor; }
@@ -914,13 +915,18 @@ function render(workbench) {
       .tool, .ladder-step { break-inside: avoid; box-shadow: none; }
       nav, .tool-index { display: none; }
       a { color: #075985; }
-      /* A printed copy has no way to expand anything, so force every disclosure open. Support
-         for styling a closed details' contents varies by engine — if an engine ignores this,
-         only the two per-card detail blocks are lost; status, requirements, digests, first
-         tasks, recovery and ownership all render outside <details> and always print. */
+      /* There is deliberately no rule here trying to force disclosures open. The obvious one,
+         details:not([open]) > *:not(summary) { display: block !important }, does NOT work:
+         measured in Chromium 148, a collapsed body reports checkVisibility() false and zero
+         innerText with that rule applied, identical to without it — the UA hides the contents
+         through an internal slot author CSS cannot reach. Shipping it would have been a
+         stylesheet that claims a guarantee it does not provide. The honest handling is to say
+         so on the printed page instead; see .print-note. Everything load-bearing —
+         status_detail, requirements, download digests, first tasks, recovery, ownership and
+         the per-tool stage-3 right — lives outside <details> and always prints. */
       details > summary { list-style: none; font-weight: 700; }
-      details:not([open]) > *:not(summary) { display: block !important; }
-      .tool-detail[open] > summary, .tool-detail > summary { border-bottom: 1px solid var(--line); }
+      .print-note { display: block; }
+      .tool-detail > summary { border-bottom: 1px solid var(--line); }
     }
   </style>
 </head>
@@ -980,6 +986,7 @@ function render(workbench) {
 
   <footer class="wrap">
     <div class="feedback-rhythm">${escapeHtml(workbench.feedback.rhythm)} Threads live in the ${forum}, which needs a server membership — ${invite} first if you have not joined.</div>
+    <p class="print-note">Printed copy: each card's <strong>How it works, in detail</strong> and <strong>Source, privacy &amp; licence</strong> sections are collapsed and do not print — no stylesheet can force them open. Expand them in a browser to read them. Everything a decision rests on prints: the status and what it means, what you will need, download digests, the first tasks, where recoverable pieces are, and what stage 3 grants for that tool.</p>
     <div>If a card on this page is wrong, that is the most useful bug report you can file — the whole point is that the status matches reality.</div>
     <div class="generated">Generated deterministically from ${escapeHtml(workbenchRelative)} · do not hand-edit this file.</div>
     <nav class="baseline-provenance" aria-label="Project provenance"><a href="https://github.com/djcdevelopment/baseline" target="_blank" rel="noreferrer">Baseline</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/Lumberjacks" target="_blank" rel="noreferrer">Lumberjacks</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy" target="_blank" rel="noreferrer">Comfy</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md" target="_blank" rel="noreferrer">license details</a></nav>
