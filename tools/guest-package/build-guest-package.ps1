@@ -2,6 +2,7 @@ param(
     [string]$ManifestPath = (Join-Path $PSScriptRoot '..\..\fieldlab\runs\releases\m1-clean-20260717-r1.json'),
     [string]$BundleRoot = (Join-Path $PSScriptRoot '..\..\fieldlab\runs\releases\m1-clean-20260717-r1'),
     [string]$OutputRoot = (Join-Path $PSScriptRoot '..\..\fieldlab\handoffs\guest-client-pack\comfy-guest-m1-clean-20260717-r1'),
+    [string]$InputsPath = (Join-Path $PSScriptRoot 'guest-package-inputs.json'),
     [switch]$NoZip
 )
 Set-StrictMode -Version 2.0
@@ -18,7 +19,7 @@ function Copy-Stamped([string]$Source, [string]$Destination) {
 $manifestPath = (Resolve-Path -LiteralPath $ManifestPath).Path
 $bundleRoot = (Resolve-Path -LiteralPath $BundleRoot).Path
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-$inputsPath = Join-Path $PSScriptRoot 'guest-package-inputs.json'
+$inputsPath = (Resolve-Path -LiteralPath $InputsPath).Path
 $inputs = Get-Content -LiteralPath $inputsPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $releaseId = [string]$manifest.release_id
 if ($releaseId -ne [string]$inputs.release_id) { Fail 'inputs release_id does not match manifest' }

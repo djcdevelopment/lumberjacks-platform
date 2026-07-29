@@ -54,9 +54,28 @@ version pins, and a free-text `reissue_note`.
   -OutputRoot   fieldlab\handoffs\guest-client-pack\comfy-guest-<release>
 ```
 
-All three params default to the `m1-clean-20260717-r1` release. Requires a
-working `py.exe -3` or `python.exe` on `PATH` (renders `GUEST-GUIDE.md`).
-Add `-NoZip` to skip producing the `.zip` next to the output folder.
+Those three params default to the `m1-clean-20260717-r1` release, and
+`-InputsPath` defaults to the `guest-package-inputs.json` beside this README.
+Requires a working `py.exe -3` or `python.exe` on `PATH` (renders
+`GUEST-GUIDE.md`). Add `-NoZip` to skip producing the `.zip` next to the
+output folder.
+
+## Release bundles are not in the repo
+
+`fieldlab/runs/` is gitignored, so no sealed release ships with a clone --
+`fieldlab/runs/releases/<release>/` is a machine-local build artifact. Point
+`-ManifestPath` and `-BundleRoot` at wherever the bundle you want to package
+actually lives.
+
+`tests/test_guest_package.py` therefore builds against a synthetic release in
+`tests/fixtures/guest-package/` (a manifest plus its own inputs file; the
+stand-in DLL is written at test time from bytes held in the test module). That
+covers all of this tooling on any fresh checkout. No script here parses the
+DLL -- each only hashes it, copies it, or compares its hash to the manifest --
+so the stand-in exercises the same paths the real artifact would. The one
+thing a fixture cannot answer, whether the real sealed DLL still matches the
+manifest shipped beside it, lives in `SealedReleaseTests`, which runs only on
+a machine that has the bundle and skips with an explicit reason elsewhere.
 
 ## Known gap
 

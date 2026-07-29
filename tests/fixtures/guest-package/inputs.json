@@ -1,0 +1,13 @@
+{
+  "schema": "comfy-guest-package-inputs/v1",
+  "release_id": "fixture-guest-package-r0",
+  "gateway_base_url": "http://127.0.0.1:1",
+  "gateway_health_path": "/health",
+  "gateway_bootstrap_path": "/join/bootstrap",
+  "enrollment_path": "/api/v0/valheim/enrollment/me",
+  "join_address": "127.0.0.1:2456",
+  "bepinex_version": "5.4.2202",
+  "valheim_build": "0.221.12",
+  "reissue_note": "Fixture inputs for tests/test_guest_package.py; no live endpoint is described here.",
+  "fixture_note": "Pairs with release-manifest.json. gateway_base_url points at loopback port 1 on purpose: nothing can listen there, so a preflight run against the package as generated is deterministically NOT_READY. Tests that need a reachable gateway rewrite this field in their generated copy to point at their own local fixture server."
+}

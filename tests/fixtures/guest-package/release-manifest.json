@@ -1,0 +1,28 @@
+{
+  "schema": "comfy-p7-release/v2-candidate",
+  "release_id": "fixture-guest-package-r0",
+  "captured_utc": "2026-01-01T00:00:00Z",
+  "fixture_note": "Synthetic release record for tests/test_guest_package.py. No such cut was ever built, deployed, or admitted by the Gateway -- do not treat this as release truth. The sealed bundle it describes is materialized at test time from FIXTURE_DLL_BYTES in the test module, so clean_build_sha256 below is the sha256 of those bytes. Real release records are machine-local build artifacts under fieldlab/runs/releases/, which .gitignore deliberately keeps out of the repo.",
+  "source": {
+    "lumberjacks_commit": "0000000000000000000000000000000000000000",
+    "comfy_commit": "0000000000000000000000000000000000000000",
+    "lumberjacks_clean": true,
+    "comfy_clean": true
+  },
+  "build_contract": {
+    "continuous_integration_build": false,
+    "deterministic": true,
+    "path_map": "fixed repository source roots",
+    "mod_repeatability": "fixture bytes are constant by construction"
+  },
+  "mod": {
+    "version": "0.5.42.0",
+    "clean_build_sha256": "8d1142517c6cda0aeca6f570f5b49e00059f291affa3c0ec1accdf7d27cf3101",
+    "byte_match": true,
+    "il_match": "not_applicable",
+    "build_command": "not built; see fixture_note"
+  },
+  "limitations": [
+    "Synthetic fixture. It exercises the guest-package tooling only and describes no shippable artifact."
+  ]
+}
