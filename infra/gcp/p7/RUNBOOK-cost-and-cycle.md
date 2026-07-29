@@ -27,6 +27,11 @@ Derek's ground truth, recorded before tonight's driving session:
 5. **Posture: local-first as much as possible; when on GCP, lean and mean** through
    tonight's session, then a **full shakedown at end of night** (sequence at the bottom).
 
+> The "real external cohort" conditions referenced below (lever C's loud warning, lever
+> E's re-arm rule) are now one named trigger — the **First Stranger gate**: definition
+> and full due-list in
+> [`docs/decisions/pd-2-security-posture-first-stranger-gate.md`](../../../docs/decisions/pd-2-security-posture-first-stranger-gate.md).
+
 ## Hard rule
 
 > **Do NOT `terraform apply` from `infra/gcp/p7`.** RECONCILE-GAP is OPEN: plan against the
