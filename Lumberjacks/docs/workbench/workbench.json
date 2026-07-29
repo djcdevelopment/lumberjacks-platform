@@ -1,0 +1,517 @@
+{
+  "schema_version": 1,
+  "title": "Comfy × Valheim — Community Workbench",
+  "headline": "Seven tools. What each one actually does today, what it costs you to run it, and exactly how to take one over.",
+  "updated_at": "2026-07-29T01:00:00Z",
+  "honesty_statement": "Every status below is what the thing actually does today.",
+  "not_a_verdict": "This catalog is an invitation to run and own tools. It is not a judgment on anyone's past effort and it is not a verdict on anyone's burnout — volunteers already carried this community, and the work they did is why any of this exists. Nothing here is owed by anyone. A tool sitting unclaimed is a description of this catalog, never a mark against the people who came before.",
+  "feedback": {
+    "rhythm": "Replies land in batches, about twice a week — this is a solo-operator project.",
+    "forum_href": null,
+    "forum_label": "Discord forum (opens with the announcement)"
+  },
+  "ladder": [
+    {
+      "stage": 0,
+      "name": "Curious",
+      "what_you_did": "Read the one-pager for a tool and decided whether it is worth your evening.",
+      "what_you_get": "A straight answer about what runs, what does not, and what it would cost you. Reading owes nobody anything.",
+      "recorded_in": "Nowhere. There is no sign-up and no list."
+    },
+    {
+      "stage": 1,
+      "name": "Ran it",
+      "what_you_did": "Ran the tool locally and posted what happened in its thread — including the part where it broke.",
+      "what_you_get": "Named in the thread. A report that it failed is worth exactly as much as a report that it worked.",
+      "recorded_in": "The tool's discussion thread."
+    },
+    {
+      "stage": 2,
+      "name": "Fixed one thing",
+      "what_you_did": "Completed one of the first tasks listed on a tool card.",
+      "what_you_get": "Credited in OWNERS.md, and the tool's ownership state moves to trying.",
+      "recorded_in": "OWNERS.md, plus the tool's ownership record."
+    },
+    {
+      "stage": 3,
+      "name": "Steward",
+      "what_you_did": "Landed two changes on a tool, or revived a recoverable piece back into something that runs.",
+      "what_you_get": "Code access to that piece and you triage its thread. The tool's ownership state moves to claimed.",
+      "recorded_in": "OWNERS.md, plus the tool's ownership record."
+    },
+    {
+      "stage": 4,
+      "name": "Owner",
+      "what_you_did": "Sustained the stewardship over time, and Derek agrees you are the person holding it.",
+      "what_you_get": "You set the tool's direction and you can say no. The ownership state moves to owned.",
+      "recorded_in": "OWNERS.md, plus the tool's ownership record."
+    }
+  ],
+  "tools": [
+    {
+      "id": "quest-picker",
+      "name": "Quest Picker + Absorption Engine",
+      "one_liner": "Turns a guild's real quest tracker into a single offline page where a player checks the quests they care about — and the game mod reads the result.",
+      "status": "live",
+      "status_detail": "Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. There is no download yet — running it means cloning the public repo and running Python locally.",
+      "what_it_does": "Python (standard library, plus openpyxl for .xlsx sources) harvests real guild quest trackers into one JSON catalog per guild. render_quest_picker.py folds a catalog into a single self-contained file:// HTML page with no server and no network calls. A player opens that page, checks the quests they want, and saves a personal quest-view.json that the game mod reads at runtime.",
+      "who_its_for": "Guild stewards and GMs who already keep a quest tracker and want it to reach players in-game instead of dying in a spreadsheet tab.",
+      "time_to_first_result": "about 10 minutes",
+      "requires": [
+        "Python 3",
+        "openpyxl (only for .xlsx sources)",
+        "A browser — the picker is a local file:// page, not a service"
+      ],
+      "access": {
+        "kind": "not-published",
+        "href": null,
+        "sha256": null,
+        "size_bytes": null,
+        "published_at": null
+      },
+      "source": {
+        "kind": "public-repo",
+        "href": "https://github.com/djcdevelopment/comfy/tree/main/recipes/quest-catalogs",
+        "note": "The same code lives in this repo at recipes/quest-catalogs/ and is byte-identical to the public copy."
+      },
+      "docs": [
+        {
+          "label": "Catalog schema (schema.md)",
+          "href": "https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/schema.md"
+        },
+        {
+          "label": "Personal quest-view schema (quest-view-schema.md)",
+          "href": "https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/quest-view-schema.md"
+        },
+        {
+          "label": "Source config seam (sources.json)",
+          "href": "https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/sources.json"
+        }
+      ],
+      "discussion": {
+        "label": "Quest Picker thread",
+        "href": null
+      },
+      "first_tasks": [
+        {
+          "id": "QP-1",
+          "title": "Write gm-template-example.json",
+          "size": "small",
+          "done_when": "validate.py accepts the file and a GM can author a quest through the gm-template seam without editing harvest.py. sources.json already points at this path (entry rangers-example, currently disabled) but the file has never been written."
+        },
+        {
+          "id": "QP-2",
+          "title": "Run the harvest against your own guild's tracker export",
+          "size": "medium",
+          "done_when": "A new catalog JSON renders in the picker and every anomaly the harvest reported has an explanation — zero left unexplained."
+        }
+      ],
+      "ownership": {
+        "state": "unclaimed",
+        "claimed_by": null,
+        "claimed_at": null,
+        "record": null
+      },
+      "recovery": null,
+      "roadmap_milestones": ["A5", "A7"],
+      "privacy_note": "Harvested catalogs from a live guild tracker contain member names. The published sample uses synthetic data only — do not commit a real harvested catalog.",
+      "license": "BUSL-1.1 in this repo (community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md). The byte-identical copies in the public comfy archive carry that repo's MIT license."
+    },
+    {
+      "id": "steward-view",
+      "name": "ComfyStewardView",
+      "one_liner": "Reads a Valheim world file and answers the questions that stop being walkable once a server gets big: where is everyone building, and who owns this.",
+      "status": "live",
+      "status_detail": "The public repo builds a fat JAR that parses a real world .db, serves a localhost API, and draws a browser heatmap. It has been used to steward high-player worlds. What is missing is a quickstart for the roughly twenty GM probe utilities — they work, but today you have to read the source to know what each one does.",
+      "what_it_does": "A Java fat-JAR extracts and parses a Valheim world file (.db), exposes a REST API on localhost:7080 (/api/v1/heatmap, /api/v1/points), and serves a browser heatmap viewer. Around twenty GM probe utilities sit alongside it for build-density clustering and ownership investigation.",
+      "who_its_for": "Server stewards and GMs on worlds big enough that walking around stopped being a way to find out what is happening.",
+      "time_to_first_result": "about 15 minutes",
+      "requires": [
+        "Java",
+        "A copy of a Valheim world .db — a copy, never the live save",
+        "A browser"
+      ],
+      "access": {
+        "kind": "public-repo",
+        "href": "https://github.com/djcdevelopment/ComfyStewardView",
+        "sha256": null,
+        "size_bytes": null,
+        "published_at": null
+      },
+      "source": {
+        "kind": "public-repo",
+        "href": "https://github.com/djcdevelopment/ComfyStewardView",
+        "note": "A standalone public repository, separate from baseline. Clone it and build; nothing here is gated."
+      },
+      "docs": [
+        {
+          "label": "ComfyStewardView repository and README",
+          "href": "https://github.com/djcdevelopment/ComfyStewardView"
+        }
+      ],
+      "discussion": {
+        "label": "ComfyStewardView thread",
+        "href": null
+      },
+      "first_tasks": [
+        {
+          "id": "SV-1",
+          "title": "Run it against a copy of any world .db and post one heatmap screenshot",
+          "size": "small",
+          "done_when": "A heatmap image from your own world is in the thread, with the build command you actually used and anything that tripped you up."
+        },
+        {
+          "id": "SV-2",
+          "title": "Write the missing quickstart for the probe utilities",
+          "size": "medium",
+          "done_when": "Each GM probe utility has one line saying what it answers and one copy-pasteable invocation, and a steward who has never opened the source can pick the right probe from that page alone."
+        }
+      ],
+      "ownership": {
+        "state": "unclaimed",
+        "claimed_by": null,
+        "claimed_at": null,
+        "record": null
+      },
+      "recovery": null,
+      "roadmap_milestones": ["A3", "A7"],
+      "privacy_note": "Run it on world copies, not the live save. Output can contain player names — share aggregates and screenshots, not raw dumps.",
+      "license": "Proprietary — all rights reserved per the repo's own LICENSE.md, which requires written permission and a paid license for reuse. Catalogued here for running it and giving feedback; the license posture is under review, and until it changes, contributions mean docs and feedback, not code redistribution."
+    },
+    {
+      "id": "community-telemetry",
+      "name": "Live Community Telemetry",
+      "one_liner": "An aggregates-only telemetry API with privacy tests that fail if a player ID, name, or position ever shows up — plus the whole stack, runnable on your machine.",
+      "status": "local-only",
+      "status_detail": "The aggregates API is live on P7 and the public /community page reads it. What is local-only is everything you would need to run or change it yourself: the docker stack that reproduces the whole thing and the loopback operator dashboard both run on your machine, and neither is published as a download.",
+      "what_it_does": "An aggregates-only v0 telemetry API (GET /api/v0/telemetry/server, /tick, /sessions, /delivery, /regions, /events, /valheim, /cutover) whose test suite asserts that no player ID, name, or position ever appears in a response. A self-contained /community page polls it. A local dev stack brings up the real thing end to end (docker compose: postgres 5435, gateway 4000, eventlog 4002, progression 4003, operatorapi 4004), and a loopback-only operator viewer renders it for a single operator.",
+      "who_its_for": "Anyone who wants to run the telemetry surface themselves — and anyone who would rather check the privacy claim than take it on faith.",
+      "time_to_first_result": "about 5 minutes against the live API; about 30 for the local stack once claimed",
+      "requires": [
+        "A browser (or Python 3) for the live aggregates API — that is all CT-1 needs",
+        "Docker and docker compose, for the local stack (source access opens at ladder stage 3)",
+        "The .NET 9 SDK, only if you want to rebuild the gateway rather than run the composed image"
+      ],
+      "access": {
+        "kind": "not-published",
+        "href": null,
+        "sha256": null,
+        "size_bytes": null,
+        "published_at": null
+      },
+      "source": {
+        "kind": "private-until-claimed",
+        "href": null,
+        "note": "The code is in this repo — Lumberjacks/infra/docker/docker-compose.yml for the stack, Lumberjacks/tools/omen-dashboard/ for the operator viewer. Access opens at ladder stage 3."
+      },
+      "docs": [
+        {
+          "label": "The live community view",
+          "href": "/community"
+        },
+        {
+          "label": "Telemetry v0 API reference — Lumberjacks/docs/api/telemetry-v0.md",
+          "href": null
+        },
+        {
+          "label": "Viewing the surfaces — Lumberjacks/docs/dashboard/viewing-the-surfaces.md",
+          "href": null
+        }
+      ],
+      "discussion": {
+        "label": "Community telemetry thread",
+        "href": null
+      },
+      "first_tasks": [
+        {
+          "id": "CT-1",
+          "title": "Build one chart, tile, or widget from the public v0 API and post it",
+          "size": "small",
+          "done_when": "Any stack you like — a static page, a spreadsheet, a terminal script — renders live data from a v0 endpoint, and the thread has a screenshot plus how you made it. Needs no repo access; the starter kit includes a Python poller."
+        },
+        {
+          "id": "CT-2",
+          "title": "Bring the local stack up, then add one new aggregate tile the privacy tests still pass on",
+          "size": "medium",
+          "done_when": "The compose stack runs on your machine and a new aggregate is exposed by the v0 API and rendered, with the existing privacy tests passing unmodified. This is the claim path — source access opens at ladder stage 3."
+        }
+      ],
+      "ownership": {
+        "state": "unclaimed",
+        "claimed_by": null,
+        "claimed_at": null,
+        "record": null
+      },
+      "recovery": null,
+      "roadmap_milestones": ["A4", "A7"],
+      "privacy_note": "The v0 API is aggregates-only by tested design — no player ID, no name, no position, ever. Keep that bar: a change that makes the privacy tests fail is a change that does not land.",
+      "license": "BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md."
+    },
+    {
+      "id": "steam-join",
+      "name": "Steam Self-Service Join",
+      "one_liner": "An invite link, a Steam sign-in, and a mod-pack zip with your credentials already in it — no config file to hand-edit.",
+      "status": "live",
+      "status_detail": "The join flow works end to end on comfy-p7.duckdns.org today: invite, Steam sign-in, personalized zip, self-service update and reissue. The operator runbook's own caveats stand and are not softened here — the endpoint is currently plain HTTP on a non-default, world-open port with TLS built and staged but not switched on, rate limiting is not in place yet (the runbook lists it as pre-widening work), it is open to the alpha cohort only, and volunteer platform readiness is recorded as NOT READY. Until TLS is armed, the enrollment credential crosses a plaintext public link.",
+      "what_it_does": "An invite link opens a page that hands off to Steam OpenID sign-in. A one-use bootstrap token is exchanged for a personalized mod-pack zip with the player's credentials already baked in. Self-service update and reissue run through the same path. The per-player token is stored only as a hash.",
+      "who_its_for": "The next wave of playtesters — people who want to join and play without being told to edit a config file first.",
+      "time_to_first_result": "about 5 minutes",
+      "requires": [
+        "A Steam account",
+        "Valheim",
+        "An invite link from the operator — the endpoint is alpha-cohort only"
+      ],
+      "access": {
+        "kind": "live-service",
+        "href": "https://comfy-p7.duckdns.org/join",
+        "sha256": null,
+        "size_bytes": null,
+        "published_at": null
+      },
+      "source": {
+        "kind": "private-until-claimed",
+        "href": null,
+        "note": "Lumberjacks/src/Game.Gateway/Valheim/ in this repo — SteamEnrollmentEndpoints, SteamEnrollmentService, EnrollmentPages, ModpackReleaseCatalog — with real test suites, plus the operator runbook at infra/gcp/p7/VOLUNTEER-ENDPOINT.md. Access opens at ladder stage 3."
+      },
+      "docs": [
+        {
+          "label": "Join the alpha (the live flow)",
+          "href": "https://comfy-p7.duckdns.org/join"
+        },
+        {
+          "label": "Volunteer roadmap — the M2 and M5 gates this sits behind",
+          "href": "/roadmap"
+        },
+        {
+          "label": "Operator runbook — infra/gcp/p7/VOLUNTEER-ENDPOINT.md",
+          "href": null
+        }
+      ],
+      "discussion": {
+        "label": "Self-service join thread",
+        "href": null
+      },
+      "first_tasks": [
+        {
+          "id": "SJ-1",
+          "title": "Walk the join flow end-to-end as a tester and file friction notes",
+          "size": "small",
+          "done_when": "You went from invite link to a running modded client, and every point where you hesitated, guessed, or had to ask is written down in the thread — including the ones that turned out to be your fault."
+        },
+        {
+          "id": "SJ-2",
+          "title": "Write the tester-facing FAQ from the friction notes",
+          "size": "medium",
+          "done_when": "A page answers the questions SJ-1 actually produced, in a tester's words rather than the operator's, and the next tester gets through without asking any of them."
+        }
+      ],
+      "ownership": {
+        "state": "unclaimed",
+        "claimed_by": null,
+        "claimed_at": null,
+        "record": null
+      },
+      "recovery": null,
+      "roadmap_milestones": ["M2", "M5", "A7"],
+      "privacy_note": "The per-player token is stored only as a hash. The zip you receive carries your own credential — do not re-share it; ask for a reissue instead.",
+      "license": "BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md."
+    },
+    {
+      "id": "mcp-mod-channel",
+      "name": "MCP Mod Channel",
+      "one_liner": "A localhost MCP server that talks to the running game mod: apply a config profile, run a bounded lab test, read back what happened.",
+      "status": "dev-only",
+      "status_detail": "It runs, and it really does drive the live mod. It is reachable only from 127.0.0.1 with a dev key, and that is deliberate rather than unfinished: it is a development channel, never a console or shell bridge, and every mutation it can perform is whitelisted and bounded. There is no download and no remote mode.",
+      "what_it_does": "A local Python MCP server on 127.0.0.1:8720 (header X-Comfy-Key, dev value comfy-dev-local) speaks bidirectionally with the running mod: apply config profiles, run bounded lab motion tests through an atomic mailbox, tail mod telemetry and logs, assemble session bundles, and get local-Ollama explanations of what it just saw.",
+      "who_its_for": "Mod developers, and anyone curious about wiring an AI tool to a live game process without handing it a shell.",
+      "time_to_first_result": "about 20 minutes",
+      "requires": [
+        "Python 3",
+        "The mod running locally",
+        "An MCP client",
+        "Optional: a local Ollama, only for the explanation tools"
+      ],
+      "access": {
+        "kind": "not-published",
+        "href": null,
+        "sha256": null,
+        "size_bytes": null,
+        "published_at": null
+      },
+      "source": {
+        "kind": "private-until-claimed",
+        "href": null,
+        "note": "network/mcp/ in this repo — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot exists in the public comfy repo. Access opens at ladder stage 3."
+      },
+      "docs": [
+        {
+          "label": "Command contract — network/mcp/contracts/commands.json",
+          "href": null
+        }
+      ],
+      "discussion": {
+        "label": "MCP mod channel thread",
+        "href": null
+      },
+      "first_tasks": [
+        {
+          "id": "MC-1",
+          "title": "Run the gateway and list its tools from any MCP client, then post the tool list",
+          "size": "small",
+          "done_when": "The tool list from your own client is in the thread, along with which client you used and anything in the setup that was not obvious."
+        }
+      ],
+      "ownership": {
+        "state": "unclaimed",
+        "claimed_by": null,
+        "claimed_at": null,
+        "record": null
+      },
+      "recovery": null,
+      "roadmap_milestones": ["A7"],
+      "privacy_note": "Bound to 127.0.0.1 on purpose. Do not expose it — it drives a live game process, and its whole safety story is that only you can reach it.",
+      "license": "BUSL-1.1 with the community-steward safe harbor, converting to AGPL-3.0-only; see LICENSING.md."
+    },
+    {
+      "id": "camera-gallery",
+      "name": "Camera Flythrough → Gallery Pipeline",
+      "one_liner": "Fly a camera along waypoints derived from a world save, then cut the capture into a gallery of what people actually built.",
+      "status": "recoverable-not-running",
+      "status_detail": "Not running. It was pruned from baseline on 2026-07-21 and nothing here executes today. Two of the four segments are real: segment 1 was built and produced real output, and segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. Every piece is still in the public comfy repo, so this is a revival rather than a rewrite.",
+      "what_it_does": "A four-segment pipeline: read a world save, emit camera waypoints via ComfyStewardView, fly those waypoints in-game with a BepInEx camera plugin, then cut the capture into a gallery with ffmpeg.",
+      "who_its_for": "Anyone who wants to show a server's builds to people who will never log into it.",
+      "time_to_first_result": "Unknown — nothing runs yet. CG-1 produces the first honest estimate.",
+      "requires": [
+        "Python 3",
+        "Java, for the ComfyStewardView side of segment 1",
+        "A BepInEx Valheim install, for segment 3",
+        "ffmpeg, for segment 4"
+      ],
+      "access": {
+        "kind": "not-published",
+        "href": null,
+        "sha256": null,
+        "size_bytes": null,
+        "published_at": null
+      },
+      "source": {
+        "kind": "public-repo",
+        "href": "https://github.com/djcdevelopment/comfy/tree/main/handoffs",
+        "note": "Pruned from baseline, but fully preserved in the public comfy repo — nothing was lost."
+      },
+      "docs": [
+        {
+          "label": "Handoff overview (handoffs/README.md)",
+          "href": "https://github.com/djcdevelopment/comfy/blob/main/handoffs/README.md"
+        },
+        {
+          "label": "Segment 3 brief — the flight-path mod",
+          "href": "https://github.com/djcdevelopment/comfy/blob/main/handoffs/segment-3-flight-path-mod.md"
+        }
+      ],
+      "discussion": {
+        "label": "Camera flythrough thread",
+        "href": null
+      },
+      "first_tasks": [
+        {
+          "id": "CG-1",
+          "title": "Revive segment 1 against ComfyStewardView and produce a waypoints.sample.json",
+          "size": "medium",
+          "done_when": "segment-1-emit-waypoints.py runs against a current ComfyStewardView build and writes a committed waypoints.sample.json that segment 3 can consume. This is the claiming task for this tool."
+        }
+      ],
+      "ownership": {
+        "state": "unclaimed",
+        "claimed_by": null,
+        "claimed_at": null,
+        "record": null
+      },
+      "recovery": {
+        "origin_href": "https://github.com/djcdevelopment/comfy/tree/main/handoffs",
+        "paths": [
+          "handoffs/README.md",
+          "handoffs/segment-1-emit-waypoints.py",
+          "handoffs/segment-2-get-into-the-world.md",
+          "handoffs/segment-3-flight-path-mod.md",
+          "handoffs/segment-4-video-to-gallery.md",
+          "handoffs/video_to_gallery.py",
+          "handoffs/valheim-camera-proof/"
+        ],
+        "notes": "Segment 1 was built and produced real output. Segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. The baseline pre-prune ref is cc322ee."
+      },
+      "roadmap_milestones": ["A3", "A7"],
+      "privacy_note": "A flythrough shows other people's builds. Ask before publishing a gallery of a world you do not own.",
+      "license": "MIT — everything recoverable here lives in the public comfy archive, which is MIT-licensed. A revival landing in this repo would land under BUSL-1.1; see LICENSING.md."
+    },
+    {
+      "id": "quest-submission-bridge",
+      "name": "Quest Submission → Review Bridge",
+      "one_liner": "The back half of quest capture: package what a player did in-game, land it in a review inbox, and turn it into a record a GM can read.",
+      "status": "recoverable-not-running",
+      "status_detail": "Not running. The front half is alive in the mod today with tests — QuestViewLoader.cs reads a player's quest-view and QuestTriggerEvaluator.cs evaluates triggers in-game. The back half, which packages a submission and turns it into a reviewable record, is not wired to anything; its code sits in the public comfy repo waiting to be pointed at the live mod's telemetry.",
+      "what_it_does": "Packages an in-game quest submission, lands it in a review inbox, and renders human-readable quest records a GM can act on without chasing screenshots.",
+      "who_its_for": "GMs who want players to submit completions without a screenshot and a Discord message.",
+      "time_to_first_result": "Unknown until QB-1 lands. The front half already runs, so the first honest measurement comes from the port.",
+      "requires": [
+        "Python 3, for the bridge consumer",
+        "The mod running locally with quest telemetry enabled",
+        ".NET (net48), only if you take the C# submission service rather than the Python consumer"
+      ],
+      "access": {
+        "kind": "not-published",
+        "href": null,
+        "sha256": null,
+        "size_bytes": null,
+        "published_at": null
+      },
+      "source": {
+        "kind": "public-repo",
+        "href": "https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface",
+        "note": "The back half is preserved in the public comfy repo. The front half is live in this repo's mod at network/mod/ComfyNetworkSense/Core/Services/."
+      },
+      "docs": [
+        {
+          "label": "Quest handoff brief (QUEST.md)",
+          "href": "https://github.com/djcdevelopment/comfy/blob/main/handoffs/comfy-control-surface/QUEST.md"
+        },
+        {
+          "label": "What was proved (PROOF.md)",
+          "href": "https://github.com/djcdevelopment/comfy/blob/main/handoffs/comfy-control-surface/PROOF.md"
+        }
+      ],
+      "discussion": {
+        "label": "Quest submission bridge thread",
+        "href": null
+      },
+      "first_tasks": [
+        {
+          "id": "QB-1",
+          "title": "Port bridge_consumer.py to read the live mod's quest telemetry and emit one review record",
+          "size": "medium",
+          "done_when": "A real in-game quest completion travels from the running mod through the consumer and comes out as one human-readable review record. This is the claiming task for this tool."
+        }
+      ],
+      "ownership": {
+        "state": "unclaimed",
+        "claimed_by": null,
+        "claimed_at": null,
+        "record": null
+      },
+      "recovery": {
+        "origin_href": "https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface",
+        "paths": [
+          "Core/SubmissionService.cs",
+          "bridge-consumer/bridge_consumer.py",
+          "bridge-consumer/fixtures/",
+          "QUEST.md",
+          "PROOF.md"
+        ],
+        "notes": "Front half is alive and tested in the live mod — network/mod/ComfyNetworkSense/Core/Services/QuestViewLoader.cs and QuestTriggerEvaluator.cs. Only the back half needs reviving, and it has fixtures to test against."
+      },
+      "roadmap_milestones": ["A5", "A7"],
+      "privacy_note": "A submission record carries a player's name and what they did. Keep the review inbox off any public surface.",
+      "license": "Split: the live front half (in this repo's mod) is BUSL-1.1 per LICENSING.md; the recoverable back half lives in the public comfy archive under MIT."
+    }
+  ]
+}

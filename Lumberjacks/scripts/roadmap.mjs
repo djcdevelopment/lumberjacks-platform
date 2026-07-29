@@ -872,6 +872,7 @@ function render(roadmap, notes) {
       <nav aria-label="Gateway surfaces">
         <a href="/roadmap" aria-current="page">Roadmap</a>
         <a href="/community">Community</a>
+        <a href="/workbench">Workbench</a>
         <a href="/networksense">NetworkSense</a>
         <a href="/events">Events</a>
         <a href="/testing">Testing</a>

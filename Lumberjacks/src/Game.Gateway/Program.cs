@@ -189,6 +189,11 @@ Game.Gateway.Endpoints.DeploymentTelemetryEndpoints.Map(app);
 Game.Gateway.Endpoints.CommunityViewEndpoints.Map(app);
 Game.Gateway.Endpoints.DataTrustEndpoints.Map(app);
 Game.Gateway.Endpoints.RoadmapViewEndpoints.Map(app);
+// Community Workbench (GET /workbench): the generated catalog of community-runnable tools, plus
+// its download lane. The lane fails closed — an instance with no mounted downloads directory
+// answers 404 rather than serving anything out of the image.
+Game.Gateway.Endpoints.WorkbenchViewEndpoints.Map(app);
+Game.Gateway.Endpoints.WorkbenchDownloadEndpoints.Map(app);
 // G3/G4/G5 UI first pass (community-telemetry-strategy.md, docs/ui/g3-g4-g5-first-pass.md):
 // siblings of /community. G3 is live v0 data; G4/G5 are first-pass mockups with sample data /
 // simulated actions behind visible banners — see each endpoint's doc comment.

@@ -28,14 +28,16 @@
     </PackageReference>
   </ItemGroup>
 
-  <!-- Community view (GET /community), living roadmap (GET /roadmap), and G3/G4/G5 siblings
-       (GET /networksense, /events, /testing): self-contained HTML files, served verbatim from
-       disk at startup — not under wwwroot (no static-file middleware needed for a handful of
-       files) so each needs an explicit Content item to travel through `dotnet publish`. -->
+  <!-- Community view (GET /community), living roadmap (GET /roadmap), Community Workbench
+       (GET /workbench), and G3/G4/G5 siblings (GET /networksense, /events, /testing):
+       self-contained HTML files, served verbatim from disk at startup — not under wwwroot (no
+       static-file middleware needed for a handful of files) so each needs an explicit Content
+       item to travel through `dotnet publish`. -->
   <ItemGroup>
     <Content Include="Community/community.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Community/data-and-trust.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Community/roadmap.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Community/workbench.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Community/networksense.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Community/events.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Community/testing.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
