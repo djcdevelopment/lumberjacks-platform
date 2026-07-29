@@ -20,5 +20,13 @@ Format follows the standard Status / Context / Decision / Consequences shape.
 | [0012](0012-gameplay-telemetry-is-client-side.md) | Gameplay telemetry is captured client-side and relayed to the server by routed RPC | Accepted | Community telemetry / G4 |
 | [0013](0013-ownership-visibility-split.md) | Ownership, visibility, delivery, and ack are four things — split them for area co-presence | Proposed | Valheim netcode / multi-player density |
 
-Canon: `../../GROUND-TRUTH.md` (state) · `../../TEST-PROGRAM.md` (plan) ·
-`../../VALHEIM-NETCODE-REPLACEMENT-WORKLOG.md` (I-ladder). Retros: `../../retro/`.
+Canon: [`Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json`](../../../Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json)
+(state — milestones, gate/proof state) ·
+[`plans/full-roadmap-working-strategy.md`](../../../plans/full-roadmap-working-strategy.md) (plan —
+active strategy, controls execution order) · `../../VALHEIM-NETCODE-REPLACEMENT-WORKLOG.md` (I-ladder).
+Retros: `../../retro/`. Networking-lane current status (hard hold since 2026-07-28):
+[`PINNED-networking-lane-2026-07.md`](../../PINNED-networking-lane-2026-07.md).
+
+*(This line pointed at `GROUND-TRUTH.md` and `TEST-PROGRAM.md` — both pruned 2026-07, fieldlab-native
+docs never part of the external comfy archive, recoverable at baseline pre-prune ref `57654fd`;
+explicitly retired in favor of the living roadmap, see `fieldlab/status/README.md`.)*

@@ -859,9 +859,11 @@ automatically capture:
 - volunteer survey; and
 - validator results and integrity hashes.
 
-Update `GROUND-TRUTH.md`, `TEST-PROGRAM.md`, and the status surface from the generated
-catalog so they cannot disagree. The plan in this document is the canonical next-stage
-roadmap; FieldLab is the evidence and execution workspace.
+Update the living roadmap (`Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json`) from the
+generated catalog so it cannot disagree. *(This line originally also named `GROUND-TRUTH.md` and
+`TEST-PROGRAM.md`; both were pruned 2026-07 and folded into that one status surface — see
+`fieldlab/status/README.md`.)* The plan in this document is the canonical next-stage roadmap;
+FieldLab is the evidence and execution workspace.
 
 ## Operator efficiency and GCP safeguards
 

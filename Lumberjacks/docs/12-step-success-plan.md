@@ -1,5 +1,10 @@
 # 12-Step Plan For Success
 
+> **Archive notice (added 2026-07-29):** written in the pre-Valheim greenfield era
+> (early 2026) for a team that never formed; retained as historical context only.
+> It does not describe the current project -- for current truth see `README.md`,
+> `HANDOFF-2026-07-29.md`, and the live roadmap under `Lumberjacks/docs/roadmap/`.
+
 ## 1. Define the product boundary
 
 Goal:

@@ -1,5 +1,9 @@
 ﻿# Handoff
 
+> **Stale handoff (redirect added 2026-07-29):** superseded by `HANDOFF-2026-07-29.md`
+> at the repo root, the current canonical handoff. This file is retained as a
+> historical record of the 2026-07-20 session and must not be used for cold pickup.
+
 ## New Project Root
 
 Use `D:\work\game` as the working directory for the next session.
