@@ -63,7 +63,10 @@ mv -f "$root/current.json.tmp" "$root/current.json"
 rm -f "$package_tmp" "$manifest_tmp"
 printf 'published companion bootstrap %s %s\n' "$release" "$actual_hash"
 '@
-    $encodedRemoteScript = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($remoteScript))
+    # CRLF must not reach the remote shell: a here-string carries the .ps1's own line endings, and a
+    # Windows checkout makes those CRLF, which turns `set -euo pipefail` into an invalid option name.
+    # Same normalisation as Promote-GatewayImage.ps1; a no-op when the file is already LF.
+    $encodedRemoteScript = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(($remoteScript -replace "`r`n", "`n")))
     & ssh $SshTarget "echo $encodedRemoteScript | base64 -d | sudo bash -s -- '$RemoteRoot' '$ReleaseId' '$temporaryPackage' '$temporaryRemoteManifest' '$($package.Name)' '$hash'"
     if ($LASTEXITCODE -ne 0) { throw 'remote publish failed' }
 

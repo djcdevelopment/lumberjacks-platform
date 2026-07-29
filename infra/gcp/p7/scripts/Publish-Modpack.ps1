@@ -63,7 +63,10 @@ printf 'published %s %s\n' "$release" "$actual_hash"
     # UTF-8 BOM, turning `set -euo pipefail` into an unknown command on bash. Base64 is ASCII-only
     # end-to-end, and sudo owns the root-managed P7 modpack mount. A failed remote publish now
     # reliably returns non-zero instead of printing errors and falling through to a success line.
-    $encodedRemoteScript = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($remoteScript))
+    # CRLF must not reach the remote shell: a here-string carries the .ps1's own line endings, and a
+    # Windows checkout makes those CRLF, which turns `set -euo pipefail` into an invalid option name.
+    # Same normalisation as Promote-GatewayImage.ps1; a no-op when the file is already LF.
+    $encodedRemoteScript = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(($remoteScript -replace "`r`n", "`n")))
     & ssh $SshTarget "echo $encodedRemoteScript | base64 -d | sudo bash -s -- '$RemoteRoot' '$ReleaseId' '$temporaryPackage' '$temporaryRemoteManifest' '$packageName' '$hash'"
     if ($LASTEXITCODE -ne 0) { throw 'remote publish failed' }
 

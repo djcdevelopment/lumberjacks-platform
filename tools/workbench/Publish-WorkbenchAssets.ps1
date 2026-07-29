@@ -150,7 +150,11 @@ mv -f "$root/tools.json.tmp" "$root/tools.json"
 rm -f "/tmp/workbench-$stamp.html" "/tmp/workbench-tools-$stamp.json"
 printf 'published workbench %s\n' "$html_hash"
 '@
-$encoded = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($remoteScript))
+# Normalise CRLF before encoding, exactly as Promote-GatewayImage.ps1 does. A here-string picks up
+# whatever line endings the .ps1 was checked out with, and git hands Windows clones CRLF — so the
+# remote bash reads `set -euo pipefail\r`, reports "pipefail: invalid option name", and the publish
+# dies after the uploads. Whether this script worked depended on the checkout, not on the code.
+$encoded = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(($remoteScript -replace "`r`n", "`n")))
 $argLine = ($zipArgs | ForEach-Object { "'$_'" }) -join ' '
 & ssh $SshTarget "echo $encoded | base64 -d | sudo bash -s -- '$RemoteRoot' '$stamp' '$htmlHash' $argLine"
 if ($LASTEXITCODE -ne 0) { throw 'remote publish failed' }
