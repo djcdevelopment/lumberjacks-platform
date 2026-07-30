@@ -91,12 +91,33 @@ Get the backend stack reachable from the public internet so real players (friend
 The Postgres tables must exist before .NET services start. For a fresh Azure Postgres, run the init script:
 
 ```
-infra/docker/init.sql   ← Full schema including regions table. Ready for fresh deployments.
+Lumberjacks/infra/docker/init.sql   ← Full schema, all 13 GameDbContext tables. Idempotent.
 ```
 
-Regenerate if schema changes: `docker exec game-postgres pg_dump -U game -d game --schema-only > infra/docker/init.sql`
+**Hand-edit it; never regenerate it with `pg_dump`.** The file used to be a raw
+`pg_dump --schema-only` snapshot, and a dump is not re-runnable. It is now written with
+`CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` and `pg_constraint`-guarded `DO`
+blocks precisely so it can be applied on every stack start. Keep it in step with
+[`GameDbContext.cs`](../src/Game.Persistence/GameDbContext.cs) by hand: the EF model is the
+design authority, this file is what actually reaches a database.
 
-The local Docker compose auto-mounts `init.sql` via `/docker-entrypoint-initdb.d/` so fresh volumes get the schema automatically.
+Nothing in the repo calls `Database.Migrate()`, so the EF migrations under
+`Game.Persistence/Migrations/` have **never been applied to any environment** — they are a
+design record, not a deployment mechanism. That is how `natural_resources` and
+`region_profiles` came to exist only in migration `20260328154322_NatureTwoPointZero` and in
+no live database; they are now in `init.sql` too.
+
+Two ways the schema reaches a database, and only the second is dependable:
+
+- `/docker-entrypoint-initdb.d/` (both the local and P7 compose files mount `init.sql` there).
+  This runs **once**, on an empty `PGDATA`, and is skipped silently forever after. Fine for a
+  throwaway named volume; **not** a schema strategy for a persistent data directory.
+- An explicit apply step. The P7 stack has a one-shot `dbschema` service that runs
+  `psql -f init.sql` on every `compose up` and gates every .NET service behind
+  `service_completed_successfully`. Anything with a data directory that outlives the
+  containers needs this shape. See
+  [`infra/gcp/p7/RUNBOOK-schema-repair.md`](../../infra/gcp/p7/RUNBOOK-schema-repair.md) for
+  what the first-init-only assumption cost on P7.
 
 ## CORS Configuration
 
