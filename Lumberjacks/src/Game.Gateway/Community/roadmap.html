@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-30T07:58:12.521Z</span>
+        <span>Updated 2026-07-30T08:56:34.807Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260730075812-keep-the-schema-gate-from-boot-looping-the-stack">
+        <div class="journal"><article class="journal-entry" id="note-20260730085634-wire-the-mcp-mod-channel-card-to-its-real-thread">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-30T08:56:34.807Z">2026-07-30T08:56:34.807Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Wire the MCP Mod Channel card to its real thread</h3>
+      <p><strong>Impact:</strong> The operator&#39;s provisioning run created the MCP mod channel thread from seed 10 (plan 23bc2b88476e, exactly one create). MC-1 completes in the tool&#39;s own thread again: the forum-interim completion override is deleted, done_when says in-the-thread, and the Discuss row links the thread - the derived tool-thread default now carries it. The one-pager matches.</p>
+      <details><summary>Verification (1)</summary><ul><li>Bot apply receipt + provision-state entry; workbench render/check green; verify-live confirms the new thread lives in the expected guild under the forum.</li></ul></details>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260730075812-keep-the-schema-gate-from-boot-looping-the-stack">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

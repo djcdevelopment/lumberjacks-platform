@@ -91,6 +91,21 @@
         "steam-join"
       ],
       "url": "https://discord.com/channels/1531911987074957442/1531977732769058898"
+    },
+    "mcp-mod-channel": {
+      "key": "mcp-mod-channel",
+      "seed": "10-thread-seed-mcp-mod-channel.md",
+      "title": "MCP mod channel",
+      "thread_id": "1532310779402129438",
+      "message_ids": [
+        "1532310779402129438"
+      ],
+      "content_sha256": "77a0288835f4c28de13583fa3e6d0ed558e22e3120ada7e5cbfeb2e187ef356d",
+      "pinned": false,
+      "workbench_tools": [
+        "mcp-mod-channel"
+      ],
+      "url": "https://discord.com/channels/1531911987074957442/1532310779402129438"
     }
   },
   "invite_href": "https://discord.gg/TSHTD38yV",
@@ -98,5 +113,5 @@
   "channel_id": "1531926985314668635",
   "channel_name": "workbench",
   "guild_id": "1531911987074957442",
-  "last_apply_utc": "2026-07-29T11:59:39Z"
+  "last_apply_utc": "2026-07-30T08:55:58Z"
 }

@@ -84,14 +84,13 @@ nothing to report until it is.
 ## First tasks
 
 - **MC-1 — Run the gateway, list its tools from any MCP client, and post
-  the list.** Done when: the tool list from your own client is posted in
-  the #workbench forum — this tool's own thread has not opened yet — along
-  with which client you used and anything in the setup that wasn't obvious.
+  the list.** Done when: the tool list from your own client is in the
+  thread, along with which client you used and anything in the setup that
+  wasn't obvious.
 
 ## Where to talk about it
 
-The #workbench forum, for now. This tool's own thread has not opened yet;
-when it does, the workbench card's Discuss link will point at it.
+Its Discord thread — the workbench card's Discuss link points at it.
 
 ## License & privacy
 
