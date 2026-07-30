@@ -161,7 +161,6 @@ Secrets belong only in `/etc/comfy-p7/environment` with mode `0600`, never Terra
 state. Required non-secret runtime declarations include:
 
 ```text
-LUMBERJACKS_ROOT=/opt/lumberjacks-ed83bd8
 COMFY_NETWORKSENSE_VERSION=0.5.31
 COMFY_LUMBERJACKS_CUTOVER_MODE=lumberjacks-primary
 COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID=p7-primary-v1
@@ -169,6 +168,12 @@ LUMBERJACKS_PLAYER_PORT=42317
 LUMBERJACKS_PLAYER_GATEWAY_URL=http://8.231.129.249:42317
 LUMBERJACKS_ENROLLMENT_PUBLIC_URL=http://8.231.129.249:42317
 ```
+
+`LUMBERJACKS_ROOT` used to head that list and is now retired — nothing consumes it. It is
+called out here because it was listed as *required* long after it stopped resolving to a real
+path, which is how a schema-less database survived undetected; see
+[`RUNBOOK-schema-repair.md`](RUNBOOK-schema-repair.md). Remove it from any existing
+`/etc/comfy-p7/environment` rather than leaving a stale value on the box.
 
 The file also contains database, telemetry, shared fallback, and admin secrets. Do not
 print it wholesale.

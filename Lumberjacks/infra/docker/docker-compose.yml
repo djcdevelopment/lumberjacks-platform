@@ -22,8 +22,15 @@ services:
 
   # Applies the idempotent schema on every `up` and gates the .NET services behind it, so a
   # stale `pgdata` volume surfaces as a failed start rather than as `relation ... does not
-  # exist` at runtime. Mirrors the P7 stack; see infra/gcp/p7/RUNBOOK-schema-repair.md for the
-  # incident that made this necessary. No `restart:` policy - a one-shot must be allowed to exit.
+  # exist` at runtime. See infra/gcp/p7/RUNBOOK-schema-repair.md for the incident that made this
+  # necessary. No `restart:` policy - a one-shot must be allowed to exit.
+  #
+  # Intentionally shaped differently from P7, which profiles this service out of the default set
+  # and runs it from an ExecStartPre. That is not a nicety there: P7 starts with
+  # `docker compose up --wait`, and --wait counts a successfully exited container as a failure.
+  # Nothing here uses --wait, so a plain `docker compose up` can carry the gate directly - which
+  # is the stronger guarantee, and the one a developer actually wants. Do NOT add --wait to a
+  # local `up` without also profiling this service out.
   dbschema:
     image: postgres:16-alpine
     environment:

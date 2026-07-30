@@ -21,14 +21,22 @@ LUMBERJACKS_EVENTLOG_IMAGE=CHANGE_ME_promoted_eventlog_image_ref
 LUMBERJACKS_PROGRESSION_IMAGE=CHANGE_ME_promoted_progression_image_ref
 LUMBERJACKS_OPERATORAPI_IMAGE=CHANGE_ME_promoted_operatorapi_image_ref
 
-# --- Runtime identity / build root ---
-# Boot-critical, and not obviously so: postgres bind-mounts
-# ${LUMBERJACKS_ROOT}/infra/docker/init.sql. This path is sha-suffixed, so it is
-# exactly the kind of directory a disk-pressure cleanup deletes as "an old build
-# root" — and postgres is the service every other service hard-depends on
-# (`condition: service_healthy`). Losing it takes the whole stack down, not just
-# the database. Verify the path exists before reclaiming space under /opt.
-LUMBERJACKS_ROOT=/opt/lumberjacks-ed83bd8
+# --- Runtime identity ---
+# LUMBERJACKS_ROOT is RETIRED — deliberately absent, do not reintroduce it, and remove the line
+# from any existing /etc/comfy-p7/environment. It named a source tree that docker-compose.yml
+# resolved the Postgres schema script against. The 2026-07-20 unification moved that file under
+# Lumberjacks/, so the path silently stopped naming a file; Docker materialized the missing bind
+# source as an empty directory and the stack ran with NO database schema for days while
+# reporting healthy. Compose now resolves the schema relative to itself and consumes this
+# variable nowhere. A declaration documented as "required" that nothing reads is exactly how
+# that defect stayed invisible. See RUNBOOK-schema-repair.md.
+#
+# The warning this replaces was right about the mechanism and wrong about the path: postgres is
+# the service every other service hard-depends on (`condition: service_healthy`), so losing a
+# file postgres bind-mounts takes the whole stack down, not just the database. That now applies
+# to /opt/comfy/Lumberjacks/infra/docker/init.sql, which is tracked in the checkout rather than
+# an sha-suffixed build root a disk-pressure cleanup would mistake for garbage. Still verify it
+# exists before reclaiming space under /opt.
 COMFY_NETWORKSENSE_VERSION=0.5.31
 COMFY_LUMBERJACKS_CUTOVER_MODE=lumberjacks-primary
 COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID=p7-primary-v1
