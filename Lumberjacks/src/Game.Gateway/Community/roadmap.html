@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-30T07:28:01.782Z</span>
+        <span>Updated 2026-07-30T07:36:48.872Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260730072801-retro-the-live-demo-session-and-register-the-two">
+        <div class="journal"><article class="journal-entry" id="note-20260730073648-record-the-boot-and-publish-gate-decisions-as-ad">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-30T07:36:48.872Z">2026-07-30T07:36:48.872Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Record the boot and publish-gate decisions as ADRs and retro them</h3>
+      <p><strong>Impact:</strong> Two signals that reported the opposite of reality got closed at the mechanism and written down as durable decisions rather than as incident notes. ADR 0014 states that a service managing other services must fail loudly, must not report success before it has converged, and must retry - with the corollary that where two mechanisms can start the same thing, one is authoritative and the other is only for crash recovery. It also records what was deliberately NOT changed: the database health fan-in stays, because loosening it would trade one visible failure for four silent crash-loops. ADR 0015 states that bytes whose exact value is load-bearing get their line endings pinned by the repository rather than left to a contributor&#39;s git configuration, covering generated artifacts that are hashed and published and files that are parsed on Linux, with the corollary that a failing verification gate must be diagnosed before it is acted on. The session retrospective carries the timeline, five engineering-seat reads, and six numbered lessons, including one that grades a prior lesson as acted-on yet still recurring because it had been captured narrowly instead of as a repo-wide mechanism. Two open decisions are registered: what the cloud VM is still for now that the community surface is served elsewhere and demos need no VM, and when to spend a cold restart proving the boot fixes given that half of them need an infrastructure reconcile that has been deferred all along. The handoff&#39;s machine-state bullet is corrected and now points at the runbook and the ADR.</p>
+      <details><summary>Verification (1)</summary><ul><li>The append-only journal was reconciled across a concurrent branch by union on id ordered by timestamp, preserving each record&#39;s original bytes rather than re-serializing them - a first attempt reformatted all 288 historic records and was discarded and redone, and the journal now diffs against the concurrent branch as two insertions and zero removals. The generated HTML was re-rendered from the merged inputs rather than hand-resolved; roadmap check reports OK with generated HTML current. The ADR index lists both new records. Every boot claim in the new documents is labelled UNVERIFIED against the machine, which stays stopped by policy.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260730072801-retro-the-live-demo-session-and-register-the-two">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
