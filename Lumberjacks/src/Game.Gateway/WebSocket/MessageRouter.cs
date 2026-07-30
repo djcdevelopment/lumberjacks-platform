@@ -100,6 +100,10 @@ public class MessageRouter
                 await HandleValheimControlResponseAsync(session, envelope);
                 break;
 
+            case MessageType.ValheimDirectPulseProbe:
+                await HandleValheimDirectPulseProbeAsync(session, envelope);
+                break;
+
             default:
                 _logger.LogDebug("No route for message type {Type}", envelope.Type);
                 break;
@@ -222,6 +226,51 @@ public class MessageRouter
             CancellationToken.None);
         if (!receipt.Queued)
             await SendErrorAsync(session, "RELIABLE_BACKPRESSURE", receipt.Reason);
+    }
+
+    async Task HandleValheimDirectPulseProbeAsync(GameSession session, Envelope envelope)
+    {
+        var payload = envelope.Payload;
+        var runId = payload.TryGetProperty("run_id", out var runElement)
+            ? runElement.GetString() ?? string.Empty
+            : string.Empty;
+        var actionId = payload.TryGetProperty("action_id", out var actionElement)
+            ? actionElement.GetString() ?? string.Empty
+            : string.Empty;
+        var mode = payload.TryGetProperty("mode", out var modeElement)
+            ? modeElement.GetString() ?? string.Empty
+            : string.Empty;
+        if (!SafeToken(runId, 80) || !SafeToken(actionId, 80) ||
+            mode is not ("deliver" or "withhold"))
+            throw new InvalidDataException("invalid Valheim direct pulse probe");
+
+        if (mode == "withhold")
+        {
+            _logger.LogInformation(
+                "Valheim direct pulse intentionally withheld connection={ConnectionId} epoch={ResumeEpoch} run={RunId} action={ActionId}",
+                session.ConnectionId, session.ResumeEpoch, runId, actionId);
+            return;
+        }
+
+        var result = await session.SendReliableAsync(
+            MessageType.ValheimDirectPulse,
+            new
+            {
+                run_id = runId,
+                action_id = actionId,
+                connection_id = session.ConnectionId,
+                resume_epoch = session.ResumeEpoch,
+                issued_utc = DateTimeOffset.UtcNow,
+            },
+            CancellationToken.None);
+        if (!result.Queued)
+        {
+            await SendErrorAsync(session, "RELIABLE_BACKPRESSURE", result.Reason);
+            return;
+        }
+        _logger.LogInformation(
+            "Valheim direct pulse queued connection={ConnectionId} epoch={ResumeEpoch} run={RunId} action={ActionId} sequence={Sequence}",
+            session.ConnectionId, session.ResumeEpoch, runId, actionId, result.Sequence);
     }
 
     static bool SafeToken(string value, int maximumLength) =>

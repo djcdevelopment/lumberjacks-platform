@@ -37,7 +37,9 @@ param(
     [int] $WaitSeconds = 900,
 
     [ValidateRange(0, 120)]
-    [int] $HoldSeconds = 5
+    [int] $HoldSeconds = 5,
+
+    [switch] $EnableDirectControlCutover
 )
 
 $ErrorActionPreference = 'Stop'
@@ -66,6 +68,18 @@ $remoteScenarioPath = "$remoteScenarioDirectory/$scenarioName"
 $runDirectory = Join-Path $EvidenceRoot $RunId
 $completed = $false
 $gatewayTunnel = $null
+$serverDirectArmed = $false
+$serverControlReceipts = @()
+$serverDisarmError = $null
+
+function Write-JsonAtomic([string] $Path, [object] $Value) {
+    $temporary = "$Path.tmp"
+    [IO.File]::WriteAllText(
+        $temporary,
+        ($Value | ConvertTo-Json -Depth 12) + [Environment]::NewLine,
+        [Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $temporary -Destination $Path -Force
+}
 
 function Invoke-I5Harness([string[]] $Arguments) {
     $output = & ssh -o BatchMode=yes i5 `
@@ -79,6 +93,7 @@ function Invoke-I5Harness([string[]] $Arguments) {
 }
 
 try {
+    New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
     & (Join-Path $i5Tools 'Test-I5Link.ps1')
     if ($LASTEXITCODE -ne 0) {
         throw 'The i5 lane is offline or failed preflight; no retry was attempted.'
@@ -98,6 +113,24 @@ try {
     Start-Sleep -Seconds 1
     if ($gatewayTunnel.HasExited) {
         throw "The bounded i5 Gateway reverse tunnel failed with exit $($gatewayTunnel.ExitCode)."
+    }
+
+    if ($EnableDirectControlCutover) {
+        $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+        $runOutput = & $serverControl `
+            -Setting nativeNetworkEvidenceRunId `
+            -Value $RunId `
+            -RequestId "$RunId-direct-run"
+        if ($LASTEXITCODE -ne 0) { throw 'Server run-id control failed.' }
+        $serverControlReceipts += (($runOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+
+        $armOutput = & $serverControl `
+            -Setting directControlCutoverEnabled `
+            -Value true `
+            -RequestId "$RunId-direct-arm"
+        if ($LASTEXITCODE -ne 0) { throw 'Server direct-control arm failed.' }
+        $serverControlReceipts += (($armOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+        $serverDirectArmed = $true
     }
 
     & (Join-Path $i5Tools 'Deploy-ToI5.ps1') `
@@ -152,11 +185,18 @@ try {
         throw "i5 scheduled task failed with result $($status.last_task_result)."
     }
 
-    New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
     & scp -r `
         "i5:C:/deploy/baseline/fieldlab/runs/native-valheim/$RunId/i5" `
         "$runDirectory\"
     if ($LASTEXITCODE -ne 0) { throw 'i5 evidence retrieval failed.' }
+    if ($EnableDirectControlCutover) {
+        $serverDirectory = Join-Path $runDirectory 'server'
+        New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/direct-control-cutover.jsonl' `
+            "$serverDirectory\direct-control-cutover.jsonl"
+        if ($LASTEXITCODE -ne 0) { throw 'Server direct-control evidence retrieval failed.' }
+    }
 
     $omenLifecycle =
         Get-Content -LiteralPath (Join-Path $runDirectory 'omen\lifecycle.json') -Raw |
@@ -203,5 +243,34 @@ try {
     }
     if ($gatewayTunnel -and -not $gatewayTunnel.HasExited) {
         Stop-Process -Id $gatewayTunnel.Id -Force -ErrorAction SilentlyContinue
+    }
+    if ($serverDirectArmed) {
+        try {
+            $disarmOutput = & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                -Setting directControlCutoverEnabled `
+                -Value false `
+                -RequestId "$RunId-direct-disarm"
+            if ($LASTEXITCODE -eq 0) {
+                $serverControlReceipts +=
+                    (($disarmOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+            } else {
+                $serverDisarmError = "Server direct-control disarm exited $LASTEXITCODE."
+            }
+        } catch {
+            $serverDisarmError = $_.Exception.Message
+        }
+    }
+    if ($EnableDirectControlCutover -and $serverControlReceipts.Count -gt 0) {
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'server-runtime-direct-control.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                receipts = $serverControlReceipts
+                disarm_error = $serverDisarmError
+            })
+    }
+    if ($completed -and $serverDisarmError) {
+        throw "Scenario completed but server direct-control disarm failed: $serverDisarmError"
     }
 }

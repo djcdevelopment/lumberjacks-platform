@@ -78,6 +78,7 @@ $nativeNetworkLedgerPath = Join-Path $autotestRoot 'native-network-use.jsonl'
 $cutoverScenarioPath = Join-Path $autotestRoot 'native-cutover-scenario.json'
 $cutoverScenarioReceiptsPath = Join-Path $autotestRoot 'native-cutover-scenario-receipts.jsonl'
 $gameSessionReceiptsPath = Join-Path $autotestRoot 'lumberjacks-game-session.jsonl'
+$directControlReceiptsPath = Join-Path $autotestRoot 'direct-control-cutover.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
 
@@ -428,6 +429,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
                 Copy-EvidenceFile $cutoverScenarioReceiptsPath 'native-cutover-scenario-receipts.jsonl'
             lumberjacks_game_session =
                 Copy-EvidenceFile $gameSessionReceiptsPath 'lumberjacks-game-session.jsonl'
+            direct_control_cutover =
+                Copy-EvidenceFile $directControlReceiptsPath 'direct-control-cutover.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'

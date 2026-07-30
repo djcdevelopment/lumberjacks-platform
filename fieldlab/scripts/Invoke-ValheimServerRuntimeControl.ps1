@@ -24,7 +24,8 @@ param(
         'handshakeResponderEndpoint',
         'handshakeResponderWindowId',
         'nativeNetworkPoisonEnabled',
-        'nativeNetworkEvidenceRunId')]
+        'nativeNetworkEvidenceRunId',
+        'directControlCutoverEnabled')]
     [Parameter(Mandatory)]
     [string] $Setting,
 

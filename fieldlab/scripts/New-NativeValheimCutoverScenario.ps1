@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -87,6 +87,15 @@ if ($Profile -eq 'c1') {
         New-Action 'i5-session-resume' 'i5' 'session_resume_probe' 30
         New-Action 'omen-session-timeout' 'omen' 'session_timeout_probe' 8
         New-Action 'i5-session-timeout' 'i5' 'session_timeout_probe' 8
+    )
+}
+
+if ($Profile -eq 'c2a') {
+    $actions += @(
+        New-Action 'omen-direct-pulse' 'omen' 'direct_control_pulse' 15
+        New-Action 'i5-direct-pulse' 'i5' 'direct_control_pulse' 15
+        New-Action 'omen-direct-withhold' 'omen' 'direct_control_withhold' 8
+        New-Action 'i5-direct-withhold' 'i5' 'direct_control_withhold' 8
     )
 }
 

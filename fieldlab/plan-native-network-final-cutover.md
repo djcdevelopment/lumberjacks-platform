@@ -26,7 +26,8 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | --- | --- | --- |
 | C0 | **Complete on AM4 (2026-07-30)** | `native-20260730-c0-clean`: both physical clients joined, moved, disconnected, relaunched, rejoined, and stopped under one manifest. Exact run-scoped ledgers recorded OMEN 4,360, i5 2,957, and server 12,339 native funnel calls with zero drops/faults. `native-20260730-c0-poison` blocked all 76 observed calls at the first forbidden connection boundary. |
 | C1 | **Complete on AM4 (2026-07-30)** | `native-20260730-c1-final`: both physical clients kept a stable Lumberjacks connection id across a forced WebSocket abort, advanced from resume epoch 0 to 1, received the exact numbered request again, and produced one Gateway-accepted response. Both also reported the bounded intentionally-withheld receipt timeout with no native control fallback. |
-| C2 | **Next, replanned below** | First generalize C1's banked main-thread dispatch, then replace a direct control pulse before replacing all routed RPC shapes. |
+| C2a | **Complete on AM4 (2026-07-30)** | `native-20260730-c2a-final`: both physical clients applied one typed Lumberjacks direct pulse on Unity `Update`; both withheld copies became bounded stale results. Client native handlers were registered, while all 107 selected server-native attempts were suppressed before `ZRpc.Invoke` and zero native copies arrived. |
+| C2b | **Next** | Carry the complete routed-RPC shape through C1 and prove client-to-server, server-to-client, broadcast, target-ZDO, and one idempotent real interaction without native fallback for the selected hashes. |
 | C3-C10 | Pending in dependency order | Do not skip the remaining mandatory replans after C3, C5, and C7. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
@@ -582,6 +583,7 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0 and C1 are complete. Start **C2a's direct control pulse** next, then C2b's routed
-shapes. Do not begin C3 until both C2 gates suppress their selected native delivery in a
-real-client failure cell.
+C0, C1, and C2a are complete. Start **C2b's routed shapes** next. Do not begin C3
+until client-to-server, server-to-client, broadcast, target-ZDO, and one idempotent
+real interaction suppress their selected native delivery in a real-client failure
+cell.

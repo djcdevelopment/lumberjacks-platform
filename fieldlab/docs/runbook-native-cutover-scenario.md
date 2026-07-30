@@ -46,6 +46,11 @@ sequence, and one Gateway-accepted response. The timeout probe sends its respons
 Gateway intentionally withholds the reliable receipt; success is the bounded
 `bounded_receipt_timeout_no_native_fallback` marker.
 
+The `c2a` profile adds a selected typed direct-control pulse and an intentional
+withhold per client. Run it with `-EnableDirectControlCutover`; the orchestrator stamps
+the AM4 run id, arms the exact native suppression class, retrieves the server receipt,
+and disarms the gate in `finally`.
+
 ## Run both clients
 
 ```powershell
@@ -53,6 +58,15 @@ fieldlab\scripts\Invoke-NativeValheimCutoverScenario.ps1 `
     -RunId $runId `
     -ScenarioPath $scenario `
     -Server 'AM4_ADDRESS:2456'
+```
+
+For C2a:
+
+```powershell
+fieldlab\scripts\Invoke-NativeValheimCutoverScenario.ps1 `
+    -RunId $runId `
+    -ScenarioPath $scenario `
+    -EnableDirectControlCutover
 ```
 
 The orchestrator:
@@ -105,6 +119,19 @@ fieldlab\scripts\Write-LumberjacksSessionCutoverSummary.ps1 `
 
 `c1-machine-summary.json` must pass every stable-id, resume-epoch, exact-replay,
 single-response, bounded-timeout, lifecycle, artifact-hash, and Gateway-health check.
+
+For C2a:
+
+```powershell
+fieldlab\scripts\Write-DirectControlCutoverSummary.ps1 `
+    -RunDirectory "fieldlab\runs\native-valheim\$runId" `
+    -RunId $runId
+```
+
+`c2a-machine-summary.json` must prove one typed delivery and one bounded stale result
+per client, an explicitly registered native tripwire, zero native copies, every
+selected AM4 native attempt suppressed, matching artifacts, a clean runtime disarm,
+and healthy Gateway.
 
 ## Retained evidence contract
 
