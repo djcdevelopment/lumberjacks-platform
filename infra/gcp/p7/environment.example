@@ -22,6 +22,12 @@ LUMBERJACKS_PROGRESSION_IMAGE=CHANGE_ME_promoted_progression_image_ref
 LUMBERJACKS_OPERATORAPI_IMAGE=CHANGE_ME_promoted_operatorapi_image_ref
 
 # --- Runtime identity / build root ---
+# Boot-critical, and not obviously so: postgres bind-mounts
+# ${LUMBERJACKS_ROOT}/infra/docker/init.sql. This path is sha-suffixed, so it is
+# exactly the kind of directory a disk-pressure cleanup deletes as "an old build
+# root" — and postgres is the service every other service hard-depends on
+# (`condition: service_healthy`). Losing it takes the whole stack down, not just
+# the database. Verify the path exists before reclaiming space under /opt.
 LUMBERJACKS_ROOT=/opt/lumberjacks-ed83bd8
 COMFY_NETWORKSENSE_VERSION=0.5.31
 COMFY_LUMBERJACKS_CUTOVER_MODE=lumberjacks-primary
@@ -69,7 +75,16 @@ LUMBERJACKS_ADMIN_KEY=CHANGE_ME
 VALHEIM_SERVER_PASSWORD=
 
 # --- TLS (caddy service, only under COMPOSE_PROFILES=tls) ---
-# Leave blank until a real DNS A record exists; ACME will not issue for a
-# bare IP.
-LUMBERJACKS_PUBLIC_DNS_NAME=
-LUMBERJACKS_ACME_EMAIL=
+# COMPOSE_PROFILES is NOT a ${VAR} in docker-compose.yml, so the "add a line
+# whenever compose grows a new ${VAR}" rule at the top of this file did not
+# catch it and it was missing here until 2026-07-30 — while the live VM had it
+# set and was serving TLS. Rebuilding /etc/comfy-p7/environment from this
+# template would therefore have produced a stack with NO caddy at all: nothing
+# on 80/443, the public volunteer endpoint dark, and no error anywhere, because
+# a profile that is not selected is not a failure — the service simply does not
+# exist for that `docker compose up`.
+COMPOSE_PROFILES=tls
+
+# A real DNS A record must point at this VM; ACME will not issue for a bare IP.
+LUMBERJACKS_PUBLIC_DNS_NAME=comfy-p7.duckdns.org
+LUMBERJACKS_ACME_EMAIL=CHANGE_ME_acme_contact_email

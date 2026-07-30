@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-29T20:32:29.034Z</span>
+        <span>Updated 2026-07-30T07:16:51.392Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260729203229-unblock-the-link-carrying-discord-posts-on-the-c">
+        <div class="journal"><article class="journal-entry" id="note-20260730071651-make-the-p7-boot-path-deterministic-instead-of-h">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-30T07:16:51.392Z">2026-07-30T07:16:51.392Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1</span>
+      </div>
+      <h3>Make the P7 boot path deterministic instead of hand-built</h3>
+      <p><strong>Impact:</strong> A cold stop/start of the P7 VM left six containers in Created with nothing serving while SSH answered normally. Root cause: nothing in the repo ever installed or enabled comfy-lumberjacks-p7.service - the GCE startup script set up disk, swap, docker and the ops agent and stopped, so the unit&#39;s enablement was hand-made state on the box, which is exactly the &#39;no hand-built state to lose&#39; the cost runbook cited to justify stop/start as safe. Three compounding defects: a failed ConditionPathExists silently SKIPS a unit (inactive, no error, no log - the &#39;alive over SSH, serving nothing&#39; signature), docker compose up -d returns at Created so Type=oneshot marked the unit active while nothing ran, and with no Restart= a single transient failure parked the stack permanently. Every service hard-depends on postgres condition service_healthy, so postgres is a single fan-in point whose failure leaves every dependent in Created. The unit now uses AssertPathExists, --wait, Restart=on-failure with an unlimited start burst, and a clean-slate down before every start; the startup script installs and enables the unit from the deployed checkout and orders the docker daemon after the state-disk mount, which was previously unguarded and could resolve bind mounts against the empty mountpoint on the root disk. Also found: COMPOSE_PROFILES=tls was missing from environment.example while the live box had it, so rebuilding the env file from the template would have produced a stack with no TLS terminator and no error, because an unselected profile is not a failure.</p>
+      <details><summary>Verification (1)</summary><ul><li>Staged and UNVERIFIED against the VM, which stays stopped. infra/gcp/p7/RUNBOOK-boot-determinism.md carries the diagnosis, the by-hand apply steps (the startup-script fix needs terraform, which is off the table from this checkout), and a next-boot procedure that captures the wedged-boot evidence before the fix destroys it. The README and cost-runbook claims that a systemctl restart proved the reboot path are marked falsified rather than replaced - a restart never exercises the mount race or the shutdown teardown.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260729203229-unblock-the-link-carrying-discord-posts-on-the-c">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

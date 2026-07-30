@@ -46,6 +46,20 @@ if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>
 fi
 systemctl enable --now docker
 
+# The docker DAEMON must not start before the state disk is mounted. Containers carry
+# `restart: unless-stopped`, so dockerd revives them on its own, independently of the
+# systemd unit below — and dockerd has no ordering against /mnt/comfy-p7. If it wins that
+# race, every bind mount under /mnt/comfy-p7 resolves against the still-empty mountpoint
+# on the ROOT disk: postgres initdb's into /, the Valheim world looks blank, and the state
+# disk sits there unused with the real data hidden underneath the later mount. The unit
+# has RequiresMountsFor= but the daemon is the other starter, and it was unguarded.
+# Takes effect on the NEXT boot; docker is deliberately not restarted here.
+install -d -m 0755 /etc/systemd/system/docker.service.d
+cat > /etc/systemd/system/docker.service.d/10-comfy-p7-state-mount.conf <<'DOCKER_MOUNT_DROPIN'
+[Unit]
+RequiresMountsFor=/mnt/comfy-p7
+DOCKER_MOUNT_DROPIN
+
 install -d -m 0755 /opt/comfy /opt/lumberjacks
 install -d -m 0700 /etc/comfy-p7
 
@@ -59,5 +73,30 @@ ${ops_agent_config}
 OPS_AGENT_CONFIG
 systemctl enable google-cloud-ops-agent
 systemctl restart google-cloud-ops-agent
+
+# Install and enable the stack unit from the deployed checkout. Until 2026-07-30 nothing
+# in this repo did this: the unit file was committed but reaching /etc/systemd/system/ and
+# being enabled was hand-made state on the VM, which is exactly the "no hand-built state to
+# lose" the cost runbook claimed the deploy lane had eliminated. A rebuilt VM would have
+# come up with docker running and nothing enabled to start the stack.
+#
+# /opt/comfy is populated by the git-bundle deploy (ADR 0006), which happens after a fresh
+# provision, so on a first boot there is nothing to install yet — hence the guard. This
+# whole script re-runs on every boot (GCE metadata startup script), so the install lands on
+# the first boot that follows a deploy, and is a no-op forever after.
+STACK_UNIT_SRC="/opt/comfy/infra/gcp/p7/comfy-lumberjacks-p7.service"
+if [[ -f "$STACK_UNIT_SRC" ]]; then
+  if ! cmp -s "$STACK_UNIT_SRC" /etc/systemd/system/comfy-lumberjacks-p7.service; then
+    install -m 0644 "$STACK_UNIT_SRC" /etc/systemd/system/comfy-lumberjacks-p7.service
+    systemctl daemon-reload
+  fi
+  # --now, not a bare enable: on the boot where this install first lands, multi-user.target
+  # was already reached before the startup script ran, so `enable` alone would leave the
+  # stack down until the NEXT reboot. Idempotent - starting an already-converged stack is a
+  # no-op, and starting a `failed` one is a free recovery.
+  systemctl enable --now comfy-lumberjacks-p7.service
+else
+  echo "WARNING: $STACK_UNIT_SRC absent - stack unit not installed (deploy the checkout, then reboot)" >&2
+fi
 
 echo "Comfy/Lumberjacks P7 bootstrap complete"

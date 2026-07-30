@@ -57,10 +57,18 @@ The deploy lane is baked: all five services are **digest-pinned in `docker-compo
 a locally-cut image via `Promote-GatewayImage.ps1`; post-workbench-deploy content updates are pure
 file copies. The systemd unit (`comfy-lumberjacks-p7.service`, `WantedBy=multi-user.target`) runs
 `docker compose up -d` on boot, and the compose services carry `restart: unless-stopped`. The
-README records this exact path as **verified by a real `systemctl restart`, "which is exactly what
-the reboot path runs."** So a stopped VM re-enters service predictably — no hand-built state to
-lose. (Verified from repo files + README's restart claim; tonight's first scheduled restart is
-still the live proof — watch it once.)
+README records this exact path as verified by a real `systemctl restart`.
+
+> **FALSIFIED 2026-07-30 — do not treat stop/start as self-healing yet.** This section used to
+> conclude "a stopped VM re-enters service predictably — no hand-built state to lose." A cold
+> stop/start cycle left six containers in `Created` and nothing serving, while SSH answered
+> normally. Two premises were wrong: a `systemctl restart` does not exercise the reboot path
+> (it skips the state-disk mount race and the shutdown teardown), and the unit's **enablement
+> was itself hand-built state** — nothing in this repo ever installed or enabled
+> `comfy-lumberjacks-p7.service`. Fixes are staged and unverified; diagnosis, the by-hand apply
+> steps, and the next-boot verification procedure are in
+> [`RUNBOOK-boot-determinism.md`](RUNBOOK-boot-determinism.md). Budget a boot check into every
+> stop/start until that runbook's step 3 passes.
 
 One timing fact to respect every time: **the ~9.1M-ZDO `ComfyEra16` world takes ~a minute to
 reload. The server is not joinable until the log emits `Game server connected`.**

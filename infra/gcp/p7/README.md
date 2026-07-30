@@ -50,7 +50,16 @@ Canonical evidence (paths are relative to this repo, `C:\work\baseline`):
 
 All five Lumberjacks images are pinned by digest in `docker-compose.yml` with no `build:`
 fallback, and resolve through `/etc/comfy-p7/environment` alone — verified by a real
-`systemctl restart`, which is exactly what the reboot path runs.
+`systemctl restart`.
+
+> **A `systemctl restart` is NOT the reboot path**, and this file used to claim it was. A restart
+> runs on a box whose state disk is already mounted, whose docker daemon is already up, and whose
+> containers were torn down in an unhurried `ExecStop`. A cold boot re-tests all three, and on
+> 2026-07-30 it failed: six containers stuck in `Created`, nothing serving, SSH answering
+> normally. Boot is being made deterministic — see
+> [`RUNBOOK-boot-determinism.md`](RUNBOOK-boot-determinism.md). Until a real stop/start cycle is
+> observed to pass, **treat "it comes back on its own" as unproven** and check the stack after
+> every boot.
 
 > **Server restart is not instant.** A `systemctl restart` reloads the ~9.1M-ZDO `ComfyEra16`
 > world; the server is not joinable until the log emits `Game server connected`, roughly a
