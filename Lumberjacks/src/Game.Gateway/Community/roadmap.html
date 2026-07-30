@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-30T07:16:51.392Z</span>
+        <span>Updated 2026-07-30T07:21:46.223Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260730071651-make-the-p7-boot-path-deterministic-instead-of-h">
+        <div class="journal"><article class="journal-entry" id="note-20260730072146-clear-the-false-stale-render-reading-on-the-live">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-30T07:21:46.223Z">2026-07-30T07:21:46.223Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Clear the false stale-render reading on the live workbench</h3>
+      <p><strong>Impact:</strong> The live AM4 workbench was recorded as still serving the pre-review render, pending an operator republish. It is not: the served page is byte-exact with the committed render whose provenance stamp names a commit descended from the trust review, and a full post-publish verification of the live funnel returns PASS across 69 checks with zero failures and zero warnings. No republish is owed. The misreading came from a line-ending trap rather than a deployment problem: scripts/workbench-verify-live.mjs hashes the local HTML as a raw Buffer, and the repository carried no .gitattributes, so a Windows checkout with core.autocrlf=true produced a CRLF working copy whose digest could never match a server serving LF. The gate failed against a deployment that was byte-correct, which is the worst kind of gate failure - it invites an unnecessary republish and teaches the operator to distrust a passing check. A .gitattributes now pins generated and Linux-destined files to LF: generated HTML because its bytes are hashed and published, and shell scripts, systemd units and compose files because they are parsed on Linux where a carriage return is a syntax error. Stored blobs were already LF - git add --renormalize staged nothing - so this changes only what a checkout writes into the working tree, and it removes a class of failure that depended on one contributor&#39;s git configuration rather than on anything in the repository.</p>
+      <details><summary>Verification (1)</summary><ul><li>Measured directly: the raw CRLF working copy hashed to 2bb23be9, the LF-normalized bytes to 976f51cc, and 976f51cc is exactly the value the live funnel reports in its X-Workbench-Sha256 header. After refreshing the working tree under the new attributes the local file hashes to 976f51cc and npm run workbench:verify-live -- --post-publish reports PASS, 69 checks, 0 failed, 0 warnings, including the served-page-hash-matches-local-render check that previously could not pass on this machine.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260730071651-make-the-p7-boot-path-deterministic-instead-of-h">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
