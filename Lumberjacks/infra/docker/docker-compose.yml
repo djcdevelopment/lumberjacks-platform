@@ -60,6 +60,8 @@ services:
       # one-seat alpha gate is a P7 rollout control, not a local capacity policy.
       LUMBERJACKS_ALPHA_SEAT_GATE: "${LUMBERJACKS_ALPHA_SEAT_GATE:-disabled}"
       LUMBERJACKS_AUTHORITATIVE_WINDOW_ID: "${LUMBERJACKS_AUTHORITATIVE_WINDOW_ID:-am4-handshake-async-20260730}"
+      LUMBERJACKS_SERVER_INSTANCE_ID: "${LUMBERJACKS_SERVER_INSTANCE_ID:-am4-gateway-dev}"
+      LUMBERJACKS_WORLD_ID: "${LUMBERJACKS_WORLD_ID:-am4-cutover-world}"
     depends_on:
       postgres:
         condition: service_healthy

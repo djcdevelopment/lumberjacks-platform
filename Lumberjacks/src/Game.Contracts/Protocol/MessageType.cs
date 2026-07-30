@@ -10,9 +10,14 @@ public static class MessageType
     public const string ValheimPlayerMotion = "valheim_player_motion";
     public const string PlaceStructure = "place_structure";
     public const string Interact = "interact";
+    public const string ReliableAck = "reliable_ack";
+    public const string ValheimSessionProbe = "valheim_session_probe";
+    public const string ValheimControlResponse = "valheim_control_response";
 
     // Server → Client
     public const string SessionStarted = "session_started";
+    public const string ValheimControlRequest = "valheim_control_request";
+    public const string ValheimControlReceipt = "valheim_control_receipt";
     public const string WorldSnapshot = "world_snapshot";
     public const string EntityUpdate = "entity_update";
     public const string EntityRemoved = "entity_removed";

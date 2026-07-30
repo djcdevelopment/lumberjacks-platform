@@ -18,6 +18,13 @@ param(
 
     [string] $Server = '100.116.82.60:2456',
 
+    [string] $OmenGatewayUrl = 'http://127.0.0.1:4000',
+
+    [string] $I5GatewayUrl = 'http://127.0.0.1:4400',
+
+    [ValidateRange(1024, 65535)]
+    [int] $I5GatewayTunnelPort = 4400,
+
     [string] $OmenCharacter = 'Tugcorp',
 
     [string] $I5Character = 'durracktu',
@@ -58,6 +65,7 @@ $remoteScenarioDirectory = 'C:/deploy/baseline/fieldlab/scenarios'
 $remoteScenarioPath = "$remoteScenarioDirectory/$scenarioName"
 $runDirectory = Join-Path $EvidenceRoot $RunId
 $completed = $false
+$gatewayTunnel = $null
 
 function Invoke-I5Harness([string[]] $Arguments) {
     $output = & ssh -o BatchMode=yes i5 `
@@ -76,6 +84,22 @@ try {
         throw 'The i5 lane is offline or failed preflight; no retry was attempted.'
     }
 
+    $gatewayTunnel = Start-Process `
+        -FilePath 'ssh.exe' `
+        -ArgumentList @(
+            '-N',
+            '-o', 'BatchMode=yes',
+            '-o', 'ExitOnForwardFailure=yes',
+            '-o', 'ServerAliveInterval=15',
+            '-R', "127.0.0.1:${I5GatewayTunnelPort}:127.0.0.1:4000",
+            'i5') `
+        -WindowStyle Hidden `
+        -PassThru
+    Start-Sleep -Seconds 1
+    if ($gatewayTunnel.HasExited) {
+        throw "The bounded i5 Gateway reverse tunnel failed with exit $($gatewayTunnel.ExitCode)."
+    }
+
     & (Join-Path $i5Tools 'Deploy-ToI5.ps1') `
         -Path $clientHarness `
         -Dest C:/deploy/baseline/fieldlab/scripts
@@ -92,6 +116,7 @@ try {
         '-Client', 'i5',
         '-Character', $I5Character,
         '-Server', $Server,
+        '-GatewayUrl', $I5GatewayUrl,
         '-RunId', $RunId,
         '-ScenarioPath', $remoteScenarioPath,
         '-HoldSeconds', [string]$HoldSeconds,
@@ -103,6 +128,7 @@ try {
         -Client omen `
         -Character $OmenCharacter `
         -Server $Server `
+        -GatewayUrl $OmenGatewayUrl `
         -RunId $RunId `
         -DllPath $dll `
         -ScenarioPath $scenario `
@@ -174,5 +200,8 @@ try {
         try {
             [void](Invoke-I5Harness @('-Action', 'stop', '-Client', 'i5'))
         } catch { }
+    }
+    if ($gatewayTunnel -and -not $gatewayTunnel.HasExited) {
+        Stop-Process -Id $gatewayTunnel.Id -Force -ErrorAction SilentlyContinue
     }
 }

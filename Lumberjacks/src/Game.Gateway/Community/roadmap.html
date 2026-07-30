@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-30T19:30:03.474Z</span>
+        <span>Updated 2026-07-30T20:02:38.903Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260730193003-add-native-network-poison-ledger-and-unattended-">
+        <div class="journal"><article class="journal-entry" id="note-20260730200238-prove-one-durable-lumberjacks-game-session-and-r">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-30T20:02:38.903Z">2026-07-30T20:02:38.903Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1 · M3 · M4a · A4</span>
+      </div>
+      <h3>Prove one durable Lumberjacks game session and replan C2</h3>
+      <p><strong>Impact:</strong> C1 now gives each client one bounded ordered Lumberjacks session with stable connection identity, acknowledgements, deduplication, backpressure, and socket resume. Two physical clients each replayed the same unacknowledged request after a forced disconnect, produced one accepted response, and reported a bounded withheld-receipt timeout without native control fallback. The mandatory replan puts a typed direct control pulse before routed RPC; no Valheim gameplay path is claimed replaced yet.</p>
+      <details><summary>Verification (3)</summary><ul><li>Two unattended physical clients completed the C1 AM4 manifest and fresh-process Valheim resume.</li><li>Both stable-id/epoch checks, exact sequence replays, single accepted responses, and no-receipt timeout checks passed in c1-machine-summary.json.</li><li>Gateway container build completed with all solution projects and 580 checks green; the mod Release build completed with zero warnings and zero errors.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/plan-native-network-final-cutover.md</code> <code>fieldlab/runs/native-valheim/native-20260730-c1-final/c1-machine-summary.json</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260730193003-add-native-network-poison-ledger-and-unattended-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

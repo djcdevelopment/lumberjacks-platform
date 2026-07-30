@@ -80,9 +80,14 @@ public class GameWebSocketMiddleware
         {
             session_id = session.SessionId,
             player_id = session.PlayerId,
-            world_id = "world-default",
+            server_instance_id = session.Reliable.ServerInstanceId,
+            world_id = session.Reliable.WorldId,
+            protocol_version = session.Reliable.ProtocolVersion,
+            client_connection_id = session.ConnectionId,
+            resume_epoch = session.ResumeEpoch,
             resume_token = session.ResumeToken,
             resumed,
+            reliable_pending = session.Reliable.PendingCount,
             udp_token = session.UdpToken.ToString(),
             udp_port = udpPort,
             valheim_motion_available = session.ValheimRecipientId != null,
@@ -93,6 +98,10 @@ public class GameWebSocketMiddleware
             Encoding.UTF8.GetBytes(json),
             WebSocketMessageType.Text,
             CancellationToken.None);
+
+        // Reliable control is replayed before any fresh semantic snapshot. The client sees the
+        // same sequence and idempotency key it saw before the socket detached.
+        await session.ReplayReliableAsync(CancellationToken.None);
 
         // If resumed into a region, send a fresh world_snapshot
         if (resumed && session.RegionId != null)

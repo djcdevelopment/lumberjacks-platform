@@ -88,11 +88,147 @@ public class MessageRouter
                 await HandleInteractAsync(session, envelope);
                 break;
 
+            case MessageType.ReliableAck:
+                HandleReliableAck(session, envelope);
+                break;
+
+            case MessageType.ValheimSessionProbe:
+                await HandleValheimSessionProbeAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimControlResponse:
+                await HandleValheimControlResponseAsync(session, envelope);
+                break;
+
             default:
                 _logger.LogDebug("No route for message type {Type}", envelope.Type);
                 break;
         }
     }
+
+    void HandleReliableAck(GameSession session, Envelope envelope)
+    {
+        if (!envelope.Payload.TryGetProperty("through_sequence", out var sequenceElement) ||
+            !sequenceElement.TryGetInt64(out var sequence) || sequence < 1)
+            throw new InvalidDataException("reliable_ack requires a positive through_sequence");
+        var removed = session.Reliable.AcknowledgeThrough(sequence);
+        _logger.LogInformation(
+            "Valheim reliable ACK connection={ConnectionId} epoch={ResumeEpoch} through={Sequence} removed={Removed}",
+            session.ConnectionId, session.ResumeEpoch, sequence, removed);
+    }
+
+    async Task HandleValheimSessionProbeAsync(GameSession session, Envelope envelope)
+    {
+        var payload = envelope.Payload;
+        var probeId = payload.TryGetProperty("probe_id", out var probeElement)
+            ? probeElement.GetString() ?? string.Empty
+            : string.Empty;
+        var runId = payload.TryGetProperty("run_id", out var runElement)
+            ? runElement.GetString() ?? string.Empty
+            : string.Empty;
+        var mode = payload.TryGetProperty("mode", out var modeElement)
+            ? modeElement.GetString() ?? string.Empty
+            : string.Empty;
+        if (!SafeToken(probeId, 192) || !SafeToken(runId, 80) ||
+            mode is not ("resume" or "withhold_receipt"))
+            throw new InvalidDataException("invalid Valheim session probe");
+
+        if (session.Reliable.TryGetProbe(probeId, out _))
+        {
+            _logger.LogInformation(
+                "Valheim session probe duplicate start ignored connection={ConnectionId} probe={ProbeId}",
+                session.ConnectionId, probeId);
+            return;
+        }
+        if (!session.Reliable.CanAddProbe(probeId))
+        {
+            await SendErrorAsync(session, "RELIABLE_BACKPRESSURE", "session_probe_capacity_reached");
+            return;
+        }
+
+        var result = await session.SendReliableAsync(
+            MessageType.ValheimControlRequest,
+            new
+            {
+                run_id = runId,
+                probe_id = probeId,
+                mode,
+                connection_id = session.ConnectionId,
+                issued_resume_epoch = session.ResumeEpoch,
+            },
+            CancellationToken.None);
+        if (!result.Queued)
+        {
+            await SendErrorAsync(session, "RELIABLE_BACKPRESSURE", result.Reason);
+            return;
+        }
+
+        if (!session.Reliable.TryAddProbe(new ReliableSessionProbe(
+                runId, probeId, mode, result.Sequence, session.ConnectionId)))
+            throw new InvalidOperationException("reliable session probe capacity reached");
+        _logger.LogInformation(
+            "Valheim control request queued connection={ConnectionId} epoch={ResumeEpoch} probe={ProbeId} sequence={Sequence} mode={Mode}",
+            session.ConnectionId, session.ResumeEpoch, probeId, result.Sequence, mode);
+    }
+
+    async Task HandleValheimControlResponseAsync(GameSession session, Envelope envelope)
+    {
+        var payload = envelope.Payload;
+        var probeId = payload.TryGetProperty("probe_id", out var probeElement)
+            ? probeElement.GetString() ?? string.Empty
+            : string.Empty;
+        var requestSequence =
+            payload.TryGetProperty("request_sequence", out var requestElement) &&
+            requestElement.TryGetInt64(out var parsedRequest)
+                ? parsedRequest
+                : 0;
+        var clientSequence =
+            payload.TryGetProperty("client_sequence", out var clientElement) &&
+            clientElement.TryGetInt64(out var parsedClient)
+                ? parsedClient
+                : 0;
+        if (!session.Reliable.TryGetProbe(probeId, out var probe) ||
+            probe.RequestSequence != requestSequence || clientSequence < 1)
+            throw new InvalidDataException("Valheim control response does not match a pending request");
+
+        var accepted = session.Reliable.TryAcceptClientMessage(
+            clientSequence, probeId + ":" + requestSequence);
+        if (accepted) Interlocked.Increment(ref probe.ResponseCount);
+        _logger.LogInformation(
+            "Valheim control response connection={ConnectionId} epoch={ResumeEpoch} probe={ProbeId} request_sequence={RequestSequence} client_sequence={ClientSequence} accepted={Accepted} response_count={ResponseCount}",
+            session.ConnectionId, session.ResumeEpoch, probeId, requestSequence,
+            clientSequence, accepted, Volatile.Read(ref probe.ResponseCount));
+
+        if (probe.Mode == "withhold_receipt")
+        {
+            _logger.LogInformation(
+                "Valheim control receipt intentionally withheld connection={ConnectionId} probe={ProbeId}",
+                session.ConnectionId, probeId);
+            return;
+        }
+
+        var receipt = await session.SendReliableAsync(
+            MessageType.ValheimControlReceipt,
+            new
+            {
+                run_id = probe.RunId,
+                probe_id = probe.ProbeId,
+                request_sequence = probe.RequestSequence,
+                response_count = Volatile.Read(ref probe.ResponseCount),
+                duplicate = !accepted,
+                connection_id = session.ConnectionId,
+                resume_epoch = session.ResumeEpoch,
+            },
+            CancellationToken.None);
+        if (!receipt.Queued)
+            await SendErrorAsync(session, "RELIABLE_BACKPRESSURE", receipt.Reason);
+    }
+
+    static bool SafeToken(string value, int maximumLength) =>
+        !string.IsNullOrWhiteSpace(value) && value.Length <= maximumLength &&
+        value.All(character =>
+            char.IsLetterOrDigit(character) || character is '-' or '_' or '.');
+
 
     /// <summary>
     /// Sends a fresh world_snapshot to a resumed session (re-sync after reconnect).

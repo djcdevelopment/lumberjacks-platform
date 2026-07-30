@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'full')]
+    [ValidateSet('baseline', 'c1', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -78,6 +78,15 @@ if ($Profile -eq 'full') {
         New-Action 'i5-ownership' 'i5' 'ownership_target' 25 0 0 16 '' $I5OwnershipTargetTag
         New-Action 'omen-zone' 'omen' 'zone_cross' 20 0 72 0 east
         New-Action 'i5-zone' 'i5' 'zone_cross' 20 0 72 0 west
+    )
+}
+
+if ($Profile -eq 'c1') {
+    $actions += @(
+        New-Action 'omen-session-resume' 'omen' 'session_resume_probe' 30
+        New-Action 'i5-session-resume' 'i5' 'session_resume_probe' 30
+        New-Action 'omen-session-timeout' 'omen' 'session_timeout_probe' 8
+        New-Action 'i5-session-timeout' 'i5' 'session_timeout_probe' 8
     )
 }
 

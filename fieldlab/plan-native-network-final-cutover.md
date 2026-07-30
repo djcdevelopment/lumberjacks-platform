@@ -25,8 +25,9 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | Slice | Status | Retained boundary |
 | --- | --- | --- |
 | C0 | **Complete on AM4 (2026-07-30)** | `native-20260730-c0-clean`: both physical clients joined, moved, disconnected, relaunched, rejoined, and stopped under one manifest. Exact run-scoped ledgers recorded OMEN 4,360, i5 2,957, and server 12,339 native funnel calls with zero drops/faults. `native-20260730-c0-poison` blocked all 76 observed calls at the first forbidden connection boundary. |
-| C1 | **Next** | Build one durable ordered/resumable Lumberjacks game session while the measured native session remains present. |
-| C2-C10 | Pending in dependency order | Do not skip the mandatory replans after C1, C3, C5, and C7. |
+| C1 | **Complete on AM4 (2026-07-30)** | `native-20260730-c1-final`: both physical clients kept a stable Lumberjacks connection id across a forced WebSocket abort, advanced from resume epoch 0 to 1, received the exact numbered request again, and produced one Gateway-accepted response. Both also reported the bounded intentionally-withheld receipt timeout with no native control fallback. |
+| C2 | **Next, replanned below** | First generalize C1's banked main-thread dispatch, then replace a direct control pulse before replacing all routed RPC shapes. |
+| C3-C10 | Pending in dependency order | Do not skip the remaining mandatory replans after C3, C5, and C7. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -166,6 +167,50 @@ one. A slice is complete only after its real-client artifact exists under
   suitable for every later semantic slice.
 
 **Cost:** 1–3 focused days; most substrate already exists.
+
+#### Mandatory replan after C1 — 2026-07-30
+
+**What the boundary proved**
+
+- C1's `client_connection_id` survives a socket detach/resume, while `resume_epoch`
+  advances and `server_instance_id`, `world_id`, and protocol version remain explicit.
+- The Gateway retains a bounded 256-frame reliable send queue, replays an unacknowledged
+  frame with the same sequence, removes cumulatively acknowledged frames, and deduplicates
+  a client response by monotonic client sequence plus idempotency key.
+- Both real clients passed the same forced-drop and withheld-receipt cells with plugin
+  SHA-256 `a0213ebd9d55f739539fb3211d932fe1825f9d8f3adfaa21bef38452c04842a2`.
+  Gateway health remained green after the run.
+- Worker completion remains banked until Unity `Update`; the scenario driver never
+  handles game state from the WebSocket worker.
+
+**Limits that remain explicit**
+
+- C1 durability is an in-memory two-minute socket-resume contract, not Gateway-process
+  persistence. C3/C5 snapshots must reconstruct semantic state after a Gateway restart.
+- A fresh Valheim process currently creates a new C1 connection id. C7 must bind the
+  enrolled logical peer/character independently of this transport incarnation.
+- The AM4 client route used its authenticated tailnet/private-plane capability through a
+  bounded SSH tunnel. Enrollment-backed cold join is intentionally still a C7 proof.
+- Enabling the canonical game session disables the legacy motion-only WebSocket so there
+  is one active subsystem connection. C6 must move motion onto this canonical binding;
+  observe-only motion is deliberately unavailable in the interim.
+- C1 carried typed probe control only. No native RPC, ZDO, ownership, world, zone, motion,
+  handshake, or Steam funnel was suppressed by this slice.
+
+**Revised next build**
+
+1. **C2a — direct control pulse:** expose a fixed typed-handler registry over C1, dispatch
+   only from bounded Unity `Update`, replace one server pulse, and suppress that native
+   message class after the reliable enqueue succeeds. Withhold the Lumberjacks pulse and
+   require a stale marker rather than a native copy.
+2. **C2b — routed RPC:** carry the complete routed shape over the same registry, then prove
+   client-to-server, server-to-client, broadcast, and target-ZDO dispatch plus one
+   idempotent real interaction. The selected native hash has no fallback.
+3. Continue to C3 only after native routed/control counters for the selected classes stay
+   zero. C3's mandatory replan remains in force.
+
+The revised remaining estimate is **20–42 focused engineering days**. C2 remains a
+2–4-day slice but now has two ordered internal gates; C3-C7 still dominate the range.
 
 ### C2 — Routed RPC and direct peer/control replacement
 
@@ -537,7 +582,6 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-Start with **C0**, then **C1**. The first implementation commit should not attempt routed
-RPC. Its job is to make native use measurable/enforceable and make one reliable
-Lumberjacks request survive reconnect. That evidence either validates the foundation for
-the rest of the cutover or stops the program before expensive world/bootstrap work.
+C0 and C1 are complete. Start **C2a's direct control pulse** next, then C2b's routed
+shapes. Do not begin C3 until both C2 gates suppress their selected native delivery in a
+real-client failure cell.

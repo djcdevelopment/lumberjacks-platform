@@ -25,6 +25,8 @@ param(
 
     [string] $Server = 'comfy-p7.duckdns.org:2456',
 
+    [string] $GatewayUrl = '',
+
     [string] $RunId = '',
 
     [string] $ValheimRoot = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim',
@@ -75,6 +77,7 @@ $autotestReceiptsPath = Join-Path $autotestRoot 'native-autotest-receipts.jsonl'
 $nativeNetworkLedgerPath = Join-Path $autotestRoot 'native-network-use.jsonl'
 $cutoverScenarioPath = Join-Path $autotestRoot 'native-cutover-scenario.json'
 $cutoverScenarioReceiptsPath = Join-Path $autotestRoot 'native-cutover-scenario-receipts.jsonl'
+$gameSessionReceiptsPath = Join-Path $autotestRoot 'lumberjacks-game-session.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
 
@@ -423,6 +426,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
             native_network_use = Copy-EvidenceFile $nativeNetworkLedgerPath 'native-network-use.jsonl'
             cutover_scenario_receipts =
                 Copy-EvidenceFile $cutoverScenarioReceiptsPath 'native-cutover-scenario-receipts.jsonl'
+            lumberjacks_game_session =
+                Copy-EvidenceFile $gameSessionReceiptsPath 'lumberjacks-game-session.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'
@@ -438,6 +443,7 @@ function Write-NativeAutotestRequest([bool] $ExpectPoison) {
         client = $Client
         character = $Character
         server = $Server
+        lumberjacks_gateway_url = $GatewayUrl
         created_utc = $now.ToString('o')
         expires_utc = $now.AddMinutes(15).ToString('o')
         native_network_poison = $ExpectPoison
@@ -551,6 +557,7 @@ function Invoke-PendingRun() {
         Client = [string]$pending.client
         Character = [string]$pending.character
         Server = [string]$pending.server
+        GatewayUrl = [string]$pending.gateway_url
         RunId = [string]$pending.run_id
         ValheimRoot = [string]$pending.valheim_root
         SteamExe = [string]$pending.steam_exe
@@ -619,6 +626,7 @@ function Queue-InteractiveSmoke() {
         client = $Client
         character = $Character
         server = $Server
+        gateway_url = $GatewayUrl
         run_id = $RunId
         valheim_root = $ValheimRoot
         steam_exe = $SteamExe

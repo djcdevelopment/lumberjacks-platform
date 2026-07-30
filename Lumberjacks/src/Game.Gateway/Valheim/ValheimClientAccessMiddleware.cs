@@ -138,6 +138,10 @@ public sealed class ValheimClientAccessMiddleware
         var bytes = address.GetAddressBytes();
         if (bytes.Length != 4) return false;
         return bytes[0] == 10 ||
+            // Tailscale assigns authenticated peers from RFC 6598. These addresses are not
+            // Internet-routable; treating them as the private plane lets the AM4 development
+            // clients exercise a local Gateway without copying production enrollment stores.
+            (bytes[0] == 100 && bytes[1] is >= 64 and <= 127) ||
             (bytes[0] == 172 && bytes[1] is >= 16 and <= 31) ||
             (bytes[0] == 192 && bytes[1] == 168);
     }

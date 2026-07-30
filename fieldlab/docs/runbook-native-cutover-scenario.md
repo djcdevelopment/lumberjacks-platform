@@ -39,6 +39,13 @@ The full profile additionally includes nearest-item pickup, run-tagged ownership
 targets, and bounded zone crossing. Its ownership tags must begin with
 `cutover-<run-id>` so a stale world object cannot satisfy the action.
 
+The `c1` profile adds two Lumberjacks-only controls per client. The resume probe drops
+the canonical WebSocket after receiving a numbered request but before ack/response,
+then requires the same connection id, a later resume epoch, the exact replayed
+sequence, and one Gateway-accepted response. The timeout probe sends its response while
+Gateway intentionally withholds the reliable receipt; success is the bounded
+`bounded_receipt_timeout_no_native_fallback` marker.
+
 ## Run both clients
 
 ```powershell
@@ -57,6 +64,10 @@ The orchestrator:
 5. waits for both clients' terminal scenario receipts;
 6. retrieves i5 evidence and writes `composition.json`; and
 7. stops both clients on failure.
+
+The i5 Gateway route is a bounded SSH reverse tunnel owned by the orchestrator. It
+keeps the development Gateway private, fails immediately if the remote port cannot be
+allocated, and is force-closed in the same `finally` block that stops failed clients.
 
 `disconnect_resume` deliberately exits Valheim. The harness waits for the process to
 release files, launches a fresh process, and resumes only completed action IDs.
@@ -83,6 +94,17 @@ writer drops/faults are zero.
 For a normal baseline, native totals are expected to be non-zero until the cutover
 ladder removes them. For the final native-zero scenario, enable native poison: any
 trip is a failed boundary, even if the visible gameplay action appeared to work.
+
+For C1, reduce the accepted run separately:
+
+```powershell
+fieldlab\scripts\Write-LumberjacksSessionCutoverSummary.ps1 `
+    -RunDirectory "fieldlab\runs\native-valheim\$runId" `
+    -RunId $runId
+```
+
+`c1-machine-summary.json` must pass every stable-id, resume-epoch, exact-replay,
+single-response, bounded-timeout, lifecycle, artifact-hash, and Gateway-health check.
 
 ## Retained evidence contract
 
