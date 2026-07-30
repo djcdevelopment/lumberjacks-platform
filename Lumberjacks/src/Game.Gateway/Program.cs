@@ -144,25 +144,49 @@ builder.Services.AddDbContextFactory<GameDbContext>(options =>
 
 var app = builder.Build();
 
-// Load persisted data into WorldState on startup (graceful — works without DB)
-try
+// Load persisted data into WorldState on startup (graceful — works without DB).
+//
+// Each loader is isolated and reports at Error. These four used to share one try block at
+// Warning level, which cost real diagnostic time: when the P7 database came up with no schema
+// at all (the 2026-07-24 state-disk replacement missed the one-shot initdb window — see
+// infra/gcp/p7/RUNBOOK-schema-repair.md), RegionLoader threw on its very first statement, the
+// other three never ran, and the lone warning was quiet enough that an empty /community
+// Gameplay Feed got misread during the 2026-07-29 demo as "nobody was connected". A missing
+// relation must not mask the three loaders behind it, and must not look like routine noise.
 {
     await using var scope = app.Services.CreateAsyncScope();
-    var regionLoader = scope.ServiceProvider.GetRequiredService<Game.Simulation.Startup.RegionLoader>();
-    await regionLoader.LoadAsync();
+    var services = scope.ServiceProvider;
 
-    var profileLoader = scope.ServiceProvider.GetRequiredService<Game.Simulation.Startup.RegionProfileLoader>();
-    await profileLoader.LoadAsync();
+    async Task LoadOrWarn(string loader, Func<Task> load)
+    {
+        try
+        {
+            await load();
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogError(
+                ex,
+                "{Loader} failed — that slice of world state is running on in-memory defaults only",
+                loader);
+        }
+    }
 
-    var resourceLoader = scope.ServiceProvider.GetRequiredService<Game.Simulation.Startup.NaturalResourceLoader>();
-    await resourceLoader.LoadAsync();
+    await LoadOrWarn(
+        nameof(Game.Simulation.Startup.RegionLoader),
+        () => services.GetRequiredService<Game.Simulation.Startup.RegionLoader>().LoadAsync());
 
-    var structureLoader = scope.ServiceProvider.GetRequiredService<Game.Simulation.Startup.StructureLoader>();
-    await structureLoader.LoadAsync();
-}
-catch (Exception ex)
-{
-    app.Logger.LogWarning(ex, "Could not load persisted data — running with in-memory defaults only");
+    await LoadOrWarn(
+        nameof(Game.Simulation.Startup.RegionProfileLoader),
+        () => services.GetRequiredService<Game.Simulation.Startup.RegionProfileLoader>().LoadAsync());
+
+    await LoadOrWarn(
+        nameof(Game.Simulation.Startup.NaturalResourceLoader),
+        () => services.GetRequiredService<Game.Simulation.Startup.NaturalResourceLoader>().LoadAsync());
+
+    await LoadOrWarn(
+        nameof(Game.Simulation.Startup.StructureLoader),
+        () => services.GetRequiredService<Game.Simulation.Startup.StructureLoader>().LoadAsync());
 }
 
 app.MapServiceDefaults();
