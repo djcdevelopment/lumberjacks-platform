@@ -20,7 +20,9 @@ public record GameSession(
     ReliableGameSessionState Reliable)
 {
     private readonly object _motionGate = new();
+    private readonly object _zdoDeliveryGate = new();
     private readonly SemaphoreSlim _socketSendGate = new(1, 1);
+    private readonly HashSet<string> _sentZdoDeliveries = new(StringComparer.Ordinal);
     private bool _motionSequenceSet;
     private ushort _lastMotionSequence;
 
@@ -51,6 +53,12 @@ public record GameSession(
     /// <summary>C2b logical role and native peer UID bound after Valheim reaches steady state.</summary>
     public string ValheimRole { get; set; } = "client";
     public long? ValheimPeerUid { get; set; }
+
+    /// <summary>
+    /// Process-durable enrolled Valheim identity. This survives Gateway/client process
+    /// replacement; ConnectionId identifies only the current reliable transport incarnation.
+    /// </summary>
+    public string ValheimLogicalPeerId { get; set; } = "";
 
     /// <summary>The player ZDO first claimed by this authenticated session.</summary>
     public long? ValheimMotionZdoUserId { get; private set; }
@@ -94,6 +102,18 @@ public record GameSession(
             if (Socket.State != WebSocketState.Open) break;
             await SendAsync(frame.Bytes, WebSocketMessageType.Text, cancellationToken);
         }
+    }
+
+    public bool TryMarkZdoDelivery(string worldEpoch, long journalSequence)
+    {
+        lock (_zdoDeliveryGate)
+            return _sentZdoDeliveries.Add($"{worldEpoch}:{journalSequence}");
+    }
+
+    public void UnmarkZdoDelivery(string worldEpoch, long journalSequence)
+    {
+        lock (_zdoDeliveryGate)
+            _sentZdoDeliveries.Remove($"{worldEpoch}:{journalSequence}");
     }
 
     /// <summary>
@@ -141,6 +161,7 @@ public record DetachedSession(
     string? RegionId,
     string ValheimRole,
     long? ValheimPeerUid,
+    string ValheimLogicalPeerId,
     ReliableGameSessionState Reliable,
     long DetachedEpoch,
     DateTimeOffset DetachedAt);
@@ -340,6 +361,7 @@ public class SessionManager
             RegionId = match.RegionId,
             ValheimRole = match.ValheimRole,
             ValheimPeerUid = match.ValheimPeerUid,
+            ValheimLogicalPeerId = match.ValheimLogicalPeerId,
         };
 
         _sessions[session.SessionId] = session;
@@ -361,6 +383,7 @@ public class SessionManager
             session.RegionId,
             session.ValheimRole,
             session.ValheimPeerUid,
+            session.ValheimLogicalPeerId,
             session.Reliable,
             session.ResumeEpoch,
             DateTimeOffset.UtcNow);
@@ -378,6 +401,11 @@ public class SessionManager
 
     public GameSession? FindByValheimPeer(long peerUid) =>
         _sessions.Values.FirstOrDefault(session => session.ValheimPeerUid == peerUid);
+
+    public GameSession? FindByValheimLogicalPeer(string logicalPeerId) =>
+        _sessions.Values.FirstOrDefault(session =>
+            string.Equals(session.ValheimLogicalPeerId, logicalPeerId,
+                StringComparison.Ordinal));
 
     /// <summary>
     /// Find a session by its UDP token. Used by UdpTransport to map inbound UDP packets to sessions.

@@ -23,6 +23,16 @@ Citations of the form `ZDOMan:724` refer to line numbers in the decompiled files
 > `CreateSyncList` selections, survived a Gateway restart, reached late i5 by snapshot,
 > then reached both clients by delta and tombstone. This proves that selected C3
 > boundary only; legacy/general-prefab paths described below remain until C8/C10.
+>
+> **2026-07-30 C4a transport overlay:** the accepted
+> `native-20260730-c4a-second` run moved every C3 mutation, interest, delivery,
+> receipt, and journal ACK frame onto the authenticated C1 reliable session. The
+> server, OMEN, and i5 each retained one opaque logical-peer id while Gateway restart
+> and fresh Valheim processes created new transport connection ids. Six canonical
+> mutations were accepted, late i5 received the snapshot, both clients applied the
+> delta and tombstone, and the final two-recipient queue had zero pending. No
+> run-scoped ZDO row used HTTP carriage. Funnel 3 ownership transfer is unchanged and
+> is the remaining C4 boundary.
 
 ---
 

@@ -124,7 +124,7 @@ public static class ValheimZdoJournalEndpoints
         });
     }
 
-    static string? ValidateMutation(ValheimZdoJournalObject value)
+    internal static string? ValidateMutation(ValheimZdoJournalObject value)
     {
         if (!SafeToken(value.RunId, 80)) return "run_id_invalid";
         if (!SafeToken(value.WorldEpoch, 96)) return "world_epoch_invalid";
@@ -142,7 +142,7 @@ public static class ValheimZdoJournalEndpoints
         return null;
     }
 
-    static string? ValidateInterest(ValheimZdoJournalInterest value)
+    internal static string? ValidateInterest(ValheimZdoJournalInterest value)
     {
         if (!SafeToken(value.RecipientId, 96)) return "recipient_id_invalid";
         if (!SafeToken(value.RunId, 80)) return "run_id_invalid";

@@ -45,6 +45,8 @@ param(
 
     [switch] $EnableZdoJournalCutover,
 
+    [switch] $EnableZdoJournalCanonicalSession,
+
     [string] $ServerGatewayUrl = 'http://100.124.12.37:4000'
 )
 
@@ -65,6 +67,9 @@ if ($RunId.Length -gt 80 -or $RunId -notmatch '^[A-Za-z0-9._-]+$') {
 if ($Server -notmatch '^[^\s:]+:\d{2,5}$') {
     throw "Server must be host:port: $Server"
 }
+if ($EnableZdoJournalCanonicalSession -and -not $EnableZdoJournalCutover) {
+    throw '-EnableZdoJournalCanonicalSession requires -EnableZdoJournalCutover.'
+}
 
 $scenario = (Resolve-Path -LiteralPath $ScenarioPath -ErrorAction Stop).Path
 $dll = (Resolve-Path -LiteralPath $DllPath -ErrorAction Stop).Path
@@ -83,6 +88,7 @@ $oldServerGatewayUrl = $null
 $serverRoutedReceipts = @()
 $serverRoutedDisarmError = $null
 $serverJournalArmed = $false
+$serverJournalCanonicalArmed = $false
 $serverJournalReceipts = @()
 $serverJournalDisarmError = $null
 $gatewayRestartReceipt = $null
@@ -193,6 +199,18 @@ try {
         $serverJournalReceipts +=
             (($journalArmOutput -join [Environment]::NewLine) | ConvertFrom-Json)
         $serverJournalArmed = $true
+        if ($EnableZdoJournalCanonicalSession) {
+            $canonicalArmOutput = & $serverControl `
+                -Setting zdoJournalCanonicalSessionEnabled `
+                -Value true `
+                -RequestId "$RunId-journal-canonical-arm"
+            if ($LASTEXITCODE -ne 0) {
+                throw 'Server canonical ZDO-journal arm failed.'
+            }
+            $serverJournalReceipts +=
+                (($canonicalArmOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+            $serverJournalCanonicalArmed = $true
+        }
     }
 
     & (Join-Path $i5Tools 'Deploy-ToI5.ps1') `
@@ -221,6 +239,9 @@ try {
     }
     if ($EnableZdoJournalCutover) {
         $i5Arguments += '-EnableZdoJournalCutover'
+        if ($EnableZdoJournalCanonicalSession) {
+            $i5Arguments += '-EnableZdoJournalCanonicalSession'
+        }
 
         $gatewayCompose = Join-Path $repoRoot 'Lumberjacks\infra\docker'
         Push-Location $gatewayCompose
@@ -250,6 +271,9 @@ try {
             '-EnableRoutedRpcCutover',
             '-EnableZdoJournalCutover',
             '-WaitSeconds', [string]$WaitSeconds)
+        if ($EnableZdoJournalCanonicalSession) {
+            $omenHarnessArguments += '-EnableZdoJournalCanonicalSession'
+        }
         $omenHarnessProcess = Start-Process `
             -FilePath (Join-Path $PSHOME 'powershell.exe') `
             -ArgumentList $omenHarnessArguments `
@@ -368,11 +392,31 @@ try {
             throw 'OMEN C3 harness did not finish before the scenario deadline.'
         }
         # PowerShell 5.1 can expose a null ExitCode until WaitForExit has
-        # synchronized the native process handle, even after HasExited is true.
+        # synchronized the native process handle, even after HasExited is true. In
+        # some redirected-output runs it remains null after synchronization. Fail
+        # closed against the harness's atomic lifecycle receipt in that case.
         $omenHarnessProcess.WaitForExit()
         $omenHarnessProcess.Refresh()
-        if ($omenHarnessProcess.ExitCode -ne 0) {
-            throw "OMEN C3 harness failed with exit $($omenHarnessProcess.ExitCode); see $omenStderr."
+        $omenExitCode = $omenHarnessProcess.ExitCode
+        if ($null -eq $omenExitCode) {
+            $omenLifecyclePath = Join-Path $runDirectory 'omen\lifecycle.json'
+            if (-not (Test-Path -LiteralPath $omenLifecyclePath -PathType Leaf)) {
+                throw "OMEN journal harness exposed no exit code or lifecycle receipt; see $omenStderr."
+            }
+            $omenCompletedLifecycle =
+                Get-Content -LiteralPath $omenLifecyclePath -Raw |
+                ConvertFrom-Json
+            if ($omenCompletedLifecycle.run_id -ne $RunId -or
+                $omenCompletedLifecycle.result -ne 'joined_held_and_stopped' -or
+                $omenCompletedLifecycle.scenario_terminal.state -ne 'scenario_complete' -or
+                -not [string]::IsNullOrWhiteSpace(
+                    [string]$omenCompletedLifecycle.error)) {
+                throw "OMEN journal harness exposed no exit code and its lifecycle receipt is not complete; see $omenStderr."
+            }
+            $omenExitCode = 0
+        }
+        if ($omenExitCode -ne 0) {
+            throw "OMEN journal harness failed with exit $omenExitCode; see $omenStderr."
         }
     }
 
@@ -403,6 +447,14 @@ try {
             'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/zdo-journal-cutover.jsonl' `
             "$serverDirectory\zdo-journal-cutover.jsonl"
         if ($LASTEXITCODE -ne 0) { throw 'Server ZDO-journal evidence retrieval failed.' }
+        if ($EnableZdoJournalCanonicalSession) {
+            & scp `
+                'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/lumberjacks-game-session.jsonl' `
+                "$serverDirectory\lumberjacks-game-session.jsonl"
+            if ($LASTEXITCODE -ne 0) {
+                throw 'Server canonical-session evidence retrieval failed.'
+            }
+        }
     }
 
     if ($EnableZdoJournalCutover) {
@@ -513,6 +565,25 @@ try {
         }
     }
     if ($serverJournalArmed) {
+        if ($serverJournalCanonicalArmed) {
+            try {
+                $canonicalDisarmOutput =
+                    & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                        -Setting zdoJournalCanonicalSessionEnabled `
+                        -Value false `
+                        -RequestId "$RunId-journal-canonical-disarm"
+                if ($LASTEXITCODE -eq 0) {
+                    $serverJournalReceipts +=
+                        (($canonicalDisarmOutput -join [Environment]::NewLine) |
+                            ConvertFrom-Json)
+                } else {
+                    $serverJournalDisarmError =
+                        "Server canonical ZDO-journal disarm exited $LASTEXITCODE."
+                }
+            } catch {
+                $serverJournalDisarmError = $_.Exception.Message
+            }
+        }
         try {
             $journalDisarmOutput =
                 & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `

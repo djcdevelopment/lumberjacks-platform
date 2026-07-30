@@ -67,10 +67,10 @@ public class GameWebSocketMiddleware
             _logger.LogInformation("Session {SessionId} connected (player {PlayerId})", session.SessionId, session.PlayerId);
         }
 
+        var principal = ValheimPrincipal.From(context);
         var requestedRole = context.Request.Query["valheim_role"].FirstOrDefault();
         if (!resumed)
         {
-            var principal = ValheimPrincipal.From(context);
             session.ValheimRole =
                 string.Equals(requestedRole, "server", StringComparison.OrdinalIgnoreCase) &&
                 principal?.Has(ValheimCapability.Producer) == true
@@ -89,11 +89,44 @@ public class GameWebSocketMiddleware
             return;
         }
 
+        var logicalPeerId = ValheimLogicalPeerIdentity.Resolve(
+            principal,
+            session.ValheimRole,
+            context.Request.Query["valheim_client"].FirstOrDefault(),
+            context.Request.Query["valheim_character"].FirstOrDefault(),
+            session.Reliable.ServerInstanceId,
+            session.Reliable.WorldId,
+            out var logicalPeerError);
+        if (logicalPeerId is null ||
+            (resumed && !string.Equals(
+                session.ValheimLogicalPeerId, logicalPeerId, StringComparison.Ordinal)))
+        {
+            await ws.CloseAsync(
+                WebSocketCloseStatus.PolicyViolation,
+                logicalPeerError ?? "resumed logical peer changed",
+                CancellationToken.None);
+            _sessions.Remove(session.SessionId);
+            return;
+        }
+        if (_sessions.GetAll().Any(candidate =>
+                candidate.SessionId != session.SessionId &&
+                string.Equals(candidate.ValheimLogicalPeerId, logicalPeerId,
+                    StringComparison.Ordinal)))
+        {
+            await ws.CloseAsync(
+                WebSocketCloseStatus.PolicyViolation,
+                "logical peer already connected",
+                CancellationToken.None);
+            _sessions.Remove(session.SessionId);
+            return;
+        }
+        session.ValheimLogicalPeerId = logicalPeerId;
+
         // Set protocol mode based on handshake
         session.Protocol = useBinary ? ProtocolMode.Binary : ProtocolMode.Json;
         // The UDP token authenticates packets to this WebSocket session. Only enrollment-backed
         // sessions may publish Valheim motion, and the identifier retained here is opaque.
-        session.ValheimRecipientId = ValheimPrincipal.From(context)?.Enrollment?.RecipientId;
+        session.ValheimRecipientId = principal?.Enrollment?.RecipientId;
 
         // Send session_started envelope (includes resume_token for future reconnects)
         // Include udp_token and udp_port so clients can bind a UDP channel
@@ -106,9 +139,11 @@ public class GameWebSocketMiddleware
             world_id = session.Reliable.WorldId,
             protocol_version = session.Reliable.ProtocolVersion,
             client_connection_id = session.ConnectionId,
+            logical_peer_id = session.ValheimLogicalPeerId,
             resume_epoch = session.ResumeEpoch,
             resume_token = session.ResumeToken,
             resumed,
+            resume_rejected = !resumed && !string.IsNullOrEmpty(resumeToken),
             reliable_pending = session.Reliable.PendingCount,
             udp_token = session.UdpToken.ToString(),
             udp_port = udpPort,
@@ -142,9 +177,8 @@ public class GameWebSocketMiddleware
         {
             while (ws.State == WebSocketState.Open)
             {
-                var result = await ws.ReceiveAsync(buffer, CancellationToken.None);
-
-                if (result.MessageType == WebSocketMessageType.Close)
+                var result = await ReceiveFrameAsync(ws, buffer, CancellationToken.None);
+                if (result is null || result.MessageType == WebSocketMessageType.Close)
                     break;
 
                 try
@@ -154,7 +188,7 @@ public class GameWebSocketMiddleware
                     if (result.MessageType == WebSocketMessageType.Binary)
                     {
                         // Binary protocol: parse binary envelope header
-                        var frame = new ReadOnlySpan<byte>(buffer, 0, result.Count);
+                        var frame = new ReadOnlySpan<byte>(result.Payload);
                         var header = BinaryEnvelope.ReadHeader(frame);
 
                         // Upgrade session to binary mode if not already
@@ -203,7 +237,7 @@ public class GameWebSocketMiddleware
                     else
                     {
                         // JSON protocol: existing path
-                        var raw = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                        var raw = Encoding.UTF8.GetString(result.Payload);
                         incoming = EnvelopeFactory.Parse(raw);
                     }
 
@@ -246,4 +280,25 @@ public class GameWebSocketMiddleware
                 await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Goodbye", CancellationToken.None);
         }
     }
+
+    static async Task<ReceivedFrame?> ReceiveFrameAsync(
+        System.Net.WebSockets.WebSocket socket,
+        byte[] buffer,
+        CancellationToken cancellationToken)
+    {
+        using var stream = new MemoryStream();
+        WebSocketReceiveResult result;
+        do
+        {
+            result = await socket.ReceiveAsync(buffer, cancellationToken);
+            if (result.MessageType == WebSocketMessageType.Close)
+                return new(result.MessageType, Array.Empty<byte>());
+            stream.Write(buffer, 0, result.Count);
+            if (stream.Length > 8 * 1024 * 1024)
+                throw new InvalidDataException("WebSocket frame exceeds the bounded semantic limit");
+        } while (!result.EndOfMessage);
+        return new(result.MessageType, stream.ToArray());
+    }
+
+    sealed record ReceivedFrame(WebSocketMessageType MessageType, byte[] Payload);
 }

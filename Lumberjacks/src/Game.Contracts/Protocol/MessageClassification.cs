@@ -14,6 +14,13 @@ public static class MessageClassification
         [MessageType.PlaceStructure] = DeliveryLane.Reliable,
         [MessageType.Interact] = DeliveryLane.Reliable,
         [MessageType.SessionStarted] = DeliveryLane.Reliable,
+        [MessageType.ValheimZdoMutation] = DeliveryLane.Reliable,
+        [MessageType.ValheimZdoInterest] = DeliveryLane.Reliable,
+        [MessageType.ValheimZdoAck] = DeliveryLane.Reliable,
+        [MessageType.ValheimZdoDelivery] = DeliveryLane.Reliable,
+        [MessageType.ValheimZdoMutationReceipt] = DeliveryLane.Reliable,
+        [MessageType.ValheimZdoInterestReceipt] = DeliveryLane.Reliable,
+        [MessageType.ValheimZdoInterestStatus] = DeliveryLane.Reliable,
         [MessageType.EventEmitted] = DeliveryLane.Reliable,
         [MessageType.Error] = DeliveryLane.Reliable,
 

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Game.Contracts.Protocol;
 using Game.Contracts.Protocol.Binary;
+using Game.Gateway.Valheim;
 using Game.ServiceDefaults;
 using Game.Simulation.Handlers;
 using Game.Simulation.Tick;
@@ -18,6 +19,7 @@ public class MessageRouter
     private readonly PlayerHandler _playerHandler;
     private readonly PlaceStructureHandler _placeStructureHandler;
     private readonly InventoryHandler _inventoryHandler;
+    private readonly ValheimZdoJournalService _zdoJournal;
     private readonly ILogger<MessageRouter> _logger;
 
     public MessageRouter(
@@ -27,6 +29,7 @@ public class MessageRouter
         PlayerHandler playerHandler,
         PlaceStructureHandler placeStructureHandler,
         InventoryHandler inventoryHandler,
+        ValheimZdoJournalService zdoJournal,
         ILogger<MessageRouter> logger)
     {
         _sessions = sessions;
@@ -35,6 +38,7 @@ public class MessageRouter
         _playerHandler = playerHandler;
         _placeStructureHandler = placeStructureHandler;
         _inventoryHandler = inventoryHandler;
+        _zdoJournal = zdoJournal;
         _logger = logger;
     }
 
@@ -110,6 +114,18 @@ public class MessageRouter
 
             case MessageType.ValheimRoutedRpcSend:
                 await HandleValheimRoutedRpcSendAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimZdoMutation:
+                await HandleValheimZdoMutationAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimZdoInterest:
+                await HandleValheimZdoInterestAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimZdoAck:
+                HandleValheimZdoAck(session, envelope);
                 break;
 
             default:
@@ -424,6 +440,156 @@ public class MessageRouter
             "Valheim routed RPC queued route={RouteId} method={Method} sender={Sender} target={Target} target_zdo={TargetZdoUser}:{TargetZdoId} recipients={RecipientCount}",
             routeId, methodName, senderPeerId, targetPeerId,
             targetZdoUserId, targetZdoId, targets.Count);
+    }
+
+    async Task HandleValheimZdoMutationAsync(GameSession session, Envelope envelope)
+    {
+        if (!string.Equals(session.ValheimRole, "server", StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId))
+            throw new InvalidDataException("ZDO mutation requires the logical server session");
+
+        var mutation = JsonSerializer.Deserialize<ValheimZdoJournalObject>(
+            envelope.Payload.GetRawText(), JsonOptions.Default)
+            ?? throw new InvalidDataException("ZDO mutation payload missing");
+        var validation = ValheimZdoJournalEndpoints.ValidateMutation(mutation);
+        if (validation is not null)
+            throw new InvalidDataException(validation);
+        var idempotencyKey =
+            $"zdo-mutation:{mutation.WorldEpoch}:{mutation.UidUser}:{mutation.UidId}:{mutation.SourceSequence}";
+        if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, idempotencyKey))
+        {
+            _logger.LogInformation(
+                "Duplicate Valheim ZDO mutation ignored logical_peer={LogicalPeer} source_sequence={SourceSequence}",
+                session.ValheimLogicalPeerId, mutation.SourceSequence);
+            return;
+        }
+
+        var result = _zdoJournal.Record(mutation);
+        var receipt = await session.SendReliableAsync(
+            MessageType.ValheimZdoMutationReceipt,
+            new
+            {
+                run_id = mutation.RunId,
+                world_epoch = mutation.WorldEpoch,
+                source_sequence = mutation.SourceSequence,
+                object_revision = mutation.ObjectRevision,
+                accepted = result.Accepted,
+                result = result.Result,
+                recipient_count = result.RecipientCount,
+                durable_objects = result.DurableObjects,
+                logical_peer_id = session.ValheimLogicalPeerId,
+            },
+            CancellationToken.None);
+        if (!receipt.Queued)
+            throw new InvalidOperationException(receipt.Reason);
+        if (!result.Accepted)
+            return;
+
+        foreach (var target in _sessions.GetAll().Where(candidate =>
+                     string.Equals(candidate.ValheimRole, "client", StringComparison.Ordinal) &&
+                     !string.IsNullOrWhiteSpace(candidate.ValheimLogicalPeerId)))
+            await SendPendingZdoDeliveriesAsync(target, mutation.WorldEpoch);
+    }
+
+    async Task HandleValheimZdoInterestAsync(GameSession session, Envelope envelope)
+    {
+        if (!string.Equals(session.ValheimRole, "client", StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId))
+            throw new InvalidDataException("ZDO interest requires a logical client session");
+
+        var supplied = JsonSerializer.Deserialize<ValheimZdoJournalInterest>(
+            envelope.Payload.GetRawText(), JsonOptions.Default)
+            ?? throw new InvalidDataException("ZDO interest payload missing");
+        var interest = supplied with { RecipientId = session.ValheimLogicalPeerId };
+        var validation = ValheimZdoJournalEndpoints.ValidateInterest(interest);
+        if (validation is not null)
+            throw new InvalidDataException(validation);
+        var idempotencyKey =
+            $"zdo-interest:{interest.WorldEpoch}:{interest.RunId}:{interest.ZoneEpoch}:{interest.ZoneX}:{interest.ZoneY}:{interest.RadiusZones}:{interest.Refresh}";
+        if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, idempotencyKey))
+            return;
+
+        var result = _zdoJournal.RegisterInterest(session.ValheimLogicalPeerId, interest);
+        var receipt = await session.SendReliableAsync(
+            MessageType.ValheimZdoInterestReceipt,
+            new
+            {
+                run_id = interest.RunId,
+                world_epoch = interest.WorldEpoch,
+                logical_peer_id = session.ValheimLogicalPeerId,
+                snapshot_count = result.SnapshotCount,
+                pending = result.PendingCount,
+            },
+            CancellationToken.None);
+        if (!receipt.Queued)
+            throw new InvalidOperationException(receipt.Reason);
+
+        await SendPendingZdoDeliveriesAsync(session, interest.WorldEpoch);
+        var status = _zdoJournal.RunStatus(interest.RunId, interest.WorldEpoch);
+        foreach (var server in _sessions.GetAll().Where(candidate =>
+                     string.Equals(candidate.ValheimRole, "server", StringComparison.Ordinal)))
+        {
+            var queued = await server.SendReliableAsync(
+                MessageType.ValheimZdoInterestStatus,
+                new
+                {
+                    run_id = interest.RunId,
+                    world_epoch = interest.WorldEpoch,
+                    interested_recipients = status.InterestedRecipients,
+                    pending = status.Pending,
+                    durable_objects = status.DurableObjects,
+                },
+                CancellationToken.None);
+            if (!queued.Queued)
+                throw new InvalidOperationException(queued.Reason);
+        }
+    }
+
+    void HandleValheimZdoAck(GameSession session, Envelope envelope)
+    {
+        if (!string.Equals(session.ValheimRole, "client", StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId))
+            throw new InvalidDataException("ZDO ACK requires a logical client session");
+        var ack = JsonSerializer.Deserialize<ValheimZdoJournalAck>(
+            envelope.Payload.GetRawText(), JsonOptions.Default)
+            ?? throw new InvalidDataException("ZDO ACK payload missing");
+        if (!SafeToken(ack.WorldEpoch, 96) ||
+            ack.Sequences is null || ack.Sequences.Length is < 1 or > 1024 ||
+            ack.Sequences.Any(value => value <= 0))
+            throw new InvalidDataException("invalid ZDO ACK");
+        var idempotencyKey =
+            $"zdo-ack:{ack.WorldEpoch}:{string.Join(',', ack.Sequences.Order())}";
+        if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, idempotencyKey))
+            return;
+        var result = _zdoJournal.Acknowledge(
+            session.ValheimLogicalPeerId, ack.WorldEpoch, ack.Sequences);
+        _logger.LogInformation(
+            "Valheim ZDO ACK logical_peer={LogicalPeer} world={WorldEpoch} acknowledged={Acknowledged} unknown={Unknown}",
+            session.ValheimLogicalPeerId, ack.WorldEpoch,
+            result.Acknowledged, result.Unknown);
+    }
+
+    async Task SendPendingZdoDeliveriesAsync(GameSession target, string worldEpoch)
+    {
+        foreach (var delivery in _zdoJournal.Pending(
+                     target.ValheimLogicalPeerId, worldEpoch, 1024))
+        {
+            if (!target.TryMarkZdoDelivery(worldEpoch, delivery.Sequence))
+                continue;
+            var queued = await target.SendReliableAsync(
+                MessageType.ValheimZdoDelivery,
+                new
+                {
+                    seq = delivery.Sequence,
+                    kind = delivery.Kind,
+                    @object = delivery.Object,
+                    logical_peer_id = target.ValheimLogicalPeerId,
+                },
+                CancellationToken.None);
+            if (queued.Queued) continue;
+            target.UnmarkZdoDelivery(worldEpoch, delivery.Sequence);
+            throw new InvalidOperationException(queued.Reason);
+        }
     }
 
     static string ReadString(JsonElement payload, string name) =>

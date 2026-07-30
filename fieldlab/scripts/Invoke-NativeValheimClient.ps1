@@ -49,6 +49,8 @@ param(
 
     [switch] $EnableZdoJournalCutover,
 
+    [switch] $EnableZdoJournalCanonicalSession,
+
     [string[]] $LaunchArguments = @(),
 
     [string] $PendingRequestPath = '',
@@ -421,6 +423,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         native_network_poison_requested = $Action -eq 'poison-smoke'
         routed_rpc_cutover_requested = [bool]$EnableRoutedRpcCutover
         zdo_journal_cutover_requested = [bool]$EnableZdoJournalCutover
+        zdo_journal_canonical_session_requested =
+            [bool]$EnableZdoJournalCanonicalSession
         preflight = $Preflight
         deployment = $Deployment
         plugin_sha256 = if (Test-Path -LiteralPath $pluginPath -PathType Leaf) {
@@ -464,6 +468,8 @@ function Write-NativeAutotestRequest([bool] $ExpectPoison) {
         native_network_poison = $ExpectPoison
         routed_rpc_cutover = [bool]$EnableRoutedRpcCutover
         zdo_journal_cutover = [bool]$EnableZdoJournalCutover
+        zdo_journal_canonical_session =
+            [bool]$EnableZdoJournalCanonicalSession
     }
     Write-JsonAtomic $autotestRequestPath $request
     return $now
@@ -585,6 +591,8 @@ function Invoke-PendingRun() {
         HoldSeconds = [int]$pending.hold_seconds
         EnableRoutedRpcCutover = [bool]$pending.enable_routed_rpc_cutover
         EnableZdoJournalCutover = [bool]$pending.enable_zdo_journal_cutover
+        EnableZdoJournalCanonicalSession =
+            [bool]$pending.enable_zdo_journal_canonical_session
         LaunchArguments = @($pending.launch_arguments)
     }
     & $PSCommandPath @invoke
@@ -656,6 +664,8 @@ function Queue-InteractiveSmoke() {
         hold_seconds = $HoldSeconds
         enable_routed_rpc_cutover = [bool]$EnableRoutedRpcCutover
         enable_zdo_journal_cutover = [bool]$EnableZdoJournalCutover
+        enable_zdo_journal_canonical_session =
+            [bool]$EnableZdoJournalCanonicalSession
         launch_arguments = @($LaunchArguments)
     }
     Write-JsonAtomic $PendingRequestPath $pending

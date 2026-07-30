@@ -28,7 +28,8 @@ param(
         'directControlCutoverEnabled',
         'lumberjacksGatewayUrl',
         'routedRpcCutoverEnabled',
-        'zdoJournalCutoverEnabled')]
+        'zdoJournalCutoverEnabled',
+        'zdoJournalCanonicalSessionEnabled')]
     [Parameter(Mandatory)]
     [string] $Setting,
 
