@@ -51,6 +51,13 @@ withhold per client. Run it with `-EnableDirectControlCutover`; the orchestrator
 the AM4 run id, arms the exact native suppression class, retrieves the server receipt,
 and disarms the gate in `finally`.
 
+The `c2b` profile adds targeted request/response, server broadcast, a real
+zero-argument target-ZDO `RPC_ResetCloth`, and an intentional withhold per client. Run
+it with `-EnableRoutedRpcCutover`; the native-autotest request arms the bounded client
+registry, while runtime control arms AM4 and selects the private Gateway URL. The
+orchestrator retrieves the server receipt, disarms the gate, and restores the previous
+Gateway URL in `finally`.
+
 ## Run both clients
 
 ```powershell
@@ -67,6 +74,15 @@ fieldlab\scripts\Invoke-NativeValheimCutoverScenario.ps1 `
     -RunId $runId `
     -ScenarioPath $scenario `
     -EnableDirectControlCutover
+```
+
+For C2b:
+
+```powershell
+fieldlab\scripts\Invoke-NativeValheimCutoverScenario.ps1 `
+    -RunId $runId `
+    -ScenarioPath $scenario `
+    -EnableRoutedRpcCutover
 ```
 
 The orchestrator:
@@ -132,6 +148,20 @@ fieldlab\scripts\Write-DirectControlCutoverSummary.ps1 `
 per client, an explicitly registered native tripwire, zero native copies, every
 selected AM4 native attempt suppressed, matching artifacts, a clean runtime disarm,
 and healthy Gateway.
+
+For C2b:
+
+```powershell
+fieldlab\scripts\Write-RoutedRpcCutoverSummary.ps1 `
+    -RunDirectory "fieldlab\runs\native-valheim\$runId" `
+    -RunId $runId
+```
+
+`c2b-machine-summary.json` must prove one targeted request/response, one broadcast,
+one real target-ZDO dispatch, and one bounded stale result per client; exact server
+dispatch counts; zero native selected-method copies, duplicate deliveries, or handler
+failures; every selected native attempt suppressed; matching artifacts; clean runtime
+disarm and Gateway-URL restoration; and healthy Gateway.
 
 ## Retained evidence contract
 

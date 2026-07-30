@@ -25,7 +25,9 @@ param(
         'handshakeResponderWindowId',
         'nativeNetworkPoisonEnabled',
         'nativeNetworkEvidenceRunId',
-        'directControlCutoverEnabled')]
+        'directControlCutoverEnabled',
+        'lumberjacksGatewayUrl',
+        'routedRpcCutoverEnabled')]
     [Parameter(Mandatory)]
     [string] $Setting,
 

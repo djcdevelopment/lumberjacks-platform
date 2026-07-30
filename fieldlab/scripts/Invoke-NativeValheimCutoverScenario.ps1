@@ -39,7 +39,11 @@ param(
     [ValidateRange(0, 120)]
     [int] $HoldSeconds = 5,
 
-    [switch] $EnableDirectControlCutover
+    [switch] $EnableDirectControlCutover,
+
+    [switch] $EnableRoutedRpcCutover,
+
+    [string] $ServerGatewayUrl = 'http://100.124.12.37:4000'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -71,6 +75,11 @@ $gatewayTunnel = $null
 $serverDirectArmed = $false
 $serverControlReceipts = @()
 $serverDisarmError = $null
+$serverRoutedArmed = $false
+$serverGatewayChanged = $false
+$oldServerGatewayUrl = $null
+$serverRoutedReceipts = @()
+$serverRoutedDisarmError = $null
 
 function Write-JsonAtomic([string] $Path, [object] $Value) {
     $temporary = "$Path.tmp"
@@ -133,6 +142,38 @@ try {
         $serverDirectArmed = $true
     }
 
+    if ($EnableRoutedRpcCutover) {
+        $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+        $runOutput = & $serverControl `
+            -Setting nativeNetworkEvidenceRunId `
+            -Value $RunId `
+            -RequestId "$RunId-routed-run"
+        if ($LASTEXITCODE -ne 0) { throw 'Server routed run-id control failed.' }
+        $serverRoutedReceipts +=
+            (($runOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+
+        $gatewayOutput = & $serverControl `
+            -Setting lumberjacksGatewayUrl `
+            -Value $ServerGatewayUrl `
+            -RequestId "$RunId-routed-gateway"
+        if ($LASTEXITCODE -ne 0) { throw 'Server Gateway URL control failed.' }
+        $gatewayReceipt =
+            (($gatewayOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+        $serverRoutedReceipts += $gatewayReceipt
+        $oldServerGatewayUrl = [string]$gatewayReceipt.old_value
+        $serverGatewayChanged = $true
+
+        $armOutput = & $serverControl `
+            -Setting routedRpcCutoverEnabled `
+            -Value true `
+            -RequestId "$RunId-routed-arm"
+        if ($LASTEXITCODE -ne 0) { throw 'Server routed-RPC arm failed.' }
+        $serverRoutedReceipts +=
+            (($armOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+        $serverRoutedArmed = $true
+        Start-Sleep -Seconds 3
+    }
+
     & (Join-Path $i5Tools 'Deploy-ToI5.ps1') `
         -Path $clientHarness `
         -Dest C:/deploy/baseline/fieldlab/scripts
@@ -144,7 +185,7 @@ try {
         -Dest $remoteScenarioDirectory
     if ($LASTEXITCODE -ne 0) { throw 'i5 scenario deployment failed.' }
 
-    $queue = Invoke-I5Harness @(
+    $i5Arguments = @(
         '-Action', 'queue-smoke',
         '-Client', 'i5',
         '-Character', $I5Character,
@@ -154,6 +195,10 @@ try {
         '-ScenarioPath', $remoteScenarioPath,
         '-HoldSeconds', [string]$HoldSeconds,
         '-WaitSeconds', [string]$WaitSeconds)
+    if ($EnableRoutedRpcCutover) {
+        $i5Arguments += '-EnableRoutedRpcCutover'
+    }
+    $queue = Invoke-I5Harness $i5Arguments
     $queue | Write-Host
 
     & $clientHarness `
@@ -167,6 +212,7 @@ try {
         -ScenarioPath $scenario `
         -EvidenceRoot $EvidenceRoot `
         -HoldSeconds $HoldSeconds `
+        -EnableRoutedRpcCutover:$EnableRoutedRpcCutover `
         -WaitSeconds $WaitSeconds
     if ($LASTEXITCODE -ne 0) { throw 'OMEN cutover scenario failed.' }
 
@@ -196,6 +242,14 @@ try {
             'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/direct-control-cutover.jsonl' `
             "$serverDirectory\direct-control-cutover.jsonl"
         if ($LASTEXITCODE -ne 0) { throw 'Server direct-control evidence retrieval failed.' }
+    }
+    if ($EnableRoutedRpcCutover) {
+        $serverDirectory = Join-Path $runDirectory 'server'
+        New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/routed-rpc-cutover.jsonl' `
+            "$serverDirectory\routed-rpc-cutover.jsonl"
+        if ($LASTEXITCODE -ne 0) { throw 'Server routed-RPC evidence retrieval failed.' }
     }
 
     $omenLifecycle =
@@ -260,6 +314,45 @@ try {
             $serverDisarmError = $_.Exception.Message
         }
     }
+    if ($serverRoutedArmed) {
+        try {
+            $routeDisarmOutput =
+                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    -Setting routedRpcCutoverEnabled `
+                    -Value false `
+                    -RequestId "$RunId-routed-disarm"
+            if ($LASTEXITCODE -eq 0) {
+                $serverRoutedReceipts +=
+                    (($routeDisarmOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+            } else {
+                $serverRoutedDisarmError =
+                    "Server routed-RPC disarm exited $LASTEXITCODE."
+            }
+        } catch {
+            $serverRoutedDisarmError = $_.Exception.Message
+        }
+    }
+    if ($serverGatewayChanged -and
+        -not [string]::IsNullOrWhiteSpace($oldServerGatewayUrl)) {
+        try {
+            $restoreOutput =
+                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    -Setting lumberjacksGatewayUrl `
+                    -Value $oldServerGatewayUrl `
+                    -RequestId "$RunId-routed-restore"
+            if ($LASTEXITCODE -eq 0) {
+                $serverRoutedReceipts +=
+                    (($restoreOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+            } elseif (-not $serverRoutedDisarmError) {
+                $serverRoutedDisarmError =
+                    "Server Gateway URL restore exited $LASTEXITCODE."
+            }
+        } catch {
+            if (-not $serverRoutedDisarmError) {
+                $serverRoutedDisarmError = $_.Exception.Message
+            }
+        }
+    }
     if ($EnableDirectControlCutover -and $serverControlReceipts.Count -gt 0) {
         Write-JsonAtomic `
             (Join-Path $runDirectory 'server-runtime-direct-control.json') `
@@ -270,7 +363,20 @@ try {
                 disarm_error = $serverDisarmError
             })
     }
+    if ($EnableRoutedRpcCutover -and $serverRoutedReceipts.Count -gt 0) {
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'server-runtime-routed-rpc.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                receipts = $serverRoutedReceipts
+                disarm_error = $serverRoutedDisarmError
+            })
+    }
     if ($completed -and $serverDisarmError) {
         throw "Scenario completed but server direct-control disarm failed: $serverDisarmError"
+    }
+    if ($completed -and $serverRoutedDisarmError) {
+        throw "Scenario completed but server routed-RPC cleanup failed: $serverRoutedDisarmError"
     }
 }

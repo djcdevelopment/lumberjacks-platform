@@ -48,6 +48,10 @@ public record GameSession(
     /// <summary>Opaque enrollment recipient; null sessions cannot publish Valheim motion.</summary>
     public string? ValheimRecipientId { get; set; }
 
+    /// <summary>C2b logical role and native peer UID bound after Valheim reaches steady state.</summary>
+    public string ValheimRole { get; set; } = "client";
+    public long? ValheimPeerUid { get; set; }
+
     /// <summary>The player ZDO first claimed by this authenticated session.</summary>
     public long? ValheimMotionZdoUserId { get; private set; }
     public uint? ValheimMotionZdoId { get; private set; }
@@ -135,6 +139,8 @@ public record DetachedSession(
     string PlayerId,
     string? GuildId,
     string? RegionId,
+    string ValheimRole,
+    long? ValheimPeerUid,
     ReliableGameSessionState Reliable,
     long DetachedEpoch,
     DateTimeOffset DetachedAt);
@@ -332,6 +338,8 @@ public class SessionManager
         {
             GuildId = match.GuildId,
             RegionId = match.RegionId,
+            ValheimRole = match.ValheimRole,
+            ValheimPeerUid = match.ValheimPeerUid,
         };
 
         _sessions[session.SessionId] = session;
@@ -351,6 +359,8 @@ public class SessionManager
             session.PlayerId,
             session.GuildId,
             session.RegionId,
+            session.ValheimRole,
+            session.ValheimPeerUid,
             session.Reliable,
             session.ResumeEpoch,
             DateTimeOffset.UtcNow);
@@ -365,6 +375,9 @@ public class SessionManager
     {
         return _sessions.Values.FirstOrDefault(s => s.PlayerId == playerId);
     }
+
+    public GameSession? FindByValheimPeer(long peerUid) =>
+        _sessions.Values.FirstOrDefault(session => session.ValheimPeerUid == peerUid);
 
     /// <summary>
     /// Find a session by its UDP token. Used by UdpTransport to map inbound UDP packets to sessions.

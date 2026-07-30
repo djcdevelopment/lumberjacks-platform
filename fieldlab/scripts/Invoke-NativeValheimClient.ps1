@@ -45,6 +45,8 @@ param(
     [ValidateRange(0, 300)]
     [int] $HoldSeconds = 20,
 
+    [switch] $EnableRoutedRpcCutover,
+
     [string[]] $LaunchArguments = @(),
 
     [string] $PendingRequestPath = '',
@@ -79,6 +81,7 @@ $cutoverScenarioPath = Join-Path $autotestRoot 'native-cutover-scenario.json'
 $cutoverScenarioReceiptsPath = Join-Path $autotestRoot 'native-cutover-scenario-receipts.jsonl'
 $gameSessionReceiptsPath = Join-Path $autotestRoot 'lumberjacks-game-session.jsonl'
 $directControlReceiptsPath = Join-Path $autotestRoot 'direct-control-cutover.jsonl'
+$routedRpcReceiptsPath = Join-Path $autotestRoot 'routed-rpc-cutover.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
 
@@ -413,6 +416,7 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         resume_count = $script:ResumeCount
         profile_recovery_count = $script:ProfileRecoveryCount
         native_network_poison_requested = $Action -eq 'poison-smoke'
+        routed_rpc_cutover_requested = [bool]$EnableRoutedRpcCutover
         preflight = $Preflight
         deployment = $Deployment
         plugin_sha256 = if (Test-Path -LiteralPath $pluginPath -PathType Leaf) {
@@ -431,6 +435,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
                 Copy-EvidenceFile $gameSessionReceiptsPath 'lumberjacks-game-session.jsonl'
             direct_control_cutover =
                 Copy-EvidenceFile $directControlReceiptsPath 'direct-control-cutover.jsonl'
+            routed_rpc_cutover =
+                Copy-EvidenceFile $routedRpcReceiptsPath 'routed-rpc-cutover.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'
@@ -450,6 +456,7 @@ function Write-NativeAutotestRequest([bool] $ExpectPoison) {
         created_utc = $now.ToString('o')
         expires_utc = $now.AddMinutes(15).ToString('o')
         native_network_poison = $ExpectPoison
+        routed_rpc_cutover = [bool]$EnableRoutedRpcCutover
     }
     Write-JsonAtomic $autotestRequestPath $request
     return $now
@@ -569,6 +576,7 @@ function Invoke-PendingRun() {
         EvidenceRoot = [string]$pending.evidence_root
         WaitSeconds = [int]$pending.wait_seconds
         HoldSeconds = [int]$pending.hold_seconds
+        EnableRoutedRpcCutover = [bool]$pending.enable_routed_rpc_cutover
         LaunchArguments = @($pending.launch_arguments)
     }
     & $PSCommandPath @invoke
@@ -638,6 +646,7 @@ function Queue-InteractiveSmoke() {
         evidence_root = $EvidenceRoot
         wait_seconds = $WaitSeconds
         hold_seconds = $HoldSeconds
+        enable_routed_rpc_cutover = [bool]$EnableRoutedRpcCutover
         launch_arguments = @($LaunchArguments)
     }
     Write-JsonAtomic $PendingRequestPath $pending

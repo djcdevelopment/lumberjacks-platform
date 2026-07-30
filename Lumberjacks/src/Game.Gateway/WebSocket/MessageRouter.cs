@@ -104,6 +104,14 @@ public class MessageRouter
                 await HandleValheimDirectPulseProbeAsync(session, envelope);
                 break;
 
+            case MessageType.ValheimPeerBind:
+                HandleValheimPeerBind(session, envelope);
+                break;
+
+            case MessageType.ValheimRoutedRpcSend:
+                await HandleValheimRoutedRpcSendAsync(session, envelope);
+                break;
+
             default:
                 _logger.LogDebug("No route for message type {Type}", envelope.Type);
                 break;
@@ -271,6 +279,185 @@ public class MessageRouter
         _logger.LogInformation(
             "Valheim direct pulse queued connection={ConnectionId} epoch={ResumeEpoch} run={RunId} action={ActionId} sequence={Sequence}",
             session.ConnectionId, session.ResumeEpoch, runId, actionId, result.Sequence);
+    }
+
+    void HandleValheimPeerBind(GameSession session, Envelope envelope)
+    {
+        var payload = envelope.Payload;
+        var role = payload.TryGetProperty("role", out var roleElement)
+            ? roleElement.GetString() ?? string.Empty
+            : string.Empty;
+        if (!payload.TryGetProperty("peer_uid", out var uidElement) ||
+            !uidElement.TryGetInt64(out var peerUid) || peerUid == 0 ||
+            !string.Equals(role, session.ValheimRole, StringComparison.Ordinal))
+            throw new InvalidDataException("invalid Valheim peer binding");
+
+        var key = $"peer-bind:{role}:{peerUid}";
+        if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
+        {
+            if (session.ValheimPeerUid != peerUid)
+                throw new InvalidDataException("conflicting Valheim peer binding");
+            return;
+        }
+
+        var existing = _sessions.FindByValheimPeer(peerUid);
+        if (existing != null && existing.SessionId != session.SessionId)
+            throw new InvalidDataException("Valheim peer UID already bound");
+        if (role == "server" && _sessions.GetAll().Any(candidate =>
+                candidate.SessionId != session.SessionId &&
+                candidate.ValheimRole == "server" &&
+                candidate.ValheimPeerUid.HasValue))
+            throw new InvalidDataException("Valheim server session already bound");
+
+        session.ValheimPeerUid = peerUid;
+        _logger.LogInformation(
+            "Valheim peer bound connection={ConnectionId} role={Role} peer={PeerUid}",
+            session.ConnectionId, role, peerUid);
+    }
+
+    async Task HandleValheimRoutedRpcSendAsync(GameSession session, Envelope envelope)
+    {
+        var payload = envelope.Payload;
+        var runId = ReadString(payload, "run_id");
+        var actionId = ReadString(payload, "action_id");
+        var routeId = ReadString(payload, "route_id");
+        var methodName = ReadString(payload, "method_name");
+        var parameters = ReadString(payload, "parameters_base64");
+        var mode = ReadString(payload, "delivery_mode");
+        if (!payload.TryGetProperty("message_id", out var messageElement) ||
+            !messageElement.TryGetInt64(out var messageId) ||
+            !payload.TryGetProperty("sender_peer_id", out var senderElement) ||
+            !senderElement.TryGetInt64(out var senderPeerId) ||
+            !payload.TryGetProperty("target_peer_id", out var targetElement) ||
+            !targetElement.TryGetInt64(out var targetPeerId) ||
+            !payload.TryGetProperty("target_zdo_user_id", out var zdoUserElement) ||
+            !zdoUserElement.TryGetInt64(out var targetZdoUserId) ||
+            !payload.TryGetProperty("target_zdo_id", out var zdoIdElement) ||
+            !zdoIdElement.TryGetUInt32(out var targetZdoId) ||
+            !payload.TryGetProperty("method_hash", out var methodElement) ||
+            !methodElement.TryGetInt32(out var methodHash) ||
+            !SafeToken(runId, 80) || !SafeToken(actionId, 80) ||
+            !SafeToken(routeId, 192) ||
+            mode is not ("deliver" or "withhold") ||
+            session.ValheimPeerUid != senderPeerId ||
+            messageId == 0 ||
+            !AllowedRoutedMethod(methodName, methodHash) ||
+            parameters.Length > 48_000)
+            throw new InvalidDataException("invalid Valheim routed RPC envelope");
+
+        try
+        {
+            if (Convert.FromBase64String(parameters).Length > 32_768)
+                throw new InvalidDataException("Valheim routed RPC parameters exceed limit");
+        }
+        catch (FormatException)
+        {
+            throw new InvalidDataException("Valheim routed RPC parameters are not base64");
+        }
+
+        if (!session.Reliable.TryAcceptClientMessage(
+                envelope.Seq, $"routed:{routeId}"))
+        {
+            _logger.LogInformation(
+                "Valheim routed duplicate ignored connection={ConnectionId} route={RouteId}",
+                session.ConnectionId, routeId);
+            return;
+        }
+
+        IReadOnlyCollection<GameSession> targets;
+        if (targetPeerId == 0)
+        {
+            targets = _sessions.GetAll()
+                .Where(candidate =>
+                    candidate.SessionId != session.SessionId &&
+                    candidate.ValheimPeerUid.HasValue)
+                .ToArray();
+        }
+        else
+        {
+            var target = _sessions.FindByValheimPeer(targetPeerId);
+            targets = target == null
+                ? Array.Empty<GameSession>()
+                : new[] { target };
+        }
+        if (targets.Count == 0)
+        {
+            await SendErrorAsync(session, "VALHEIM_ROUTE_TARGET_MISSING", routeId);
+            return;
+        }
+
+        if (mode == "withhold")
+        {
+            _logger.LogInformation(
+                "Valheim routed delivery intentionally withheld route={RouteId} method={Method} targets={TargetCount}",
+                routeId, methodName, targets.Count);
+            return;
+        }
+
+        foreach (var target in targets)
+        {
+            var queued = await target.SendReliableAsync(
+                MessageType.ValheimRoutedRpc,
+                new
+                {
+                    run_id = runId,
+                    action_id = actionId,
+                    route_id = routeId,
+                    message_id = messageId,
+                    sender_peer_id = senderPeerId,
+                    target_peer_id = targetPeerId,
+                    target_zdo_user_id = targetZdoUserId,
+                    target_zdo_id = targetZdoId,
+                    method_name = methodName,
+                    method_hash = methodHash,
+                    parameters_base64 = parameters,
+                    source_sequence = envelope.Seq,
+                },
+                CancellationToken.None);
+            if (!queued.Queued)
+            {
+                await SendErrorAsync(session, "RELIABLE_BACKPRESSURE", queued.Reason);
+                return;
+            }
+        }
+        _logger.LogInformation(
+            "Valheim routed RPC queued route={RouteId} method={Method} sender={Sender} target={Target} target_zdo={TargetZdoUser}:{TargetZdoId} recipients={RecipientCount}",
+            routeId, methodName, senderPeerId, targetPeerId,
+            targetZdoUserId, targetZdoId, targets.Count);
+    }
+
+    static string ReadString(JsonElement payload, string name) =>
+        payload.TryGetProperty(name, out var element)
+            ? element.GetString() ?? string.Empty
+            : string.Empty;
+
+    static bool AllowedRoutedMethod(string methodName, int methodHash)
+    {
+        if (methodName is not (
+                "ComfyNetworkSense_CutoverRoutedRequest" or
+                "ComfyNetworkSense_CutoverRoutedResponse" or
+                "ComfyNetworkSense_CutoverRoutedBroadcastRequest" or
+                "ComfyNetworkSense_CutoverRoutedBroadcast" or
+                "ComfyNetworkSense_CutoverRoutedTargetReceipt" or
+                "RPC_ResetCloth"))
+            return false;
+        return StableHash(methodName) == methodHash;
+    }
+
+    static int StableHash(string value)
+    {
+        unchecked
+        {
+            var first = 5381;
+            var second = first;
+            for (var index = 0; index < value.Length && value[index] != 0; index += 2)
+            {
+                first = ((first << 5) + first) ^ value[index];
+                if (index == value.Length - 1 || value[index + 1] == 0) break;
+                second = ((second << 5) + second) ^ value[index + 1];
+            }
+            return first + second * 1566083941;
+        }
     }
 
     static bool SafeToken(string value, int maximumLength) =>

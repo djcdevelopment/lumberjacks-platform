@@ -67,6 +67,28 @@ public class GameWebSocketMiddleware
             _logger.LogInformation("Session {SessionId} connected (player {PlayerId})", session.SessionId, session.PlayerId);
         }
 
+        var requestedRole = context.Request.Query["valheim_role"].FirstOrDefault();
+        if (!resumed)
+        {
+            var principal = ValheimPrincipal.From(context);
+            session.ValheimRole =
+                string.Equals(requestedRole, "server", StringComparison.OrdinalIgnoreCase) &&
+                principal?.Has(ValheimCapability.Producer) == true
+                    ? "server"
+                    : "client";
+        }
+        else if (!string.IsNullOrWhiteSpace(requestedRole) &&
+                 !string.Equals(requestedRole, session.ValheimRole,
+                     StringComparison.OrdinalIgnoreCase))
+        {
+            await ws.CloseAsync(
+                WebSocketCloseStatus.PolicyViolation,
+                "resumed Valheim role changed",
+                CancellationToken.None);
+            _sessions.Remove(session.SessionId);
+            return;
+        }
+
         // Set protocol mode based on handshake
         session.Protocol = useBinary ? ProtocolMode.Binary : ProtocolMode.Json;
         // The UDP token authenticates packets to this WebSocket session. Only enrollment-backed
@@ -91,6 +113,7 @@ public class GameWebSocketMiddleware
             udp_token = session.UdpToken.ToString(),
             udp_port = udpPort,
             valheim_motion_available = session.ValheimRecipientId != null,
+            valheim_role = session.ValheimRole,
         };
         var envelope = EnvelopeFactory.Create(MessageType.SessionStarted, startedPayload);
         var json = EnvelopeFactory.Serialize(envelope);

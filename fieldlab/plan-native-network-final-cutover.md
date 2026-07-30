@@ -27,8 +27,9 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C0 | **Complete on AM4 (2026-07-30)** | `native-20260730-c0-clean`: both physical clients joined, moved, disconnected, relaunched, rejoined, and stopped under one manifest. Exact run-scoped ledgers recorded OMEN 4,360, i5 2,957, and server 12,339 native funnel calls with zero drops/faults. `native-20260730-c0-poison` blocked all 76 observed calls at the first forbidden connection boundary. |
 | C1 | **Complete on AM4 (2026-07-30)** | `native-20260730-c1-final`: both physical clients kept a stable Lumberjacks connection id across a forced WebSocket abort, advanced from resume epoch 0 to 1, received the exact numbered request again, and produced one Gateway-accepted response. Both also reported the bounded intentionally-withheld receipt timeout with no native control fallback. |
 | C2a | **Complete on AM4 (2026-07-30)** | `native-20260730-c2a-final`: both physical clients applied one typed Lumberjacks direct pulse on Unity `Update`; both withheld copies became bounded stale results. Client native handlers were registered, while all 107 selected server-native attempts were suppressed before `ZRpc.Invoke` and zero native copies arrived. |
-| C2b | **Next** | Carry the complete routed-RPC shape through C1 and prove client-to-server, server-to-client, broadcast, target-ZDO, and one idempotent real interaction without native fallback for the selected hashes. |
-| C3-C10 | Pending in dependency order | Do not skip the remaining mandatory replans after C3, C5, and C7. |
+| C2b | **Complete on AM4 (2026-07-30)** | `native-20260730-c2b-final`: both physical clients completed request/response, broadcast, real target-ZDO `RPC_ResetCloth`, deliberate withhold, and fresh-process reconnect. All 24 selected client attempts and all 19 selected server attempts were suppressed; zero native copies, duplicates, or dispatch failures were recorded. |
+| C3 | **Next** | Replace native ZDO mutation selection and `RPC_ZDOData` apply with a Lumberjacks-owned journal, interest decision, snapshot/delta envelope, and typed main-thread apply. Replan immediately after the retained two-client proof. |
+| C4-C10 | Pending in dependency order | Do not skip the mandatory replans after C3, C5, and C7. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -198,20 +199,19 @@ one. A slice is complete only after its real-client artifact exists under
 - C1 carried typed probe control only. No native RPC, ZDO, ownership, world, zone, motion,
   handshake, or Steam funnel was suppressed by this slice.
 
-**Revised next build**
+**C2 retained result**
 
-1. **C2a — direct control pulse:** expose a fixed typed-handler registry over C1, dispatch
-   only from bounded Unity `Update`, replace one server pulse, and suppress that native
-   message class after the reliable enqueue succeeds. Withhold the Lumberjacks pulse and
-   require a stale marker rather than a native copy.
-2. **C2b — routed RPC:** carry the complete routed shape over the same registry, then prove
-   client-to-server, server-to-client, broadcast, and target-ZDO dispatch plus one
-   idempotent real interaction. The selected native hash has no fallback.
-3. Continue to C3 only after native routed/control counters for the selected classes stay
-   zero. C3's mandatory replan remains in force.
+1. **C2a — direct control pulse:** complete in `native-20260730-c2a-final`.
+2. **C2b — routed RPC:** complete in `native-20260730-c2b-final`. The fixed registry
+   carried the full envelope shapes in both directions, including broadcast and a
+   zero-argument target-ZDO package. Dispatch occurred from Unity `Update`; the selected
+   native hashes failed closed.
+3. This is a boundary proof for the selected registry, not a claim that every Valheim
+   method hash is migrated. The remaining registry expansion and post-admission controls
+   stay in the native-use burn-down through C7.
 
-The revised remaining estimate is **20–42 focused engineering days**. C2 remains a
-2–4-day slice but now has two ordered internal gates; C3-C7 still dominate the range.
+The revised remaining estimate is **18–38 focused engineering days**. C3-C7 still
+dominate the range, and C3's mandatory replan remains in force.
 
 ### C2 — Routed RPC and direct peer/control replacement
 
@@ -583,7 +583,8 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0, C1, and C2a are complete. Start **C2b's routed shapes** next. Do not begin C3
-until client-to-server, server-to-client, broadcast, target-ZDO, and one idempotent
-real interaction suppress their selected native delivery in a real-client failure
-cell.
+C0, C1, C2a, and C2b are complete. Start **C3's Lumberjacks-owned ZDO journal,
+interest selection, snapshot/delta envelope, and typed apply** next. Acceptance must
+show a server mutation that native `CreateSyncList` did not select reaching both real
+clients without invoking network `RPC_ZDOData`, plus stale/malformed rejection and
+snapshot reconstruction after a Gateway restart. Replan immediately after C3.

@@ -14,12 +14,15 @@ public static class MessageType
     public const string ValheimSessionProbe = "valheim_session_probe";
     public const string ValheimControlResponse = "valheim_control_response";
     public const string ValheimDirectPulseProbe = "valheim_direct_pulse_probe";
+    public const string ValheimPeerBind = "valheim_peer_bind";
+    public const string ValheimRoutedRpcSend = "valheim_routed_rpc_send";
 
     // Server → Client
     public const string SessionStarted = "session_started";
     public const string ValheimControlRequest = "valheim_control_request";
     public const string ValheimControlReceipt = "valheim_control_receipt";
     public const string ValheimDirectPulse = "valheim_direct_pulse";
+    public const string ValheimRoutedRpc = "valheim_routed_rpc";
     public const string WorldSnapshot = "world_snapshot";
     public const string EntityUpdate = "entity_update";
     public const string EntityRemoved = "entity_removed";
