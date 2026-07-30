@@ -19,6 +19,8 @@ Format follows the standard Status / Context / Decision / Consequences shape.
 | [0011](0011-aoi-lives-on-the-producer.md) | AoI is enforced mod-side (producer); suppress/ack/emit are three separate operations | Accepted | Valheim netcode / ZDO redirect |
 | [0012](0012-gameplay-telemetry-is-client-side.md) | Gameplay telemetry is captured client-side and relayed to the server by routed RPC | Accepted | Community telemetry / G4 |
 | [0013](0013-ownership-visibility-split.md) | Ownership, visibility, delivery, and ack are four things — split them for area co-presence | Proposed | Valheim netcode / multi-player density |
+| [0014](0014-boot-must-converge-or-say-so.md) | Boot must converge on its own, or say so loudly | Accepted | cross-cutting / P7 stack lifecycle |
+| [0015](0015-pin-line-endings-for-load-bearing-bytes.md) | Pin line endings for bytes that are hashed or parsed elsewhere | Accepted | cross-cutting / repo hygiene |
 
 Canon: [`Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json`](../../../Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json)
 (state — milestones, gate/proof state) ·

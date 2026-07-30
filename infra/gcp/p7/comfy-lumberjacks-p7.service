@@ -4,18 +4,55 @@ Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target
 RequiresMountsFor=/mnt/comfy-p7
-ConditionPathExists=/opt/comfy/infra/gcp/p7/docker-compose.yml
-ConditionPathExists=/etc/comfy-p7/environment
+
+# Assert*, NOT Condition*. A failed Condition= makes systemd SKIP the unit silently:
+# `systemctl status` reads "inactive (dead)", there is no error, nothing is logged, and
+# the box serves nothing while answering SSH normally. That is the single worst failure
+# mode this unit has, because it is indistinguishable from "not booted yet". A failed
+# Assert= marks the unit FAILED and logs the missing path. Observed 2026-07-30: a boot
+# that served nothing for 15+ minutes with no error anywhere.
+AssertPathExists=/opt/comfy/infra/gcp/p7/docker-compose.yml
+AssertPathExists=/etc/comfy-p7/environment
+
+# Retry forever rather than giving up after systemd's default 5-starts-in-10s burst.
+# A boot-time failure here is usually transient (registry reachable a beat later, mount
+# settling, postgres slow to pass its healthcheck); permanently parking the stack in
+# `failed` for a transient is how a stopped VM fails to re-enter service.
+StartLimitIntervalSec=0
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/opt/comfy/infra/gcp/p7
 EnvironmentFile=/etc/comfy-p7/environment
-ExecStart=/usr/bin/docker compose up -d
-ExecStop=/usr/bin/docker compose down
+
+# Clean slate before every start. A `gcloud compute instances stop` gives the guest a
+# short shutdown budget (tens of seconds) that ExecStop cannot always finish inside, so
+# the project can be left half-torn-down: containers removed, or stopped-but-present and
+# flagged as explicitly stopped (which suppresses `restart: unless-stopped`). Starting
+# `up` on top of that wreckage is what leaves containers in `Created`. Leading `-` so a
+# failure here never blocks the start.
+ExecStartPre=-/usr/bin/docker compose down --remove-orphans
+
+# --wait is load-bearing: without it `up -d` returns as soon as containers are CREATED
+# and systemd calls the unit started while nothing is serving. With it, exit 0 means
+# every service is running and every healthcheck passes, so a failure is a real failure
+# that Restart=on-failure can retry. Keep --wait-timeout under TimeoutStartSec.
+ExecStart=/usr/bin/docker compose up -d --wait --wait-timeout 900
+
+# `stop`, not `down`. The unit is now the single authoritative starter, so containers do
+# not need to be removed on shutdown, and leaving them present makes the next boot's
+# reconcile cheaper. Save the Valheim world BEFORE stopping the VM regardless — the
+# shutdown path is not a save mechanism (see RUNBOOK-boot-determinism.md).
+ExecStop=/usr/bin/docker compose stop
+
+Restart=on-failure
+RestartSec=30s
+
 TimeoutStartSec=1200
-TimeoutStopSec=300
+# GCE hard-powers-off well before 300s, so a larger value here buys nothing and only
+# makes the shutdown look like it had time it never had.
+TimeoutStopSec=90
 
 [Install]
 WantedBy=multi-user.target
