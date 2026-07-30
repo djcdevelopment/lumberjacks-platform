@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -109,6 +109,15 @@ if ($Profile -eq 'c2b') {
         New-Action 'i5-routed-target' 'i5' 'routed_target_zdo' 20
         New-Action 'omen-routed-withhold' 'omen' 'routed_withhold' 8
         New-Action 'i5-routed-withhold' 'i5' 'routed_withhold' 8
+    )
+}
+
+if ($Profile -eq 'c3') {
+    $actions += @(
+        New-Action 'omen-zdo-journal-drive' 'omen' 'zdo_journal_drive' 300
+        New-Action 'i5-zdo-journal-observe' 'i5' 'zdo_journal_observe' 300
+        New-Action 'omen-zdo-journal-ack-settle' 'omen' 'wait' 10 2
+        New-Action 'i5-zdo-journal-ack-settle' 'i5' 'wait' 10 2
     )
 }
 

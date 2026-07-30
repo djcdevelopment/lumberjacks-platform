@@ -47,6 +47,8 @@ param(
 
     [switch] $EnableRoutedRpcCutover,
 
+    [switch] $EnableZdoJournalCutover,
+
     [string[]] $LaunchArguments = @(),
 
     [string] $PendingRequestPath = '',
@@ -82,6 +84,7 @@ $cutoverScenarioReceiptsPath = Join-Path $autotestRoot 'native-cutover-scenario-
 $gameSessionReceiptsPath = Join-Path $autotestRoot 'lumberjacks-game-session.jsonl'
 $directControlReceiptsPath = Join-Path $autotestRoot 'direct-control-cutover.jsonl'
 $routedRpcReceiptsPath = Join-Path $autotestRoot 'routed-rpc-cutover.jsonl'
+$zdoJournalReceiptsPath = Join-Path $autotestRoot 'zdo-journal-cutover.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
 
@@ -417,6 +420,7 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         profile_recovery_count = $script:ProfileRecoveryCount
         native_network_poison_requested = $Action -eq 'poison-smoke'
         routed_rpc_cutover_requested = [bool]$EnableRoutedRpcCutover
+        zdo_journal_cutover_requested = [bool]$EnableZdoJournalCutover
         preflight = $Preflight
         deployment = $Deployment
         plugin_sha256 = if (Test-Path -LiteralPath $pluginPath -PathType Leaf) {
@@ -437,6 +441,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
                 Copy-EvidenceFile $directControlReceiptsPath 'direct-control-cutover.jsonl'
             routed_rpc_cutover =
                 Copy-EvidenceFile $routedRpcReceiptsPath 'routed-rpc-cutover.jsonl'
+            zdo_journal_cutover =
+                Copy-EvidenceFile $zdoJournalReceiptsPath 'zdo-journal-cutover.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'
@@ -457,6 +463,7 @@ function Write-NativeAutotestRequest([bool] $ExpectPoison) {
         expires_utc = $now.AddMinutes(15).ToString('o')
         native_network_poison = $ExpectPoison
         routed_rpc_cutover = [bool]$EnableRoutedRpcCutover
+        zdo_journal_cutover = [bool]$EnableZdoJournalCutover
     }
     Write-JsonAtomic $autotestRequestPath $request
     return $now
@@ -577,6 +584,7 @@ function Invoke-PendingRun() {
         WaitSeconds = [int]$pending.wait_seconds
         HoldSeconds = [int]$pending.hold_seconds
         EnableRoutedRpcCutover = [bool]$pending.enable_routed_rpc_cutover
+        EnableZdoJournalCutover = [bool]$pending.enable_zdo_journal_cutover
         LaunchArguments = @($pending.launch_arguments)
     }
     & $PSCommandPath @invoke
@@ -647,6 +655,7 @@ function Queue-InteractiveSmoke() {
         wait_seconds = $WaitSeconds
         hold_seconds = $HoldSeconds
         enable_routed_rpc_cutover = [bool]$EnableRoutedRpcCutover
+        enable_zdo_journal_cutover = [bool]$EnableZdoJournalCutover
         launch_arguments = @($LaunchArguments)
     }
     Write-JsonAtomic $PendingRequestPath $pending

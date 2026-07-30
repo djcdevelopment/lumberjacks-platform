@@ -439,6 +439,7 @@ public class MessageRouter
                 "ComfyNetworkSense_CutoverRoutedBroadcastRequest" or
                 "ComfyNetworkSense_CutoverRoutedBroadcast" or
                 "ComfyNetworkSense_CutoverRoutedTargetReceipt" or
+                "ComfyNetworkSense_CutoverZdoJournalRequest" or
                 "RPC_ResetCloth"))
             return false;
         return StableHash(methodName) == methodHash;

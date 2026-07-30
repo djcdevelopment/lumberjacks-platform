@@ -26,6 +26,9 @@ builder.Services.AddSingleton<ValheimMotionTelemetry>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ValheimPriorityManifestService>();
 builder.Services.AddSingleton<ValheimZdoRedirectService>();
+builder.Services.AddSingleton<ValheimZdoJournalService>(sp =>
+    new ValheimZdoJournalService(
+        sp.GetRequiredService<IConfiguration>()["VALHEIM_ZDO_JOURNAL_PATH"]));
 builder.Services.AddSingleton<ValheimZdoConsumerTelemetryService>();
 builder.Services.AddSingleton<ValheimZdoInjectionService>();
 builder.Services.AddSingleton<ValheimWindowActivityService>();
@@ -228,6 +231,7 @@ Game.Gateway.Endpoints.LocalTestingEndpoints.Map(app);
 Game.Gateway.Endpoints.BoundaryDiagnosticsEndpoints.Map(app);
 ValheimPriorityManifestEndpoints.Map(app);
 ValheimZdoRedirectEndpoints.Map(app);
+ValheimZdoJournalEndpoints.Map(app);
 ValheimZdoInjectionEndpoints.Map(app);
 ValheimHandshakeEndpoints.Map(app);
 ValheimTelemetryHeartbeatEndpoints.Map(app);

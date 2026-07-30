@@ -12,6 +12,18 @@ and names the mod's intended hook point.
 Citations of the form `ZDOMan:724` refer to line numbers in the decompiled files;
 `Core.cs:145` refers to the valheim-serverside source; `BN_...cs` to BetterNetworking.
 
+> **2026-07-30 C3 implementation overlay:** the mapped native seams remain accurate,
+> but the accepted AM4 boundary no longer uses funnels 1/2 as its delivery/apply
+> source. `ZdoJournalCutoverRunner` observes authoritative data/owner revision
+> mutations, publishes a durable semantic body keyed by world epoch and ZDOID, and
+> registers explicit recipient interest. The client validates the complete body and
+> directly performs create/update/delete, revision/owner/position and deserialize on
+> Unity `Update`; it does not invoke network `RPC_ZDOData`. In
+> `native-20260730-c3-sixth`, the run-tagged object was absent from all 1,198
+> `CreateSyncList` selections, survived a Gateway restart, reached late i5 by snapshot,
+> then reached both clients by delta and tombstone. This proves that selected C3
+> boundary only; legacy/general-prefab paths described below remain until C8/C10.
+
 ---
 
 ## Cross-cutting finding — the inlining risk is bounded (resolves worklog standing risk #1)

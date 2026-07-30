@@ -43,6 +43,8 @@ param(
 
     [switch] $EnableRoutedRpcCutover,
 
+    [switch] $EnableZdoJournalCutover,
+
     [string] $ServerGatewayUrl = 'http://100.124.12.37:4000'
 )
 
@@ -80,6 +82,13 @@ $serverGatewayChanged = $false
 $oldServerGatewayUrl = $null
 $serverRoutedReceipts = @()
 $serverRoutedDisarmError = $null
+$serverJournalArmed = $false
+$serverJournalReceipts = @()
+$serverJournalDisarmError = $null
+$gatewayRestartReceipt = $null
+$omenHarnessProcess = $null
+$useRoutedRpc =
+    [bool]$EnableRoutedRpcCutover -or [bool]$EnableZdoJournalCutover
 
 function Write-JsonAtomic([string] $Path, [object] $Value) {
     $temporary = "$Path.tmp"
@@ -142,7 +151,7 @@ try {
         $serverDirectArmed = $true
     }
 
-    if ($EnableRoutedRpcCutover) {
+    if ($useRoutedRpc) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
         $runOutput = & $serverControl `
             -Setting nativeNetworkEvidenceRunId `
@@ -174,6 +183,18 @@ try {
         Start-Sleep -Seconds 3
     }
 
+    if ($EnableZdoJournalCutover) {
+        $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+        $journalArmOutput = & $serverControl `
+            -Setting zdoJournalCutoverEnabled `
+            -Value true `
+            -RequestId "$RunId-journal-arm"
+        if ($LASTEXITCODE -ne 0) { throw 'Server ZDO-journal arm failed.' }
+        $serverJournalReceipts +=
+            (($journalArmOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+        $serverJournalArmed = $true
+    }
+
     & (Join-Path $i5Tools 'Deploy-ToI5.ps1') `
         -Path $clientHarness `
         -Dest C:/deploy/baseline/fieldlab/scripts
@@ -195,26 +216,134 @@ try {
         '-ScenarioPath', $remoteScenarioPath,
         '-HoldSeconds', [string]$HoldSeconds,
         '-WaitSeconds', [string]$WaitSeconds)
-    if ($EnableRoutedRpcCutover) {
+    if ($useRoutedRpc) {
         $i5Arguments += '-EnableRoutedRpcCutover'
     }
-    $queue = Invoke-I5Harness $i5Arguments
-    $queue | Write-Host
+    if ($EnableZdoJournalCutover) {
+        $i5Arguments += '-EnableZdoJournalCutover'
 
-    & $clientHarness `
-        -Action smoke `
-        -Client omen `
-        -Character $OmenCharacter `
-        -Server $Server `
-        -GatewayUrl $OmenGatewayUrl `
-        -RunId $RunId `
-        -DllPath $dll `
-        -ScenarioPath $scenario `
-        -EvidenceRoot $EvidenceRoot `
-        -HoldSeconds $HoldSeconds `
-        -EnableRoutedRpcCutover:$EnableRoutedRpcCutover `
-        -WaitSeconds $WaitSeconds
-    if ($LASTEXITCODE -ne 0) { throw 'OMEN cutover scenario failed.' }
+        $gatewayCompose = Join-Path $repoRoot 'Lumberjacks\infra\docker'
+        Push-Location $gatewayCompose
+        try {
+            & docker compose -p lumberjacks-local up -d --no-deps gateway
+            if ($LASTEXITCODE -ne 0) { throw 'Gateway deployment for C3 failed.' }
+        } finally {
+            Pop-Location
+        }
+
+        $omenStdout = Join-Path $runDirectory 'omen-harness.stdout.log'
+        $omenStderr = Join-Path $runDirectory 'omen-harness.stderr.log'
+        $omenHarnessArguments = @(
+            '-NoProfile',
+            '-ExecutionPolicy', 'Bypass',
+            '-File', $clientHarness,
+            '-Action', 'smoke',
+            '-Client', 'omen',
+            '-Character', $OmenCharacter,
+            '-Server', $Server,
+            '-GatewayUrl', $OmenGatewayUrl,
+            '-RunId', $RunId,
+            '-DllPath', $dll,
+            '-ScenarioPath', $scenario,
+            '-EvidenceRoot', $EvidenceRoot,
+            '-HoldSeconds', [string]$HoldSeconds,
+            '-EnableRoutedRpcCutover',
+            '-EnableZdoJournalCutover',
+            '-WaitSeconds', [string]$WaitSeconds)
+        $omenHarnessProcess = Start-Process `
+            -FilePath (Join-Path $PSHOME 'powershell.exe') `
+            -ArgumentList $omenHarnessArguments `
+            -WindowStyle Hidden `
+            -RedirectStandardOutput $omenStdout `
+            -RedirectStandardError $omenStderr `
+            -PassThru
+
+        $serverJournalPath =
+            '/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/zdo-journal-cutover.jsonl'
+        $mutationDeadline = (Get-Date).AddSeconds($WaitSeconds)
+        $mutationRow = $null
+        do {
+            $tail = & ssh -o BatchMode=yes am4 `
+                "if test -f '$serverJournalPath'; then tail -n 256 '$serverJournalPath'; fi"
+            if ($LASTEXITCODE -ne 0) {
+                throw 'Server C3 evidence tail failed while waiting for the first mutation.'
+            }
+            foreach ($line in @($tail)) {
+                try {
+                    $row = $line | ConvertFrom-Json -ErrorAction Stop
+                    if ($row.run_id -eq $RunId -and
+                        $row.state -eq 'mutation_posted' -and
+                        $row.detail -notmatch 'delivery_only=True') {
+                        $mutationRow = $row
+                    }
+                } catch { }
+            }
+            if (-not $mutationRow) { Start-Sleep -Seconds 2 }
+        } while (-not $mutationRow -and (Get-Date) -lt $mutationDeadline)
+        if (-not $mutationRow) {
+            throw 'The first durable C3 mutation was not observed before the deadline.'
+        }
+
+        $beforeRestart =
+            Invoke-RestMethod -Method Get -Uri "$OmenGatewayUrl/valheim/zdo-journal/status"
+        $restartStarted = [DateTimeOffset]::UtcNow
+        Push-Location $gatewayCompose
+        try {
+            & docker compose -p lumberjacks-local restart gateway
+            if ($LASTEXITCODE -ne 0) { throw 'Gateway restart for C3 replay proof failed.' }
+        } finally {
+            Pop-Location
+        }
+        $healthDeadline = (Get-Date).AddSeconds(90)
+        do {
+            try {
+                $afterRestart =
+                    Invoke-RestMethod -Method Get -Uri "$OmenGatewayUrl/valheim/zdo-journal/status"
+            } catch {
+                $afterRestart = $null
+            }
+            if (-not $afterRestart) { Start-Sleep -Seconds 1 }
+        } while (-not $afterRestart -and (Get-Date) -lt $healthDeadline)
+        if (-not $afterRestart) {
+            throw 'Gateway did not restore the C3 journal status surface after restart.'
+        }
+        if ([long]$afterRestart.durable_objects -lt 1) {
+            throw 'Gateway restart replay restored zero durable C3 objects.'
+        }
+        $gatewayRestartReceipt = [ordered]@{
+            schema_version = 1
+            run_id = $RunId
+            restarted_utc = $restartStarted.ToString('o')
+            mutation = $mutationRow
+            before = $beforeRestart
+            after = $afterRestart
+            durable_replay_verified = [long]$afterRestart.durable_objects -ge 1
+        }
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'gateway-journal-restart.json') `
+            $gatewayRestartReceipt
+
+        $queue = Invoke-I5Harness $i5Arguments
+        $queue | Write-Host
+    } else {
+        $queue = Invoke-I5Harness $i5Arguments
+        $queue | Write-Host
+
+        & $clientHarness `
+            -Action smoke `
+            -Client omen `
+            -Character $OmenCharacter `
+            -Server $Server `
+            -GatewayUrl $OmenGatewayUrl `
+            -RunId $RunId `
+            -DllPath $dll `
+            -ScenarioPath $scenario `
+            -EvidenceRoot $EvidenceRoot `
+            -HoldSeconds $HoldSeconds `
+            -EnableRoutedRpcCutover:$useRoutedRpc `
+            -WaitSeconds $WaitSeconds
+        if ($LASTEXITCODE -ne 0) { throw 'OMEN cutover scenario failed.' }
+    }
 
     $deadline = (Get-Date).AddSeconds($WaitSeconds)
     do {
@@ -230,6 +359,22 @@ try {
     if ([int]$status.last_task_result -ne 0) {
         throw "i5 scheduled task failed with result $($status.last_task_result)."
     }
+    if ($EnableZdoJournalCutover) {
+        while (-not $omenHarnessProcess.HasExited -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Seconds 2
+            $omenHarnessProcess.Refresh()
+        }
+        if (-not $omenHarnessProcess.HasExited) {
+            throw 'OMEN C3 harness did not finish before the scenario deadline.'
+        }
+        # PowerShell 5.1 can expose a null ExitCode until WaitForExit has
+        # synchronized the native process handle, even after HasExited is true.
+        $omenHarnessProcess.WaitForExit()
+        $omenHarnessProcess.Refresh()
+        if ($omenHarnessProcess.ExitCode -ne 0) {
+            throw "OMEN C3 harness failed with exit $($omenHarnessProcess.ExitCode); see $omenStderr."
+        }
+    }
 
     & scp -r `
         "i5:C:/deploy/baseline/fieldlab/runs/native-valheim/$RunId/i5" `
@@ -243,13 +388,45 @@ try {
             "$serverDirectory\direct-control-cutover.jsonl"
         if ($LASTEXITCODE -ne 0) { throw 'Server direct-control evidence retrieval failed.' }
     }
-    if ($EnableRoutedRpcCutover) {
+    if ($useRoutedRpc) {
         $serverDirectory = Join-Path $runDirectory 'server'
         New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
         & scp `
             'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/routed-rpc-cutover.jsonl' `
             "$serverDirectory\routed-rpc-cutover.jsonl"
         if ($LASTEXITCODE -ne 0) { throw 'Server routed-RPC evidence retrieval failed.' }
+    }
+    if ($EnableZdoJournalCutover) {
+        $serverDirectory = Join-Path $runDirectory 'server'
+        New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/zdo-journal-cutover.jsonl' `
+            "$serverDirectory\zdo-journal-cutover.jsonl"
+        if ($LASTEXITCODE -ne 0) { throw 'Server ZDO-journal evidence retrieval failed.' }
+    }
+
+    if ($EnableZdoJournalCutover) {
+        $worldEpoch = [string]$gatewayRestartReceipt.mutation.world_epoch
+        $finalRunStatus =
+            Invoke-RestMethod -Method Get -Uri (
+                "$OmenGatewayUrl/valheim/zdo-journal/status/$RunId/$worldEpoch")
+        $finalGlobalStatus =
+            Invoke-RestMethod -Method Get -Uri (
+                "$OmenGatewayUrl/valheim/zdo-journal/status")
+        $resetReceipt =
+            Invoke-RestMethod -Method Post -Uri (
+                "$OmenGatewayUrl/valheim/zdo-journal/reset/$worldEpoch")
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'gateway-journal-final.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                world_epoch = $worldEpoch
+                captured_utc = [DateTimeOffset]::UtcNow.ToString('o')
+                run_status = $finalRunStatus
+                global_status = $finalGlobalStatus
+                reset = $resetReceipt
+            })
     }
 
     $omenLifecycle =
@@ -295,6 +472,9 @@ try {
             [void](Invoke-I5Harness @('-Action', 'stop', '-Client', 'i5'))
         } catch { }
     }
+    if ($omenHarnessProcess -and -not $omenHarnessProcess.HasExited) {
+        Stop-Process -Id $omenHarnessProcess.Id -Force -ErrorAction SilentlyContinue
+    }
     if ($gatewayTunnel -and -not $gatewayTunnel.HasExited) {
         Stop-Process -Id $gatewayTunnel.Id -Force -ErrorAction SilentlyContinue
     }
@@ -332,6 +512,24 @@ try {
             $serverRoutedDisarmError = $_.Exception.Message
         }
     }
+    if ($serverJournalArmed) {
+        try {
+            $journalDisarmOutput =
+                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    -Setting zdoJournalCutoverEnabled `
+                    -Value false `
+                    -RequestId "$RunId-journal-disarm"
+            if ($LASTEXITCODE -eq 0) {
+                $serverJournalReceipts +=
+                    (($journalDisarmOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+            } else {
+                $serverJournalDisarmError =
+                    "Server ZDO-journal disarm exited $LASTEXITCODE."
+            }
+        } catch {
+            $serverJournalDisarmError = $_.Exception.Message
+        }
+    }
     if ($serverGatewayChanged -and
         -not [string]::IsNullOrWhiteSpace($oldServerGatewayUrl)) {
         try {
@@ -363,7 +561,7 @@ try {
                 disarm_error = $serverDisarmError
             })
     }
-    if ($EnableRoutedRpcCutover -and $serverRoutedReceipts.Count -gt 0) {
+    if ($useRoutedRpc -and $serverRoutedReceipts.Count -gt 0) {
         Write-JsonAtomic `
             (Join-Path $runDirectory 'server-runtime-routed-rpc.json') `
             ([ordered]@{
@@ -373,10 +571,23 @@ try {
                 disarm_error = $serverRoutedDisarmError
             })
     }
+    if ($EnableZdoJournalCutover -and $serverJournalReceipts.Count -gt 0) {
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'server-runtime-zdo-journal.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                receipts = $serverJournalReceipts
+                disarm_error = $serverJournalDisarmError
+            })
+    }
     if ($completed -and $serverDisarmError) {
         throw "Scenario completed but server direct-control disarm failed: $serverDisarmError"
     }
     if ($completed -and $serverRoutedDisarmError) {
         throw "Scenario completed but server routed-RPC cleanup failed: $serverRoutedDisarmError"
+    }
+    if ($completed -and $serverJournalDisarmError) {
+        throw "Scenario completed but server ZDO-journal cleanup failed: $serverJournalDisarmError"
     }
 }

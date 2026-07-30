@@ -27,7 +27,8 @@ param(
         'nativeNetworkEvidenceRunId',
         'directControlCutoverEnabled',
         'lumberjacksGatewayUrl',
-        'routedRpcCutoverEnabled')]
+        'routedRpcCutoverEnabled',
+        'zdoJournalCutoverEnabled')]
     [Parameter(Mandatory)]
     [string] $Setting,
 

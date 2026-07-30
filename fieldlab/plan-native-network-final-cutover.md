@@ -28,8 +28,9 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C1 | **Complete on AM4 (2026-07-30)** | `native-20260730-c1-final`: both physical clients kept a stable Lumberjacks connection id across a forced WebSocket abort, advanced from resume epoch 0 to 1, received the exact numbered request again, and produced one Gateway-accepted response. Both also reported the bounded intentionally-withheld receipt timeout with no native control fallback. |
 | C2a | **Complete on AM4 (2026-07-30)** | `native-20260730-c2a-final`: both physical clients applied one typed Lumberjacks direct pulse on Unity `Update`; both withheld copies became bounded stale results. Client native handlers were registered, while all 107 selected server-native attempts were suppressed before `ZRpc.Invoke` and zero native copies arrived. |
 | C2b | **Complete on AM4 (2026-07-30)** | `native-20260730-c2b-final`: both physical clients completed request/response, broadcast, real target-ZDO `RPC_ResetCloth`, deliberate withhold, and fresh-process reconnect. All 24 selected client attempts and all 19 selected server attempts were suppressed; zero native copies, duplicates, or dispatch failures were recorded. |
-| C3 | **Next** | Replace native ZDO mutation selection and `RPC_ZDOData` apply with a Lumberjacks-owned journal, interest decision, snapshot/delta envelope, and typed main-thread apply. Replan immediately after the retained two-client proof. |
-| C4-C10 | Pending in dependency order | Do not skip the mandatory replans after C3, C5, and C7. |
+| C3 | **Complete on AM4 (2026-07-30)** | `native-20260730-c3-sixth`: a run-tagged ZDO outside both native sync rings crossed a durable Lumberjacks journal, survived a Gateway restart, reached late i5 as a snapshot, then reached both clients as a valid delta and tombstone through typed apply. Stale/malformed entries were rejected before mutation; selected native `CreateSyncList` candidates and network `RPC_ZDOData` calls were zero. |
+| C4 | **Next — revised after C3** | Establish durable logical-peer identity and move C3 semantic delivery onto the canonical C1 session before proving server-issued ownership leases and lease-gated actions. |
+| C5-C10 | Pending in dependency order | Do not skip the mandatory replans after C5 and C7. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -285,12 +286,70 @@ dominate the range, and C3's mandatory replan remains in force.
 
 **Cost:** 3–6 focused days.
 
+#### Mandatory replan after C3 — 2026-07-30
+
+**What the boundary proved**
+
+- The AM4 server created one run-tagged ZDO four zones beyond both clients'
+  native sync rings. Across 1,198 observed `CreateSyncList` passes, that object was
+  never a selected native candidate, yet Lumberjacks delivered it.
+- The Gateway reconstructed the durable object from its WAL after an intentional
+  process restart. Late-arriving i5 then typed-applied one snapshot; both clients
+  rejected one stale revision and one malformed body before mutation, applied the
+  next valid delta, and applied the typed tombstone.
+- OMEN and i5 used distinct run-scoped recipients, acknowledged all queued
+  deliveries, recorded zero network `RPC_ZDOData` calls and zero typed-apply
+  failures, relaunched fresh Valheim processes, rejoined, and stopped.
+- The final journal state had one durable tombstone, two interests, and zero pending
+  deliveries before the disposable development state was deleted.
+
+**Limits that remain explicit**
+
+- This is a boundary proof for one synthetic run-tagged ZDO body, not parity for
+  every prefab, component-specific mutation, or save/load semantic.
+- The dedicated server remains the canonical simulation and persistence authority.
+  C3 observes its mutation seams with Harmony; it does not move game rules into the
+  Gateway.
+- The C3 proof used run-scoped HTTP journal ingress/poll/ack beside C1. Final
+  architecture still requires these semantic frames to ride the authenticated,
+  ordered C1 session; the HTTP surface remains a development/control seam, not a
+  second shipping gameplay connection.
+- Restarting the Gateway preserved the semantic journal but exposed C1's in-memory
+  identity limit: the socket resumed after one transient rejection with a new
+  connection id. Ownership cannot bind to that transport incarnation.
+- Legacy redirect/apply remains available outside the C3 gate and on P7. C3 proves
+  the replacement seam; C8/C10 still own native-zero composition and fallback
+  deletion.
+
+**Revised C4**
+
+1. Derive a durable logical peer id from the enrolled principal, server/world, and
+   seeded character; persist it across Gateway and Valheim process restarts. Keep
+   transport connection id and resume epoch as replaceable incarnations.
+2. Register C3 snapshot/delta/tombstone/ack frames on the C1 reliable session and
+   prove WAL replay plus recipient isolation there. Keep the current HTTP endpoints
+   only for bounded lab control/status.
+3. Issue server-originated ownership leases to the logical peer, attach lease epoch
+   to a mutating target-ZDO action, reject expired/wrong leases before mutation, and
+   prove reclaim/reissue on disconnect.
+4. Use one run-tagged pickup in each direction so the action result and inventory
+   return compose through C2/C3. Native ownership-transfer triggers must be
+   suppressed for the selected object.
+
+This adds an identity/carriage hardening cell to C4 but removes ambiguity before
+ownership. The revised remaining estimate is **17–35 focused engineering days**,
+including 1–2 days of remaining direct/routed method burn-down folded into C4-C7.
+
 ### C4 — Ownership lease and action boundary
 
 **Build**
 
+- Establish a durable logical peer id independent of the current WebSocket
+  connection id, and preserve it across Gateway and fresh-Valheim-process restart.
+- Carry C3 journal and ownership frames on C1's authenticated reliable session.
+  HTTP journal endpoints remain bounded lab control/status only.
 - Replace `ReleaseNearbyZDOS` ownership transfer with a server-originated Lumberjacks
-  lease carrying object id, owner connection id, lease epoch, expiry, and reason.
+  lease carrying object id, owner logical-peer id, lease epoch, expiry, and reason.
 - Keep the Valheim dedicated server as the sole mutation authority. Lumberjacks records
   and distributes the current lease; clients never grant ownership to themselves.
 - Attach the lease epoch to mutating target-ZDO actions. The server validates it before
@@ -315,7 +374,7 @@ dominate the range, and C3's mandatory replan remains in force.
 - Native ownership-transfer triggers cannot change the owner, and every observed owner
   revision maps to a Lumberjacks lease epoch.
 
-**Cost:** 2–4 focused days.
+**Cost:** 3–6 focused days.
 
 ### C5 — World bootstrap and zone/interest synchronization
 
@@ -567,15 +626,17 @@ at least one native Valheim client; composition slices require both clients.
 
 ## Estimated remaining cost
 
-The current evidence supports **22–46 focused engineering days**, dominated by typed ZDO
-state, world/zone bootstrap, and the logical-peer cold join. Existing session, motion,
-recipient, client-harness, and runtime-control work keeps this below a greenfield rewrite.
+After the C3 replan, the current evidence supports **17–35 focused engineering days**
+for C4-C10, plus the two bounded P7 world reloads already budgeted in C10. The range
+includes C4's durable logical-peer/C1-carriage hardening and 1–2 days of remaining
+direct/routed method burn-down folded into C4-C7. World/zone bootstrap and Steam-free
+cold join still dominate the architectural risk.
 
 | Cost class | Slices |
 | --- | --- |
-| Lower, existing substrate | C0, C1, C8, C9, C10 |
-| Medium, mapped interception seams | C2, C4, C6 |
-| High, state-machine boundaries | C3, C5, C7 |
+| Lower, existing substrate | C8, C9, C10 |
+| Medium, mapped interception seams | C4 ownership action, C6 |
+| High, state-machine boundaries | C4 logical identity/carriage, C5, C7 |
 
 This is a burn-down estimate, not a promise to execute all slices without reassessment.
 The intended rhythm is: build one boundary, run it for real, retain the receipt, update
@@ -583,8 +644,9 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0, C1, C2a, and C2b are complete. Start **C3's Lumberjacks-owned ZDO journal,
-interest selection, snapshot/delta envelope, and typed apply** next. Acceptance must
-show a server mutation that native `CreateSyncList` did not select reaching both real
-clients without invoking network `RPC_ZDOData`, plus stale/malformed rejection and
-snapshot reconstruction after a Gateway restart. Replan immediately after C3.
+C0-C3 are complete. Start revised **C4 logical-peer identity, canonical-session
+semantic carriage, and ownership lease/action enforcement** next. The first
+falsifying cell restarts the Gateway and a client process and requires the same
+logical peer id while transport connection ids may change. Only after that passes
+may a lease bind to the peer and gate a real run-tagged pickup. Replan remains
+mandatory after C5 and C7.
