@@ -997,6 +997,22 @@
       <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
     </div>
   </article>
+<article class="journal-entry" id="note-20260730073322-apply-the-game-schema-on-every-stack-start-not-o">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-30T07:33:22.243Z">2026-07-30T07:33:22.243Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M3</span>
+      </div>
+      <h3>Apply the game schema on every stack start, not once per volume</h3>
+      <p><strong>Impact:</strong> The P7 game database had no tables at all, so every gameplay-event INSERT failed and the /community Gameplay Feed and Quests panels could never populate. Schema reached Postgres only through docker-entrypoint-initdb.d, which runs once on an empty data directory and is skipped silently forever after - and P7&#39;s data directory is a persistent bind mount, so that window opened once per disk. The 2026-07-24 state-disk replacement consumed it, four days after the repo unification moved init.sql under Lumberjacks/ and left the compose mount path naming no file (Docker materializes a missing bind source as an empty directory, so nothing complained). init.sql is now idempotent and complete at all 13 GameDbContext tables, including natural_resources and region_profiles which existed only in an EF migration that has never been applied anywhere. A one-shot dbschema service applies it on every start and gates the four .NET services behind service_completed_successfully, so a missing schema is a loud startup failure instead of an empty public panel. Also on record: /api/v0/telemetry/regions serves a hardcoded WorldState seed and is not a database health signal.</p>
+      <details><summary>Verification (3)</summary><ul><li>Reproduced the P7 state locally (existing cluster wiped to zero tables, both incident errors verbatim), then repaired it: dbschema exit 0, 13 tables, the regions SELECT returns 0 rows and the events INSERT returns INSERT 0 1.</li><li>Schema applied three times consecutively at exit 0; docker compose config resolves both mounts to the real file with the gate on all four services.</li><li>Game.Gateway builds Release with 0 warnings and 0 errors; Game.Gateway.Tests 207/207 pass.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>infra/gcp/p7/RUNBOOK-schema-repair.md</code> <code>Lumberjacks/infra/docker/init.sql</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
 <article class="journal-entry" id="note-20260730072801-retro-the-live-demo-session-and-register-the-two">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">

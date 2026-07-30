@@ -34,12 +34,46 @@ services:
       - "127.0.0.1:5433:5432"
     volumes:
       - /mnt/comfy-p7/lumberjacks/postgres:/var/lib/postgresql/data
-      - "${LUMBERJACKS_ROOT:-/opt/lumberjacks}/infra/docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"
+      # NOT the schema path. docker-entrypoint-initdb.d runs ONCE, on an empty PGDATA, and the
+      # data directory above is a persistent bind mount on the state disk - it survives every
+      # `compose down`, image re-pin and VM stop, so that window opens exactly once per disk.
+      # It was missed on the 2026-07-24 state-disk replacement and the stack ran schema-less
+      # for days while reporting healthy. The `dbschema` service below is the real schema path;
+      # this mount only saves one redundant pass on a genuinely fresh volume. Path is relative
+      # to THIS FILE (compose resolves it that way), not to LUMBERJACKS_ROOT: the 2026-07-20
+      # unification moved init.sql under Lumberjacks/, so the old
+      # `${LUMBERJACKS_ROOT}/infra/docker/init.sql` no longer names a file in a baseline
+      # checkout - and a missing bind source is materialized by Docker as an empty DIRECTORY,
+      # which is why nothing complained.
+      - "../../../Lumberjacks/infra/docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U game"]
       interval: 5s
       timeout: 5s
       retries: 12
+
+  # The schema gate. Applies the idempotent schema on EVERY stack start and must exit 0 before
+  # any .NET service is allowed to connect, so "tables missing" is a loud startup failure
+  # instead of a warning buried in the Gateway log and a permanently empty dashboard panel.
+  #
+  # Deliberately does NOT inherit *lumberjacks-service: `restart: unless-stopped` would treat a
+  # successful one-shot exit as a crash and restart it forever.
+  #
+  # Reuses the postgres image already pinned above, so this adds no pull and no build - the
+  # whole fix ships by git bundle plus `docker compose up -d`, with no Gateway image promotion.
+  dbschema:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      PGPASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
+    volumes:
+      - "../../../Lumberjacks/infra/docker/init.sql:/schema.sql:ro"
+    command: >-
+      psql --host=postgres --username=game --dbname=game
+           --no-password --set=ON_ERROR_STOP=1 --file=/schema.sql
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   gateway:
     <<: *lumberjacks-service
@@ -100,6 +134,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      dbschema:
+        condition: service_completed_successfully
 
   # TLS termination for the public volunteer endpoint (M1 gate). INERT BY DEFAULT: the `tls` profile
   # means this service does not exist for any plain `docker compose up` - it starts only under
@@ -167,6 +203,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      dbschema:
+        condition: service_completed_successfully
 
   progression:
     <<: *lumberjacks-service
@@ -182,6 +220,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      dbschema:
+        condition: service_completed_successfully
 
   operatorapi:
     <<: *lumberjacks-service
@@ -200,6 +240,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      dbschema:
+        condition: service_completed_successfully
 
   valheim-server:
     image: ghcr.io/community-valheim-tools/valheim-server@sha256:e8b13da3c44f54a38511c8ac224f2959a437c0b2626cf916683ca7acc8dfb146

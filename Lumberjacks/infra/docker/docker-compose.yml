@@ -10,12 +10,32 @@ services:
       - "${PGPORT:-5435}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # First-init-only. `pgdata` is a persistent named volume, so this hook fires once in the
+      # volume's whole lifetime and is silently skipped on every later `up`. Any schema change
+      # after that reaches this database only through `dbschema` below.
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U game"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # Applies the idempotent schema on every `up` and gates the .NET services behind it, so a
+  # stale `pgdata` volume surfaces as a failed start rather than as `relation ... does not
+  # exist` at runtime. Mirrors the P7 stack; see infra/gcp/p7/RUNBOOK-schema-repair.md for the
+  # incident that made this necessary. No `restart:` policy - a one-shot must be allowed to exit.
+  dbschema:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: game
+    volumes:
+      - ./init.sql:/schema.sql:ro
+    command: >-
+      psql --host=postgres --username=game --dbname=game
+           --no-password --set=ON_ERROR_STOP=1 --file=/schema.sql
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   gateway:
     build:
@@ -32,6 +52,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      dbschema:
+        condition: service_completed_successfully
 
   eventlog:
     build:
@@ -45,6 +67,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      dbschema:
+        condition: service_completed_successfully
 
   progression:
     build:
@@ -58,6 +82,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      dbschema:
+        condition: service_completed_successfully
 
   operatorapi:
     build:
@@ -74,6 +100,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      dbschema:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:
