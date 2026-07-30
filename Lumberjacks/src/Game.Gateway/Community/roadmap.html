@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-30T07:39:34.574Z</span>
+        <span>Updated 2026-07-30T07:58:12.521Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260730073934-retire-the-lumberjacks-root-declaration-that-not">
+        <div class="journal"><article class="journal-entry" id="note-20260730075812-keep-the-schema-gate-from-boot-looping-the-stack">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-30T07:58:12.521Z">2026-07-30T07:58:12.521Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M3</span>
+      </div>
+      <h3>Keep the schema gate from boot-looping the stack under compose --wait</h3>
+      <p><strong>Impact:</strong> Two independently correct changes broke each other. The boot-determinism work made the systemd unit start with docker compose up -d --wait plus Restart=on-failure, and the schema repair added a one-shot dbschema service to the default service set. Verified locally: docker compose up -d --wait exits 1 on a one-shot that succeeded, reporting &#39;container ... exited (0)&#39;. On P7 that would have failed every ExecStart and retried every 30 seconds - the exact failure --wait was added to prevent. dbschema is now behind a schema profile so it is not in the waited set, and the ordering guarantee moved into the unit as ExecStartPre docker compose run --rm dbschema, which auto-enables the profile and starts postgres through its own depends_on. The four depends_on service_completed_successfully gates are gone because compose auto-enables a dependency&#39;s profile and would pull the service back into the waited set. Trade-off recorded in both files: a bare docker compose up -d on the VM no longer applies the schema, so the unit is the authoritative starter. The local stack keeps the direct gate because nothing there uses --wait. Also reconciled the environment.example comment that still described LUMBERJACKS_ROOT as boot-critical because postgres bind-mounts init.sql through it - true of the old compose, false since the schema repair landed.</p>
+      <details><summary>Verification (2)</summary><ul><li>Reproduced the interaction: compose up -d --wait against a successful one-shot exits 1 with &#39;exited (0)&#39;. With the profile applied, run --rm exits 0 and up -d --wait exits 0.</li><li>docker compose config on the P7 stack: dbschema absent from the default and tls profiles, present under the schema profile; caddy&#39;s tls profile unaffected.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>infra/gcp/p7/RUNBOOK-schema-repair.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260730073934-retire-the-lumberjacks-root-declaration-that-not">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

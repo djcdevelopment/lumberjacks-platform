@@ -34,6 +34,20 @@ EnvironmentFile=/etc/comfy-p7/environment
 # failure here never blocks the start.
 ExecStartPre=-/usr/bin/docker compose down --remove-orphans
 
+# Apply the database schema before anything connects. NOT a `-` prefix and not optional: a
+# schema-less database is how the /community gameplay panels sat permanently empty while every
+# container reported healthy (RUNBOOK-schema-repair.md). Failing the unit here is the point.
+#
+# `run --rm` on a profiled service rather than an ordinary service with
+# `depends_on: service_completed_successfully`, and that is forced by the line below:
+# `docker compose up --wait` treats a container that EXITED SUCCESSFULLY as a failure
+# ("container ... exited (0)", exit 1). A one-shot in the default service set would therefore
+# fail every ExecStart, and Restart=on-failure would turn that into a 30-second boot loop -
+# the exact failure --wait was added to prevent. Keeping dbschema behind the `schema` profile
+# holds it out of the waited set; `run` auto-enables the target's profile, and starts postgres
+# through its own depends_on first.
+ExecStartPre=/usr/bin/docker compose run --rm dbschema
+
 # --wait is load-bearing: without it `up -d` returns as soon as containers are CREATED
 # and systemd calls the unit started while nothing is serving. With it, exit 0 means
 # every service is running and every healthcheck passes, so a failure is a real failure

@@ -129,11 +129,21 @@ non-existent `infra/docker/init.sql` in the post-unification layout, so the outc
   (all 13 `GameDbContext` tables, including the previously-missing `natural_resources` and
   `region_profiles`).
 - `docker-compose.yml` gained a one-shot **`dbschema`** service that runs
-  `psql --set=ON_ERROR_STOP=1 --file=/schema.sql` on **every** stack start. `gateway`,
-  `eventlog`, `progression` and `operatorapi` now additionally depend on it with
-  `condition: service_completed_successfully`, so a schema failure is a loud startup failure
-  instead of a warning and an empty dashboard panel. It reuses the already-pinned
-  `postgres:16-alpine` image, so there is no new pull and no build.
+  `psql --set=ON_ERROR_STOP=1 --file=/schema.sql` on **every** stack start, so a schema failure
+  is a loud startup failure instead of a warning and an empty dashboard panel. It reuses the
+  already-pinned `postgres:16-alpine` image, so there is no new pull and no build.
+- The service is behind the **`schema` profile**, and the ordering guarantee lives in
+  `comfy-lumberjacks-p7.service` as `ExecStartPre=/usr/bin/docker compose run --rm dbschema`.
+  This is not stylistic. The boot-determinism work made `ExecStart` use
+  `docker compose up -d --wait`, and **`--wait` counts a container that exited *successfully* as
+  a failure** — `container ... exited (0)`, exit code 1. A one-shot left in the default service
+  set would fail every `ExecStart`, and `Restart=on-failure` would convert that into a
+  30-second boot loop: the precise failure `--wait` was added to prevent. Expressing the gate as
+  `depends_on: condition: service_completed_successfully` does not work either, because compose
+  auto-enables a dependency's profile and pulls the service straight back into the waited set.
+  **Consequence:** a bare `docker compose up -d` on the VM does *not* apply the schema. Start
+  through the unit, or run the service by hand first. The local stack keeps the direct
+  `depends_on` gate because nothing there uses `--wait`.
 - Both schema mounts are now **relative to the compose file** (`../../../Lumberjacks/...`)
   rather than to `LUMBERJACKS_ROOT`. `LUMBERJACKS_ROOT` is no longer consumed by
   `docker-compose.yml` at all; it remains in `environment.example` and `README.md`, which
@@ -209,11 +219,11 @@ Or, without restarting the world, apply just the schema against the running data
 
 ```bash
 cd /opt/comfy/infra/gcp/p7
-sudo docker compose --env-file /etc/comfy-p7/environment up dbschema
+sudo docker compose --env-file /etc/comfy-p7/environment run --rm dbschema
 ```
 
-`dbschema` must exit 0. If it does not, the .NET services will refuse to start rather than run
-schema-less — that is the intended behaviour.
+`dbschema` must exit 0. Use `run --rm`, not `up dbschema`: `run` auto-enables the `schema`
+profile and leaves no exited container behind for a later `up --wait` to trip over.
 
 ### 4. Verify — the schema exists
 
