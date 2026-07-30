@@ -541,6 +541,9 @@ class DiscordClient:
     def guild_channels(self, guild_id: str) -> list[dict]:
         return self._t.request("GET", f"/guilds/{guild_id}/channels") or []
 
+    def invite(self, code: str) -> dict:
+        return self._t.request("GET", f"/invites/{code}", query={"with_expiration": "true"})
+
     def active_threads(self, guild_id: str) -> list[dict]:
         return (self._t.request("GET", f"/guilds/{guild_id}/threads/active") or {}).get("threads", [])
 
@@ -627,6 +630,16 @@ class DiscordClient:
             "PATCH",
             f"/channels/{channel_id}/messages/{message_id}",
             {"content": content, "allowed_mentions": {"parse": []}},
+        )
+
+    def create_channel_invite(self, channel_id: str) -> dict:
+        """A never-expiring, unlimited-use join invite. The one write here that is not
+        content: an invite is an access artifact, so it rides the same --yes ceremony
+        as every content write."""
+        return self._t.request(
+            "POST",
+            f"/channels/{channel_id}/invites",
+            {"max_age": 0, "max_uses": 0, "unique": True},
         )
 
 
@@ -1416,6 +1429,69 @@ def cmd_invite(args: argparse.Namespace) -> int:
     return 0
 
 
+def ensure_permanent_invite(client: DiscordClient, state: dict) -> tuple[dict, str, bool]:
+    """Replace an expiring guild invite with a never-expiring one on the same channel.
+
+    Returns (state, message, changed). The old invite is never revoked: every copy of
+    it already in the wild keeps working until Discord retires it on its own schedule.
+    The offline check() warns two weeks before an expiry recorded in the state file;
+    this is the maintenance action that ends that clock for good."""
+    recorded = state.get("invite_href") or ""
+    code = recorded.rsplit("/", 1)[-1] if recorded else ""
+    if not code:
+        raise ToolError("provision-state has no invite_href to work from")
+    live = client.invite(code)
+    channel_id = (live.get("channel") or {}).get("id")
+    expires = live.get("expires_at")
+    if expires is None:
+        if state.get("invite_expires_at") is not None:
+            return dict(state, invite_expires_at=None), f"{recorded} is already never-expiring; state now says so", True
+        return state, f"{recorded} is already never-expiring", False
+    if not channel_id:
+        raise ToolError(f"the live invite {recorded} names no channel; cannot mint a replacement")
+    created = client.create_channel_invite(channel_id)
+    new_href = f"https://discord.gg/{created['code']}"
+    new_state = dict(state, invite_href=new_href, invite_expires_at=None)
+    return new_state, f"created {new_href} (never expires); {recorded} is left to lapse {expires}", True
+
+
+def cmd_guild_invite(args: argparse.Namespace) -> int:
+    """The guild join invite the public page carries -- report it, and with
+    --ensure-permanent replace an expiring one in place."""
+    state = load_state(args.state)
+    recorded = state.get("invite_href") or ""
+    code = recorded.rsplit("/", 1)[-1] if recorded else ""
+    if not code:
+        raise ToolError("provision-state has no invite_href to work from")
+    client = DiscordClient(HttpTransport(load_token(args.token_file)))
+    live = client.invite(code)
+    channel = live.get("channel") or {}
+    expires = live.get("expires_at")
+    print(f"invite  {recorded}")
+    print(f"channel #{channel.get('name')} ({channel.get('id')})")
+    print(f"expires {expires or 'never'}")
+    if not args.ensure_permanent:
+        return 0
+    if expires is None and state.get("invite_expires_at") is None:
+        print("\nNothing to do -- the invite is already never-expiring and the state agrees.")
+        return 0
+    if not args.yes:
+        if expires is None:
+            print("\nWould sync invite_expires_at: null into provision-state (no Discord write).")
+        else:
+            print(f"\nWould create a never-expiring invite on #{channel.get('name')} and record it; {recorded} would be left to lapse {expires}.")
+        print("Refusing to touch a live community server without --yes.")
+        return 2
+    new_state, message, changed = ensure_permanent_invite(client, state)
+    if changed:
+        save_state(args.state, new_state)
+    print(f"\n{message}")
+    print(f"state   {_rel(args.state)}")
+    if new_state.get("invite_href") != recorded:
+        print("\nNext (a separate, approved step): update workbench.json feedback.invite_href to the new invite, render, publish.")
+    return 0
+
+
 def _plan_and_receipt(args: argparse.Namespace) -> tuple[Plan, Optional[DiscordClient], dict]:
     cfg = load_config(args.config, args.guild_id, args.site_base_url)
     state = load_state(args.state)
@@ -1526,6 +1602,7 @@ class FakeTransport(Transport):
         self.channels: dict[str, dict] = {}
         self.threads: dict[str, dict] = {}
         self.messages: dict[str, list[dict]] = {}
+        self.invites: dict[str, dict] = {}
         self.bot_id = "999"
         self._next = 1000
         self.calls: list[tuple[str, str]] = []
@@ -1607,6 +1684,27 @@ class FakeTransport(Transport):
             if method == "PATCH":
                 found["content"] = payload["content"]
                 return found
+        m = re.fullmatch(r"/invites/([A-Za-z0-9-]+)", path)
+        if m and method == "GET":
+            found = self.invites.get(m.group(1))
+            if found is None:
+                raise ToolError("HTTP 404 unknown invite")
+            return found
+        m = re.fullmatch(r"/channels/([0-9]+)/invites", path)
+        if m and method == "POST":
+            channel = self.channels.get(m.group(1))
+            if channel is None:
+                raise ToolError("HTTP 404 unknown channel")
+            code = f"perm{self._id()}"
+            invite = {
+                "code": code,
+                "channel": {"id": channel["id"], "name": channel["name"], "type": channel["type"]},
+                "guild": {"id": self.guild_id},
+                "max_age": payload.get("max_age"),
+                "expires_at": None if payload.get("max_age") == 0 else "2026-08-28T06:33:12+00:00",
+            }
+            self.invites[code] = invite
+            return invite
         raise ToolError(f"FakeTransport: unhandled {method} {path}")
 
     def _message(self, channel_id: str, message_id: str, content: str, author_id: Optional[str] = None) -> dict:
@@ -1859,6 +1957,28 @@ def run_self_test() -> bool:
     check(PERMISSIONS_INT & (1 << 17) == 0, "no Mention Everyone bit")
     check(str(PERMISSIONS_INT) in invite_url("123"), "invite URL carries the computed permission integer")
 
+    # --- guild-invite maintenance ------------------------------------------ #
+    finv = FakeTransport(cfg.guild_id)
+    fclient = DiscordClient(finv)
+    general_id = finv._id()
+    finv.channels[general_id] = {"id": general_id, "name": "general", "type": 0, "available_tags": [], "flags": 0}
+    finv.invites["OLDCODE"] = {
+        "code": "OLDCODE",
+        "channel": {"id": general_id, "name": "general", "type": 0},
+        "guild": {"id": cfg.guild_id},
+        "expires_at": "2026-08-28T06:33:12+00:00",
+    }
+    inv_state = {"invite_href": "https://discord.gg/OLDCODE", "invite_expires_at": "2026-08-28T06:33:12+00:00"}
+    new_state, _msg, changed = ensure_permanent_invite(fclient, inv_state)
+    check(changed and new_state["invite_href"] != inv_state["invite_href"], "an expiring invite is replaced, not edited")
+    new_code = new_state["invite_href"].rsplit("/", 1)[-1]
+    check(finv.invites.get(new_code, {}).get("expires_at") is None, "the replacement invite never expires")
+    check(finv.invites.get(new_code, {}).get("channel", {}).get("id") == general_id, "the replacement lands on the same channel")
+    check(new_state["invite_expires_at"] is None, "state records the null expiry")
+    check("OLDCODE" in finv.invites, "the old invite is left to lapse, never revoked")
+    _same_state, _msg2, changed2 = ensure_permanent_invite(fclient, new_state)
+    check(not changed2, "a permanent invite with agreeing state is a no-op")
+
     ok = True
     for passed, description in results:
         if not passed:
@@ -1907,6 +2027,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("invite", help="print the OAuth2 invite URL and its permission set")
     p.add_argument("--app-id", default=None)
     p.set_defaults(func=cmd_invite)
+
+    p = sub.add_parser("guild-invite", help="the guild join invite the page carries; --ensure-permanent replaces an expiring one")
+    p.add_argument("--ensure-permanent", action="store_true", help="mint a never-expiring invite on the same channel and record it")
+    p.add_argument("--yes", action="store_true", help="required to mint: this creates a live access artifact")
+    p.set_defaults(func=cmd_guild_invite)
 
     p = sub.add_parser("plan", help="dry run: compute changes and write an approval receipt")
     p.add_argument("--offline", action="store_true", help="predict against an empty server; no token needed")

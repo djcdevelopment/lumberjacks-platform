@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-30T08:57:56.407Z</span>
+        <span>Updated 2026-07-30T12:47:10.707Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260730085756-correct-the-trust-review-report-s-test-arithmeti">
+        <div class="journal"><article class="journal-entry" id="note-20260730124710-retire-the-invite-expiry-clock-with-a-never-expi">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-30T12:47:10.707Z">2026-07-30T12:47:10.707Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Retire the invite expiry clock with a never-expiring replacement</h3>
+      <p><strong>Impact:</strong> The provisioning bot gains a guild-invite command with the same yes-ceremony as its content writes; it minted a never-expiring invite on the same channel and recorded it, so the fourteen-day warning countdown the offline check carried is gone for good. The old invite is left to lapse on its own - every copy already shared keeps working until then. The page now carries the permanent invite. Operator rationale stands recorded: the hosting moves within a year, so link lifetime was never the constraint.</p>
+      <details><summary>Verification (1)</summary><ul><li>Bot self-test 93/93 including six new guild-invite checks (replacement on same channel, never expires, old invite never revoked, no-op when permanent); live mint verified via the Discord API.</li></ul></details>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260730085756-correct-the-trust-review-report-s-test-arithmeti">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
