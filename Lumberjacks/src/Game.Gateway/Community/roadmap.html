@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-30T12:47:25.358Z</span>
+        <span>Updated 2026-07-30T17:55:36.922Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260730124725-land-the-permanent-invite-render">
+        <div class="journal"><article class="journal-entry" id="note-20260730175536-closed-unattended-native-client-fan-out-and-off-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-30T17:55:36.922Z">2026-07-30T17:55:36.922Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>baseline</span>
+        <span>M1 · M4a · M4b · A4</span>
+      </div>
+      <h3>Closed unattended native-client, fan-out, and off-thread handshake blockers</h3>
+      <p><strong>Impact:</strong> OMEN and i5 now launch native GPU-rendered Valheim, select persisted characters, and join without a Start click. On AM4, co-presence fan-out emitted every native-selected candidate and inventory pickups returned on both clients. Handshake authority I/O now waits on a worker: a 2,034 ms timeout produced no 250 ms wall hitch during the authority interval, while both fail-open and normal Lumberjacks ACCEPT reached world entry. A fixed allowlist applied rollback flags and a responder endpoint without restarting Valheim. P7 still runs the prior build; promotion is not claimed. Steam connection, routed and direct RPC, motion authority, ownership, world bootstrap, and zone lifecycle remain native or partial.</p>
+      <details><summary>Verification (4)</summary><ul><li>Release build completed with zero warnings and zero errors</li><li>Two unattended physical clients joined AM4 on RTX 5070 and Iris Xe; both inventory pickups succeeded</li><li>Delayed authority wait was 2,034 ms with zero wall hitches at the configured 250 ms threshold; a normal ACCEPT joined after a 66 ms decision</li><li>Runtime-control receipts reported old and effective values while container start time and PID remained unchanged</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/NATIVE-NETWORK-LANDSCAPE-2026-07-30.md</code> <code>fieldlab/runs/native-valheim/native-20260730-172100-am4-touch/</code> <code>fieldlab/runs/native-valheim/native-20260730-173650-am4-handshake-delay/</code> <code>fieldlab/runs/native-valheim/native-20260730-174850-am4-runtime-control/</code> <code>fieldlab/runs/native-valheim/native-20260730-174910-am4-handshake-accept/</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260730124725-land-the-permanent-invite-render">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
