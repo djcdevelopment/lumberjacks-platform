@@ -21,8 +21,15 @@ LUMBERJACKS_EVENTLOG_IMAGE=CHANGE_ME_promoted_eventlog_image_ref
 LUMBERJACKS_PROGRESSION_IMAGE=CHANGE_ME_promoted_progression_image_ref
 LUMBERJACKS_OPERATORAPI_IMAGE=CHANGE_ME_promoted_operatorapi_image_ref
 
-# --- Runtime identity / build root ---
-LUMBERJACKS_ROOT=/opt/lumberjacks-ed83bd8
+# --- Runtime identity ---
+# LUMBERJACKS_ROOT is RETIRED — deliberately absent, do not reintroduce it. It named a source
+# tree on the VM that docker-compose.yml resolved the Postgres schema script against. The
+# 2026-07-20 unification moved that file under Lumberjacks/, so the path silently stopped
+# naming a file; Docker materialized the missing bind source as an empty directory and the
+# stack ran with NO database schema for days while reporting healthy. Compose now resolves the
+# schema relative to itself and consumes this variable nowhere. A declaration documented as
+# "required" that nothing reads is exactly how that defect stayed invisible.
+# See RUNBOOK-schema-repair.md.
 COMFY_NETWORKSENSE_VERSION=0.5.31
 COMFY_LUMBERJACKS_CUTOVER_MODE=lumberjacks-primary
 COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID=p7-primary-v1

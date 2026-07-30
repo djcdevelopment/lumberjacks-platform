@@ -278,12 +278,16 @@ operator, not as part of the repair:
    against databases that already have the tables. Until then `init.sql` is the mechanism and
    the EF model is only the design authority, and the two can drift again exactly as they did
    with `natural_resources` / `region_profiles`.
-2. **`LUMBERJACKS_ROOT` is now unreferenced by `docker-compose.yml`** but still documented as a
-   required runtime declaration in [`README.md`](README.md#L155) and
-   [`environment.example`](environment.example). Decide whether anything still consumes it.
+2. ~~**`LUMBERJACKS_ROOT` is still documented as required** in `README.md` and
+   `environment.example` while nothing consumes it.~~ **CLOSED 2026-07-30:** retired from both,
+   with a note against reintroducing it. Remaining mentions in this repo are historical prose.
+   **Still to do on the box:** remove the line from `/etc/comfy-p7/environment` — but read it
+   first, it is the forensic evidence in step 1.
 3. **`bootstrap.sh.tftpl:49` creates `/opt/lumberjacks` empty**, which is what made the old
-   compose default resolve to a plausible-looking but wrong path. Worth removing along with the
-   variable.
+   compose default resolve to a plausible-looking but wrong path. Left alone deliberately: that
+   file is `metadata_startup_script`, and per [`RECONCILE-GAP.md`](RECONCILE-GAP.md) §1 it is
+   already drifted and force-replaces the VM on apply. Fold it into the reconcile effort, not
+   into a docs cleanup.
 4. **No boot-time schema assertion outside compose.** The `dbschema` gate covers
    `compose up`; it does not cover someone starting a single service by hand.
 5. **The state disk is still unmanaged in Terraform** — [`RECONCILE-GAP.md`](RECONCILE-GAP.md)
