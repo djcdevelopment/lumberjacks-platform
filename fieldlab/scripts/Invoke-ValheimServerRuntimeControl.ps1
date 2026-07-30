@@ -22,7 +22,9 @@ param(
         'handshakeResponderEnabled',
         'handshakeResponderStrictMode',
         'handshakeResponderEndpoint',
-        'handshakeResponderWindowId')]
+        'handshakeResponderWindowId',
+        'nativeNetworkPoisonEnabled',
+        'nativeNetworkEvidenceRunId')]
     [Parameter(Mandatory)]
     [string] $Setting,
 

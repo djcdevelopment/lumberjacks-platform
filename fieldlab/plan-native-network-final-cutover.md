@@ -20,6 +20,21 @@ loop. Derek is not scheduled as a live test operator.
 
 The motion/transpiling experiments remain on hold until the native-use gate is green.
 
+## Execution status
+
+| Slice | Status | Retained boundary |
+| --- | --- | --- |
+| C0 | **Complete on AM4 (2026-07-30)** | `native-20260730-c0-clean`: both physical clients joined, moved, disconnected, relaunched, rejoined, and stopped under one manifest. Exact run-scoped ledgers recorded OMEN 4,360, i5 2,957, and server 12,339 native funnel calls with zero drops/faults. `native-20260730-c0-poison` blocked all 76 observed calls at the first forbidden connection boundary. |
+| C1 | **Next** | Build one durable ordered/resumable Lumberjacks game session while the measured native session remains present. |
+| C2-C10 | Pending in dependency order | Do not skip the mandatory replans after C1, C3, C5, and C7. |
+
+C0 also proved the unattended recovery edges needed by the later ladder: the harness
+waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
+transaction through Valheim's Cloud API, and bounds graceful/forced client shutdown.
+The local Gateway explicitly uses the AM4 authoritative window with the retired
+one-seat alpha gate disabled, so the two-client composition cannot be mistaken for a
+Valheim capacity failure.
+
 ## Completion contract
 
 The cutover is complete only when one promoted release satisfies all of these conditions:

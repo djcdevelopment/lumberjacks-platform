@@ -24,6 +24,8 @@ config directory.
 - `handshakeResponderStrictMode`
 - `handshakeResponderEndpoint`
 - `handshakeResponderWindowId`
+- `nativeNetworkPoisonEnabled`
+- `nativeNetworkEvidenceRunId`
 
 Boolean settings accept `true` or `false`. The endpoint accepts plain HTTP without
 userinfo. The window ID accepts an 80-character-or-shorter safe token.

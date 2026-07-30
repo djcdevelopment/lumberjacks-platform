@@ -15,7 +15,7 @@ interactive scheduled task on a remote Windows client.
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('preflight', 'start', 'smoke', 'status', 'stop', 'install-task', 'queue-smoke', 'task-status', 'run-pending')]
+    [ValidateSet('preflight', 'start', 'smoke', 'poison-smoke', 'status', 'stop', 'install-task', 'queue-smoke', 'task-status', 'run-pending')]
     [string] $Action = 'preflight',
 
     [ValidateSet('omen', 'i5')]
@@ -32,6 +32,8 @@ param(
     [string] $SteamExe = 'C:\Program Files (x86)\Steam\steam.exe',
 
     [string] $DllPath = '',
+
+    [string] $ScenarioPath = '',
 
     [string] $EvidenceRoot = '',
 
@@ -52,6 +54,10 @@ $ErrorActionPreference = 'Stop'
 $script:ActiveRunDirectory = $null
 $script:LastReceipt = $null
 $script:JoinedRow = $null
+$script:PoisonRow = $null
+$script:ScenarioTerminalRow = $null
+$script:ResumeCount = 0
+$script:ProfileRecoveryCount = 0
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if ([string]::IsNullOrWhiteSpace($EvidenceRoot)) {
@@ -66,6 +72,9 @@ $configRoot = Join-Path $ValheimRoot 'BepInEx\config'
 $autotestRoot = Join-Path $configRoot 'comfy-network-sense'
 $autotestRequestPath = Join-Path $autotestRoot 'native-autotest-request.json'
 $autotestReceiptsPath = Join-Path $autotestRoot 'native-autotest-receipts.jsonl'
+$nativeNetworkLedgerPath = Join-Path $autotestRoot 'native-network-use.jsonl'
+$cutoverScenarioPath = Join-Path $autotestRoot 'native-cutover-scenario.json'
+$cutoverScenarioReceiptsPath = Join-Path $autotestRoot 'native-cutover-scenario-receipts.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
 
@@ -96,17 +105,20 @@ function Get-CharacterProfiles() {
     $localCharacters = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\characters'
     if (Test-Path -LiteralPath $localCharacters -PathType Container) {
         $files += Get-ChildItem -LiteralPath $localCharacters -Filter '*.fch' -File -ErrorAction SilentlyContinue
+        $files += Get-ChildItem -LiteralPath $localCharacters -Filter '*.fch.new' -File -ErrorAction SilentlyContinue
     }
 
     $steamUserdata = 'C:\Program Files (x86)\Steam\userdata'
     if (Test-Path -LiteralPath $steamUserdata -PathType Container) {
         $files += Get-ChildItem -LiteralPath $steamUserdata -Recurse -Filter '*.fch' -File -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -match '\\892970\\remote\\characters\\' }
+        $files += Get-ChildItem -LiteralPath $steamUserdata -Recurse -Filter '*.fch.new' -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\892970\\remote\\characters\\' }
     }
 
     return @($files |
-        Where-Object { $_.BaseName -notmatch '(?i)backup' } |
-        ForEach-Object BaseName |
+        Where-Object { $_.Name -notmatch '(?i)backup' } |
+        ForEach-Object { $_.Name -replace '(?i)\.fch(?:\.new)?$', '' } |
         Sort-Object -Unique)
 }
 
@@ -179,14 +191,18 @@ function Stop-Valheim([bool] $FailIfNotStopped = $true) {
     foreach ($process in $processes) {
         if ($process.MainWindowHandle -ne 0) { [void]$process.CloseMainWindow() }
     }
-    $deadline = (Get-Date).AddSeconds(12)
+    $deadline = (Get-Date).AddSeconds(20)
     while ((Get-Date) -lt $deadline -and
         (Get-Process -Name valheim,UnityCrashHandler64 -ErrorAction SilentlyContinue)) {
         Start-Sleep -Milliseconds 250
     }
     @(Get-Process -Name valheim,UnityCrashHandler64 -ErrorAction SilentlyContinue) |
         Stop-Process -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Milliseconds 500
+    $forcedDeadline = (Get-Date).AddSeconds(10)
+    while ((Get-Date) -lt $forcedDeadline -and
+        (Get-Process -Name valheim,UnityCrashHandler64 -ErrorAction SilentlyContinue)) {
+        Start-Sleep -Milliseconds 250
+    }
 
     $remaining = @(Get-Process -Name valheim,UnityCrashHandler64 -ErrorAction SilentlyContinue)
     if ($FailIfNotStopped -and $remaining.Count -gt 0) {
@@ -214,6 +230,46 @@ function Deploy-Mod() {
     }
 }
 
+function Deploy-Scenario() {
+    if ([string]::IsNullOrWhiteSpace($ScenarioPath)) {
+        if (Test-Path -LiteralPath $cutoverScenarioPath -PathType Leaf) {
+            Remove-Item -LiteralPath $cutoverScenarioPath -Force
+        }
+        return $null
+    }
+    if (Get-Process valheim -ErrorAction SilentlyContinue) {
+        throw 'Refusing scenario deployment while Valheim is running.'
+    }
+    $source = (Resolve-Path -LiteralPath $ScenarioPath -ErrorAction Stop).Path
+    $info = Get-Item -LiteralPath $source
+    if ($info.Length -le 0 -or $info.Length -gt 65536) {
+        throw "Native cutover scenario must be between 1 and 65536 bytes: $source"
+    }
+    $manifest = Get-Content -LiteralPath $source -Raw | ConvertFrom-Json
+    if ([int]$manifest.schema_version -ne 1) {
+        throw 'Native cutover scenario schema_version must be 1.'
+    }
+    if ([string]$manifest.run_id -ne $RunId) {
+        throw "Native cutover scenario run_id must equal RunId ($RunId)."
+    }
+    if (@($manifest.actions).Count -lt 1 -or @($manifest.actions).Count -gt 64) {
+        throw 'Native cutover scenario must contain between 1 and 64 actions.'
+    }
+    New-Item -ItemType Directory -Path $autotestRoot -Force | Out-Null
+    Copy-Item -LiteralPath $source -Destination $cutoverScenarioPath -Force
+    $sourceHash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
+    $targetHash = (Get-FileHash -LiteralPath $cutoverScenarioPath -Algorithm SHA256).Hash
+    if ($sourceHash -ne $targetHash) {
+        throw 'Native cutover scenario hash mismatch after deployment.'
+    }
+    return [ordered]@{
+        source = $source
+        target = $cutoverScenarioPath
+        sha256 = $targetHash.ToLowerInvariant()
+        action_count = @($manifest.actions).Count
+    }
+}
+
 function Read-AutotestRows([string] $RequestedRunId) {
     if (-not (Test-Path -LiteralPath $autotestReceiptsPath -PathType Leaf)) { return @() }
     $rows = @()
@@ -226,12 +282,19 @@ function Read-AutotestRows([string] $RequestedRunId) {
     return $rows
 }
 
-function Wait-ForJoined([string] $RequestedRunId, [int] $Seconds) {
+function Wait-ForJoined(
+    [string] $RequestedRunId,
+    [int] $Seconds,
+    [DateTimeOffset] $AfterUtc = [DateTimeOffset]::MinValue) {
     $deadline = (Get-Date).AddSeconds($Seconds)
     while ((Get-Date) -lt $deadline) {
-        $rows = @(Read-AutotestRows $RequestedRunId)
+        $rows = @(Read-AutotestRows $RequestedRunId | Where-Object {
+            try { [DateTimeOffset]::Parse([string]$_.timestamp_utc) -gt $AfterUtc } catch { $false }
+        })
         $failed = $rows | Where-Object state -eq 'failed' | Select-Object -Last 1
         if ($failed) { throw "Native autotest failed: $($failed.detail)" }
+        $recovered = $rows | Where-Object state -eq 'profile_recovered' | Select-Object -Last 1
+        if ($recovered) { return $recovered }
         $joined = $rows | Where-Object state -eq 'joined' | Select-Object -Last 1
         if ($joined) { return $joined }
         if (-not (Get-Process valheim -ErrorAction SilentlyContinue)) {
@@ -243,6 +306,72 @@ function Wait-ForJoined([string] $RequestedRunId, [int] $Seconds) {
         Start-Sleep -Seconds 2
     }
     throw "AUTOTEST_JOINED was not observed within $Seconds seconds."
+}
+
+function Read-ScenarioRows([string] $RequestedRunId) {
+    if (-not (Test-Path -LiteralPath $cutoverScenarioReceiptsPath -PathType Leaf)) {
+        return @()
+    }
+    $rows = @()
+    foreach ($line in Get-Content -LiteralPath $cutoverScenarioReceiptsPath -Tail 512 -ErrorAction SilentlyContinue) {
+        try {
+            $row = $line | ConvertFrom-Json -ErrorAction Stop
+            if ($row.run_id -eq $RequestedRunId -and $row.client -eq $Client) {
+                $rows += $row
+            }
+        } catch { }
+    }
+    return $rows
+}
+
+function Wait-ForScenarioTerminal(
+    [string] $RequestedRunId,
+    [int] $Seconds,
+    [DateTimeOffset] $AfterUtc) {
+    $deadline = (Get-Date).AddSeconds($Seconds)
+    while ((Get-Date) -lt $deadline) {
+        $rows = @(Read-ScenarioRows $RequestedRunId | Where-Object {
+            try { [DateTimeOffset]::Parse([string]$_.timestamp_utc) -gt $AfterUtc } catch { $false }
+        })
+        $failed = $rows | Where-Object {
+            $_.state -in @('failed', 'manifest_rejected')
+        } | Select-Object -Last 1
+        if ($failed) {
+            throw "Native cutover scenario failed: state=$($failed.state) action=$($failed.action_id) detail=$($failed.detail)"
+        }
+        $terminal = $rows | Where-Object {
+            $_.state -in @('resume_requested', 'scenario_complete')
+        } | Select-Object -Last 1
+        if ($terminal) { return $terminal }
+        if (-not (Get-Process valheim -ErrorAction SilentlyContinue)) {
+            throw 'Valheim exited before the cutover scenario reached a terminal marker.'
+        }
+        Start-Sleep -Seconds 1
+    }
+    throw "Native cutover scenario did not reach a terminal marker within $Seconds seconds."
+}
+
+function Wait-ForPoison([string] $RequestedRunId, [int] $Seconds) {
+    $deadline = (Get-Date).AddSeconds($Seconds)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-Path -LiteralPath $nativeNetworkLedgerPath -PathType Leaf) {
+            foreach ($line in Get-Content -LiteralPath $nativeNetworkLedgerPath -Tail 256 -ErrorAction SilentlyContinue) {
+                try {
+                    $row = $line | ConvertFrom-Json -ErrorAction Stop
+                    if ($row.run_id -eq $RequestedRunId -and
+                        $row.event -eq 'native_use' -and
+                        $row.blocked -eq $true) {
+                        return $row
+                    }
+                } catch { }
+            }
+        }
+        if (-not (Get-Process valheim -ErrorAction SilentlyContinue)) {
+            throw 'Valheim exited before a native-poison receipt arrived.'
+        }
+        Start-Sleep -Seconds 1
+    }
+    throw "A blocked native-poison receipt was not observed within $Seconds seconds."
 }
 
 function Copy-EvidenceFile([string] $Source, [string] $DestinationName) {
@@ -275,6 +404,11 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         process_id = if ($process) { $process.Id } else { $null }
         process_session = if ($process) { $process.SessionId } else { $null }
         joined = $script:JoinedRow
+        native_poison = $script:PoisonRow
+        scenario_terminal = $script:ScenarioTerminalRow
+        resume_count = $script:ResumeCount
+        profile_recovery_count = $script:ProfileRecoveryCount
+        native_network_poison_requested = $Action -eq 'poison-smoke'
         preflight = $Preflight
         deployment = $Deployment
         plugin_sha256 = if (Test-Path -LiteralPath $pluginPath -PathType Leaf) {
@@ -286,6 +420,9 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
             bep_inex_log = Copy-EvidenceFile $bepInExLogPath 'bepinex.log'
             player_log = Copy-EvidenceFile $playerLogPath 'player.log'
             autotest_receipts = Copy-EvidenceFile $autotestReceiptsPath 'native-autotest-receipts.jsonl'
+            native_network_use = Copy-EvidenceFile $nativeNetworkLedgerPath 'native-network-use.jsonl'
+            cutover_scenario_receipts =
+                Copy-EvidenceFile $cutoverScenarioReceiptsPath 'native-cutover-scenario-receipts.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'
@@ -293,7 +430,43 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
     $script:LastReceipt = $receipt
 }
 
-function Start-NativeRun([bool] $StopAfterHold) {
+function Write-NativeAutotestRequest([bool] $ExpectPoison) {
+    $now = [DateTimeOffset]::UtcNow
+    $request = [ordered]@{
+        schema_version = 1
+        run_id = $RunId
+        client = $Client
+        character = $Character
+        server = $Server
+        created_utc = $now.ToString('o')
+        expires_utc = $now.AddMinutes(15).ToString('o')
+        native_network_poison = $ExpectPoison
+    }
+    Write-JsonAtomic $autotestRequestPath $request
+    return $now
+}
+
+function Start-NativeProcess([bool] $ExpectPoison) {
+    $launchedUtc = Write-NativeAutotestRequest $ExpectPoison
+    $arguments = @('-applaunch', '892970', '-console') + @($LaunchArguments) + @('+connect', $Server)
+    Start-Process -FilePath $SteamExe -ArgumentList $arguments
+
+    $processDeadline = (Get-Date).AddSeconds(90)
+    do {
+        Start-Sleep -Milliseconds 500
+        $process = Get-Process valheim -ErrorAction SilentlyContinue | Select-Object -First 1
+    } until ($process -or (Get-Date) -ge $processDeadline)
+    if (-not $process) { throw 'Valheim did not start within 90 seconds.' }
+    if ($process.SessionId -ne [Diagnostics.Process]::GetCurrentProcess().SessionId) {
+        throw "Valheim started in session $($process.SessionId), expected current interactive session $([Diagnostics.Process]::GetCurrentProcess().SessionId)."
+    }
+    return [ordered]@{
+        process = $process
+        launched_utc = $launchedUtc
+    }
+}
+
+function Start-NativeRun([bool] $StopAfterHold, [bool] $ExpectPoison) {
     if ([string]::IsNullOrWhiteSpace($Character)) { throw 'Character is required for start/smoke.' }
     if (-not (Test-SafeToken $RunId)) { throw "RunId is not a safe token: $RunId" }
     if ($Server -notmatch '^[^\s:]+:\d{2,5}$') { throw "Server must be host:port: $Server" }
@@ -309,35 +482,52 @@ function Start-NativeRun([bool] $StopAfterHold) {
         throw "Native client preflight blocked: $($preflight.blockers -join ', ')"
     }
 
-    $deployment = Deploy-Mod
-    $now = [DateTimeOffset]::UtcNow
-    $request = [ordered]@{
-        schema_version = 1
-        run_id = $RunId
-        client = $Client
-        character = $Character
-        server = $Server
-        created_utc = $now.ToString('o')
-        expires_utc = $now.AddMinutes(15).ToString('o')
+    $deployment = [ordered]@{
+        mod = Deploy-Mod
+        scenario = Deploy-Scenario
     }
-    Write-JsonAtomic $autotestRequestPath $request
-
-    $arguments = @('-applaunch', '892970', '-console') + @($LaunchArguments) + @('+connect', $Server)
-    Start-Process -FilePath $SteamExe -ArgumentList $arguments
-
-    $processDeadline = (Get-Date).AddSeconds(90)
-    do {
-        Start-Sleep -Milliseconds 500
-        $process = Get-Process valheim -ErrorAction SilentlyContinue | Select-Object -First 1
-    } until ($process -or (Get-Date) -ge $processDeadline)
-    if (-not $process) { throw 'Valheim did not start within 90 seconds.' }
-    if ($process.SessionId -ne [Diagnostics.Process]::GetCurrentProcess().SessionId) {
-        throw "Valheim started in session $($process.SessionId), expected current interactive session $([Diagnostics.Process]::GetCurrentProcess().SessionId)."
+    $attempt = Start-NativeProcess $ExpectPoison
+    if ($ExpectPoison) {
+        $script:PoisonRow = Wait-ForPoison $RunId $WaitSeconds
+        [void](Stop-Valheim)
+        Write-RunReceipt 'native_poison_blocked_and_stopped' $preflight $deployment
+        Write-Host ("native poison blocked {0} -> {1}" -f $script:PoisonRow.funnel, $script:ActiveRunDirectory)
+        return
     }
 
-    $script:JoinedRow = Wait-ForJoined $RunId $WaitSeconds
-    Write-RunReceipt 'joined' $preflight $deployment
-    Write-Host ("joined {0} as {1} -> {2} (pid {3})" -f $Client, $Character, $Server, $process.Id)
+    while ($true) {
+        $joinOutcome =
+            Wait-ForJoined $RunId $WaitSeconds ([DateTimeOffset]$attempt.launched_utc)
+        if ($joinOutcome.state -eq 'profile_recovered') {
+            $script:ProfileRecoveryCount++
+            if ($script:ProfileRecoveryCount -gt 1) {
+                throw 'Native autotest profile recovery requested more than one relaunch.'
+            }
+            [void](Stop-Valheim)
+            Start-Sleep -Seconds 5
+            $attempt = Start-NativeProcess $false
+            continue
+        }
+        $script:JoinedRow = $joinOutcome
+        Write-RunReceipt 'joined' $preflight $deployment
+        Write-Host ("joined {0} as {1} -> {2} (pid {3})" -f
+            $Client, $Character, $Server, $attempt.process.Id)
+
+        if ([string]::IsNullOrWhiteSpace($ScenarioPath)) { break }
+        $script:ScenarioTerminalRow =
+            Wait-ForScenarioTerminal $RunId $WaitSeconds ([DateTimeOffset]$attempt.launched_utc)
+        if ($script:ScenarioTerminalRow.state -eq 'scenario_complete') { break }
+
+        $script:ResumeCount++
+        if ($script:ResumeCount -gt 4) {
+            throw 'Native cutover scenario exceeded four bounded resume cycles.'
+        }
+        [void](Stop-Valheim)
+        # A graceful logout can briefly expose an incomplete Steam Cloud profile list.
+        # Keep resume bounded, but let that list settle before the fresh launch.
+        Start-Sleep -Seconds 5
+        $attempt = Start-NativeProcess $false
+    }
 
     if ($StopAfterHold) {
         if ($HoldSeconds -gt 0) { Start-Sleep -Seconds $HoldSeconds }
@@ -365,6 +555,7 @@ function Invoke-PendingRun() {
         ValheimRoot = [string]$pending.valheim_root
         SteamExe = [string]$pending.steam_exe
         DllPath = [string]$pending.dll_path
+        ScenarioPath = [string]$pending.scenario_path
         EvidenceRoot = [string]$pending.evidence_root
         WaitSeconds = [int]$pending.wait_seconds
         HoldSeconds = [int]$pending.hold_seconds
@@ -432,6 +623,7 @@ function Queue-InteractiveSmoke() {
         valheim_root = $ValheimRoot
         steam_exe = $SteamExe
         dll_path = $DllPath
+        scenario_path = $ScenarioPath
         evidence_root = $EvidenceRoot
         wait_seconds = $WaitSeconds
         hold_seconds = $HoldSeconds
@@ -461,7 +653,7 @@ if ($Action -eq 'run-pending') {
     exit 0
 }
 
-if ([string]::IsNullOrWhiteSpace($RunId) -and $Action -in @('start', 'smoke', 'queue-smoke')) {
+if ([string]::IsNullOrWhiteSpace($RunId) -and $Action -in @('start', 'smoke', 'poison-smoke', 'queue-smoke')) {
     $RunId = New-RunId
 }
 
@@ -517,7 +709,7 @@ switch ($Action) {
         } | ConvertTo-Json -Depth 6
     }
     'start' {
-        try { Start-NativeRun $false }
+        try { Start-NativeRun $false $false }
         catch {
             if (-not $script:ActiveRunDirectory -and $RunId) {
                 $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
@@ -528,7 +720,18 @@ switch ($Action) {
         }
     }
     'smoke' {
-        try { Start-NativeRun $true }
+        try { Start-NativeRun $true $false }
+        catch {
+            if (-not $script:ActiveRunDirectory -and $RunId) {
+                $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
+            }
+            [void](Stop-Valheim $false)
+            Write-RunReceipt 'failed_and_stopped' $null $null $_.Exception.Message
+            throw
+        }
+    }
+    'poison-smoke' {
+        try { Start-NativeRun $true $true }
         catch {
             if (-not $script:ActiveRunDirectory -and $RunId) {
                 $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
