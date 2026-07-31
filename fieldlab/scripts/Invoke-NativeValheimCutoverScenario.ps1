@@ -455,7 +455,10 @@ try {
     # RunIds are single-use: runtime-control request ids derive from them and
     # the server mod refuses replays (duplicate_request_id) from a durable
     # dedup set. Refuse reuse before any remote state is armed.
-    $runIdPattern = '"request_id":"' + $RunId + '-'
+    # Dot-wildcards stand in for the JSON quote characters: PowerShell 5.1
+    # does not escape embedded double quotes when building a native command
+    # line, so the remote pattern must not contain any.
+    $runIdPattern = 'request_id.:.' + $RunId + '-'
     $usedRunIdCount = & ssh -o BatchMode=yes am4 (
         "grep -c '" + $runIdPattern + "' " +
         "'/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/runtime-control-receipts.jsonl' 2>/dev/null")
