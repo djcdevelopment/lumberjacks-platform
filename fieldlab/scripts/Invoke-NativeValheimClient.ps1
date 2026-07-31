@@ -15,7 +15,7 @@ interactive scheduled task on a remote Windows client.
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('preflight', 'start', 'smoke', 'poison-smoke', 'descriptor-smoke', 'status', 'stop', 'install-task', 'queue-smoke', 'task-status', 'run-pending')]
+    [ValidateSet('preflight', 'start', 'smoke', 'poison-smoke', 'descriptor-smoke', 'cold-join-failure-smoke', 'status', 'stop', 'install-task', 'queue-smoke', 'task-status', 'run-pending')]
     [string] $Action = 'preflight',
 
     [ValidateSet('omen', 'i5')]
@@ -61,8 +61,11 @@ param(
 
     [switch] $EnableSteamFreeColdJoin,
 
-    [ValidateSet('', 'wrong_protocol', 'wrong_world_generation')]
+    [ValidateSet('', 'wrong_protocol', 'wrong_release', 'wrong_world_generation')]
     [string] $WorldDescriptorFault = '',
+
+    [ValidateSet('', 'invalid_enrollment', 'gateway_unavailable')]
+    [string] $ColdJoinFailureMode = '',
 
     [string[]] $LaunchArguments = @(),
 
@@ -76,6 +79,7 @@ $script:ActiveRunDirectory = $null
 $script:LastReceipt = $null
 $script:JoinedRow = $null
 $script:PoisonRow = $null
+$script:ColdJoinFailureRow = $null
 $script:ScenarioTerminalRow = $null
 $script:ResumeCount = 0
 $script:ProfileRecoveryCount = 0
@@ -117,6 +121,11 @@ if ($EnableSteamFreeColdJoin -and
      -not $EnableMotionAuthorityCutover -or
      $EnableSocketQuarantineCutover)) {
     throw '-EnableSteamFreeColdJoin requires a coherent C2b-C6 request and forbids socket quarantine.'
+}
+if (-not [string]::IsNullOrWhiteSpace($ColdJoinFailureMode) -and
+    (-not $EnableSteamFreeColdJoin -or
+     -not [string]::IsNullOrWhiteSpace($WorldDescriptorFault))) {
+    throw 'ColdJoinFailureMode requires Steam-free cold join and cannot be combined with WorldDescriptorFault.'
 }
 
 function Write-Utf8NoBom([string] $Path, [string] $Value) {
@@ -415,6 +424,49 @@ function Wait-ForPoison([string] $RequestedRunId, [int] $Seconds) {
     throw "A blocked native-poison receipt was not observed within $Seconds seconds."
 }
 
+function Wait-ForColdJoinFailure(
+    [string] $RequestedRunId,
+    [string] $FailureMode,
+    [int] $Seconds,
+    [DateTimeOffset] $AfterUtc) {
+    $deadline = (Get-Date).AddSeconds($Seconds)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-Path -LiteralPath $gameSessionReceiptsPath -PathType Leaf) {
+            foreach ($line in Get-Content -LiteralPath $gameSessionReceiptsPath -Tail 512 -ErrorAction SilentlyContinue) {
+                try {
+                    $row = $line | ConvertFrom-Json -ErrorAction Stop
+                    $timestamp = [DateTimeOffset]::Parse([string]$row.timestamp_utc)
+                    if ($row.run_id -eq $RequestedRunId -and
+                        $timestamp -gt $AfterUtc -and
+                        $row.state -eq 'connection_error' -and
+                        [string]$row.detail -match (
+                            '(?:^|\s)fault_mode=' + [regex]::Escape($FailureMode) +
+                            '(?:\s|$)')) {
+                        $joined = @(Read-AutotestRows $RequestedRunId | Where-Object {
+                            $_.state -eq 'joined' -and
+                            ([DateTimeOffset]::Parse([string]$_.timestamp_utc) -gt $AfterUtc)
+                        })
+                        if ($joined.Count -gt 0) {
+                            throw 'The client joined despite the requested cold-join failure.'
+                        }
+                        return $row
+                    }
+                } catch {
+                    if ($_.Exception.Message -eq
+                        'The client joined despite the requested cold-join failure.') {
+                        throw
+                    }
+                }
+            }
+        }
+        if (-not (Get-Process valheim -ErrorAction SilentlyContinue)) {
+            throw 'Valheim exited before the cold-join failure marker arrived.'
+        }
+        Start-Sleep -Seconds 1
+    }
+    throw "A deterministic $FailureMode cold-join failure was not observed within $Seconds seconds."
+}
+
 function Wait-ForDescriptorRejected(
     [string] $RequestedRunId,
     [int] $Seconds,
@@ -485,6 +537,7 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         process_session = if ($process) { $process.SessionId } else { $null }
         joined = $script:JoinedRow
         native_poison = $script:PoisonRow
+        cold_join_failure = $script:ColdJoinFailureRow
         scenario_terminal = $script:ScenarioTerminalRow
         resume_count = $script:ResumeCount
         profile_recovery_count = $script:ProfileRecoveryCount
@@ -503,6 +556,7 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
             [bool]$EnableSocketQuarantineCutover
         steam_free_cold_join_requested = [bool]$EnableSteamFreeColdJoin
         world_descriptor_fault = $WorldDescriptorFault
+        cold_join_failure_mode = $ColdJoinFailureMode
         preflight = $Preflight
         deployment = $Deployment
         plugin_sha256 = if (Test-Path -LiteralPath $pluginPath -PathType Leaf) {
@@ -568,6 +622,7 @@ function Write-NativeAutotestRequest([bool] $ExpectPoisonTrip) {
         socket_quarantine_cutover = [bool]$EnableSocketQuarantineCutover
         steam_free_cold_join = [bool]$EnableSteamFreeColdJoin
         world_descriptor_fault = $WorldDescriptorFault
+        cold_join_fault = $ColdJoinFailureMode
     }
     Write-JsonAtomic $autotestRequestPath $request
     return $now
@@ -622,6 +677,18 @@ function Start-NativeRun([bool] $StopAfterHold, [bool] $ExpectPoison) {
         [void](Stop-Valheim)
         Write-RunReceipt 'native_poison_blocked_and_stopped' $preflight $deployment
         Write-Host ("native poison blocked {0} -> {1}" -f $script:PoisonRow.funnel, $script:ActiveRunDirectory)
+        return
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ColdJoinFailureMode)) {
+        $script:ColdJoinFailureRow =
+            Wait-ForColdJoinFailure `
+                $RunId $ColdJoinFailureMode $WaitSeconds `
+                ([DateTimeOffset]$attempt.launched_utc)
+        [void](Stop-Valheim)
+        Write-RunReceipt 'cold_join_failed_closed_and_stopped' $preflight $deployment
+        Write-Host ("cold join failed closed ({0}) -> {1}" -f
+            $ColdJoinFailureMode, $script:ActiveRunDirectory)
         return
     }
 
@@ -717,6 +784,7 @@ function Invoke-PendingRun() {
         EnableSteamFreeColdJoin =
             [bool]$pending.enable_steam_free_cold_join
         WorldDescriptorFault = [string]$pending.world_descriptor_fault
+        ColdJoinFailureMode = [string]$pending.cold_join_failure_mode
         LaunchArguments = @($pending.launch_arguments)
     }
     & $PSCommandPath @invoke
@@ -799,6 +867,7 @@ function Queue-InteractiveSmoke() {
             [bool]$EnableSocketQuarantineCutover
         enable_steam_free_cold_join = [bool]$EnableSteamFreeColdJoin
         world_descriptor_fault = $WorldDescriptorFault
+        cold_join_failure_mode = $ColdJoinFailureMode
         launch_arguments = @($LaunchArguments)
     }
     Write-JsonAtomic $PendingRequestPath $pending
@@ -825,7 +894,7 @@ if ($Action -eq 'run-pending') {
     exit 0
 }
 
-if ([string]::IsNullOrWhiteSpace($RunId) -and $Action -in @('start', 'smoke', 'poison-smoke', 'queue-smoke')) {
+if ([string]::IsNullOrWhiteSpace($RunId) -and $Action -in @('start', 'smoke', 'poison-smoke', 'descriptor-smoke', 'cold-join-failure-smoke', 'queue-smoke')) {
     $RunId = New-RunId
 }
 
@@ -914,6 +983,17 @@ switch ($Action) {
         }
     }
     'descriptor-smoke' {
+        try { Start-NativeRun $true $false }
+        catch {
+            if (-not $script:ActiveRunDirectory -and $RunId) {
+                $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
+            }
+            [void](Stop-Valheim $false)
+            Write-RunReceipt 'failed_and_stopped' $null $null $_.Exception.Message
+            throw
+        }
+    }
+    'cold-join-failure-smoke' {
         try { Start-NativeRun $true $false }
         catch {
             if (-not $script:ActiveRunDirectory -and $RunId) {

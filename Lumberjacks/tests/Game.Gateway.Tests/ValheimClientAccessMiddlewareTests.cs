@@ -154,6 +154,20 @@ public sealed class ValheimClientAccessMiddlewareTests : IDisposable
     }
 
     [Fact]
+    public async Task InvalidExplicitEnrollment_FailsClosedOnPrivateProxySocket()
+    {
+        var (service, _) = CreateEnrolledService();
+        var context = Request("GET", "/ws", PrivateAddress,
+            ("X-Lumberjacks-Enrollment-Id", "c7-invalid-enrollment"),
+            ("X-Lumberjacks-Client-Key", "invalid"));
+        context.Features.Set<IHttpWebSocketFeature>(new UpgradeFeature());
+
+        Assert.False(await Invoke(context, service));
+        Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        Assert.Equal("anonymous", ValheimPrincipal.From(context)?.Kind);
+    }
+
+    [Fact]
     public async Task WebSocketUpgrade_WithInstalledFeature_ResolvesEnrollment()
     {
         var (service, issued) = CreateEnrolledService();

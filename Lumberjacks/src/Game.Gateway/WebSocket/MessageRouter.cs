@@ -246,7 +246,9 @@ public class MessageRouter
             ? faultElement.GetString() ?? string.Empty
             : string.Empty;
         if (!SafeToken(runId, 80) ||
-            faultMode is not ("" or "wrong_protocol" or "wrong_world_generation"))
+            faultMode is not (
+                "" or "wrong_protocol" or "wrong_release" or
+                "wrong_world_generation"))
             throw new InvalidDataException("invalid world descriptor request");
 
         var descriptor = _worldZones.Current();
@@ -266,6 +268,11 @@ public class MessageRouter
             {
                 RunId = runId,
                 ProtocolVersion = descriptor.ProtocolVersion + 1,
+            },
+            "wrong_release" => descriptor with
+            {
+                RunId = runId,
+                ReleaseId = "c7-incompatible-release",
             },
             "wrong_world_generation" => descriptor with
             {

@@ -95,13 +95,22 @@ public sealed class ValheimClientAccessMiddleware
         var supplied = context.Request.Headers["X-Lumberjacks-Client-Key"].ToString();
         var enrollmentId = context.Request.Headers["X-Lumberjacks-Enrollment-Id"].ToString();
 
-        if (!string.IsNullOrWhiteSpace(enrollmentId) &&
-            enrollments.Verify(enrollmentId, supplied, out var view, out _))
+        if (!string.IsNullOrWhiteSpace(enrollmentId))
         {
-            var principal = new ValheimPrincipal("enrollment",
-                ValheimCapability.Consumer | ValheimCapability.Telemetry, view);
-            observation = Observe(context, principal, view.EnrollmentId, "enrollment");
-            return principal;
+            if (enrollments.Verify(enrollmentId, supplied, out var view, out _))
+            {
+                var principal = new ValheimPrincipal("enrollment",
+                    ValheimCapability.Consumer | ValheimCapability.Telemetry, view);
+                observation = Observe(context, principal, view.EnrollmentId, "enrollment");
+                return principal;
+            }
+
+            // An explicit enrollment claim is authoritative. Never erase a bad or
+            // revoked credential by reclassifying its private proxy/socket peer as
+            // an administrator.
+            observation = Observe(context, ValheimPrincipal.Anonymous,
+                enrollmentId, "enrollment_invalid");
+            return ValheimPrincipal.Anonymous;
         }
 
         if (IsPrivateOrLoopback(context.Connection.RemoteIpAddress))
