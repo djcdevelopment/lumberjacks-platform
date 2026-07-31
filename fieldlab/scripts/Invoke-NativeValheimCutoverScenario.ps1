@@ -1104,6 +1104,20 @@ try {
         try {
             [void](Invoke-I5Harness @('-Action', 'stop', '-Client', 'i5'))
         } catch { }
+        # Drain the i5 scheduled task before exiting: stop kills the client
+        # and the pending request, but the harness wait loop takes time to
+        # notice, and a successor run's queue-smoke correctly refuses while
+        # the task still reports Running (full33 collided with full32's tail).
+        try {
+            $i5DrainDeadline = (Get-Date).AddSeconds(90)
+            do {
+                $i5Drain =
+                    (Invoke-I5Harness @('-Action', 'task-status', '-Client', 'i5') `
+                        -join [Environment]::NewLine) | ConvertFrom-Json
+                if ($i5Drain.state -ne 'Running') { break }
+                Start-Sleep -Seconds 5
+            } while ((Get-Date) -lt $i5DrainDeadline)
+        } catch { }
         for ($sweep = 0; $sweep -lt 3; $sweep++) {
             Start-Sleep -Seconds 4
             if (-not (Get-Process -Name valheim -ErrorAction SilentlyContinue)) { break }

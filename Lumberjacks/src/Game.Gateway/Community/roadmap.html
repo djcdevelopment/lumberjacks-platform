@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-31T15:28:57.601Z</span>
+        <span>Updated 2026-07-31T15:33:48.830Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260731152857-portal-roundtrip-waits-bounded-for-far-portal-de">
+        <div class="journal"><article class="journal-entry" id="note-20260731153348-abort-cleanup-drains-the-i5-scheduled-task-befor">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T15:33:48.830Z">2026-07-31T15:33:48.830Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Abort cleanup drains the i5 scheduled task before the orchestrator exits, so a successor run can never collide with a predecessor&#39;s wait-loop tail</h3>
+      <p><strong>Impact:</strong> full33&#39;s queue was correctly refused while full32&#39;s stopped-but-draining task still reported Running; the finally now polls task state up to 90s after the stop</p>
+      <details><summary>Verification (1)</summary><ul><li>PowerShell parser 0 errors; param-contract gate green; the collision and refusal are receipted in the retained full33 stderr</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260731152857-portal-roundtrip-waits-bounded-for-far-portal-de">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
