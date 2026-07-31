@@ -32,7 +32,8 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C4 | **Complete on AM4 (2026-07-30)** | `native-20260730-c4b-tenth`: the dedicated server created one real Raspberry ZDO per client; Lumberjacks issued three lease epochs, reclaimed on socket loss, rejected wrong/expired epochs, and authorized one valid action. Selected native ownership, selection, destroyed-ZDO, and inventory pickup paths were suppressed. OMEN inventory changed 9→10 and i5 11→12 exactly once; both completion frames were acknowledged and both clients completed fresh-process resume unattended. |
 | C5 | **Complete on AM4 (2026-07-30)** | `native-20260730-c5-final`: both physical clients entered from a validated Lumberjacks world descriptor while native `PeerInfo` world fields were blank. Each resumed the same first snapshot chunk after a forced socket drop, applied three typed objects, completed once, unloaded to zero stale objects, and spawned nothing when membership was withheld. AM4 suppressed every selected native membership candidate. Wrong protocol/world-generation cells stopped before scene entry. |
 | C6 | **Complete on AM4 (2026-07-30)** | `native-20260730-c6-eighth`: both physical clients applied numbered Lumberjacks motion to the real remote player in both directions while the selected native transform writer and position writes were suppressed. OMEN withheld sequences 600–619; i5 held without native fallback, applied the reliable resync, and queued its ACK. Both clients completed a fresh-process resume; i5 also proved binary-WebSocket fallback when its advertised UDP path was unreachable. |
-| C7-C10 | Pending in dependency order | C7 Steam-free cold join is next. Do not skip the mandatory replan immediately after C7. |
+| C7 | **In progress; early falsifier passed on AM4 (2026-07-30)** | `native-20260731-c7-fourth`: after native join established the canonical Lumberjacks session and descriptor, both physical clients closed their selected `ZSteamSocket`, held the scene for at least 60 seconds with zero native funnel delta and no fallback, then completed fresh-process resume. This is not cold join: `+connect`, native handshake, and peer construction still occurred before quarantine. |
+| C8-C10 | Pending in dependency order | Finish C7 Steam-free cold join, then perform the mandatory C7 replan before starting C8. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -603,6 +604,18 @@ promotion remain open.
 
 **Cost:** 4–7 focused days. This is the highest architectural-risk slice.
 
+**Retained early falsifier (2026-07-30):** `native-20260731-c7-fourth`
+passed concurrently on OMEN and i5. Each client had an authenticated canonical
+Lumberjacks session and accepted the C5 world descriptor before closing its selected
+native `ZSteamSocket`. OMEN held the live scene for 60,001 ms with a zero native
+funnel delta while suppressing 7,962 socket sends, 7,961 RPC updates, and 1,168
+native RPC invocations. i5 held for 60,004 ms with a zero native funnel delta while
+suppressing 7,031 socket sends, 7,030 RPC updates, and 1,129 invocations. Both
+reported `native_fallback=false`, completed one fresh-process resume, and stopped
+unattended. This proves the running scene does not inherently require a continuously
+live native socket. It does not satisfy C7's real proof because initial world entry
+still used native `+connect`, handshake, and peer construction.
+
 ### C8 — Native-zero composition and fault window on AM4
 
 **Build**
@@ -760,10 +773,13 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0-C6 and the mandatory C5 replan are complete. Continue **C7 Steam-free cold join
-and logical Valheim peer**. Run the early falsifier first: after the existing
-Lumberjacks session and world descriptor are ready, quarantine the native
-`ZSteamSocket` and require one client to remain in-world for 60 seconds. If Valheim
-cannot survive without a concrete native socket, replan the adapter seam before
-building breadth; do not introduce or accept an opaque native packet tunnel. Do not
-begin motion tuning or the transpiling lab. Replan immediately after C7.
+C0-C6 and the mandatory C5 replan are complete. C7's early socket-quarantine
+falsifier passed on both physical clients in `native-20260731-c7-fourth`; do not
+repeat it as a substitute for cold join. Continue **C7 Steam-free cold join and
+logical Valheim peer** by removing native `+connect`, starting C1 from the request
+manifest, and constructing the minimum peer/session state from C1/C2/C5. Reach
+`Got character ZDOID` with native poison armed, concurrently repeat on OMEN and i5,
+and retain deterministic fail-closed cells for invalid enrollment/release,
+unavailable Gateway, and wrong descriptor. Do not introduce or accept an opaque
+native packet tunnel. Do not begin motion tuning or the transpiling lab. Perform the
+mandatory replan only after the real C7 cold-join receipt.
