@@ -1,0 +1,45 @@
+#!/bin/sh
+# Enforce the journal contract at commit time.
+#
+# Until 2026-07-30 `roadmap:check` was enforced by documentation only (AGENTS.md,
+# BUILDING.md) — .git/hooks held nothing but .sample files and there is no CI in this
+# repo. A convention that nothing executes is one tired commit away from evaporating, and
+# the artifact it protects (docs/roadmap/commit-notes.jsonl, 297 entries) is the repo's
+# decision record.
+#
+# Install with:  git config core.hooksPath .githooks
+# Bypass once (and say why in the commit message):  git commit --no-verify
+
+set -e
+
+changed=$(git diff --cached --name-only)
+
+# Two different obligations, so two different triggers.
+#
+# The --staged gate demands exactly one appended journal record plus its regenerated HTML.
+# That is right when the JOURNAL itself changed, and wrong for every other file that
+# happens to live in docs/roadmap/ (the schema, the README): requiring a journal entry to
+# add a schema file would be a false positive that teaches people to use --no-verify.
+case "$changed" in
+  *Lumberjacks/docs/roadmap/commit-notes.jsonl*)
+    echo "pre-commit: journal appended — verifying record + render"
+    ( cd Lumberjacks && npm run --silent roadmap:test && npm run --silent roadmap:check -- --staged )
+    ;;
+  *Lumberjacks/docs/roadmap/*|*Lumberjacks/src/Game.Gateway/Community/roadmap.html|*Lumberjacks/scripts/roadmap.mjs)
+    echo "pre-commit: roadmap surface touched — verifying contract"
+    ( cd Lumberjacks && npm run --silent roadmap:test && npm run --silent roadmap:check )
+    ;;
+  *)
+    ;;
+esac
+
+case "$changed" in
+  *Lumberjacks/docs/workbench/*|*Lumberjacks/src/Game.Gateway/Community/workbench.html|*Lumberjacks/scripts/workbench.mjs)
+    echo "pre-commit: workbench touched — verifying"
+    ( cd Lumberjacks && npm run --silent workbench:check )
+    ;;
+  *)
+    ;;
+esac
+
+exit 0

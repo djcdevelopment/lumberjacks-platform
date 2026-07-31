@@ -27,7 +27,9 @@
     "workbench:verify-live": "node scripts/workbench-verify-live.mjs",
     "test:load": "node scripts/load-test-dual-channel.js",
     "test:load:50": "node scripts/load-test-dual-channel.js ws://localhost:4000 50 30",
-    "test:load:100": "node scripts/load-test-dual-channel.js ws://localhost:4000 100 60"
+    "test:load:100": "node scripts/load-test-dual-channel.js ws://localhost:4000 100 60",
+    "roadmap:test": "node --test scripts/roadmap.test.mjs",
+    "journal:verify": "npm run roadmap:test && npm run roadmap:check"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",

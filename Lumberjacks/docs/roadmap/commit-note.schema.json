@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comfy.local/schemas/commit-note.v1.json",
+  "title": "commit-note.v1",
+  "description": "One line of docs/roadmap/commit-notes.jsonl: the append-only journal that is this repo's high-frequency decision record. Structurally an ADR (claim, scope, impact, verification, evidence) serialized one per line rather than one per file. Until 2026-07-30 this contract existed only as imperative checks inside scripts/roadmap.mjs validate(); this file is the declarative statement of it. roadmap.mjs remains the enforcing authority -- it additionally checks cross-file invariants a schema cannot express (milestone ids must exist in valheim-volunteer-roadmap.json, ids must be unique across the file, `at` must be non-decreasing, and the secret/licence-wording scans).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "at",
+    "author",
+    "repository",
+    "milestones",
+    "kind",
+    "summary",
+    "impact",
+    "verification",
+    "evidence"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Pinned. roadmap.mjs rejects anything else outright."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique across the whole file. Uniqueness is cross-record, so it is enforced by roadmap.mjs, not here."
+    },
+    "at": {
+      "type": "string",
+      "minLength": 1,
+      "format": "date-time",
+      "description": "ISO timestamp. MUST be non-decreasing relative to the previous line -- the journal is an append-only chronological record, which is why a historical backfill is impossible without a contract change."
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Explicit, because authorship is not inferable from git or filesystem metadata here -- agents commit as the user. Live values: codex, claude."
+    },
+    "repository": { "type": "string", "minLength": 1 },
+    "milestones": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Every id must exist in docs/roadmap/valheim-volunteer-roadmap.json; roadmap.mjs enforces that join."
+    },
+    "kind": {
+      "enum": [
+        "planning",
+        "implementation",
+        "verification",
+        "deployment",
+        "decision",
+        "rollback",
+        "documentation"
+      ],
+      "description": "Mirrors noteKinds in scripts/roadmap.mjs. `rollback` is declared with zero instances -- precedent that an unconsumed kind is legal, since `kind` is branched on nowhere and renders as a plain pill. Note there is deliberately NO `pending`: the journal is append-only while open questions are mutable, and no back-reference field exists to close one. Open questions live in DECISIONS-PENDING.md instead."
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "impact": { "type": "string", "minLength": 1 },
+    "verification": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "How the claim was checked. Empty array is legal; empty strings are not."
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Paths/links backing the claim. This is the field that makes an entry auditable rather than assertive."
+    }
+  }
+}
