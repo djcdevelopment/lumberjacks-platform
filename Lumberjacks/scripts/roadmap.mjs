@@ -1151,6 +1151,15 @@ function gitPathPrefix() {
   return git(['rev-parse', '--show-prefix']).trim().replaceAll('\\', '/');
 }
 
+function isMergeInProgress() {
+  try {
+    git(['rev-parse', '-q', '--verify', 'MERGE_HEAD']);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function checkStaged() {
   const prefix = gitPathPrefix();
   const notesTracked = `${prefix}${notesRelative}`;
@@ -1171,7 +1180,13 @@ function checkStaged() {
   const diff = git(['diff', '--cached', '--no-color', '--unified=0', '--', notesRelative]);
   const additions = diff.split(/\r?\n/).filter((line) => line.startsWith('+{'));
   const removals = diff.split(/\r?\n/).filter((line) => line.startsWith('-{'));
-  if (additions.length !== 1) fail(`staged commit must append exactly one journal record; found ${additions.length}`);
+  // The one-record shape only means something for a linear commit. A merge reconciling two
+  // branches that each independently appended notes legitimately introduces many at once -
+  // AGENTS.md already scopes the append obligation to "non-merge commit"; this is that
+  // exemption actually wired up, not a new relaxation.
+  if (!isMergeInProgress() && additions.length !== 1) {
+    fail(`staged commit must append exactly one journal record; found ${additions.length}`);
+  }
   if (removals.length !== 0) fail('historic roadmap journal records are append-only and may not be removed or modified');
   for (const line of additions) validateLicenseWording(line, 'newly appended journal record');
 

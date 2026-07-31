@@ -1072,6 +1072,21 @@
       <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
     </div>
   </article>
+<article class="journal-entry" id="note-20260731151059-close-the-log-under-lock-hazard-filed-alongside-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T15:10:59.962Z">2026-07-31T15:10:59.962Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Close the log-under-lock hazard filed alongside the AB-BA fix: WriteReceipt now returns the formatted line instead of calling LogInfo itself, and all four _gate-holding call sites (BeginDirectPulseProbe, BeginProbe, EvaluateProbeDeadline, EvaluateDirectProbeDeadline) defer the LogInfo call until after _gate releases</h3>
+      <p><strong>Impact:</strong> closes candidate #2 from the 2026-07-31 lock-ordering audit (candidate #1, the outbound-gate AB-BA cycle, closed separately in 2b59e3e/327C499B): if the shared BepInEx log sink ever stalls, the main thread no longer wedges holding _gate, so every _gate-guarded getter (WebSocketConnected, UdpReady, State, ConnectionId, LogicalPeerId, ResumeEpoch) stays live across threads instead of freezing with it</p>
+      <details><summary>Verification (2)</summary><ul><li>Release build 0 warnings, 0 errors</li><li>102/102 golden tests green; the Unity-free harness links WireParsers/BoundedRawHttp/etc but not this UnityEngine-dependent file by design, so this is a regression gate on adjacent code, not direct coverage of the fix</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
 <article class="journal-entry" id="note-20260731150405-re-arm-the-world-descriptor-cache-on-gateway-rei">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
