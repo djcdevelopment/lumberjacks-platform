@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-31T14:56:02.828Z</span>
+        <span>Updated 2026-07-31T15:10:59.962Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260731145602-full30-omen-completes-all-49-composition-actions">
+        <div class="journal"><article class="journal-entry" id="note-20260731151059-close-the-log-under-lock-hazard-filed-alongside-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T15:10:59.962Z">2026-07-31T15:10:59.962Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Close the log-under-lock hazard filed alongside the AB-BA fix: WriteReceipt now returns the formatted line instead of calling LogInfo itself, and all four _gate-holding call sites (BeginDirectPulseProbe, BeginProbe, EvaluateProbeDeadline, EvaluateDirectProbeDeadline) defer the LogInfo call until after _gate releases</h3>
+      <p><strong>Impact:</strong> closes candidate #2 from the 2026-07-31 lock-ordering audit (candidate #1, the outbound-gate AB-BA cycle, closed separately in 2b59e3e/327C499B): if the shared BepInEx log sink ever stalls, the main thread no longer wedges holding _gate, so every _gate-guarded getter (WebSocketConnected, UdpReady, State, ConnectionId, LogicalPeerId, ResumeEpoch) stays live across threads instead of freezing with it</p>
+      <details><summary>Verification (2)</summary><ul><li>Release build 0 warnings, 0 errors</li><li>102/102 golden tests green; the Unity-free harness links WireParsers/BoundedRawHttp/etc but not this UnityEngine-dependent file by design, so this is a regression gate on adjacent code, not direct coverage of the fix</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260731145602-full30-omen-completes-all-49-composition-actions">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
