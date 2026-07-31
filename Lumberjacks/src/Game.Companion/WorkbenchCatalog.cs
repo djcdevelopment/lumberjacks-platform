@@ -13,10 +13,10 @@ static class WorkbenchCatalog
             {
                 schema_version = 1,
                 catalog_kind = "lumberjacks_workbench_checklist",
-                source_of_truth = Array.Empty<object>(),
-                milestones = Array.Empty<object>(),
-                execution_lanes = Array.Empty<object>(),
-                reconstruct = new { steps = Array.Empty<object>() },
+                source_of_truth = Array.Empty<string>(),
+                milestones = Array.Empty<string>(),
+                execution_lanes = Array.Empty<string>(),
+                reconstruct = new { steps = Array.Empty<string>() },
             }, Json.Options);
         }
 
