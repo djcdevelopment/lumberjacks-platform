@@ -596,11 +596,34 @@ try {
     if ($EnableMotionAuthorityCutover) {
         $serverDirectory = Join-Path $runDirectory 'server'
         New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/motion-authority-cutover.jsonl' `
-            "$serverDirectory\motion-authority-cutover.jsonl"
-        if ($LASTEXITCODE -ne 0) {
-            throw 'Server motion-authority evidence retrieval failed.'
+        $remoteMotionEvidence =
+            '/home/derek/comfy-valheim-lab/server-state/config/bepinex/' +
+            'comfy-network-sense/motion-authority-cutover.jsonl'
+        & ssh -o BatchMode=yes am4 "test -f '$remoteMotionEvidence'"
+        if ($LASTEXITCODE -eq 0) {
+            & scp "am4:$remoteMotionEvidence" `
+                "$serverDirectory\motion-authority-cutover.jsonl"
+            if ($LASTEXITCODE -ne 0) {
+                throw 'Server motion-authority evidence retrieval failed.'
+            }
+        } elseif ($LASTEXITCODE -eq 1 -and $EnableSteamFreeColdJoin) {
+            # C7 deliberately uses wait-only actions. Motion authority is armed as
+            # an accepted prerequisite, but a freshly restarted server has no
+            # reason to emit a motion event during this proof.
+            Write-JsonAtomic `
+                (Join-Path $serverDirectory 'motion-authority-evidence-status.json') `
+                ([ordered]@{
+                    schema_version = 1
+                    receipt_type = 'motion_authority_evidence_status'
+                    generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
+                    run_id = $RunId
+                    result = 'not_emitted'
+                    reason = 'c7_cold_join_has_no_motion_actions'
+                    prerequisite_arming_receipt =
+                        'server-runtime-motion-authority.json'
+                })
+        } else {
+            throw 'Server motion-authority evidence preflight failed.'
         }
     }
     if ($EnableSteamFreeColdJoin) {
