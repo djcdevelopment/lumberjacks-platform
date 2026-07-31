@@ -53,6 +53,8 @@ param(
 
     [switch] $EnableMotionAuthorityCutover,
 
+    [switch] $EnableSocketQuarantineCutover,
+
     [switch] $EnableGatewayJournalRestartProof,
 
     [string] $ServerGatewayUrl = 'http://100.124.12.37:4000'
@@ -121,7 +123,9 @@ $omenHarnessProcess = $null
 $useRoutedRpc =
     [bool]$EnableRoutedRpcCutover -or [bool]$EnableZdoJournalCutover
 $useConcurrentHarness =
-    [bool]$EnableZdoJournalCutover -or [bool]$EnableMotionAuthorityCutover
+    [bool]$EnableZdoJournalCutover -or
+    [bool]$EnableMotionAuthorityCutover -or
+    [bool]$EnableSocketQuarantineCutover
 
 function Write-JsonAtomic([string] $Path, [object] $Value) {
     $temporary = "$Path.tmp"
@@ -303,6 +307,9 @@ try {
     if ($EnableMotionAuthorityCutover) {
         $i5Arguments += '-EnableMotionAuthorityCutover'
     }
+    if ($EnableSocketQuarantineCutover) {
+        $i5Arguments += '-EnableSocketQuarantineCutover'
+    }
 
     if ($useConcurrentHarness) {
         $gatewayCompose = Join-Path $repoRoot 'Lumberjacks\infra\docker'
@@ -350,6 +357,9 @@ try {
         }
         if ($EnableMotionAuthorityCutover) {
             $omenHarnessArguments += '-EnableMotionAuthorityCutover'
+        }
+        if ($EnableSocketQuarantineCutover) {
+            $omenHarnessArguments += '-EnableSocketQuarantineCutover'
         }
         $omenHarnessProcess = Start-Process `
             -FilePath (Join-Path $PSHOME 'powershell.exe') `

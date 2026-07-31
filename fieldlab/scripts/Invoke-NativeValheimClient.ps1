@@ -57,6 +57,8 @@ param(
 
     [switch] $EnableMotionAuthorityCutover,
 
+    [switch] $EnableSocketQuarantineCutover,
+
     [ValidateSet('', 'wrong_protocol', 'wrong_world_generation')]
     [string] $WorldDescriptorFault = '',
 
@@ -99,6 +101,7 @@ $zdoJournalReceiptsPath = Join-Path $autotestRoot 'zdo-journal-cutover.jsonl'
 $ownershipLeaseReceiptsPath = Join-Path $autotestRoot 'ownership-lease-cutover.jsonl'
 $worldZoneReceiptsPath = Join-Path $autotestRoot 'world-zone-cutover.jsonl'
 $motionAuthorityReceiptsPath = Join-Path $autotestRoot 'motion-authority-cutover.jsonl'
+$socketQuarantineReceiptsPath = Join-Path $autotestRoot 'socket-quarantine-cutover.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
 
@@ -481,6 +484,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         world_zone_cutover_requested = [bool]$EnableWorldZoneCutover
         motion_authority_cutover_requested =
             [bool]$EnableMotionAuthorityCutover
+        socket_quarantine_cutover_requested =
+            [bool]$EnableSocketQuarantineCutover
         world_descriptor_fault = $WorldDescriptorFault
         preflight = $Preflight
         deployment = $Deployment
@@ -510,6 +515,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
                 Copy-EvidenceFile $worldZoneReceiptsPath 'world-zone-cutover.jsonl'
             motion_authority_cutover =
                 Copy-EvidenceFile $motionAuthorityReceiptsPath 'motion-authority-cutover.jsonl'
+            socket_quarantine_cutover =
+                Copy-EvidenceFile $socketQuarantineReceiptsPath 'socket-quarantine-cutover.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'
@@ -536,6 +543,7 @@ function Write-NativeAutotestRequest([bool] $ExpectPoison) {
         ownership_lease_cutover = [bool]$EnableOwnershipLeaseCutover
         world_zone_cutover = [bool]$EnableWorldZoneCutover
         motion_authority_cutover = [bool]$EnableMotionAuthorityCutover
+        socket_quarantine_cutover = [bool]$EnableSocketQuarantineCutover
         world_descriptor_fault = $WorldDescriptorFault
     }
     Write-JsonAtomic $autotestRequestPath $request
@@ -678,6 +686,8 @@ function Invoke-PendingRun() {
         EnableWorldZoneCutover = [bool]$pending.enable_world_zone_cutover
         EnableMotionAuthorityCutover =
             [bool]$pending.enable_motion_authority_cutover
+        EnableSocketQuarantineCutover =
+            [bool]$pending.enable_socket_quarantine_cutover
         WorldDescriptorFault = [string]$pending.world_descriptor_fault
         LaunchArguments = @($pending.launch_arguments)
     }
@@ -757,6 +767,8 @@ function Queue-InteractiveSmoke() {
         enable_world_zone_cutover = [bool]$EnableWorldZoneCutover
         enable_motion_authority_cutover =
             [bool]$EnableMotionAuthorityCutover
+        enable_socket_quarantine_cutover =
+            [bool]$EnableSocketQuarantineCutover
         world_descriptor_fault = $WorldDescriptorFault
         launch_arguments = @($LaunchArguments)
     }
