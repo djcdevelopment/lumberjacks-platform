@@ -488,7 +488,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         scenario_terminal = $script:ScenarioTerminalRow
         resume_count = $script:ResumeCount
         profile_recovery_count = $script:ProfileRecoveryCount
-        native_network_poison_requested = $Action -eq 'poison-smoke'
+        native_network_poison_requested =
+            $Action -eq 'poison-smoke' -or [bool]$EnableSteamFreeColdJoin
         routed_rpc_cutover_requested = [bool]$EnableRoutedRpcCutover
         zdo_journal_cutover_requested = [bool]$EnableZdoJournalCutover
         zdo_journal_canonical_session_requested =
@@ -541,8 +542,12 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
     $script:LastReceipt = $receipt
 }
 
-function Write-NativeAutotestRequest([bool] $ExpectPoison) {
+function Write-NativeAutotestRequest([bool] $ExpectPoisonTrip) {
     $now = [DateTimeOffset]::UtcNow
+    # C7 is a zero-use proof, so poison must stay armed without requiring a
+    # trip. poison-smoke remains the separate negative test that expects one.
+    $requestPoison =
+        $ExpectPoisonTrip -or [bool]$EnableSteamFreeColdJoin
     $request = [ordered]@{
         schema_version = 1
         run_id = $RunId
@@ -552,7 +557,7 @@ function Write-NativeAutotestRequest([bool] $ExpectPoison) {
         lumberjacks_gateway_url = $GatewayUrl
         created_utc = $now.ToString('o')
         expires_utc = $now.AddMinutes(15).ToString('o')
-        native_network_poison = $ExpectPoison
+        native_network_poison = $requestPoison
         routed_rpc_cutover = [bool]$EnableRoutedRpcCutover
         zdo_journal_cutover = [bool]$EnableZdoJournalCutover
         zdo_journal_canonical_session =

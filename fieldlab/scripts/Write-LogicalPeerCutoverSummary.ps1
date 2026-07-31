@@ -62,6 +62,8 @@ function Get-LedgerAggregate([object[]] $Rows, [string] $Actor) {
     }
     return [ordered]@{
         session_count = $summaries.Count
+        poison_enabled_all =
+            @($summaries | Where-Object { $_.poison_enabled -ne $true }).Count -eq 0
         native_total = [long](($summaries |
             Measure-Object -Property native_total -Sum).Sum)
         poison_trips = [long](($summaries |
@@ -117,6 +119,7 @@ function Get-Client([string] $Client) {
         lifecycle_error = [string]$lifecycle.error
         native_total = [long]$ledger.native_total
         native_ledger_sessions = [int]$ledger.session_count
+        native_poison_armed = [bool]$ledger.poison_enabled_all
         native_use_rows = [int]$ledger.native_use_rows
         poison_trips = [long]$ledger.poison_trips
         writer_dropped_rows = [long]$ledger.writer_dropped_rows
@@ -157,6 +160,7 @@ function Get-Client([string] $Client) {
                 [long]$ledger.native_total -eq 0 -and
                 [long]$ledger.native_use_rows -eq 0 -and
                 [long]$ledger.poison_trips -eq 0
+            native_poison_armed = [bool]$ledger.poison_enabled_all
             ledger_lossless =
                 [long]$ledger.writer_dropped_rows -eq 0 -and
                 [long]$ledger.writer_faults -eq 0
