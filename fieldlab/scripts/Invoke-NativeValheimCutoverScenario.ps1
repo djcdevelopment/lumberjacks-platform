@@ -452,6 +452,21 @@ try {
         throw 'The i5 lane is offline or failed preflight; no retry was attempted.'
     }
 
+    # RunIds are single-use: runtime-control request ids derive from them and
+    # the server mod refuses replays (duplicate_request_id) from a durable
+    # dedup set. Refuse reuse before any remote state is armed.
+    $runIdPattern = '"request_id":"' + $RunId + '-'
+    $usedRunIdCount = & ssh -o BatchMode=yes am4 (
+        "grep -c '" + $runIdPattern + "' " +
+        "'/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/runtime-control-receipts.jsonl' 2>/dev/null")
+    if ($LASTEXITCODE -eq 0) {
+        throw ("RunId '$RunId' already has $usedRunIdCount runtime-control receipts " +
+            'on the server; RunIds are single-use - generate a fresh one.')
+    }
+    if ($LASTEXITCODE -ne 1) {
+        throw "RunId preflight could not read the server runtime-control receipts (ssh exit $LASTEXITCODE)."
+    }
+
     $gatewayTunnel = Start-Process `
         -FilePath 'ssh.exe' `
         -ArgumentList @(
@@ -747,11 +762,12 @@ try {
             -RedirectStandardError $omenStderr `
             -PassThru
 
-        if ($EnableC8Composition) {
-            $queue = Invoke-I5Harness $i5Arguments
-            $queue | Write-Host
-            $i5Queued = $true
-        }
+        # Every concurrent-harness run needs the i5 leg queued; gating this on
+        # the full composition left focused two-client gates polling a task
+        # that was never started and misreading its stale prior result.
+        $queue = Invoke-I5Harness $i5Arguments
+        $queue | Write-Host
+        $i5Queued = $true
 
         if ($EnableGatewayJournalRestartProof) {
             $serverJournalPath =
@@ -775,11 +791,15 @@ try {
                 foreach ($line in @($tail)) {
                     try {
                         $row = $line | ConvertFrom-Json -ErrorAction Stop
-                        if ($row.run_id -eq $RunId -and (
-                            ($row.state -eq 'mutation_posted' -and
-                             $row.detail -notmatch 'delivery_only=True') -or
-                            ($row.state -eq 'drive_complete' -and
-                             $row.action_id -eq 'omen-c8-zdo-journal-drive'))) {
+                        # Only the correlated drive_complete may trigger the
+                        # restart: an early mutation_posted raced OMEN's still
+                        # -running drive in full28, and reincarnation then
+                        # discarded the acks the drive was waiting on. The
+                        # durable_objects check below still guards the
+                        # delivery-only case the C7-era correction addressed.
+                        if ($row.run_id -eq $RunId -and
+                            $row.state -eq 'drive_complete' -and
+                            $row.action_id -eq 'omen-c8-zdo-journal-drive') {
                             $mutationRow = $row
                         }
                     } catch { }
@@ -1070,14 +1090,22 @@ try {
     $completed = $true
     $receipt | ConvertTo-Json -Depth 12
 } finally {
+    if ($omenHarnessProcess -and -not $omenHarnessProcess.HasExited) {
+        Stop-Process -Id $omenHarnessProcess.Id -Force -ErrorAction SilentlyContinue
+    }
     if (-not $completed) {
+        # Stop can race a client the harness was still spawning (restartgate1
+        # left an orphan that fail-closed the next run), so sweep briefly
+        # until no Valheim process remains.
         & $clientHarness -Action stop -Client omen | Out-Null
         try {
             [void](Invoke-I5Harness @('-Action', 'stop', '-Client', 'i5'))
         } catch { }
-    }
-    if ($omenHarnessProcess -and -not $omenHarnessProcess.HasExited) {
-        Stop-Process -Id $omenHarnessProcess.Id -Force -ErrorAction SilentlyContinue
+        for ($sweep = 0; $sweep -lt 3; $sweep++) {
+            Start-Sleep -Seconds 4
+            if (-not (Get-Process -Name valheim -ErrorAction SilentlyContinue)) { break }
+            & $clientHarness -Action stop -Client omen | Out-Null
+        }
     }
     if ($gatewayTunnel -and -not $gatewayTunnel.HasExited) {
         Stop-Process -Id $gatewayTunnel.Id -Force -ErrorAction SilentlyContinue
