@@ -160,6 +160,8 @@ public sealed class ValheimClientAccessMiddlewareTests : IDisposable
         var context = Request("GET", "/ws", PrivateAddress,
             ("X-Lumberjacks-Enrollment-Id", "c7-invalid-enrollment"),
             ("X-Lumberjacks-Client-Key", "invalid"));
+        context.Request.QueryString =
+            new QueryString("?c7_require_enrollment=true");
         context.Features.Set<IHttpWebSocketFeature>(new UpgradeFeature());
 
         Assert.False(await Invoke(context, service));

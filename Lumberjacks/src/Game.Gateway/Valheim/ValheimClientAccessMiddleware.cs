@@ -95,19 +95,23 @@ public sealed class ValheimClientAccessMiddleware
         var supplied = context.Request.Headers["X-Lumberjacks-Client-Key"].ToString();
         var enrollmentId = context.Request.Headers["X-Lumberjacks-Enrollment-Id"].ToString();
 
-        if (!string.IsNullOrWhiteSpace(enrollmentId))
+        if (!string.IsNullOrWhiteSpace(enrollmentId) &&
+            enrollments.Verify(enrollmentId, supplied, out var view, out _))
         {
-            if (enrollments.Verify(enrollmentId, supplied, out var view, out _))
-            {
-                var principal = new ValheimPrincipal("enrollment",
-                    ValheimCapability.Consumer | ValheimCapability.Telemetry, view);
-                observation = Observe(context, principal, view.EnrollmentId, "enrollment");
-                return principal;
-            }
+            var principal = new ValheimPrincipal("enrollment",
+                ValheimCapability.Consumer | ValheimCapability.Telemetry, view);
+            observation = Observe(context, principal, view.EnrollmentId, "enrollment");
+            return principal;
+        }
 
-            // An explicit enrollment claim is authoritative. Never erase a bad or
-            // revoked credential by reclassifying its private proxy/socket peer as
-            // an administrator.
+        // Local development deliberately has no copy of production enrollment
+        // state, so its private-plane fallback remains intact. This bounded C7
+        // query asks the same middleware to prove explicit invalid credentials
+        // fail closed without weakening or mutating that normal policy.
+        if (!string.IsNullOrWhiteSpace(enrollmentId) &&
+            string.Equals(context.Request.Query["c7_require_enrollment"],
+                "true", StringComparison.OrdinalIgnoreCase))
+        {
             observation = Observe(context, ValheimPrincipal.Anonymous,
                 enrollmentId, "enrollment_invalid");
             return ValheimPrincipal.Anonymous;

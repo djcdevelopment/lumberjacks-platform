@@ -220,7 +220,7 @@ try {
             generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
             run_id = $BaseRunId
             completed = $completed
-            receipts = @($controls)
+            receipts = $controls.ToArray()
         })
 }
 
