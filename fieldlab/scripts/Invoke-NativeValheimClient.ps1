@@ -39,7 +39,9 @@ param(
 
     [string] $EvidenceRoot = '',
 
-    [ValidateRange(60, 1200)]
+    # Invoke-NativeValheimCutoverScenario.ps1 forwards its own -WaitSeconds here on
+    # both the local and i5 legs, so this ceiling must stay >= the orchestrator's.
+    [ValidateRange(60, 1800)]
     [int] $WaitSeconds = 600,
 
     [ValidateRange(0, 300)]
