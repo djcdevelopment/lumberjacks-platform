@@ -121,6 +121,8 @@ public class GameWebSocketMiddleware
             return;
         }
         session.ValheimLogicalPeerId = logicalPeerId;
+        session.ValheimCharacter =
+            context.Request.Query["valheim_character"].FirstOrDefault()?.Trim() ?? "";
 
         // Set protocol mode based on handshake
         session.Protocol = useBinary ? ProtocolMode.Binary : ProtocolMode.Json;

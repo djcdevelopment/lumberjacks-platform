@@ -31,7 +31,9 @@ param(
         'zdoJournalCutoverEnabled',
         'zdoJournalCanonicalSessionEnabled',
         'ownershipLeaseCutoverEnabled',
-        'worldZoneCutoverEnabled')]
+        'worldZoneCutoverEnabled',
+        'motionAuthorityCutoverEnabled',
+        'logicalPeerCutoverEnabled')]
     [Parameter(Mandatory)]
     [string] $Setting,
 

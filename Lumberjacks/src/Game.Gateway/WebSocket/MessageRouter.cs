@@ -115,7 +115,11 @@ public class MessageRouter
                 break;
 
             case MessageType.ValheimPeerBind:
-                HandleValheimPeerBind(session, envelope);
+                await HandleValheimPeerBindAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimLogicalPeerControl:
+                await HandleValheimLogicalPeerControlAsync(session, envelope);
                 break;
 
             case MessageType.ValheimRoutedRpcSend:
@@ -818,7 +822,7 @@ public class MessageRouter
             session.ConnectionId, session.ResumeEpoch, runId, actionId, result.Sequence);
     }
 
-    void HandleValheimPeerBind(GameSession session, Envelope envelope)
+    async Task HandleValheimPeerBindAsync(GameSession session, Envelope envelope)
     {
         var payload = envelope.Payload;
         var role = payload.TryGetProperty("role", out var roleElement)
@@ -834,6 +838,7 @@ public class MessageRouter
         {
             if (session.ValheimPeerUid != peerUid)
                 throw new InvalidDataException("conflicting Valheim peer binding");
+            await AnnounceLogicalCounterpartsAsync(session, role);
             return;
         }
 
@@ -850,7 +855,93 @@ public class MessageRouter
         _logger.LogInformation(
             "Valheim peer bound connection={ConnectionId} role={Role} peer={PeerUid}",
             session.ConnectionId, role, peerUid);
+
+        await AnnounceLogicalCounterpartsAsync(session, role);
     }
+
+    async Task AnnounceLogicalCounterpartsAsync(
+        GameSession session, string role)
+    {
+        var counterparts = _sessions.GetAll()
+            .Where(candidate =>
+                candidate.SessionId != session.SessionId &&
+                candidate.ValheimPeerUid.HasValue &&
+                !string.IsNullOrWhiteSpace(candidate.ValheimLogicalPeerId) &&
+                !string.Equals(candidate.ValheimRole, role, StringComparison.Ordinal))
+            .ToArray();
+        foreach (var counterpart in counterparts)
+        {
+            var toCounterpart = await counterpart.SendReliableAsync(
+                MessageType.ValheimLogicalPeerAttached,
+                LogicalPeerPayload(session),
+                CancellationToken.None);
+            if (!toCounterpart.Queued)
+                throw new InvalidOperationException(toCounterpart.Reason);
+
+            var toSession = await session.SendReliableAsync(
+                MessageType.ValheimLogicalPeerAttached,
+                LogicalPeerPayload(counterpart),
+                CancellationToken.None);
+            if (!toSession.Queued)
+                throw new InvalidOperationException(toSession.Reason);
+        }
+    }
+
+    async Task HandleValheimLogicalPeerControlAsync(
+        GameSession session, Envelope envelope)
+    {
+        if (!session.ValheimPeerUid.HasValue ||
+            string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId))
+            throw new InvalidDataException(
+                "logical peer control requires a bound Valheim session");
+
+        var payload = envelope.Payload;
+        var targetLogicalPeerId = ReadString(payload, "target_logical_peer_id");
+        var control = ReadString(payload, "control");
+        if (!SafeToken(targetLogicalPeerId, 96) ||
+            control is not ("character_id" or "disconnect"))
+            throw new InvalidDataException("invalid logical peer control envelope");
+
+        var target = _sessions.FindByValheimLogicalPeer(targetLogicalPeerId);
+        if (target is null || !target.ValheimPeerUid.HasValue)
+            throw new InvalidDataException("logical peer control target missing");
+
+        long zdoUserId = 0;
+        uint zdoId = 0;
+        if (control == "character_id" &&
+            (!payload.TryGetProperty("zdo_user_id", out var userElement) ||
+             !userElement.TryGetInt64(out zdoUserId) || zdoUserId == 0 ||
+             !payload.TryGetProperty("zdo_id", out var idElement) ||
+             !idElement.TryGetUInt32(out zdoId) || zdoId == 0))
+            throw new InvalidDataException("logical character id invalid");
+
+        var key =
+            $"logical-control:{session.ValheimLogicalPeerId}:{targetLogicalPeerId}:{control}:{zdoUserId}:{zdoId}";
+        if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
+            return;
+
+        var queued = await target.SendReliableAsync(
+            MessageType.ValheimLogicalPeerControl,
+            new
+            {
+                source_logical_peer_id = session.ValheimLogicalPeerId,
+                source_peer_uid = session.ValheimPeerUid.Value,
+                target_logical_peer_id = targetLogicalPeerId,
+                control,
+                zdo_user_id = zdoUserId,
+                zdo_id = zdoId,
+            },
+            CancellationToken.None);
+        if (!queued.Queued) throw new InvalidOperationException(queued.Reason);
+    }
+
+    static object LogicalPeerPayload(GameSession session) => new
+    {
+        role = session.ValheimRole,
+        peer_uid = session.ValheimPeerUid!.Value,
+        logical_peer_id = session.ValheimLogicalPeerId,
+        character = session.ValheimCharacter,
+    };
 
     async Task HandleValheimRoutedRpcSendAsync(GameSession session, Envelope envelope)
     {
@@ -1533,6 +1624,33 @@ public class MessageRouter
 
     public async Task HandleDisconnectAsync(GameSession session)
     {
+        if (session.ValheimPeerUid.HasValue &&
+            !string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId))
+        {
+            var counterparts = _sessions.GetAll()
+                .Where(candidate =>
+                    candidate.SessionId != session.SessionId &&
+                    candidate.ValheimPeerUid.HasValue &&
+                    !string.IsNullOrWhiteSpace(candidate.ValheimLogicalPeerId) &&
+                    !string.Equals(
+                        candidate.ValheimRole,
+                        session.ValheimRole,
+                        StringComparison.Ordinal))
+                .ToArray();
+            foreach (var counterpart in counterparts)
+            {
+                var detached = await counterpart.SendReliableAsync(
+                    MessageType.ValheimLogicalPeerDetached,
+                    LogicalPeerPayload(session),
+                    CancellationToken.None);
+                if (!detached.Queued)
+                    _logger.LogWarning(
+                        "Could not queue logical peer detach source={LogicalPeer} target={Target}: {Reason}",
+                        session.ValheimLogicalPeerId,
+                        counterpart.ValheimLogicalPeerId,
+                        detached.Reason);
+            }
+        }
         await HandleLeaveRegionAsync(session);
     }
 

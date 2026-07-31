@@ -59,6 +59,8 @@ param(
 
     [switch] $EnableSocketQuarantineCutover,
 
+    [switch] $EnableSteamFreeColdJoin,
+
     [ValidateSet('', 'wrong_protocol', 'wrong_world_generation')]
     [string] $WorldDescriptorFault = '',
 
@@ -102,8 +104,20 @@ $ownershipLeaseReceiptsPath = Join-Path $autotestRoot 'ownership-lease-cutover.j
 $worldZoneReceiptsPath = Join-Path $autotestRoot 'world-zone-cutover.jsonl'
 $motionAuthorityReceiptsPath = Join-Path $autotestRoot 'motion-authority-cutover.jsonl'
 $socketQuarantineReceiptsPath = Join-Path $autotestRoot 'socket-quarantine-cutover.jsonl'
+$logicalPeerReceiptsPath = Join-Path $autotestRoot 'logical-peer-cutover.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
+
+if ($EnableSteamFreeColdJoin -and
+    (-not $EnableRoutedRpcCutover -or
+     -not $EnableZdoJournalCutover -or
+     -not $EnableZdoJournalCanonicalSession -or
+     -not $EnableOwnershipLeaseCutover -or
+     -not $EnableWorldZoneCutover -or
+     -not $EnableMotionAuthorityCutover -or
+     $EnableSocketQuarantineCutover)) {
+    throw '-EnableSteamFreeColdJoin requires a coherent C2b-C6 request and forbids socket quarantine.'
+}
 
 function Write-Utf8NoBom([string] $Path, [string] $Value) {
     $directory = Split-Path -Parent $Path
@@ -486,6 +500,7 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
             [bool]$EnableMotionAuthorityCutover
         socket_quarantine_cutover_requested =
             [bool]$EnableSocketQuarantineCutover
+        steam_free_cold_join_requested = [bool]$EnableSteamFreeColdJoin
         world_descriptor_fault = $WorldDescriptorFault
         preflight = $Preflight
         deployment = $Deployment
@@ -517,6 +532,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
                 Copy-EvidenceFile $motionAuthorityReceiptsPath 'motion-authority-cutover.jsonl'
             socket_quarantine_cutover =
                 Copy-EvidenceFile $socketQuarantineReceiptsPath 'socket-quarantine-cutover.jsonl'
+            logical_peer_cutover =
+                Copy-EvidenceFile $logicalPeerReceiptsPath 'logical-peer-cutover.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'
@@ -544,6 +561,7 @@ function Write-NativeAutotestRequest([bool] $ExpectPoison) {
         world_zone_cutover = [bool]$EnableWorldZoneCutover
         motion_authority_cutover = [bool]$EnableMotionAuthorityCutover
         socket_quarantine_cutover = [bool]$EnableSocketQuarantineCutover
+        steam_free_cold_join = [bool]$EnableSteamFreeColdJoin
         world_descriptor_fault = $WorldDescriptorFault
     }
     Write-JsonAtomic $autotestRequestPath $request
@@ -552,7 +570,10 @@ function Write-NativeAutotestRequest([bool] $ExpectPoison) {
 
 function Start-NativeProcess([bool] $ExpectPoison) {
     $launchedUtc = Write-NativeAutotestRequest $ExpectPoison
-    $arguments = @('-applaunch', '892970', '-console') + @($LaunchArguments) + @('+connect', $Server)
+    $arguments = @('-applaunch', '892970', '-console') + @($LaunchArguments)
+    if (-not $EnableSteamFreeColdJoin) {
+        $arguments += @('+connect', $Server)
+    }
     Start-Process -FilePath $SteamExe -ArgumentList $arguments
 
     $processDeadline = (Get-Date).AddSeconds(90)
@@ -688,6 +709,8 @@ function Invoke-PendingRun() {
             [bool]$pending.enable_motion_authority_cutover
         EnableSocketQuarantineCutover =
             [bool]$pending.enable_socket_quarantine_cutover
+        EnableSteamFreeColdJoin =
+            [bool]$pending.enable_steam_free_cold_join
         WorldDescriptorFault = [string]$pending.world_descriptor_fault
         LaunchArguments = @($pending.launch_arguments)
     }
@@ -769,6 +792,7 @@ function Queue-InteractiveSmoke() {
             [bool]$EnableMotionAuthorityCutover
         enable_socket_quarantine_cutover =
             [bool]$EnableSocketQuarantineCutover
+        enable_steam_free_cold_join = [bool]$EnableSteamFreeColdJoin
         world_descriptor_fault = $WorldDescriptorFault
         launch_arguments = @($LaunchArguments)
     }

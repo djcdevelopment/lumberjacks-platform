@@ -55,6 +55,8 @@ param(
 
     [switch] $EnableSocketQuarantineCutover,
 
+    [switch] $EnableSteamFreeColdJoin,
+
     [switch] $EnableGatewayJournalRestartProof,
 
     [string] $ServerGatewayUrl = 'http://100.124.12.37:4000'
@@ -91,6 +93,19 @@ if ($EnableWorldZoneCutover -and
 if ($EnableGatewayJournalRestartProof -and -not $EnableZdoJournalCutover) {
     throw '-EnableGatewayJournalRestartProof requires ZDO journal cutover.'
 }
+if ($EnableSteamFreeColdJoin -and
+    (-not $EnableDirectControlCutover -or
+     -not $EnableRoutedRpcCutover -or
+     -not $EnableZdoJournalCutover -or
+     -not $EnableZdoJournalCanonicalSession -or
+     -not $EnableOwnershipLeaseCutover -or
+     -not $EnableWorldZoneCutover -or
+     -not $EnableMotionAuthorityCutover)) {
+    throw '-EnableSteamFreeColdJoin requires every accepted C2a-C6 cutover gate.'
+}
+if ($EnableSteamFreeColdJoin -and $EnableSocketQuarantineCutover) {
+    throw 'Steam-free cold join and the earlier native-socket quarantine falsifier are mutually exclusive.'
+}
 
 $scenario = (Resolve-Path -LiteralPath $ScenarioPath -ErrorAction Stop).Path
 $dll = (Resolve-Path -LiteralPath $DllPath -ErrorAction Stop).Path
@@ -118,6 +133,12 @@ $serverOwnershipDisarmError = $null
 $serverWorldZoneArmed = $false
 $serverWorldZoneReceipts = @()
 $serverWorldZoneDisarmError = $null
+$serverMotionArmed = $false
+$serverMotionReceipts = @()
+$serverMotionDisarmError = $null
+$serverLogicalPeerArmed = $false
+$serverLogicalPeerReceipts = @()
+$serverLogicalPeerDisarmError = $null
 $gatewayRestartReceipt = $null
 $omenHarnessProcess = $null
 $useRoutedRpc =
@@ -125,7 +146,8 @@ $useRoutedRpc =
 $useConcurrentHarness =
     [bool]$EnableZdoJournalCutover -or
     [bool]$EnableMotionAuthorityCutover -or
-    [bool]$EnableSocketQuarantineCutover
+    [bool]$EnableSocketQuarantineCutover -or
+    [bool]$EnableSteamFreeColdJoin
 
 function Write-JsonAtomic([string] $Path, [object] $Value) {
     $temporary = "$Path.tmp"
@@ -268,6 +290,36 @@ try {
         $serverWorldZoneArmed = $true
     }
 
+    if ($EnableMotionAuthorityCutover) {
+        $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+        $motionArmOutput = & $serverControl `
+            -Setting motionAuthorityCutoverEnabled `
+            -Value true `
+            -RequestId "$RunId-motion-arm"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Server motion-authority cutover arm failed.'
+        }
+        $serverMotionReceipts +=
+            (($motionArmOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json)
+        $serverMotionArmed = $true
+    }
+
+    if ($EnableSteamFreeColdJoin) {
+        $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+        $logicalPeerArmOutput = & $serverControl `
+            -Setting logicalPeerCutoverEnabled `
+            -Value true `
+            -RequestId "$RunId-logical-peer-arm"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Server logical-peer cutover arm failed.'
+        }
+        $serverLogicalPeerReceipts +=
+            (($logicalPeerArmOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json)
+        $serverLogicalPeerArmed = $true
+    }
+
     & (Join-Path $i5Tools 'Deploy-ToI5.ps1') `
         -Path $clientHarness `
         -Dest C:/deploy/baseline/fieldlab/scripts
@@ -309,6 +361,9 @@ try {
     }
     if ($EnableSocketQuarantineCutover) {
         $i5Arguments += '-EnableSocketQuarantineCutover'
+    }
+    if ($EnableSteamFreeColdJoin) {
+        $i5Arguments += '-EnableSteamFreeColdJoin'
     }
 
     if ($useConcurrentHarness) {
@@ -360,6 +415,9 @@ try {
         }
         if ($EnableSocketQuarantineCutover) {
             $omenHarnessArguments += '-EnableSocketQuarantineCutover'
+        }
+        if ($EnableSteamFreeColdJoin) {
+            $omenHarnessArguments += '-EnableSteamFreeColdJoin'
         }
         $omenHarnessProcess = Start-Process `
             -FilePath (Join-Path $PSHOME 'powershell.exe') `
@@ -454,7 +512,13 @@ try {
             -EvidenceRoot $EvidenceRoot `
             -HoldSeconds $HoldSeconds `
             -EnableRoutedRpcCutover:$useRoutedRpc `
+            -EnableZdoJournalCutover:$EnableZdoJournalCutover `
+            -EnableZdoJournalCanonicalSession:$EnableZdoJournalCanonicalSession `
+            -EnableOwnershipLeaseCutover:$EnableOwnershipLeaseCutover `
+            -EnableWorldZoneCutover:$EnableWorldZoneCutover `
             -EnableMotionAuthorityCutover:$EnableMotionAuthorityCutover `
+            -EnableSocketQuarantineCutover:$EnableSocketQuarantineCutover `
+            -EnableSteamFreeColdJoin:$EnableSteamFreeColdJoin `
             -WaitSeconds $WaitSeconds
         if ($LASTEXITCODE -ne 0) { throw 'OMEN cutover scenario failed.' }
     }
@@ -527,6 +591,32 @@ try {
             "$serverDirectory\world-zone-cutover.jsonl"
         if ($LASTEXITCODE -ne 0) {
             throw 'Server world/zone evidence retrieval failed.'
+        }
+    }
+    if ($EnableMotionAuthorityCutover) {
+        $serverDirectory = Join-Path $runDirectory 'server'
+        New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/motion-authority-cutover.jsonl' `
+            "$serverDirectory\motion-authority-cutover.jsonl"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Server motion-authority evidence retrieval failed.'
+        }
+    }
+    if ($EnableSteamFreeColdJoin) {
+        $serverDirectory = Join-Path $runDirectory 'server'
+        New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/logical-peer-cutover.jsonl' `
+            "$serverDirectory\logical-peer-cutover.jsonl"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Server logical-peer evidence retrieval failed.'
+        }
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/native-network-use.jsonl' `
+            "$serverDirectory\native-network-use.jsonl"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Server native-network evidence retrieval failed.'
         }
     }
 
@@ -604,6 +694,7 @@ try {
         run_id = $RunId
         server = $Server
         result = 'completed'
+        steam_free_cold_join = [bool]$EnableSteamFreeColdJoin
         scenario_sha256 =
             (Get-FileHash -LiteralPath $scenario -Algorithm SHA256).Hash.ToLowerInvariant()
         clients = @(
@@ -625,6 +716,16 @@ try {
         $receiptPath,
         ($receipt | ConvertTo-Json -Depth 12) + [Environment]::NewLine,
         (New-Object Text.UTF8Encoding($false)))
+    if ($EnableSteamFreeColdJoin) {
+        $summaryOutput =
+            & (Join-Path $PSScriptRoot 'Write-LogicalPeerCutoverSummary.ps1') `
+                -RunDirectory $runDirectory `
+                -RunId $RunId
+        if ($LASTEXITCODE -ne 0) {
+            throw 'C7 Steam-free logical-peer evidence did not satisfy the reducer.'
+        }
+        $summaryOutput | Write-Host
+    }
     $completed = $true
     $receipt | ConvertTo-Json -Depth 12
 } finally {
@@ -639,6 +740,44 @@ try {
     }
     if ($gatewayTunnel -and -not $gatewayTunnel.HasExited) {
         Stop-Process -Id $gatewayTunnel.Id -Force -ErrorAction SilentlyContinue
+    }
+    if ($serverLogicalPeerArmed) {
+        try {
+            $logicalPeerDisarmOutput =
+                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    -Setting logicalPeerCutoverEnabled `
+                    -Value false `
+                    -RequestId "$RunId-logical-peer-disarm"
+            if ($LASTEXITCODE -eq 0) {
+                $serverLogicalPeerReceipts +=
+                    (($logicalPeerDisarmOutput -join [Environment]::NewLine) |
+                        ConvertFrom-Json)
+            } else {
+                $serverLogicalPeerDisarmError =
+                    "Server logical-peer disarm exited $LASTEXITCODE."
+            }
+        } catch {
+            $serverLogicalPeerDisarmError = $_.Exception.Message
+        }
+    }
+    if ($serverMotionArmed) {
+        try {
+            $motionDisarmOutput =
+                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    -Setting motionAuthorityCutoverEnabled `
+                    -Value false `
+                    -RequestId "$RunId-motion-disarm"
+            if ($LASTEXITCODE -eq 0) {
+                $serverMotionReceipts +=
+                    (($motionDisarmOutput -join [Environment]::NewLine) |
+                        ConvertFrom-Json)
+            } else {
+                $serverMotionDisarmError =
+                    "Server motion-authority disarm exited $LASTEXITCODE."
+            }
+        } catch {
+            $serverMotionDisarmError = $_.Exception.Message
+        }
     }
     if ($serverDirectArmed) {
         try {
@@ -821,6 +960,28 @@ try {
                 disarm_error = $serverWorldZoneDisarmError
             })
     }
+    if ($EnableMotionAuthorityCutover -and
+        $serverMotionReceipts.Count -gt 0) {
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'server-runtime-motion-authority.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                receipts = $serverMotionReceipts
+                disarm_error = $serverMotionDisarmError
+            })
+    }
+    if ($EnableSteamFreeColdJoin -and
+        $serverLogicalPeerReceipts.Count -gt 0) {
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'server-runtime-logical-peer.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                receipts = $serverLogicalPeerReceipts
+                disarm_error = $serverLogicalPeerDisarmError
+            })
+    }
     if ($completed -and $serverDisarmError) {
         throw "Scenario completed but server direct-control disarm failed: $serverDisarmError"
     }
@@ -832,5 +993,11 @@ try {
     }
     if ($completed -and $serverWorldZoneDisarmError) {
         throw "Scenario completed but server world/zone cleanup failed: $serverWorldZoneDisarmError"
+    }
+    if ($completed -and $serverMotionDisarmError) {
+        throw "Scenario completed but server motion-authority cleanup failed: $serverMotionDisarmError"
+    }
+    if ($completed -and $serverLogicalPeerDisarmError) {
+        throw "Scenario completed but server logical-peer cleanup failed: $serverLogicalPeerDisarmError"
     }
 }

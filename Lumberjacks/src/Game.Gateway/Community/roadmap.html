@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-31T05:39:14.921Z</span>
+        <span>Updated 2026-07-31T06:24:54.854Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260731053914-retain-the-passing-two-client-c7-native-socket-q">
+        <div class="journal"><article class="journal-entry" id="note-20260731062454-implement-the-steam-free-logical-peer-cold-join-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T06:24:54.854Z">2026-07-31T06:24:54.854Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1 · M7</span>
+      </div>
+      <h3>Implement the Steam-free logical-peer cold-join boundary and exact proof harness</h3>
+      <p><strong>Impact:</strong> Authenticated Gateway peer announcements now construct Valheim bookkeeping peers without native sockets or serialized ZRpc packages. The physical-client lane omits +connect, requires a coherent C2a-C6 gate set, retains logical-peer evidence, and rejects partial server activation. Live OMEN/i5 cold-join and negative-cell proof remain pending; C7 is not complete.</p>
+      <details><summary>Verification (2)</summary><ul><li>ComfyNetworkSense Release build completed with zero warnings and zero errors.</li><li>The Gateway verified image completed all 586 tests, including logical peer bind, resume reannouncement, and typed CharacterID forwarding.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/scripts/Write-LogicalPeerCutoverSummary.ps1</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260731053914-retain-the-passing-two-client-c7-native-socket-q">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

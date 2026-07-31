@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -161,6 +161,13 @@ if ($Profile -eq 'c7') {
     $actions += @(
         New-Action 'omen-c7-socket-quarantine' 'omen' 'socket_quarantine' 90 60
         New-Action 'i5-c7-socket-quarantine' 'i5' 'socket_quarantine' 90 60
+    )
+}
+
+if ($Profile -eq 'c7-cold') {
+    $actions += @(
+        New-Action 'omen-c7-cold-join-settle' 'omen' 'wait' 20 10
+        New-Action 'i5-c7-cold-join-settle' 'i5' 'wait' 20 10
     )
 }
 

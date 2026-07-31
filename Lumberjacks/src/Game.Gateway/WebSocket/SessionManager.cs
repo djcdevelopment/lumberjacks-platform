@@ -53,6 +53,7 @@ public record GameSession(
     /// <summary>C2b logical role and native peer UID bound after Valheim reaches steady state.</summary>
     public string ValheimRole { get; set; } = "client";
     public long? ValheimPeerUid { get; set; }
+    public string ValheimCharacter { get; set; } = "";
 
     /// <summary>
     /// Process-durable enrolled Valheim identity. This survives Gateway/client process
@@ -177,6 +178,7 @@ public record DetachedSession(
     string ValheimRole,
     long? ValheimPeerUid,
     string ValheimLogicalPeerId,
+    string ValheimCharacter,
     ReliableGameSessionState Reliable,
     long DetachedEpoch,
     DateTimeOffset DetachedAt);
@@ -378,6 +380,7 @@ public class SessionManager
             ValheimRole = match.ValheimRole,
             ValheimPeerUid = match.ValheimPeerUid,
             ValheimLogicalPeerId = match.ValheimLogicalPeerId,
+            ValheimCharacter = match.ValheimCharacter,
         };
 
         _sessions[session.SessionId] = session;
@@ -400,6 +403,7 @@ public class SessionManager
             session.ValheimRole,
             session.ValheimPeerUid,
             session.ValheimLogicalPeerId,
+            session.ValheimCharacter,
             session.Reliable,
             session.ResumeEpoch,
             DateTimeOffset.UtcNow);

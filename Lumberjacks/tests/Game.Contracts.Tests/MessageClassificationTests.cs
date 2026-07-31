@@ -11,6 +11,9 @@ public class MessageClassificationTests
     [InlineData(MessageType.SessionStarted, DeliveryLane.Reliable)]
     [InlineData(MessageType.Error, DeliveryLane.Reliable)]
     [InlineData(MessageType.PriorityManifest, DeliveryLane.Reliable)]
+    [InlineData(MessageType.ValheimLogicalPeerControl, DeliveryLane.Reliable)]
+    [InlineData(MessageType.ValheimLogicalPeerAttached, DeliveryLane.Reliable)]
+    [InlineData(MessageType.ValheimLogicalPeerDetached, DeliveryLane.Reliable)]
     [InlineData(MessageType.PlayerMove, DeliveryLane.Datagram)]
     [InlineData(MessageType.EntityUpdate, DeliveryLane.Datagram)]
     public void Known_messages_have_correct_lane(string messageType, DeliveryLane expected)

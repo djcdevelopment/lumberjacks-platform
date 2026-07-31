@@ -15,6 +15,7 @@ public static class MessageType
     public const string ValheimControlResponse = "valheim_control_response";
     public const string ValheimDirectPulseProbe = "valheim_direct_pulse_probe";
     public const string ValheimPeerBind = "valheim_peer_bind";
+    public const string ValheimLogicalPeerControl = "valheim_logical_peer_control";
     public const string ValheimRoutedRpcSend = "valheim_routed_rpc_send";
     public const string ValheimZdoMutation = "valheim_zdo_mutation";
     public const string ValheimZdoInterest = "valheim_zdo_interest";
@@ -36,6 +37,8 @@ public static class MessageType
     public const string ValheimControlRequest = "valheim_control_request";
     public const string ValheimControlReceipt = "valheim_control_receipt";
     public const string ValheimDirectPulse = "valheim_direct_pulse";
+    public const string ValheimLogicalPeerAttached = "valheim_logical_peer_attached";
+    public const string ValheimLogicalPeerDetached = "valheim_logical_peer_detached";
     public const string ValheimRoutedRpc = "valheim_routed_rpc";
     public const string ValheimZdoDelivery = "valheim_zdo_delivery";
     public const string ValheimZdoMutationReceipt = "valheim_zdo_mutation_receipt";
