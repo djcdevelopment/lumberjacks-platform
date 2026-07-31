@@ -58,6 +58,17 @@ Citations of the form `ZDOMan:724` refer to line numbers in the decompiled files
 > still created by the native join lifecycle, so this does not promote funnel 0,
 > handshake, general-prefab breadth, or native-zero composition. Those remain C7-C8;
 > P7 still runs the prior observe-only motion configuration.
+>
+> **2026-07-31 C7 implementation overlay:** `native-20260731-c7-cold-final`
+> removed funnel 5 and funnel 0 from the selected AM4 world-session bootstrap.
+> OMEN and i5 launched without `+connect`, authenticated to the canonical session,
+> validated the world descriptor, constructed a local logical server peer, queued
+> the typed character id, and reached scene twice across a fresh-process repeat.
+> Native poison was armed and client native-use totals were zero; AM4 selected
+> peer/handshake/`PeerInfo`/`ZDOData`/routed ingress was zero. Invalid enrollment,
+> unavailable Gateway, wrong release, and wrong descriptor/protocol all failed
+> closed before join. General method/prefab breadth, unconditional C8 composition,
+> P7 promotion, and migration-fallback deletion remain open.
 
 ---
 

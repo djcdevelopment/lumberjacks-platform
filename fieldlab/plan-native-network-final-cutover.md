@@ -32,8 +32,9 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C4 | **Complete on AM4 (2026-07-30)** | `native-20260730-c4b-tenth`: the dedicated server created one real Raspberry ZDO per client; Lumberjacks issued three lease epochs, reclaimed on socket loss, rejected wrong/expired epochs, and authorized one valid action. Selected native ownership, selection, destroyed-ZDO, and inventory pickup paths were suppressed. OMEN inventory changed 9→10 and i5 11→12 exactly once; both completion frames were acknowledged and both clients completed fresh-process resume unattended. |
 | C5 | **Complete on AM4 (2026-07-30)** | `native-20260730-c5-final`: both physical clients entered from a validated Lumberjacks world descriptor while native `PeerInfo` world fields were blank. Each resumed the same first snapshot chunk after a forced socket drop, applied three typed objects, completed once, unloaded to zero stale objects, and spawned nothing when membership was withheld. AM4 suppressed every selected native membership candidate. Wrong protocol/world-generation cells stopped before scene entry. |
 | C6 | **Complete on AM4 (2026-07-30)** | `native-20260730-c6-eighth`: both physical clients applied numbered Lumberjacks motion to the real remote player in both directions while the selected native transform writer and position writes were suppressed. OMEN withheld sequences 600–619; i5 held without native fallback, applied the reliable resync, and queued its ACK. Both clients completed a fresh-process resume; i5 also proved binary-WebSocket fallback when its advertised UDP path was unreachable. |
-| C7 | **In progress; early falsifier passed on AM4 (2026-07-30)** | `native-20260731-c7-fourth`: after native join established the canonical Lumberjacks session and descriptor, both physical clients closed their selected `ZSteamSocket`, held the scene for at least 60 seconds with zero native funnel delta and no fallback, then completed fresh-process resume. This is not cold join: `+connect`, native handshake, and peer construction still occurred before quarantine. |
-| C8-C10 | Pending in dependency order | Finish C7 Steam-free cold join, then perform the mandatory C7 replan before starting C8. |
+| C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
+| C8 | **Ready after mandatory C7 replan (2026-07-31)** | Compose the already-swapped boundaries under unconditional client/server poison, audit remaining method/prefab breadth, and run the full AM4 fault scenario twice. |
+| C9-C10 | Pending in dependency order | Motion-quality evidence begins only after both C8 runs; P7 promotion and fallback deletion remain last. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -616,6 +617,69 @@ unattended. This proves the running scene does not inherently require a continuo
 live native socket. It does not satisfy C7's real proof because initial world entry
 still used native `+connect`, handshake, and peer construction.
 
+**Retained cold-join result (2026-07-31):** `native-20260731-c7-cold-final`
+closed C7 on the final candidate. OMEN and i5 launched without `+connect`, started
+the authenticated C1 session from the request manifest, validated C5's descriptor,
+constructed the local logical server peer, queued the typed character id, and reached
+the joined scene. Each repeated the path in a fresh Valheim process. All four client
+ledger sessions had poison armed and recorded zero native calls, poison trips, drops,
+or writer faults. AM4 reconstructed both logical clients after resume and recorded
+zero selected native peer, handshake, `PeerInfo`, `ZDOData`, or routed-RPC ingress.
+Its 4,357 aggregate native rows were idle dedicated-host accept polls, not selected
+logical-client ingress, and are carried forward as an explicit C8 server-poison check.
+
+`native-20260731-c7-negative-second` passed all four required fail-closed cells:
+invalid enrollment, unavailable Gateway, wrong release, and wrong descriptor/protocol.
+No cell joined or tried a native server; all remained poison-armed and native-zero.
+The retained boundary is in
+[`evidence/c7-steam-free-cold-join/`](evidence/c7-steam-free-cold-join/).
+
+#### Mandatory replan after C7 — 2026-07-31
+
+**What the boundary proved**
+
+- The highest-risk architectural branch is closed: Valheim can enter and re-enter the
+  character scene from Lumberjacks state without a `ZSteamSocket`, native handshake,
+  network `PeerInfo`, or opaque vanilla packet tunnel.
+- C1/C2/C5 already contain enough typed state to construct the minimum local peer.
+  Transport incarnation and fresh process lifetime do not define logical identity.
+- Enrollment, Gateway availability, release compatibility, and descriptor validation
+  all have bounded fail-closed outcomes before scene entry.
+
+**Limits that remain explicit**
+
+- C7 proves connection/bootstrap only. It does not broaden C2/C3/C4/C5/C6's selected
+  registries to the complete gameplay method and prefab surface.
+- The dedicated host still performs idle Steam accept polling. C8 must arm poison on
+  AM4 as well as both clients and classify those polls explicitly; a selected native
+  ingress or egress call remains a failure.
+- Descriptor-rejection telemetry currently repeats while the rejected client remains
+  alive. C8 preparation must make that terminal receipt single-shot so the complete
+  fault window remains bounded and legible.
+- C8 must audit the scenario against every completion-contract action before its first
+  live run. A missing pickup, target-ZDO action, ownership contention, zone transition,
+  Gateway interruption, UDP loss, disconnect/rejoin, or save-integrity receipt blocks
+  execution rather than becoming an inferred pass.
+
+**Revised ordered gates**
+
+1. **C8a — candidate closure:** deduplicate terminal failure telemetry, make server
+   poison semantics explicit, and produce a machine-checked coverage manifest for the
+   complete scenario.
+2. **C8b — first composition:** run every required action and both injected faults from
+   clean launches under one run id; any native trip or semantic divergence reopens its
+   owning slice.
+3. **C8c — repeat and integrity:** repeat the same manifest from clean launches and
+   require identical boundary checks plus stable world/save integrity.
+4. **C9:** capture and, only if objective evidence requires it, tune Lumberjacks motion.
+5. **C10:** promote one paired release to P7, re-prove, delete fallback branches, cut a
+   new final artifact, and re-prove again.
+
+No new product decision is opened: existing policy already rejects an opaque tunnel,
+requires fail-closed native poison, and keeps AM4 as the development lane. The revised
+remaining estimate is **5–11 focused engineering days**, plus C10's two bounded P7
+world reloads.
+
 ### C8 — Native-zero composition and fault window on AM4
 
 **Build**
@@ -645,7 +709,9 @@ still used native `+connect`, handshake, and peer construction.
 
 - Native replacement is complete on AM4. Only now may the tuning lab resume.
 
-**Cost:** 1–3 focused days.
+**Replanned cost:** 2–4 focused days. C8 now includes the explicit breadth audit,
+server-poison classification, two complete fault compositions, and save-integrity
+comparison.
 
 ### C9 — Post-replacement motion quality and rendered evidence
 
@@ -757,15 +823,15 @@ at least one native Valheim client; composition slices require both clients.
 
 ## Estimated remaining cost
 
-After C6, the current evidence supports **7–16 focused engineering days** for C7
+After C7, the current evidence supports **5–11 focused engineering days** for C8
 through C10, plus the two bounded P7 world reloads already budgeted in C10. The range
-still includes remaining direct/routed/ownership/zone breadth folded into C7-C8.
-Steam-free cold join now dominates the architectural risk.
+includes the remaining direct/routed/ownership/zone breadth audit and any closure
+work exposed by C8. Steam-free cold join no longer dominates architectural risk.
 
 | Cost class | Slices |
 | --- | --- |
-| Lower, existing substrate | C8, C9, C10 |
-| High, state-machine boundary | C7 |
+| Moderate, composition/breadth | C8 |
+| Lower, existing substrate | C9, C10 |
 
 This is a burn-down estimate, not a promise to execute all slices without reassessment.
 The intended rhythm is: build one boundary, run it for real, retain the receipt, update
@@ -773,13 +839,9 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0-C6 and the mandatory C5 replan are complete. C7's early socket-quarantine
-falsifier passed on both physical clients in `native-20260731-c7-fourth`; do not
-repeat it as a substitute for cold join. Continue **C7 Steam-free cold join and
-logical Valheim peer** by removing native `+connect`, starting C1 from the request
-manifest, and constructing the minimum peer/session state from C1/C2/C5. Reach
-`Got character ZDOID` with native poison armed, concurrently repeat on OMEN and i5,
-and retain deterministic fail-closed cells for invalid enrollment/release,
-unavailable Gateway, and wrong descriptor. Do not introduce or accept an opaque
-native packet tunnel. Do not begin motion tuning or the transpiling lab. Perform the
-mandatory replan only after the real C7 cold-join receipt.
+C0-C7 and every mandatory replan through C7 are complete. Begin **C8a candidate
+closure**: make descriptor rejection single-shot, define unconditional server poison
+without misclassifying idle dedicated-host accept polling, and machine-audit the
+scenario manifest against the complete C8 action/fault list. Then run C8b and C8c
+from clean OMEN/i5 launches. Do not begin motion tuning or the transpiling lab until
+both full compositions are native-zero and save-integrity clean.
