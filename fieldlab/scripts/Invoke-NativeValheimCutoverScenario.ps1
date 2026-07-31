@@ -190,6 +190,8 @@ $serverLogicalPeerDisarmError = $null
 $serverPoisonArmed = $false
 $serverPoisonReceipts = @()
 $serverPoisonDisarmError = $null
+$residueCleanupReceipt = $null
+$residueCleanupError = $null
 $gatewayRestartReceipt = $null
 $saveIntegrityBefore = $null
 $saveIntegrityAfter = $null
@@ -1127,6 +1129,29 @@ try {
     if ($gatewayTunnel -and -not $gatewayTunnel.HasExited) {
         Stop-Process -Id $gatewayTunnel.Id -Force -ErrorAction SilentlyContinue
     }
+    # Residue hygiene, unconditional: destroy this run's leaked synthetic
+    # drive/probe objects. A completed run receipts destroyed=0 (steady-state
+    # proof); an abort is exactly where the leak happens (full32/full33 grew
+    # zone 35,-1 from 1245 to 1790 and broke bootstrap convergence). Failure
+    # here is recorded but never masks the run's own outcome.
+    try {
+        $residueCleanupOutput =
+            & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                -Setting cutoverResidueCleanup `
+                -Value $RunId `
+                -RequestId "$RunId-residue-cleanup" `
+                -WaitSeconds 30
+        if ($LASTEXITCODE -eq 0) {
+            $residueCleanupReceipt =
+                (($residueCleanupOutput -join [Environment]::NewLine) |
+                    ConvertFrom-Json)
+        } else {
+            $residueCleanupError =
+                "Server residue cleanup exited $LASTEXITCODE."
+        }
+    } catch {
+        $residueCleanupError = $_.Exception.Message
+    }
     if ($serverPoisonArmed) {
         try {
             $poisonDisarmOutput =
@@ -1428,6 +1453,16 @@ try {
                 disarm_error = $serverPoisonDisarmError
             })
     }
+    if ($residueCleanupReceipt -or $residueCleanupError) {
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'residue-cleanup.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                receipt = $residueCleanupReceipt
+                cleanup_error = $residueCleanupError
+            })
+    }
     if ($completed -and $serverDisarmError) {
         throw "Scenario completed but server direct-control disarm failed: $serverDisarmError"
     }
@@ -1451,6 +1486,9 @@ try {
     }
     if ($completed -and $serverPoisonDisarmError) {
         throw "Scenario completed but server native-poison cleanup failed: $serverPoisonDisarmError"
+    }
+    if ($completed -and $residueCleanupError) {
+        throw "Scenario completed but server residue cleanup failed: $residueCleanupError"
     }
 }
 

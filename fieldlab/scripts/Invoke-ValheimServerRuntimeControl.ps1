@@ -34,7 +34,8 @@ param(
         'worldZoneCutoverEnabled',
         'portalTraversalEnabled',
         'motionAuthorityCutoverEnabled',
-        'logicalPeerCutoverEnabled')]
+        'logicalPeerCutoverEnabled',
+        'cutoverResidueCleanup')]
     [Parameter(Mandatory)]
     [string] $Setting,
 
