@@ -9,10 +9,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { validate, noteKinds } from './roadmap.mjs';
+import { validate, noteKinds, notesRelative, outputRelative } from './roadmap.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const schemaPath = path.join(repoRoot, 'docs/roadmap/commit-note.schema.json');
@@ -145,5 +147,149 @@ test('the live journal satisfies its own schema', () => {
     }
     assert.ok(schema.properties.kind.enum.includes(note.kind),
       `line ${index + 1} has undeclared kind ${note.kind}`);
+  });
+});
+
+// --- the staged gate, in the environments git actually runs it in --------------------
+//
+// checkStaged() bridges two path vocabularies: the *Relative constants are relative to
+// this package, git reports and addresses paths from the top of the repository. The
+// bridge is `git rev-parse --show-prefix`, and it is only as good as the environment git
+// runs in -- so the one environment it MUST work in went untested, and it was the one
+// that broke it. A pre-commit hook inherits GIT_DIR, and from a linked worktree that
+// points at <repo>/.git/worktrees/<name>, outside the work tree; git stops discovering,
+// treats the current directory as the top of the tree, and reports a prefix of ''. The
+// gate then demanded a staged 'docs/roadmap/commit-notes.jsonl' that git had just
+// reported as 'Lumberjacks/docs/roadmap/commit-notes.jsonl' and rejected a correct
+// commit (observed 2026-07-31, worked around with --no-verify in db3248c). The tests
+// below run the real check over a real index in each shape git can hand it.
+
+const gitIdentity = [
+  '-c', 'user.name=roadmap-test',
+  '-c', 'user.email=roadmap-test@example.invalid',
+  '-c', 'commit.gpgsign=false',
+];
+
+/// A child environment scrubbed of the pointers these tests exist to control. Scrubbing
+/// is the DEFAULT below and not an option a caller can forget: `npm run roadmap:test` is
+/// itself invoked from the pre-commit hook, so an unscrubbed `git init` in the fixture
+/// would inherit GIT_DIR and land on the real repository.
+function childEnv(overrides = {}) {
+  const env = { ...process.env };
+  delete env.GIT_DIR;
+  delete env.GIT_WORK_TREE;
+  delete env.GIT_INDEX_FILE;
+  return { ...env, ...overrides };
+}
+
+function run(command, args, options = {}) {
+  return execFileSync(command, args, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: childEnv(),
+    ...options,
+  });
+}
+
+/// Stands up a throwaway repository holding a real copy of this package plus a real
+/// staged journal append, then hands the package directory to `body`. `prefix` places the
+/// package under a subdirectory (the baseline monorepo) or at the repo root (a standalone
+/// checkout); `worktree` prepares the commit from a linked worktree rather than the main
+/// checkout. Nothing is faked — the assertions are about how git behaves, so a hand-built
+/// index or a stubbed rev-parse would test the fixture instead of the gate.
+function withStagedFixture({ prefix, worktree }, body) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'roadmap-staged-'));
+  try {
+    const main = path.join(root, 'main');
+    fs.mkdirSync(main, { recursive: true });
+    run('git', ['init', '-q', '-b', 'main', '.'], { cwd: main });
+    // checkStaged() compares the staged blob against the working file byte for byte, so
+    // an autocrlf round-trip would fail it on Windows for reasons that are not the point.
+    run('git', ['config', 'core.autocrlf', 'false'], { cwd: main });
+
+    for (const relative of [
+      'scripts/roadmap.mjs',
+      'docs/roadmap/valheim-volunteer-roadmap.json',
+      notesRelative,
+      outputRelative,
+    ]) {
+      const target = path.join(main, prefix, relative);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(path.join(repoRoot, relative), target);
+    }
+    run('git', ['add', '-A'], { cwd: main });
+    run('git', [...gitIdentity, 'commit', '-qm', 'seed'], { cwd: main });
+
+    let checkout = main;
+    if (worktree) {
+      checkout = path.join(root, 'wt');
+      run('git', ['worktree', 'add', '-q', checkout, '-b', 'wt'], { cwd: main });
+    }
+    const pkg = path.join(checkout, prefix);
+
+    run(process.execPath, [
+      'scripts/roadmap.mjs', 'note',
+      '--milestone', knownMilestone,
+      '--kind', 'implementation',
+      '--summary', 'Exercise the staged gate',
+      '--impact', 'The staged gate runs against a real index',
+      '--verification', 'node --test scripts/roadmap.test.mjs',
+      '--evidence', notesRelative,
+    ], { cwd: pkg });
+    run('git', ['add', '-A'], { cwd: pkg });
+
+    body(pkg);
+  } finally {
+    // A leaked temp directory must never mask the assertion that just failed.
+    try {
+      fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch { /* ignore */ }
+  }
+}
+
+function stagedCheck(pkg, env) {
+  try {
+    run(process.execPath, ['scripts/roadmap.mjs', 'check', '--staged'], { cwd: pkg, env });
+    return { ok: true, output: '' };
+  } catch (error) {
+    return { ok: false, output: `${error.stdout ?? ''}${error.stderr ?? ''}`.trim() };
+  }
+}
+
+test('the staged gate passes from a linked worktree, where git hands the hook a GIT_DIR outside the work tree', () => {
+  withStagedFixture({ prefix: 'Lumberjacks/', worktree: true }, (pkg) => {
+    const gitDir = run('git', ['rev-parse', '--absolute-git-dir'], { cwd: pkg }).trim();
+    assert.match(gitDir, /worktrees/, 'fixture must really be a linked worktree');
+    // Exactly what `git commit` exports for a hook in a worktree: an absolute GIT_DIR
+    // under .git/worktrees/, and an absolute GIT_INDEX_FILE beside it.
+    const result = stagedCheck(pkg, childEnv({
+      GIT_DIR: gitDir,
+      GIT_INDEX_FILE: path.join(gitDir, 'index'),
+    }));
+    assert.ok(result.ok, result.output);
+  });
+});
+
+test('the staged gate still passes from the main checkout, which git invokes with no GIT_DIR and a relative index', () => {
+  withStagedFixture({ prefix: 'Lumberjacks/', worktree: false }, (pkg) => {
+    // The shape that always worked, pinned so the worktree fix cannot cost it. The
+    // relative GIT_INDEX_FILE is git's own doing and resolves against the top of the
+    // work tree, not our cwd — which is why dropping GIT_DIR is safe but dropping this
+    // would not be.
+    const result = stagedCheck(pkg, childEnv({ GIT_INDEX_FILE: '.git/index' }));
+    assert.ok(result.ok, result.output);
+  });
+});
+
+test('the staged gate holds for a standalone checkout under a hook, where the package IS the repo root', () => {
+  // The empty-prefix case the comment above gitPathPrefix() promises. Worth its own test
+  // because the fix works by restoring discovery, and discovery must still land on ''.
+  withStagedFixture({ prefix: '', worktree: true }, (pkg) => {
+    const gitDir = run('git', ['rev-parse', '--absolute-git-dir'], { cwd: pkg }).trim();
+    const result = stagedCheck(pkg, childEnv({
+      GIT_DIR: gitDir,
+      GIT_INDEX_FILE: path.join(gitDir, 'index'),
+    }));
+    assert.ok(result.ok, result.output);
   });
 });
