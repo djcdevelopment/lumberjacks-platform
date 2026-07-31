@@ -996,6 +996,22 @@
       <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
     </div>
   </article>
+<article class="journal-entry" id="note-20260731133253-make-the-roadmap-staged-gate-survive-the-hook-en">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T13:32:53.008Z">2026-07-31T13:32:53.008Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>baseline</span>
+        <span>A7</span>
+      </div>
+      <h3>Make the roadmap staged gate survive the hook environment so worktree commits stop needing --no-verify</h3>
+      <p><strong>Impact:</strong> The pre-commit gate rejected correctly-staged commits from any git worktree: git exports GIT_DIR pointing at .git/worktrees/&lt;name&gt;, which is outside the work tree, so git stopped discovering, treated the cwd as the top of the tree, and returned an empty --show-prefix. The gate then hunted for a staged docs/roadmap/commit-notes.jsonl that git had just reported as Lumberjacks/docs/roadmap/commit-notes.jsonl. roadmap.mjs now drops the inherited GIT_DIR/GIT_WORK_TREE for every git call it makes, restoring discovery from repoRoot and fixing the same latent defect in the repoRoot-relative pathspec below it; GIT_INDEX_FILE is deliberately kept because during a hook it names the index being committed.</p>
+      <details><summary>Verification (3)</summary><ul><li>node --test scripts/roadmap.test.mjs — three new tests run the real staged check over a real index in each shape git can produce: linked worktree with hook GIT_DIR, main checkout with no GIT_DIR and a relative index, and a standalone checkout where the package is the repo root</li><li>Reverting the fix fails the worktree test with the exact production message, every non-merge commit must stage an appended docs/roadmap/commit-notes.jsonl record, while the main-checkout test keeps passing</li><li>This commit was made from a git worktree with the hook enabled and no --no-verify</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/scripts/roadmap.mjs</code> <code>Lumberjacks/scripts/roadmap.test.mjs</code> <code>db3248c</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
 <article class="journal-entry" id="note-20260731131150-harden-i5-lane-probe-and-deploy-scripts-against-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">

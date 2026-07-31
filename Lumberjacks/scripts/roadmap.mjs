@@ -1117,8 +1117,28 @@ function addNote(args) {
   console.log(`Added roadmap note ${note.id} and regenerated ${outputRelative}`);
 }
 
+// Every call below is written against `cwd: repoRoot` and lets git discover the repository
+// from there. Git hooks break that assumption: git exports GIT_DIR into the hook
+// environment, and from a linked worktree it points at <repo>/.git/worktrees/<name>, whose
+// parent is NOT the work tree. Git then stops discovering and treats the current directory
+// as the top of the work tree, so --show-prefix reports '' instead of 'Lumberjacks/' and a
+// repoRoot-relative pathspec stops being prefixed -- the two things checkStaged() depends
+// on. The result was a pre-commit gate that rejected correctly-staged commits from a
+// worktree while passing from the main checkout. Dropping the inherited pointers restores
+// discovery; GIT_INDEX_FILE is deliberately kept, because during a hook it names the index
+// being committed (and git resolves it against the work tree top, not our cwd).
+const gitEnv = { ...process.env };
+delete gitEnv.GIT_DIR;
+delete gitEnv.GIT_WORK_TREE;
+
 function git(args, options = {}) {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...options });
+  return execFileSync('git', args, {
+    cwd: repoRoot,
+    env: gitEnv,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    ...options,
+  });
 }
 
 // Git reports and addresses paths from the top of the enclosing repository, but every
