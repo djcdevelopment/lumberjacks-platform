@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-07-31T15:10:59.962Z</span>
+        <span>Updated 2026-07-31T15:43:38.002Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,97 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260731151059-close-the-log-under-lock-hazard-filed-alongside-">
+        <div class="journal"><article class="journal-entry" id="note-20260731154338-full34-full35-readiness-failures-root-caused-by-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T15:43:38.002Z">2026-07-31T15:43:38.002Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>full34/full35 readiness failures root-caused by receipts: zone 35,-1 grew from a stable 1245 objects to 1790 across the aborted full32/full33 - aborted runs leak their synthetic journal-drive objects, and the spawn zone&#39;s initial load can no longer converge inside deadlines</h3>
+      <p><strong>Impact:</strong> the acceptance pair is blocked on substrate hygiene, not machinery: completing runs clean up after themselves, aborted runs do not; the remediation is a run-tagged residue cleanup verb on the server plus abort-path invocation, and the current world needs a one-time sweep</p>
+      <details><summary>Verification (1)</summary><ul><li>sector_objects receipts across the retained run bundles: full26=1241, full28=1246, full29=1245, full30=1246, full31=1245, full34=1790; full35 bootstrap could not reach area_ready at spawn</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260731153919-teleport-readiness-receipts-name-the-missing-obj">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T15:39:19.556Z">2026-07-31T15:39:19.556Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Teleport readiness receipts name the missing objects (uid and prefab, up to five) when a handful hold area_ready false - full34&#39;s initial-load tail sat at missing=1 of 1245 for ten stable seconds with no way to say which object</h3>
+      <p><strong>Impact:</strong> the next occurrence of the initial-load readiness tail self-identifies in the retained receipts instead of costing a diagnosis run; ties into the C9-adjacent initial-load measurement the retro already scheduled</p>
+      <details><summary>Verification (1)</summary><ul><li>Release build 0 warnings; 102/102 golden tests; SHA ED5C598D deployed verified to both clients; full34 receipts retained</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260731153348-abort-cleanup-drains-the-i5-scheduled-task-befor">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T15:33:48.830Z">2026-07-31T15:33:48.830Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Abort cleanup drains the i5 scheduled task before the orchestrator exits, so a successor run can never collide with a predecessor&#39;s wait-loop tail</h3>
+      <p><strong>Impact:</strong> full33&#39;s queue was correctly refused while full32&#39;s stopped-but-draining task still reported Running; the finally now polls task state up to 90s after the stop</p>
+      <details><summary>Verification (1)</summary><ul><li>PowerShell parser 0 errors; param-contract gate green; the collision and refusal are receipted in the retained full33 stderr</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260731152857-portal-roundtrip-waits-bounded-for-far-portal-de">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T15:28:57.601Z">2026-07-31T15:28:57.601Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Portal roundtrip waits bounded for far-portal dependency delivery instead of failing on capacity timing - the retro&#39;s transient-pressure rule applied to the last fail-fast in the composition path</h3>
+      <p><strong>Impact:</strong> full32 failed 2s into a 22s deadline while the linked portal ZDO was in flight after a relocation; the selection now retries each tick with a throttled progress receipt, and malformed portal state still fails immediately</p>
+      <details><summary>Verification (1)</summary><ul><li>Release build 0 warnings; 102/102 golden tests; SHA 6A00DB9F deployed verified to both clients; full32 receipts retained</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260731152222-settle-barrier-for-zone-cross-the-action-complet">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T15:22:22.834Z">2026-07-31T15:22:22.834Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Settle barrier for zone_cross: the action completes only when a fresh tick-entry read reports the new zone, so the move has survived a full engine tick before any dependent action samples it</h3>
+      <p><strong>Impact:</strong> closes the full31 zone-sampling race - the raw position write could be reverted by the character&#39;s per-tick processing, and the membership enter carried the pre-cross zone; the completion receipt now reports the observed settled zone, in the codebase&#39;s own settle-then-confirm idiom</p>
+      <details><summary>Verification (1)</summary><ul><li>code trace verified the sampling site and the revert mechanism; Release build 0 warnings; 102/102 golden tests; SHA 363F3E15 deployed verified to both clients</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260731151339-full31-confirms-the-descriptor-re-arm-i5-s-zone-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T15:13:39.247Z">2026-07-31T15:13:39.247Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>full31 confirms the descriptor re-arm (i5&#39;s zone resume passes; OMEN re-requests and accepts a fresh descriptor in one second) and isolates the last defect: the membership enter can carry the pre-teleport zone when zone_cross and zone_resume land in the same second</h3>
+      <p><strong>Impact:</strong> ownership passed again on both clients; the remaining failure is a zone-sampling race on the enter payload - i5 sent its post-cross zone and completed, OMEN sent its pre-cross zone and saw zero chunks; trace in flight</p>
+      <details><summary>Verification (1)</summary><ul><li>server published snapshots for both recipients instantly; OMEN session alive with journal acks while zero zone chunks arrived; receipts retained</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260731151059-close-the-log-under-lock-hazard-filed-alongside-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
@@ -994,6 +1084,21 @@
       <h3>Close the log-under-lock hazard filed alongside the AB-BA fix: WriteReceipt now returns the formatted line instead of calling LogInfo itself, and all four _gate-holding call sites (BeginDirectPulseProbe, BeginProbe, EvaluateProbeDeadline, EvaluateDirectProbeDeadline) defer the LogInfo call until after _gate releases</h3>
       <p><strong>Impact:</strong> closes candidate #2 from the 2026-07-31 lock-ordering audit (candidate #1, the outbound-gate AB-BA cycle, closed separately in 2b59e3e/327C499B): if the shared BepInEx log sink ever stalls, the main thread no longer wedges holding _gate, so every _gate-guarded getter (WebSocketConnected, UdpReady, State, ConnectionId, LogicalPeerId, ResumeEpoch) stays live across threads instead of freezing with it</p>
       <details><summary>Verification (2)</summary><ul><li>Release build 0 warnings, 0 errors</li><li>102/102 golden tests green; the Unity-free harness links WireParsers/BoundedRawHttp/etc but not this UnityEngine-dependent file by design, so this is a regression gate on adjacent code, not direct coverage of the fix</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260731150405-re-arm-the-world-descriptor-cache-on-gateway-rei">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-07-31T15:04:05.855Z">2026-07-31T15:04:05.855Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Re-arm the world-descriptor cache on Gateway reincarnation: the client drops its once-cached descriptor so zone actions wait for one confirmed against the new incarnation</h3>
+      <p><strong>Impact:</strong> closes the last open composition boundary - full30&#39;s i5 zone_membership_resume starvation - by restoring the readiness-ladder barrier instead of racing the server&#39;s descriptor republish; sibling of the proven ZDO interest re-arm</p>
+      <details><summary>Verification (1)</summary><ul><li>code trace verified the cache is set once and the re-request gate never re-arms; Release build 0 warnings; 102/102 golden tests; SHA 0B69588B deployed verified to both clients</li></ul></details>
       <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
     </div>
   </article>

@@ -14,16 +14,39 @@ set -e
 
 changed=$(git diff --cached --name-only)
 
+is_merge=false
+# Same root cause roadmap.mjs already documents and works around for its own git() calls:
+# git exports GIT_DIR (and GIT_WORK_TREE) into the hook's environment, and from a linked
+# worktree that points at <repo>/.git/worktrees/<name>. Left alone, that's still enough to
+# resolve MERGE_HEAD correctly here - but drop both anyway, in a subshell so nothing else in
+# this script is affected, so this check never depends on that discovery subtlety holding.
+if ( unset GIT_DIR GIT_WORK_TREE; git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 ); then
+  is_merge=true
+fi
+
 # Two different obligations, so two different triggers.
 #
 # The --staged gate demands exactly one appended journal record plus its regenerated HTML.
 # That is right when the JOURNAL itself changed, and wrong for every other file that
 # happens to live in docs/roadmap/ (the schema, the README): requiring a journal entry to
 # add a schema file would be a false positive that teaches people to use --no-verify.
+#
+# It is also wrong for a merge commit: checkStaged() diffs the index against HEAD's first
+# parent, so reconciling two branches that each independently appended notes always looks
+# like "many records at once" even though every individual commit only ever added one. The
+# ceremony's own AGENTS.md wording already scopes the obligation to "non-merge commit" -
+# this is that exemption, actually enforced instead of just documented. A merge still runs
+# the un-staged check, so schema/chronology/HTML-freshness on the merged journal are proven,
+# just not the one-record-per-commit shape that only makes sense for a linear commit.
 case "$changed" in
   *Lumberjacks/docs/roadmap/commit-notes.jsonl*)
-    echo "pre-commit: journal appended — verifying record + render"
-    ( cd Lumberjacks && npm run --silent roadmap:test && npm run --silent roadmap:check -- --staged )
+    if [ "$is_merge" = true ]; then
+      echo "pre-commit: merge touches the journal — skipping the one-record-per-commit gate, verifying merged structure"
+      ( cd Lumberjacks && npm run --silent roadmap:test && npm run --silent roadmap:check )
+    else
+      echo "pre-commit: journal appended — verifying record + render"
+      ( cd Lumberjacks && npm run --silent roadmap:test && npm run --silent roadmap:check -- --staged )
+    fi
     ;;
   *Lumberjacks/docs/roadmap/*|*Lumberjacks/src/Game.Gateway/Community/roadmap.html|*Lumberjacks/scripts/roadmap.mjs)
     echo "pre-commit: roadmap surface touched — verifying contract"
