@@ -31,7 +31,8 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C3 | **Complete on AM4 (2026-07-30)** | `native-20260730-c3-sixth`: a run-tagged ZDO outside both native sync rings crossed a durable Lumberjacks journal, survived a Gateway restart, reached late i5 as a snapshot, then reached both clients as a valid delta and tombstone through typed apply. Stale/malformed entries were rejected before mutation; selected native `CreateSyncList` candidates and network `RPC_ZDOData` calls were zero. |
 | C4 | **Complete on AM4 (2026-07-30)** | `native-20260730-c4b-tenth`: the dedicated server created one real Raspberry ZDO per client; Lumberjacks issued three lease epochs, reclaimed on socket loss, rejected wrong/expired epochs, and authorized one valid action. Selected native ownership, selection, destroyed-ZDO, and inventory pickup paths were suppressed. OMEN inventory changed 9→10 and i5 11→12 exactly once; both completion frames were acknowledged and both clients completed fresh-process resume unattended. |
 | C5 | **Complete on AM4 (2026-07-30)** | `native-20260730-c5-final`: both physical clients entered from a validated Lumberjacks world descriptor while native `PeerInfo` world fields were blank. Each resumed the same first snapshot chunk after a forced socket drop, applied three typed objects, completed once, unloaded to zero stale objects, and spawned nothing when membership was withheld. AM4 suppressed every selected native membership candidate. Wrong protocol/world-generation cells stopped before scene entry. |
-| C6-C10 | Pending in dependency order | C6 motion authority is next. Do not skip the mandatory replan after C7. |
+| C6 | **Complete on AM4 (2026-07-30)** | `native-20260730-c6-eighth`: both physical clients applied numbered Lumberjacks motion to the real remote player in both directions while the selected native transform writer and position writes were suppressed. OMEN withheld sequences 600–619; i5 held without native fallback, applied the reliable resync, and queued its ACK. Both clients completed a fresh-process resume; i5 also proved binary-WebSocket fallback when its advertised UDP path was unreachable. |
+| C7-C10 | Pending in dependency order | C7 Steam-free cold join is next. Do not skip the mandatory replan immediately after C7. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -548,6 +549,20 @@ Lumberjacks-owned; those remain C5–C8.
 
 **Cost:** 2–4 focused days.
 
+**Retained result (2026-07-30):** C6 is accepted in
+`native-20260730-c6-eighth`. OMEN and i5 rendezvoused without operator input and
+applied numbered canonical motion to the real remote player in both directions.
+The selected native remote-transform writer was suppressed after canonical apply,
+and native position writes to that remote identity were masked. OMEN deliberately
+withheld sequences 600–619; i5 recorded one gap hold with `native_fallback=false`,
+applied the reliable sequence-619 resync, and queued its ACK. Both clients relaunched
+once in fresh Valheim processes and completed the scenario. i5's unreachable
+advertised UDP path fell back to binary WebSocket; OMEN exercised UDP. The Gateway
+recorded zero unauthorized and zero stale motion drops, plus two invalid early
+frames retained as a caveat. This is binary authority evidence only: subjective
+feel, smoothing, Steam-free join, general breadth, native-zero composition, and P7
+promotion remain open.
+
 ### C7 — Steam-free cold join and logical Valheim peer
 
 **Build**
@@ -729,15 +744,14 @@ at least one native Valheim client; composition slices require both clients.
 
 ## Estimated remaining cost
 
-After C5, the current evidence supports **9–20 focused engineering days** for C6
+After C6, the current evidence supports **7–16 focused engineering days** for C7
 through C10, plus the two bounded P7 world reloads already budgeted in C10. The range
-still includes remaining direct/routed/ownership breadth folded into C7-C8.
+still includes remaining direct/routed/ownership/zone breadth folded into C7-C8.
 Steam-free cold join now dominates the architectural risk.
 
 | Cost class | Slices |
 | --- | --- |
 | Lower, existing substrate | C8, C9, C10 |
-| Medium, mapped interception seams | C6 |
 | High, state-machine boundary | C7 |
 
 This is a burn-down estimate, not a promise to execute all slices without reassessment.
@@ -746,9 +760,10 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0-C5 and the mandatory C5 replan are complete. Continue **C6 Lumberjacks motion
-authority without tuning** on the canonical session and actual player entity.
-The next falsifying cell must send one numbered motion range from OMEN to i5 while
-all native remote-transform writers are poisoned, then reverse roles and withhold a
-numbered range to prove bounded hold plus explicit reliable resync. Do not begin
-motion tuning or the transpiling lab.
+C0-C6 and the mandatory C5 replan are complete. Continue **C7 Steam-free cold join
+and logical Valheim peer**. Run the early falsifier first: after the existing
+Lumberjacks session and world descriptor are ready, quarantine the native
+`ZSteamSocket` and require one client to remain in-world for 60 seconds. If Valheim
+cannot survive without a concrete native socket, replan the adapter seam before
+building breadth; do not introduce or accept an opaque native packet tunnel. Do not
+begin motion tuning or the transpiling lab. Replan immediately after C7.

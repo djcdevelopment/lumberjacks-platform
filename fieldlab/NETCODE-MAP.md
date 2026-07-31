@@ -46,6 +46,18 @@ Citations of the form `ZDOMan:724` refer to line numbers in the decompiled files
 > stopped before scene entry. This promotes only the selected run-tagged
 > world/membership boundary; general-prefab breadth, motion, cold join, and the
 > underlying Steam transport remain C6-C8 work.
+>
+> **2026-07-30 C6 implementation overlay:** `native-20260730-c6-eighth`
+> promoted the selected two-player motion boundary on AM4. Authenticated numbered
+> position/rotation/velocity frames used the canonical logical identity and crossed
+> UDP or binary-WebSocket fallback; reliable hard resync crossed C1. Both real
+> clients applied the other player's motion while the selected native
+> `ZSyncTransform` writer and native remote-position writes were suppressed. An exact
+> 20-frame gap held without native correction, then applied sequence 619 through
+> reliable resync and queued its ACK. The enclosing remote player scene instance was
+> still created by the native join lifecycle, so this does not promote funnel 0,
+> handshake, general-prefab breadth, or native-zero composition. Those remain C7-C8;
+> P7 still runs the prior observe-only motion configuration.
 
 ---
 

@@ -47,7 +47,7 @@ public record GameSession(
     /// </summary>
     public IPEndPoint? UdpEndpoint { get; set; }
 
-    /// <summary>Opaque enrollment recipient; null sessions cannot publish Valheim motion.</summary>
+    /// <summary>Opaque enrollment recipient when the public enrollment lane authenticated it.</summary>
     public string? ValheimRecipientId { get; set; }
 
     /// <summary>C2b logical role and native peer UID bound after Valheim reaches steady state.</summary>
@@ -59,6 +59,21 @@ public record GameSession(
     /// replacement; ConnectionId identifies only the current reliable transport incarnation.
     /// </summary>
     public string ValheimLogicalPeerId { get; set; } = "";
+
+    /// <summary>
+    /// Authenticated identity admitted to the motion lane. Public clients retain the
+    /// enrollment recipient used by the existing transport canary. Private/shared-key
+    /// cutover clients become eligible only after C2b has bound both their durable logical
+    /// peer and native peer UID; a merely connected socket is not a motion principal.
+    /// </summary>
+    public string? ValheimMotionIdentity =>
+        !string.IsNullOrWhiteSpace(ValheimRecipientId)
+            ? ValheimRecipientId
+            : string.Equals(ValheimRole, "client", StringComparison.Ordinal) &&
+              ValheimPeerUid.HasValue &&
+              !string.IsNullOrWhiteSpace(ValheimLogicalPeerId)
+                ? ValheimLogicalPeerId
+                : null;
 
     /// <summary>The player ZDO first claimed by this authenticated session.</summary>
     public long? ValheimMotionZdoUserId { get; private set; }
@@ -125,7 +140,7 @@ public record GameSession(
     {
         lock (_motionGate)
         {
-            if (string.IsNullOrWhiteSpace(ValheimRecipientId)) return false;
+            if (string.IsNullOrWhiteSpace(ValheimMotionIdentity)) return false;
             if (ValheimMotionZdoUserId.HasValue &&
                 (ValheimMotionZdoUserId.Value != zdoUserId || ValheimMotionZdoId != zdoId))
                 return false;

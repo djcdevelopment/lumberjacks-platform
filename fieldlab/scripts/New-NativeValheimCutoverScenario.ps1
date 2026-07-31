@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -136,6 +136,24 @@ if ($Profile -eq 'c5') {
         New-Action 'i5-c5-membership-resume' 'i5' 'zone_membership_resume' 90
         New-Action 'omen-c5-membership-withhold' 'omen' 'zone_membership_withhold' 30
         New-Action 'i5-c5-membership-withhold' 'i5' 'zone_membership_withhold' 30
+    )
+}
+
+if ($Profile -eq 'c6') {
+    $actions += @(
+        New-Action 'omen-c6-rendezvous-settle' 'omen' 'wait' 12 5
+        New-Action 'i5-c6-rendezvous' 'i5' 'motion_rendezvous' 15
+        New-Action 'i5-c6-rendezvous-settle' 'i5' 'wait' 10 3
+        New-Action 'omen-c6-drive-one' 'omen' 'motion_drive' 16 6 4 0 east 'c6-omen-to-i5'
+        New-Action 'i5-c6-observe-one' 'i5' 'motion_observe' 16 6 0 0 east 'c6-omen-to-i5'
+        New-Action 'omen-c6-pair-one-settle' 'omen' 'wait' 10 4
+        New-Action 'i5-c6-pair-one-settle' 'i5' 'wait' 10 4
+        New-Action 'omen-c6-observe-two' 'omen' 'motion_observe' 16 6 0 0 north 'c6-i5-to-omen'
+        New-Action 'i5-c6-drive-two' 'i5' 'motion_drive' 16 6 4 0 north 'c6-i5-to-omen'
+        New-Action 'omen-c6-pair-two-settle' 'omen' 'wait' 10 4
+        New-Action 'i5-c6-pair-two-settle' 'i5' 'wait' 10 4
+        New-Action 'omen-c6-drive-gap' 'omen' 'motion_drive_gap' 16 6 6 0 west 'c6-gap-omen-to-i5'
+        New-Action 'i5-c6-observe-gap' 'i5' 'motion_observe_gap' 16 6 0 0 west 'c6-gap-omen-to-i5'
     )
 }
 

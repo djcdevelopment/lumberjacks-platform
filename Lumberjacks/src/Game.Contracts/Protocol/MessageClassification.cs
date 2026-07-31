@@ -31,6 +31,7 @@ public static class MessageClassification
         [MessageType.ValheimZoneSnapshotPublish] = DeliveryLane.Reliable,
         [MessageType.ValheimZoneSnapshotAck] = DeliveryLane.Reliable,
         [MessageType.ValheimZoneMembershipLeave] = DeliveryLane.Reliable,
+        [MessageType.ValheimMotionResyncPublish] = DeliveryLane.Reliable,
         [MessageType.ValheimOwnershipLeaseCommand] = DeliveryLane.Reliable,
         [MessageType.ValheimOwnershipLeaseGranted] = DeliveryLane.Reliable,
         [MessageType.ValheimOwnershipLeaseReceipt] = DeliveryLane.Reliable,
@@ -46,6 +47,8 @@ public static class MessageClassification
         [MessageType.ValheimZoneSnapshotComplete] = DeliveryLane.Reliable,
         [MessageType.ValheimZoneSnapshotRelease] = DeliveryLane.Reliable,
         [MessageType.ValheimZoneMembershipLeft] = DeliveryLane.Reliable,
+        [MessageType.ValheimMotionResync] = DeliveryLane.Reliable,
+        [MessageType.ValheimMotionResyncReceipt] = DeliveryLane.Reliable,
         [MessageType.EventEmitted] = DeliveryLane.Reliable,
         [MessageType.Error] = DeliveryLane.Reliable,
 

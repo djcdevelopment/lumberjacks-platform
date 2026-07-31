@@ -29,6 +29,7 @@ public static class MessageType
     public const string ValheimZoneSnapshotPublish = "valheim_zone_snapshot_publish";
     public const string ValheimZoneSnapshotAck = "valheim_zone_snapshot_ack";
     public const string ValheimZoneMembershipLeave = "valheim_zone_membership_leave";
+    public const string ValheimMotionResyncPublish = "valheim_motion_resync_publish";
 
     // Server → Client
     public const string SessionStarted = "session_started";
@@ -55,6 +56,8 @@ public static class MessageType
     public const string ValheimZoneSnapshotComplete = "valheim_zone_snapshot_complete";
     public const string ValheimZoneSnapshotRelease = "valheim_zone_snapshot_release";
     public const string ValheimZoneMembershipLeft = "valheim_zone_membership_left";
+    public const string ValheimMotionResync = "valheim_motion_resync";
+    public const string ValheimMotionResyncReceipt = "valheim_motion_resync_receipt";
     public const string WorldSnapshot = "world_snapshot";
     public const string EntityUpdate = "entity_update";
     public const string EntityRemoved = "entity_removed";

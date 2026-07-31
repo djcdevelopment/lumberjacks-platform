@@ -51,6 +51,8 @@ param(
 
     [switch] $EnableWorldZoneCutover,
 
+    [switch] $EnableMotionAuthorityCutover,
+
     [switch] $EnableGatewayJournalRestartProof,
 
     [string] $ServerGatewayUrl = 'http://100.124.12.37:4000'
@@ -118,6 +120,8 @@ $gatewayRestartReceipt = $null
 $omenHarnessProcess = $null
 $useRoutedRpc =
     [bool]$EnableRoutedRpcCutover -or [bool]$EnableZdoJournalCutover
+$useConcurrentHarness =
+    [bool]$EnableZdoJournalCutover -or [bool]$EnableMotionAuthorityCutover
 
 function Write-JsonAtomic([string] $Path, [object] $Value) {
     $temporary = "$Path.tmp"
@@ -295,12 +299,19 @@ try {
         if ($EnableWorldZoneCutover) {
             $i5Arguments += '-EnableWorldZoneCutover'
         }
+    }
+    if ($EnableMotionAuthorityCutover) {
+        $i5Arguments += '-EnableMotionAuthorityCutover'
+    }
 
+    if ($useConcurrentHarness) {
         $gatewayCompose = Join-Path $repoRoot 'Lumberjacks\infra\docker'
         Push-Location $gatewayCompose
         try {
             & docker compose -p lumberjacks-local up -d --no-deps --build gateway
-            if ($LASTEXITCODE -ne 0) { throw 'Gateway deployment for C3 failed.' }
+            if ($LASTEXITCODE -ne 0) {
+                throw 'Gateway deployment for the canonical-session slice failed.'
+            }
         } finally {
             Pop-Location
         }
@@ -321,9 +332,13 @@ try {
             '-ScenarioPath', $scenario,
             '-EvidenceRoot', $EvidenceRoot,
             '-HoldSeconds', [string]$HoldSeconds,
-            '-EnableRoutedRpcCutover',
-            '-EnableZdoJournalCutover',
             '-WaitSeconds', [string]$WaitSeconds)
+        if ($useRoutedRpc) {
+            $omenHarnessArguments += '-EnableRoutedRpcCutover'
+        }
+        if ($EnableZdoJournalCutover) {
+            $omenHarnessArguments += '-EnableZdoJournalCutover'
+        }
         if ($EnableZdoJournalCanonicalSession) {
             $omenHarnessArguments += '-EnableZdoJournalCanonicalSession'
         }
@@ -332,6 +347,9 @@ try {
         }
         if ($EnableWorldZoneCutover) {
             $omenHarnessArguments += '-EnableWorldZoneCutover'
+        }
+        if ($EnableMotionAuthorityCutover) {
+            $omenHarnessArguments += '-EnableMotionAuthorityCutover'
         }
         $omenHarnessProcess = Start-Process `
             -FilePath (Join-Path $PSHOME 'powershell.exe') `
@@ -426,6 +444,7 @@ try {
             -EvidenceRoot $EvidenceRoot `
             -HoldSeconds $HoldSeconds `
             -EnableRoutedRpcCutover:$useRoutedRpc `
+            -EnableMotionAuthorityCutover:$EnableMotionAuthorityCutover `
             -WaitSeconds $WaitSeconds
         if ($LASTEXITCODE -ne 0) { throw 'OMEN cutover scenario failed.' }
     }
@@ -444,7 +463,7 @@ try {
     if ([int]$status.last_task_result -ne 0) {
         throw "i5 scheduled task failed with result $($status.last_task_result)."
     }
-    if ($EnableZdoJournalCutover) {
+    if ($useConcurrentHarness) {
         while (-not $omenHarnessProcess.HasExited -and (Get-Date) -lt $deadline) {
             Start-Sleep -Seconds 2
             $omenHarnessProcess.Refresh()

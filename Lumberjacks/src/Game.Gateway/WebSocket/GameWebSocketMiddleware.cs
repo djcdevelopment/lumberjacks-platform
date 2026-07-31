@@ -124,8 +124,9 @@ public class GameWebSocketMiddleware
 
         // Set protocol mode based on handshake
         session.Protocol = useBinary ? ProtocolMode.Binary : ProtocolMode.Json;
-        // The UDP token authenticates packets to this WebSocket session. Only enrollment-backed
-        // sessions may publish Valheim motion, and the identifier retained here is opaque.
+        // The UDP token authenticates packets to this WebSocket session. Public sessions retain
+        // their opaque enrollment identity; authenticated private/shared-key clients become
+        // eligible after their logical peer and native peer UID are bound.
         session.ValheimRecipientId = principal?.Enrollment?.RecipientId;
 
         // Send session_started envelope (includes resume_token for future reconnects)
@@ -147,7 +148,7 @@ public class GameWebSocketMiddleware
             reliable_pending = session.Reliable.PendingCount,
             udp_token = session.UdpToken.ToString(),
             udp_port = udpPort,
-            valheim_motion_available = session.ValheimRecipientId != null,
+            valheim_motion_available = session.ValheimMotionIdentity != null,
             valheim_role = session.ValheimRole,
         };
         var envelope = EnvelopeFactory.Create(MessageType.SessionStarted, startedPayload);

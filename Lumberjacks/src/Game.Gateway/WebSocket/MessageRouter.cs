@@ -174,6 +174,10 @@ public class MessageRouter
                 await HandleValheimZoneMembershipLeaveAsync(session, envelope);
                 break;
 
+            case MessageType.ValheimMotionResyncPublish:
+                await HandleValheimMotionResyncPublishAsync(session, envelope);
+                break;
+
             default:
                 _logger.LogDebug("No route for message type {Type}", envelope.Type);
                 break;
@@ -465,6 +469,114 @@ public class MessageRouter
             },
             CancellationToken.None);
         if (!left.Queued) throw new InvalidOperationException(left.Reason);
+    }
+
+    async Task HandleValheimMotionResyncPublishAsync(
+        GameSession session, Envelope envelope)
+    {
+        RequireValheimRole(session, "client", "motion resync publish");
+        if (string.IsNullOrWhiteSpace(session.RegionId))
+            throw new InvalidDataException(
+                "motion resync publish requires joined region");
+
+        var runId = ReadString(envelope.Payload, "run_id");
+        var actionId = ReadString(envelope.Payload, "action_id");
+        var sourceMotionSequence = ReadInt32(
+            envelope.Payload, "source_motion_sequence");
+        var gapStart = ReadInt32(envelope.Payload, "gap_start_sequence");
+        var gapEnd = ReadInt32(envelope.Payload, "gap_end_sequence");
+        var zdoUser = ReadInt64(envelope.Payload, "zdo_user_id");
+        var zdoId = ReadUInt32(envelope.Payload, "zdo_id");
+        var x = ReadDouble(envelope.Payload, "x");
+        var y = ReadDouble(envelope.Payload, "y");
+        var z = ReadDouble(envelope.Payload, "z");
+        var velocityX = ReadDouble(envelope.Payload, "velocity_x");
+        var velocityY = ReadDouble(envelope.Payload, "velocity_y");
+        var velocityZ = ReadDouble(envelope.Payload, "velocity_z");
+        var yaw = ReadDouble(envelope.Payload, "yaw");
+        var sentMilliseconds = ReadUInt32(
+            envelope.Payload, "sent_milliseconds");
+        var reason = ReadString(envelope.Payload, "reason");
+
+        if (!SafeToken(runId, 80) || !SafeToken(actionId, 80) ||
+            zdoUser == 0 || zdoId == 0 ||
+            sourceMotionSequence is < 1 or > ushort.MaxValue ||
+            gapStart is < 1 or > ushort.MaxValue ||
+            gapEnd is < 1 or > ushort.MaxValue ||
+            gapEnd < gapStart ||
+            !string.Equals(reason, "gap_recovery", StringComparison.Ordinal) ||
+            !FiniteAndBounded(x, 1_000_000) ||
+            !FiniteAndBounded(y, 1_000_000) ||
+            !FiniteAndBounded(z, 1_000_000) ||
+            !FiniteAndBounded(velocityX, 500) ||
+            !FiniteAndBounded(velocityY, 500) ||
+            !FiniteAndBounded(velocityZ, 500) ||
+            !FiniteAndBounded(yaw, 720))
+            throw new InvalidDataException("invalid motion resync publication");
+
+        var key =
+            $"motion-resync:{runId}:{actionId}:{sourceMotionSequence}";
+        if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
+            return;
+
+        var targets = _sessions.GetByRegion(session.RegionId)
+            .Where(candidate =>
+                candidate.SessionId != session.SessionId &&
+                string.Equals(
+                    candidate.ValheimRole, "client",
+                    StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(candidate.ValheimLogicalPeerId) &&
+                !string.Equals(
+                    candidate.ValheimLogicalPeerId,
+                    session.ValheimLogicalPeerId,
+                    StringComparison.Ordinal))
+            .ToArray();
+        var targetCount = 0;
+        foreach (var target in targets)
+        {
+            var queued = await target.SendReliableAsync(
+                MessageType.ValheimMotionResync,
+                new
+                {
+                    run_id = runId,
+                    action_id = actionId,
+                    source_logical_peer_id = session.ValheimLogicalPeerId,
+                    source_motion_sequence = sourceMotionSequence,
+                    gap_start_sequence = gapStart,
+                    gap_end_sequence = gapEnd,
+                    zdo_user_id = zdoUser,
+                    zdo_id = zdoId,
+                    x,
+                    y,
+                    z,
+                    velocity_x = velocityX,
+                    velocity_y = velocityY,
+                    velocity_z = velocityZ,
+                    yaw,
+                    sent_milliseconds = sentMilliseconds,
+                    reason,
+                },
+                CancellationToken.None);
+            if (!queued.Queued)
+                throw new InvalidOperationException(queued.Reason);
+            targetCount++;
+        }
+
+        var receipt = await session.SendReliableAsync(
+            MessageType.ValheimMotionResyncReceipt,
+            new
+            {
+                run_id = runId,
+                action_id = actionId,
+                source_motion_sequence = sourceMotionSequence,
+                gap_start_sequence = gapStart,
+                gap_end_sequence = gapEnd,
+                target_count = targetCount,
+                result = targetCount > 0 ? "accepted" : "no_target",
+            },
+            CancellationToken.None);
+        if (!receipt.Queued)
+            throw new InvalidOperationException(receipt.Reason);
     }
 
     async Task SendNextZoneChunkAsync(GameSession target)
@@ -1323,6 +1435,9 @@ public class MessageRouter
         element.TryGetDouble(out var value)
             ? value
             : throw new InvalidDataException(name + " must be number");
+
+    static bool FiniteAndBounded(double value, double absoluteMaximum) =>
+        double.IsFinite(value) && Math.Abs(value) <= absoluteMaximum;
 
     static bool AllowedRoutedMethod(string methodName, int methodHash)
     {

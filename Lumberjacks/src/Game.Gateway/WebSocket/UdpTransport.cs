@@ -230,7 +230,7 @@ public class UdpTransport : BackgroundService
             _motionTelemetry.DroppedInvalid();
             return Task.CompletedTask;
         }
-        if (string.IsNullOrWhiteSpace(session.ValheimRecipientId))
+        if (string.IsNullOrWhiteSpace(session.ValheimMotionIdentity))
         {
             _motionTelemetry.DroppedUnauthorized();
             return Task.CompletedTask;
@@ -267,8 +267,9 @@ public class UdpTransport : BackgroundService
 
         foreach (var target in _sessions.GetByRegion(source.RegionId))
         {
-            if (target.SessionId == source.SessionId || target.ValheimRecipientId == null ||
-                string.Equals(target.ValheimRecipientId, source.ValheimRecipientId, StringComparison.Ordinal))
+            if (target.SessionId == source.SessionId || target.ValheimMotionIdentity == null ||
+                string.Equals(target.ValheimMotionIdentity, source.ValheimMotionIdentity,
+                    StringComparison.Ordinal))
                 continue;
 
             if (TrySend(target, binaryFrame))
