@@ -72,6 +72,16 @@ public sealed class ValheimOwnershipLeaseService
         }
     }
 
+    public Lease? FindByAction(string runId, string actionId)
+    {
+        lock (_gate)
+        {
+            return _leases.Values.SingleOrDefault(lease =>
+                string.Equals(lease.RunId, runId, StringComparison.Ordinal) &&
+                string.Equals(lease.ActionId, actionId, StringComparison.Ordinal));
+        }
+    }
+
     public Lease Complete(
         string runId,
         string worldEpoch,

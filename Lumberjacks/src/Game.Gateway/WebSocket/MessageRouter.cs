@@ -1199,6 +1199,7 @@ public class MessageRouter
         var payload = envelope.Payload;
         var runId = ReadString(payload, "run_id");
         var actionId = ReadString(payload, "action_id");
+        var attemptId = ReadString(payload, "attempt_id");
         var phase = ReadString(payload, "phase");
         var requestOrdinal = ReadInt32(payload, "request_ordinal");
         var worldEpoch = ReadString(payload, "world_epoch");
@@ -1209,10 +1210,13 @@ public class MessageRouter
         var z = ReadDouble(payload, "origin_z");
         if (!SafeToken(runId, 80) || !SafeToken(actionId, 80) ||
             !SafeToken(worldEpoch, 96) ||
-            phase is not ("create" or "reissue") ||
+            phase is not ("create" or "reissue" or "contend") ||
             (phase == "create" && requestOrdinal != 0) ||
             (phase == "reissue" && requestOrdinal is < 1 or > 100) ||
-            (phase == "create" && (uidUser != 0 || uidId != 0)) ||
+            (phase == "contend" &&
+                (!SafeToken(attemptId, 96) || requestOrdinal is < 1 or > 100)) ||
+            ((phase is "create" or "contend") &&
+                (uidUser != 0 || uidId != 0)) ||
             (phase == "reissue" && (uidUser == 0 || uidId == 0)) ||
             !double.IsFinite(x) || !double.IsFinite(y) || !double.IsFinite(z) ||
             Math.Abs(x) > 1_000_000 || Math.Abs(y) > 1_000_000 ||
@@ -1228,6 +1232,38 @@ public class MessageRouter
             actionId, phase, envelope.Seq, previousClientSequence, accepted);
         if (!accepted)
             return;
+        if (phase == "contend")
+        {
+            var lease = _ownershipLeases.FindByAction(runId, actionId);
+            var validation = lease is null
+                ? new ValheimOwnershipLeaseService.Validation(
+                    false, "lease_missing", null)
+                : _ownershipLeases.Validate(
+                    runId, lease.WorldEpoch, lease.UidUser, lease.UidId,
+                    session.ValheimLogicalPeerId, lease.Epoch,
+                    DateTimeOffset.UtcNow);
+            var reason = validation.Accepted
+                ? "holder_not_distinct"
+                : validation.Reason;
+            var rejected = await session.SendReliableAsync(
+                MessageType.ValheimOwnershipActionRejected,
+                new
+                {
+                    run_id = runId,
+                    action_id = actionId,
+                    attempt_id = attemptId,
+                    world_epoch = worldEpoch,
+                    uid_user = lease?.UidUser ?? 0,
+                    uid_id = lease?.UidId ?? 0,
+                    lease_epoch = lease?.Epoch ?? 0,
+                    lease_state = lease?.State ?? "missing",
+                    reason,
+                },
+                CancellationToken.None);
+            if (!rejected.Queued)
+                throw new InvalidOperationException(rejected.Reason);
+            return;
+        }
         var server = _sessions.GetAll().SingleOrDefault(candidate =>
             candidate.ValheimRole == "server" &&
             candidate.ValheimPeerUid.HasValue);

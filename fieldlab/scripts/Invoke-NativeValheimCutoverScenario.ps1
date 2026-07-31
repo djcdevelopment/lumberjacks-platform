@@ -59,13 +59,38 @@ param(
 
     [switch] $EnableGatewayJournalRestartProof,
 
-    [string] $ServerGatewayUrl = 'http://100.124.12.37:4000'
+    [switch] $EnableServerNativePoison,
+
+    [switch] $EnableC8Composition,
+
+    [string] $ServerGatewayUrl = 'http://100.124.12.37:4000',
+
+    [string] $ServerContainer = 'comfy-valheim-server-am4-valheim-server-1',
+
+    [string] $ServerWorldDb =
+        '/home/derek/comfy-valheim-lab/server-state/config/worlds_local/ComfyEra16.db',
+
+    [string] $ServerWorldFwl =
+        '/home/derek/comfy-valheim-lab/server-state/config/worlds_local/ComfyEra16.fwl'
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $clientHarness = Join-Path $PSScriptRoot 'Invoke-NativeValheimClient.ps1'
 $i5Tools = Join-Path $repoRoot 'tools\i5'
+
+if ($EnableC8Composition) {
+    $EnableDirectControlCutover = $true
+    $EnableRoutedRpcCutover = $true
+    $EnableZdoJournalCutover = $true
+    $EnableZdoJournalCanonicalSession = $true
+    $EnableOwnershipLeaseCutover = $true
+    $EnableWorldZoneCutover = $true
+    $EnableMotionAuthorityCutover = $true
+    $EnableSteamFreeColdJoin = $true
+    $EnableGatewayJournalRestartProof = $true
+    $EnableServerNativePoison = $true
+}
 
 if ([string]::IsNullOrWhiteSpace($DllPath)) {
     $DllPath = Join-Path $repoRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
@@ -78,6 +103,14 @@ if ($RunId.Length -gt 80 -or $RunId -notmatch '^[A-Za-z0-9._-]+$') {
 }
 if ($Server -notmatch '^[^\s:]+:\d{2,5}$') {
     throw "Server must be host:port: $Server"
+}
+if ($ServerContainer -notmatch '^[A-Za-z0-9_.-]+$') {
+    throw "ServerContainer must be a safe Docker container name: $ServerContainer"
+}
+foreach ($worldPath in @($ServerWorldDb, $ServerWorldFwl)) {
+    if ($worldPath -notmatch '^/[A-Za-z0-9._/-]+$') {
+        throw "Server world paths must be safe absolute POSIX paths: $worldPath"
+    }
 }
 if ($EnableZdoJournalCanonicalSession -and -not $EnableZdoJournalCutover) {
     throw '-EnableZdoJournalCanonicalSession requires -EnableZdoJournalCutover.'
@@ -109,6 +142,12 @@ if ($EnableSteamFreeColdJoin -and $EnableSocketQuarantineCutover) {
 
 $scenario = (Resolve-Path -LiteralPath $ScenarioPath -ErrorAction Stop).Path
 $dll = (Resolve-Path -LiteralPath $DllPath -ErrorAction Stop).Path
+$scenarioDocument =
+    Get-Content -LiteralPath $scenario -Raw -Encoding utf8 |
+    ConvertFrom-Json
+if ($EnableC8Composition -and $scenarioDocument.profile -ne 'c8') {
+    throw '-EnableC8Composition requires a profile=c8 scenario manifest.'
+}
 $scenarioName = Split-Path -Leaf $scenario
 $remoteScenarioDirectory = 'C:/deploy/baseline/fieldlab/scenarios'
 $remoteScenarioPath = "$remoteScenarioDirectory/$scenarioName"
@@ -139,7 +178,13 @@ $serverMotionDisarmError = $null
 $serverLogicalPeerArmed = $false
 $serverLogicalPeerReceipts = @()
 $serverLogicalPeerDisarmError = $null
+$serverPoisonArmed = $false
+$serverPoisonReceipts = @()
+$serverPoisonDisarmError = $null
 $gatewayRestartReceipt = $null
+$saveIntegrityBefore = $null
+$saveIntegrityAfter = $null
+$i5Queued = $false
 $omenHarnessProcess = $null
 $useRoutedRpc =
     [bool]$EnableRoutedRpcCutover -or [bool]$EnableZdoJournalCutover
@@ -158,6 +203,93 @@ function Write-JsonAtomic([string] $Path, [object] $Value) {
     Move-Item -LiteralPath $temporary -Destination $Path -Force
 }
 
+function Get-Am4SaveFingerprint {
+    $logCommand =
+        "docker logs --since 48h '$ServerContainer' 2>&1 | " +
+        "grep -E 'ZDOS:|ConnectPortals =>|spawned=|Loaded [0-9]+ locations'"
+    $logLines = & ssh -o BatchMode=yes -o ConnectTimeout=10 am4 $logCommand
+    if ($LASTEXITCODE -notin @(0, 1)) {
+        throw "AM4 save fingerprint log query failed with exit $LASTEXITCODE."
+    }
+    $logText = @($logLines) -join [Environment]::NewLine
+
+    function Last-Integer([string] $Text, [string] $Pattern) {
+        $matches = [regex]::Matches($Text, $Pattern)
+        if ($matches.Count -eq 0) { return $null }
+        return [long]$matches[$matches.Count - 1].Groups[1].Value
+    }
+
+    $statCommand =
+        "stat -c '%n|%s|%Y' '$ServerWorldDb' '$ServerWorldFwl'"
+    $statLines = & ssh -o BatchMode=yes -o ConnectTimeout=10 am4 $statCommand
+    if ($LASTEXITCODE -ne 0) {
+        throw "AM4 save fingerprint stat query failed with exit $LASTEXITCODE."
+    }
+    $files = [ordered]@{}
+    foreach ($line in @($statLines)) {
+        $parts = [string]$line -split '\|'
+        if ($parts.Count -ne 3) {
+            throw "AM4 save fingerprint returned an invalid stat row: $line"
+        }
+        $files[[IO.Path]::GetFileName($parts[0])] = [ordered]@{
+            bytes = [long]$parts[1]
+            mtime_epoch = [long]$parts[2]
+        }
+    }
+
+    $fingerprint = [ordered]@{
+        schema_version = 1
+        receipt_type = 'am4_world_save_fingerprint'
+        captured_utc = [DateTimeOffset]::UtcNow.ToString('o')
+        container = $ServerContainer
+        zdos = Last-Integer $logText 'ZDOS:(\d+)'
+        portals = Last-Integer $logText 'ConnectPortals => Connected (\d+) portals'
+        spawned = Last-Integer $logText 'spawned=(\d+)'
+        targets = Last-Integer $logText 'targets=(\d+)'
+        locations = Last-Integer $logText 'Loaded (\d+) locations'
+        world_files = $files
+    }
+    foreach ($field in @('zdos', 'portals', 'spawned', 'targets', 'locations')) {
+        if ($null -eq $fingerprint[$field]) {
+            throw "AM4 save fingerprint is missing $field from the current load block."
+        }
+    }
+    foreach ($name in @(
+            [IO.Path]::GetFileName($ServerWorldDb),
+            [IO.Path]::GetFileName($ServerWorldFwl))) {
+        if (-not $files.Contains($name) -or [long]$files[$name].bytes -le 0) {
+            throw "AM4 save fingerprint is missing a non-empty $name."
+        }
+    }
+    return $fingerprint
+}
+
+function Compare-Am4SaveFingerprint([object] $Before, [object] $After) {
+    $checks = [ordered]@{}
+    foreach ($field in @('portals', 'spawned', 'targets', 'locations')) {
+        $checks["${field}_exact"] =
+            [long]$Before.$field -eq [long]$After.$field
+    }
+    $zdoFloor = [long][Math]::Floor([long]$Before.zdos * 0.99)
+    $checks.zdos_no_material_drop = [long]$After.zdos -ge $zdoFloor
+    $checks.world_files_present =
+        $After.world_files.Count -eq 2 -and
+        @($After.world_files.Values |
+            Where-Object { [long]$_.bytes -gt 0 }).Count -eq 2
+    $failed = @($checks.GetEnumerator() | Where-Object { -not [bool]$_.Value })
+    return [ordered]@{
+        schema_version = 1
+        receipt_type = 'c8_save_integrity'
+        generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
+        run_id = $RunId
+        result = if ($failed.Count -eq 0) { 'passed' } else { 'failed' }
+        before = $Before
+        after = $After
+        checks = $checks
+        failed_checks = @($failed | ForEach-Object Key)
+    }
+}
+
 function Invoke-I5Harness([string[]] $Arguments) {
     $output = & ssh -o BatchMode=yes i5 `
         powershell.exe -NoProfile -ExecutionPolicy Bypass `
@@ -171,6 +303,34 @@ function Invoke-I5Harness([string[]] $Arguments) {
 
 try {
     New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
+    if ($EnableC8Composition) {
+        $retainedScenario = Join-Path $runDirectory 'scenario.json'
+        if (-not [IO.Path]::GetFullPath($scenario).Equals(
+                [IO.Path]::GetFullPath($retainedScenario),
+                [StringComparison]::OrdinalIgnoreCase)) {
+            Copy-Item -LiteralPath $scenario -Destination $retainedScenario -Force
+            $scenario = $retainedScenario
+            $scenarioName = 'scenario.json'
+            $remoteScenarioPath = "$remoteScenarioDirectory/$scenarioName"
+        }
+        $coveragePath = Join-Path $runDirectory 'c8-scenario-coverage.json'
+        $coverageOutput =
+            & (Join-Path $PSScriptRoot 'Test-C8ScenarioCoverage.ps1') `
+                -ScenarioPath $scenario `
+                -RunId $RunId `
+                -OutputPath $coveragePath
+        $coverageReceipt =
+            Get-Content -LiteralPath $coveragePath -Raw -Encoding utf8 |
+            ConvertFrom-Json
+        if ($coverageReceipt.result -ne 'passed') {
+            throw 'C8 scenario coverage is incomplete; no remote state was changed.'
+        }
+        $coverageOutput | Write-Host
+        $saveIntegrityBefore = Get-Am4SaveFingerprint
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'save-integrity-before.json') `
+            $saveIntegrityBefore
+    }
     & (Join-Path $i5Tools 'Test-I5Link.ps1')
     if ($LASTEXITCODE -ne 0) {
         throw 'The i5 lane is offline or failed preflight; no retry was attempted.'
@@ -320,6 +480,21 @@ try {
         $serverLogicalPeerArmed = $true
     }
 
+    if ($EnableServerNativePoison) {
+        $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+        $poisonArmOutput = & $serverControl `
+            -Setting nativeNetworkPoisonEnabled `
+            -Value true `
+            -RequestId "$RunId-native-poison-arm"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Server native-network poison arm failed.'
+        }
+        $serverPoisonReceipts +=
+            (($poisonArmOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json)
+        $serverPoisonArmed = $true
+    }
+
     & (Join-Path $i5Tools 'Deploy-ToI5.ps1') `
         -Path $clientHarness `
         -Dest C:/deploy/baseline/fieldlab/scripts
@@ -427,6 +602,12 @@ try {
             -RedirectStandardError $omenStderr `
             -PassThru
 
+        if ($EnableC8Composition) {
+            $queue = Invoke-I5Harness $i5Arguments
+            $queue | Write-Host
+            $i5Queued = $true
+        }
+
         if ($EnableGatewayJournalRestartProof) {
             $serverJournalPath =
                 '/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/zdo-journal-cutover.jsonl'
@@ -494,8 +675,11 @@ try {
                 $gatewayRestartReceipt
         }
 
-        $queue = Invoke-I5Harness $i5Arguments
-        $queue | Write-Host
+        if (-not $i5Queued) {
+            $queue = Invoke-I5Harness $i5Arguments
+            $queue | Write-Host
+            $i5Queued = $true
+        }
     } else {
         $queue = Invoke-I5Harness $i5Arguments
         $queue | Write-Host
@@ -764,6 +948,25 @@ try {
     if ($gatewayTunnel -and -not $gatewayTunnel.HasExited) {
         Stop-Process -Id $gatewayTunnel.Id -Force -ErrorAction SilentlyContinue
     }
+    if ($serverPoisonArmed) {
+        try {
+            $poisonDisarmOutput =
+                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    -Setting nativeNetworkPoisonEnabled `
+                    -Value false `
+                    -RequestId "$RunId-native-poison-disarm"
+            if ($LASTEXITCODE -eq 0) {
+                $serverPoisonReceipts +=
+                    (($poisonDisarmOutput -join [Environment]::NewLine) |
+                        ConvertFrom-Json)
+            } else {
+                $serverPoisonDisarmError =
+                    "Server native poison disarm exited $LASTEXITCODE."
+            }
+        } catch {
+            $serverPoisonDisarmError = $_.Exception.Message
+        }
+    }
     if ($serverLogicalPeerArmed) {
         try {
             $logicalPeerDisarmOutput =
@@ -1005,6 +1208,16 @@ try {
                 disarm_error = $serverLogicalPeerDisarmError
             })
     }
+    if ($EnableServerNativePoison -and $serverPoisonReceipts.Count -gt 0) {
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'server-runtime-native-poison.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                receipts = $serverPoisonReceipts
+                disarm_error = $serverPoisonDisarmError
+            })
+    }
     if ($completed -and $serverDisarmError) {
         throw "Scenario completed but server direct-control disarm failed: $serverDisarmError"
     }
@@ -1013,6 +1226,9 @@ try {
     }
     if ($completed -and $serverJournalDisarmError) {
         throw "Scenario completed but server ZDO-journal cleanup failed: $serverJournalDisarmError"
+    }
+    if ($completed -and $serverOwnershipDisarmError) {
+        throw "Scenario completed but server ownership-lease cleanup failed: $serverOwnershipDisarmError"
     }
     if ($completed -and $serverWorldZoneDisarmError) {
         throw "Scenario completed but server world/zone cleanup failed: $serverWorldZoneDisarmError"
@@ -1023,4 +1239,35 @@ try {
     if ($completed -and $serverLogicalPeerDisarmError) {
         throw "Scenario completed but server logical-peer cleanup failed: $serverLogicalPeerDisarmError"
     }
+    if ($completed -and $serverPoisonDisarmError) {
+        throw "Scenario completed but server native-poison cleanup failed: $serverPoisonDisarmError"
+    }
+}
+
+if ($completed -and $EnableC8Composition) {
+    $saveIntegrityAfter = Get-Am4SaveFingerprint
+    Write-JsonAtomic `
+        (Join-Path $runDirectory 'save-integrity-after.json') `
+        $saveIntegrityAfter
+    $saveIntegrity =
+        Compare-Am4SaveFingerprint $saveIntegrityBefore $saveIntegrityAfter
+    Write-JsonAtomic `
+        (Join-Path $runDirectory 'c8-save-integrity.json') `
+        $saveIntegrity
+    if ($saveIntegrity.result -ne 'passed') {
+        throw 'C8 save-integrity comparison failed.'
+    }
+    $c8SummaryPath = Join-Path $runDirectory 'c8-composition-summary.json'
+    $c8SummaryOutput =
+        & (Join-Path $PSScriptRoot 'Write-C8CompositionSummary.ps1') `
+            -RunDirectory $runDirectory `
+            -RunId $RunId `
+            -OutputPath $c8SummaryPath
+    $c8Summary =
+        Get-Content -LiteralPath $c8SummaryPath -Raw -Encoding utf8 |
+        ConvertFrom-Json
+    if ($c8Summary.result -ne 'passed') {
+        throw 'C8 native-zero composition did not satisfy the reducer.'
+    }
+    $c8SummaryOutput | Write-Host
 }

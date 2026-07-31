@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -171,6 +171,43 @@ if ($Profile -eq 'c7-cold') {
     )
 }
 
+if ($Profile -eq 'c8') {
+    $actions += @(
+        New-Action 'omen-c8-rendezvous-settle' 'omen' 'wait' 12 5
+        New-Action 'i5-c8-rendezvous' 'i5' 'motion_rendezvous' 20
+        New-Action 'omen-c8-rendezvous-ready' 'omen' 'wait' 10 3
+        New-Action 'i5-c8-rendezvous-settle' 'i5' 'wait' 10 3
+        New-Action 'omen-c8-motion-drive-one' 'omen' 'motion_drive' 16 6 4 0 east 'c8-omen-to-i5'
+        New-Action 'i5-c8-motion-observe-one' 'i5' 'motion_observe' 16 6 0 0 east 'c8-omen-to-i5'
+        New-Action 'omen-c8-motion-pair-one-settle' 'omen' 'wait' 10 4
+        New-Action 'i5-c8-motion-pair-one-settle' 'i5' 'wait' 10 4
+        New-Action 'omen-c8-motion-observe-two' 'omen' 'motion_observe' 16 6 0 0 north 'c8-i5-to-omen'
+        New-Action 'i5-c8-motion-drive-two' 'i5' 'motion_drive' 16 6 4 0 north 'c8-i5-to-omen'
+        New-Action 'omen-c8-motion-pair-two-settle' 'omen' 'wait' 10 4
+        New-Action 'i5-c8-motion-pair-two-settle' 'i5' 'wait' 10 4
+        New-Action 'omen-c8-motion-drive-gap' 'omen' 'motion_drive_gap' 16 6 6 0 west 'c8-gap-omen-to-i5'
+        New-Action 'i5-c8-motion-observe-gap' 'i5' 'motion_observe_gap' 16 6 0 0 west 'c8-gap-omen-to-i5'
+        New-Action 'omen-c8-direct-pulse' 'omen' 'direct_control_pulse' 20
+        New-Action 'i5-c8-direct-pulse' 'i5' 'direct_control_pulse' 20
+        New-Action 'omen-c8-routed-request' 'omen' 'routed_request' 20
+        New-Action 'i5-c8-routed-request' 'i5' 'routed_request' 20
+        New-Action 'omen-c8-routed-broadcast' 'omen' 'routed_broadcast' 20
+        New-Action 'i5-c8-routed-broadcast' 'i5' 'routed_broadcast' 20
+        New-Action 'omen-c8-routed-target' 'omen' 'routed_target_zdo' 20
+        New-Action 'i5-c8-routed-target' 'i5' 'routed_target_zdo' 20
+        New-Action 'omen-c8-zdo-journal-drive' 'omen' 'zdo_journal_drive' 300
+        New-Action 'i5-c8-zdo-journal-observe' 'i5' 'zdo_journal_observe' 300
+        New-Action 'c8-ownership-contended' 'omen' 'ownership_lease_pickup' 180
+        New-Action 'c8-ownership-contended' 'i5' 'ownership_contention' 60
+        New-Action 'omen-c8-post-contention-settle' 'omen' 'wait' 10 3
+        New-Action 'i5-c8-ownership-pickup' 'i5' 'ownership_lease_pickup' 180
+        New-Action 'omen-c8-zone-cross' 'omen' 'zone_cross' 25 0 72 0 east
+        New-Action 'i5-c8-zone-cross' 'i5' 'zone_cross' 25 0 72 0 west
+        New-Action 'omen-c8-zone-resume' 'omen' 'zone_membership_resume' 90
+        New-Action 'i5-c8-zone-resume' 'i5' 'zone_membership_resume' 90
+    )
+}
+
 $actions += @(
     New-Action 'omen-disconnect-resume' 'omen' 'disconnect_resume' 15
     New-Action 'i5-disconnect-resume' 'i5' 'disconnect_resume' 15
@@ -185,6 +222,26 @@ $manifest = [ordered]@{
     expires_utc = [DateTimeOffset]::UtcNow.AddHours(1).ToString('o')
     profile = $Profile
     actions = $actions
+}
+if ($Profile -eq 'c8') {
+    $manifest['c8_contract'] = [ordered]@{
+        semantics = @(
+            'steam_free_cold_join',
+            'co_presence',
+            'motion_both_directions',
+            'pickup_both_clients',
+            'target_zdo_interaction',
+            'two_logical_peer_ownership_contention',
+            'zone_exit_enter',
+            'clean_disconnect_rejoin')
+        faults = @(
+            'gateway_restart',
+            'udp_drop_range',
+            'websocket_resume')
+        integrity = @(
+            'client_and_server_native_poison',
+            'save_fingerprint_before_after')
+    }
 }
 
 $absoluteOutput = [IO.Path]::GetFullPath($OutputPath)
