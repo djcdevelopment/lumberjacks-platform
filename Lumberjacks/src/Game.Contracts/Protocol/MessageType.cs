@@ -23,6 +23,12 @@ public static class MessageType
     public const string ValheimOwnershipLeaseIssue = "valheim_ownership_lease_issue";
     public const string ValheimOwnershipAction = "valheim_ownership_action";
     public const string ValheimOwnershipActionResult = "valheim_ownership_action_result";
+    public const string ValheimWorldDescriptorPublish = "valheim_world_descriptor_publish";
+    public const string ValheimWorldDescriptorRequest = "valheim_world_descriptor_request";
+    public const string ValheimZoneMembershipEnter = "valheim_zone_membership_enter";
+    public const string ValheimZoneSnapshotPublish = "valheim_zone_snapshot_publish";
+    public const string ValheimZoneSnapshotAck = "valheim_zone_snapshot_ack";
+    public const string ValheimZoneMembershipLeave = "valheim_zone_membership_leave";
 
     // Server → Client
     public const string SessionStarted = "session_started";
@@ -41,6 +47,14 @@ public static class MessageType
     public const string ValheimOwnershipActionAuthorized = "valheim_ownership_action_authorized";
     public const string ValheimOwnershipActionCompleted = "valheim_ownership_action_completed";
     public const string ValheimOwnershipResultReceipt = "valheim_ownership_result_receipt";
+    public const string ValheimWorldDescriptor = "valheim_world_descriptor";
+    public const string ValheimWorldDescriptorReceipt = "valheim_world_descriptor_receipt";
+    public const string ValheimWorldDescriptorStatus = "valheim_world_descriptor_status";
+    public const string ValheimZoneSnapshotBuild = "valheim_zone_snapshot_build";
+    public const string ValheimZoneSnapshotChunk = "valheim_zone_snapshot_chunk";
+    public const string ValheimZoneSnapshotComplete = "valheim_zone_snapshot_complete";
+    public const string ValheimZoneSnapshotRelease = "valheim_zone_snapshot_release";
+    public const string ValheimZoneMembershipLeft = "valheim_zone_membership_left";
     public const string WorldSnapshot = "world_snapshot";
     public const string EntityUpdate = "entity_update";
     public const string EntityRemoved = "entity_removed";

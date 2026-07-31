@@ -30,7 +30,8 @@ param(
         'routedRpcCutoverEnabled',
         'zdoJournalCutoverEnabled',
         'zdoJournalCanonicalSessionEnabled',
-        'ownershipLeaseCutoverEnabled')]
+        'ownershipLeaseCutoverEnabled',
+        'worldZoneCutoverEnabled')]
     [Parameter(Mandatory)]
     [string] $Setting,
 

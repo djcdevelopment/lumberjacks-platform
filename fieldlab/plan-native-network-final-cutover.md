@@ -30,7 +30,8 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C2b | **Complete on AM4 (2026-07-30)** | `native-20260730-c2b-final`: both physical clients completed request/response, broadcast, real target-ZDO `RPC_ResetCloth`, deliberate withhold, and fresh-process reconnect. All 24 selected client attempts and all 19 selected server attempts were suppressed; zero native copies, duplicates, or dispatch failures were recorded. |
 | C3 | **Complete on AM4 (2026-07-30)** | `native-20260730-c3-sixth`: a run-tagged ZDO outside both native sync rings crossed a durable Lumberjacks journal, survived a Gateway restart, reached late i5 as a snapshot, then reached both clients as a valid delta and tombstone through typed apply. Stale/malformed entries were rejected before mutation; selected native `CreateSyncList` candidates and network `RPC_ZDOData` calls were zero. |
 | C4 | **Complete on AM4 (2026-07-30)** | `native-20260730-c4b-tenth`: the dedicated server created one real Raspberry ZDO per client; Lumberjacks issued three lease epochs, reclaimed on socket loss, rejected wrong/expired epochs, and authorized one valid action. Selected native ownership, selection, destroyed-ZDO, and inventory pickup paths were suppressed. OMEN inventory changed 9→10 and i5 11→12 exactly once; both completion frames were acknowledged and both clients completed fresh-process resume unattended. |
-| C5-C10 | Pending in dependency order | Do not skip the mandatory replans after C5 and C7. |
+| C5 | **Complete on AM4 (2026-07-30)** | `native-20260730-c5-final`: both physical clients entered from a validated Lumberjacks world descriptor while native `PeerInfo` world fields were blank. Each resumed the same first snapshot chunk after a forced socket drop, applied three typed objects, completed once, unloaded to zero stale objects, and spawned nothing when membership was withheld. AM4 suppressed every selected native membership candidate. Wrong protocol/world-generation cells stopped before scene entry. |
+| C6-C10 | Pending in dependency order | C6 motion authority is next. Do not skip the mandatory replan after C7. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -468,6 +469,54 @@ Lumberjacks-owned; those remain C5–C8.
 
 **Cost:** 4–7 focused days.
 
+**Accepted boundary — 2026-07-30**
+
+- In `native-20260730-c5-final`, OMEN and i5 used ComfyNetworkSense 0.5.44
+  (`0a9950b7...f648`) and the intended RTX 5070 / Intel Iris Xe renderers. Both
+  observed blank native world fields, accepted the Lumberjacks descriptor for
+  `initial_zone=0,0`, joined, and completed the unattended scenario.
+- Each client received three complete run-tagged typed ZDO bodies for its entered
+  membership. The client deliberately dropped the canonical socket after applying
+  chunk 1 but before acknowledging reliable sequence 9. The same sequence replayed
+  idempotently, chunks 2 and 3 remained semantic-ACK gated, and exactly one
+  snapshot-complete marker followed.
+- Membership leave destroyed all three selected objects on the client and server.
+  The deliberately withheld membership produced zero local objects. Native
+  `CreateSyncList` candidates for the selected objects were removed before delivery:
+  57/57 in the OMEN boundary and 90/90 by the i5 boundary.
+- `native-20260730-c5-fault-protocol` and
+  `native-20260730-c5-fault-worldgen` retained deterministic
+  `descriptor_protocol_mismatch` and `descriptor_world_generation_mismatch`
+  pre-scene stops. The latter used the accepted 0.5.44 artifact.
+- The retained `c5-boundary-summary.json` labels the limits: this is the selected
+  run-tagged membership path, not general-prefab breadth, motion, cold join,
+  native-zero composition, or P7 promotion.
+
+#### Mandatory replan after C5 — 2026-07-30
+
+- **Proceed to C6.** C5's descriptor, typed apply, recipient isolation, semantic ACK,
+  replay, leave, and withhold seams all crossed the real AM4 boundary. The kill
+  criterion for deterministic chunk resume did not fire.
+- C6 must bind the existing motion lane to C1's canonical connection and C3's actual
+  player ZDO. C5 source verification found that Valheim's
+  `CreateNewZDO(position, prefabHash)` overload does not serialize the prefab; any
+  C6-created or rebound entity must verify the real prefab/identity explicitly rather
+  than infer it from that overload.
+- The first C6 cell remains binary, not a feel test: one numbered motion range in each
+  direction, all native remote-transform writers poisoned, then a withheld range that
+  ends in hold plus explicit reliable resync. No smoothing/transpiling work is unlocked.
+- C5's Gateway world/zone state is process-resident. Time-derived snapshot epochs
+  prevent reuse across a process restart, but C7 must make descriptor publication and
+  cold-join reconstruction independent of an already-established native session. C7's
+  early 60-second socket-quarantine falsifier remains mandatory.
+- General-prefab membership and ownership/RPC method breadth are not smuggled into
+  C5's claim. C8 must run the complete poison ledger and reopen the owning slice for
+  any unadmitted native method.
+- Revised remaining cost is **9–20 focused engineering days for C6–C10**, plus C10's
+  two bounded P7 world reloads. C7 remains the largest architectural uncertainty;
+  C6 should stay within its existing 2–4 day band because the carriage and client
+  apply substrate already exist.
+
 ### C6 — Lumberjacks motion authority, without tuning
 
 **Build**
@@ -680,17 +729,16 @@ at least one native Valheim client; composition slices require both clients.
 
 ## Estimated remaining cost
 
-After C4, the current evidence supports **12–28 focused engineering days** for C5
+After C5, the current evidence supports **9–20 focused engineering days** for C6
 through C10, plus the two bounded P7 world reloads already budgeted in C10. The range
-still includes 1–2 days of remaining direct/routed method burn-down folded into
-C5-C7. World/zone bootstrap and Steam-free cold join still dominate the architectural
-risk.
+still includes remaining direct/routed/ownership breadth folded into C7-C8.
+Steam-free cold join now dominates the architectural risk.
 
 | Cost class | Slices |
 | --- | --- |
 | Lower, existing substrate | C8, C9, C10 |
 | Medium, mapped interception seams | C6 |
-| High, state-machine boundaries | C5, C7 |
+| High, state-machine boundary | C7 |
 
 This is a burn-down estimate, not a promise to execute all slices without reassessment.
 The intended rhythm is: build one boundary, run it for real, retain the receipt, update
@@ -698,9 +746,9 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0-C4 are complete. Continue **C5 world bootstrap and zone/interest synchronization**
-on the now-proven logical-peer, canonical-session, typed-ZDO and ownership boundaries.
-The next falsifying cell must initialize one client from a Lumberjacks world descriptor
-while the corresponding native world fields are blank, then cross one automated zone
-with native destination selection withheld and resume a chunked membership snapshot
-without duplicate objects. Replan immediately after C5, before beginning C6.
+C0-C5 and the mandatory C5 replan are complete. Continue **C6 Lumberjacks motion
+authority without tuning** on the canonical session and actual player entity.
+The next falsifying cell must send one numbered motion range from OMEN to i5 while
+all native remote-transform writers are poisoned, then reverse roles and withhold a
+numbered range to prove bounded hold plus explicit reliable resync. Do not begin
+motion tuning or the transpiling lab.

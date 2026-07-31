@@ -21,6 +21,7 @@ public class MessageRouter
     private readonly InventoryHandler _inventoryHandler;
     private readonly ValheimZdoJournalService _zdoJournal;
     private readonly ValheimOwnershipLeaseService _ownershipLeases;
+    private readonly ValheimWorldZoneService _worldZones;
     private readonly ILogger<MessageRouter> _logger;
 
     public MessageRouter(
@@ -32,6 +33,7 @@ public class MessageRouter
         InventoryHandler inventoryHandler,
         ValheimZdoJournalService zdoJournal,
         ValheimOwnershipLeaseService ownershipLeases,
+        ValheimWorldZoneService worldZones,
         ILogger<MessageRouter> logger)
     {
         _sessions = sessions;
@@ -42,6 +44,7 @@ public class MessageRouter
         _inventoryHandler = inventoryHandler;
         _zdoJournal = zdoJournal;
         _ownershipLeases = ownershipLeases;
+        _worldZones = worldZones;
         _logger = logger;
     }
 
@@ -147,6 +150,30 @@ public class MessageRouter
                 await HandleValheimOwnershipActionResultAsync(session, envelope);
                 break;
 
+            case MessageType.ValheimWorldDescriptorPublish:
+                await HandleValheimWorldDescriptorPublishAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimWorldDescriptorRequest:
+                await HandleValheimWorldDescriptorRequestAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimZoneMembershipEnter:
+                await HandleValheimZoneMembershipEnterAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimZoneSnapshotPublish:
+                await HandleValheimZoneSnapshotPublishAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimZoneSnapshotAck:
+                await HandleValheimZoneSnapshotAckAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimZoneMembershipLeave:
+                await HandleValheimZoneMembershipLeaveAsync(session, envelope);
+                break;
+
             default:
                 _logger.LogDebug("No route for message type {Type}", envelope.Type);
                 break;
@@ -162,6 +189,369 @@ public class MessageRouter
         _logger.LogInformation(
             "Valheim reliable ACK connection={ConnectionId} epoch={ResumeEpoch} through={Sequence} removed={Removed}",
             session.ConnectionId, session.ResumeEpoch, sequence, removed);
+    }
+
+    async Task HandleValheimWorldDescriptorPublishAsync(
+        GameSession session, Envelope envelope)
+    {
+        if (!string.Equals(session.ValheimRole, "server", StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId))
+            throw new InvalidDataException(
+                "world descriptor publish requires the logical server session");
+
+        var descriptor = JsonSerializer.Deserialize<ValheimWorldDescriptor>(
+            envelope.Payload.GetRawText(), JsonOptions.Default)
+            ?? throw new InvalidDataException("world descriptor payload missing");
+        ValidateWorldDescriptor(descriptor);
+        var key =
+            $"world-descriptor:{descriptor.WorldEpoch}:{descriptor.SaveEpoch}:{descriptor.RunId}";
+        if (session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
+            _worldZones.Publish(descriptor);
+
+        var receipt = await session.SendReliableAsync(
+            MessageType.ValheimWorldDescriptorReceipt,
+            new
+            {
+                descriptor.RunId,
+                descriptor.WorldEpoch,
+                descriptor.SaveEpoch,
+                publish_count = _worldZones.PublishCount,
+                logical_peer_id = session.ValheimLogicalPeerId,
+            },
+            CancellationToken.None);
+        if (!receipt.Queued) throw new InvalidOperationException(receipt.Reason);
+    }
+
+    async Task HandleValheimWorldDescriptorRequestAsync(
+        GameSession session, Envelope envelope)
+    {
+        if (!string.Equals(session.ValheimRole, "client", StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId))
+            throw new InvalidDataException(
+                "world descriptor request requires a logical client session");
+
+        var payload = envelope.Payload;
+        var runId = payload.TryGetProperty("run_id", out var runElement)
+            ? runElement.GetString() ?? string.Empty
+            : string.Empty;
+        var faultMode = payload.TryGetProperty("fault_mode", out var faultElement)
+            ? faultElement.GetString() ?? string.Empty
+            : string.Empty;
+        if (!SafeToken(runId, 80) ||
+            faultMode is not ("" or "wrong_protocol" or "wrong_world_generation"))
+            throw new InvalidDataException("invalid world descriptor request");
+
+        var descriptor = _worldZones.Current();
+        if (descriptor is null)
+        {
+            var status = await session.SendReliableAsync(
+                MessageType.ValheimWorldDescriptorStatus,
+                new { run_id = runId, available = false, reason = "server_not_published" },
+                CancellationToken.None);
+            if (!status.Queued) throw new InvalidOperationException(status.Reason);
+            return;
+        }
+
+        var delivered = faultMode switch
+        {
+            "wrong_protocol" => descriptor with
+            {
+                RunId = runId,
+                ProtocolVersion = descriptor.ProtocolVersion + 1,
+            },
+            "wrong_world_generation" => descriptor with
+            {
+                RunId = runId,
+                WorldGenerationVersion = descriptor.WorldGenerationVersion + 1,
+            },
+            _ => descriptor with { RunId = runId },
+        };
+        var queued = await session.SendReliableAsync(
+            MessageType.ValheimWorldDescriptor, delivered, CancellationToken.None);
+        if (!queued.Queued) throw new InvalidOperationException(queued.Reason);
+    }
+
+    static void ValidateWorldDescriptor(ValheimWorldDescriptor value)
+    {
+        if (value.SchemaVersion != 1 || value.ProtocolVersion != 1)
+            throw new InvalidDataException("world_descriptor_protocol_invalid");
+        if (!SafeToken(value.ReleaseId, 96) || !SafeToken(value.RunId, 80) ||
+            !SafeToken(value.WorldEpoch, 96))
+            throw new InvalidDataException("world_descriptor_identity_invalid");
+        if (string.IsNullOrWhiteSpace(value.WorldName) || value.WorldName.Length > 80 ||
+            string.IsNullOrWhiteSpace(value.SeedName) || value.SeedName.Length > 128 ||
+            value.WorldUid == 0 || value.WorldGenerationVersion <= 0 ||
+            value.SaveEpoch <= 0 || double.IsNaN(value.NetworkTime) ||
+            double.IsInfinity(value.NetworkTime))
+            throw new InvalidDataException("world_descriptor_fields_invalid");
+    }
+
+    async Task HandleValheimZoneMembershipEnterAsync(
+        GameSession session, Envelope envelope)
+    {
+        RequireValheimRole(session, "client", "zone membership enter");
+        var request = JsonSerializer.Deserialize<ValheimZoneMembershipRequest>(
+            envelope.Payload.GetRawText(), JsonOptions.Default)
+            ?? throw new InvalidDataException("zone membership payload missing");
+        ValidateZoneRequest(request);
+        var descriptor = _worldZones.Current()
+            ?? throw new InvalidDataException("zone membership world descriptor missing");
+        if (!string.Equals(request.WorldEpoch, descriptor.WorldEpoch,
+                StringComparison.Ordinal) ||
+            !string.Equals(request.RunId, descriptor.RunId, StringComparison.Ordinal))
+            throw new InvalidDataException("zone membership world scope mismatch");
+
+        var key =
+            $"zone-enter:{request.RunId}:{request.ActionId}:{request.ZoneEpoch}:{request.ZoneX}:{request.ZoneY}:{request.Mode}";
+        if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
+            return;
+        var state = _worldZones.Begin(session.ValheimLogicalPeerId, request);
+
+        if (request.Mode == "withhold")
+        {
+            var withheld = await session.SendReliableAsync(
+                MessageType.ValheimZoneSnapshotComplete,
+                new
+                {
+                    request.RunId,
+                    request.ActionId,
+                    request.WorldEpoch,
+                    request.ZoneEpoch,
+                    state.SnapshotEpoch,
+                    request.ZoneX,
+                    request.ZoneY,
+                    chunk_count = 0,
+                    object_count = 0,
+                    withheld = true,
+                },
+                CancellationToken.None);
+            if (!withheld.Queued) throw new InvalidOperationException(withheld.Reason);
+            return;
+        }
+
+        var server = FindValheimSession("server")
+            ?? throw new InvalidDataException("zone membership server missing");
+        var queued = await server.SendReliableAsync(
+            MessageType.ValheimZoneSnapshotBuild,
+            new
+            {
+                recipient_id = session.ValheimLogicalPeerId,
+                request.RunId,
+                request.ActionId,
+                request.WorldEpoch,
+                request.ZoneEpoch,
+                state.SnapshotEpoch,
+                request.ZoneX,
+                request.ZoneY,
+                request.Mode,
+            },
+            CancellationToken.None);
+        if (!queued.Queued) throw new InvalidOperationException(queued.Reason);
+    }
+
+    async Task HandleValheimZoneSnapshotPublishAsync(
+        GameSession session, Envelope envelope)
+    {
+        RequireValheimRole(session, "server", "zone snapshot publish");
+        var publication = JsonSerializer.Deserialize<ValheimZoneSnapshotPublication>(
+            envelope.Payload.GetRawText(), JsonOptions.Default)
+            ?? throw new InvalidDataException("zone snapshot publication missing");
+        ValidateZonePublication(publication);
+        var key =
+            $"zone-publish:{publication.RecipientId}:{publication.SnapshotEpoch}";
+        if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
+            return;
+        _worldZones.Publish(publication);
+        var target = _sessions.FindByValheimLogicalPeer(publication.RecipientId)
+            ?? throw new InvalidDataException("zone snapshot recipient missing");
+        await SendNextZoneChunkAsync(target);
+    }
+
+    async Task HandleValheimZoneSnapshotAckAsync(
+        GameSession session, Envelope envelope)
+    {
+        RequireValheimRole(session, "client", "zone snapshot ACK");
+        var snapshotEpoch = ReadInt64(envelope.Payload, "snapshot_epoch");
+        var chunkIndex = ReadInt32(envelope.Payload, "chunk_index");
+        if (snapshotEpoch < 1 || chunkIndex < 1)
+            throw new InvalidDataException("invalid zone snapshot ACK");
+        var key = $"zone-ack:{snapshotEpoch}:{chunkIndex}";
+        if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
+            return;
+
+        var result = _worldZones.Ack(
+            session.ValheimLogicalPeerId, snapshotEpoch, chunkIndex);
+        if (result.Duplicate) return;
+        if (!result.Complete)
+        {
+            await SendNextZoneChunkAsync(session);
+            return;
+        }
+        if (!_worldZones.TryMarkComplete(
+                session.ValheimLogicalPeerId, snapshotEpoch))
+            return;
+        var state = result.State;
+        var complete = await session.SendReliableAsync(
+            MessageType.ValheimZoneSnapshotComplete,
+            new
+            {
+                state.Request.RunId,
+                state.Request.ActionId,
+                state.Request.WorldEpoch,
+                state.Request.ZoneEpoch,
+                state.SnapshotEpoch,
+                state.Request.ZoneX,
+                state.Request.ZoneY,
+                chunk_count = state.Objects!.Length,
+                object_count = state.Objects.Length,
+                withheld = false,
+            },
+            CancellationToken.None);
+        if (!complete.Queued) throw new InvalidOperationException(complete.Reason);
+    }
+
+    async Task HandleValheimZoneMembershipLeaveAsync(
+        GameSession session, Envelope envelope)
+    {
+        RequireValheimRole(session, "client", "zone membership leave");
+        var runId = ReadString(envelope.Payload, "run_id");
+        var actionId = ReadString(envelope.Payload, "action_id");
+        var snapshotEpoch = ReadInt64(envelope.Payload, "snapshot_epoch");
+        if (!SafeToken(runId, 80) || !SafeToken(actionId, 80) ||
+            snapshotEpoch < 1)
+            throw new InvalidDataException("invalid zone membership leave");
+        var key = $"zone-leave:{runId}:{actionId}:{snapshotEpoch}";
+        if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
+            return;
+
+        var state = _worldZones.Leave(
+            session.ValheimLogicalPeerId, runId, actionId, snapshotEpoch);
+        var objects = state.Objects!.Select(value => new
+        {
+            uid_user = value.UidUser,
+            uid_id = value.UidId,
+        }).ToArray();
+        var server = FindValheimSession("server")
+            ?? throw new InvalidDataException("zone membership server missing");
+        var release = await server.SendReliableAsync(
+            MessageType.ValheimZoneSnapshotRelease,
+            new
+            {
+                recipient_id = session.ValheimLogicalPeerId,
+                state.Request.RunId,
+                state.Request.ActionId,
+                state.Request.WorldEpoch,
+                state.Request.ZoneEpoch,
+                state.SnapshotEpoch,
+                state.Request.ZoneX,
+                state.Request.ZoneY,
+                objects,
+            },
+            CancellationToken.None);
+        if (!release.Queued) throw new InvalidOperationException(release.Reason);
+
+        var left = await session.SendReliableAsync(
+            MessageType.ValheimZoneMembershipLeft,
+            new
+            {
+                state.Request.RunId,
+                state.Request.ActionId,
+                state.Request.WorldEpoch,
+                state.Request.ZoneEpoch,
+                state.SnapshotEpoch,
+                state.Request.ZoneX,
+                state.Request.ZoneY,
+                objects,
+            },
+            CancellationToken.None);
+        if (!left.Queued) throw new InvalidOperationException(left.Reason);
+    }
+
+    async Task SendNextZoneChunkAsync(GameSession target)
+    {
+        var chunk = _worldZones.NextChunk(target.ValheimLogicalPeerId)
+            ?? throw new InvalidDataException("zone snapshot has no pending chunk");
+        var queued = await target.SendReliableAsync(
+            MessageType.ValheimZoneSnapshotChunk,
+            new
+            {
+                chunk.RunId,
+                chunk.ActionId,
+                chunk.WorldEpoch,
+                chunk.ZoneEpoch,
+                chunk.SnapshotEpoch,
+                chunk.ZoneX,
+                chunk.ZoneY,
+                chunk.ChunkIndex,
+                chunk.ChunkCount,
+                @object = chunk.Object,
+            },
+            CancellationToken.None);
+        if (!queued.Queued) throw new InvalidOperationException(queued.Reason);
+    }
+
+    GameSession? FindValheimSession(string role) =>
+        _sessions.GetAll().FirstOrDefault(candidate =>
+            string.Equals(candidate.ValheimRole, role, StringComparison.Ordinal) &&
+            !string.IsNullOrWhiteSpace(candidate.ValheimLogicalPeerId));
+
+    static void RequireValheimRole(
+        GameSession session, string role, string operation)
+    {
+        if (!string.Equals(session.ValheimRole, role, StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId))
+            throw new InvalidDataException(
+                $"{operation} requires a logical {role} session");
+    }
+
+    static void ValidateZoneRequest(ValheimZoneMembershipRequest value)
+    {
+        if (!SafeToken(value.RunId, 80) || !SafeToken(value.ActionId, 80) ||
+            !SafeToken(value.WorldEpoch, 96) || value.ZoneEpoch < 1 ||
+            Math.Abs((long)value.ZoneX) > 1_000_000 ||
+            Math.Abs((long)value.ZoneY) > 1_000_000 ||
+            value.Mode is not ("resume_once" or "withhold"))
+            throw new InvalidDataException("invalid zone membership request");
+    }
+
+    static void ValidateZonePublication(ValheimZoneSnapshotPublication value)
+    {
+        if (!SafeToken(value.RecipientId, 80) ||
+            !SafeToken(value.RunId, 80) || !SafeToken(value.ActionId, 80) ||
+            !SafeToken(value.WorldEpoch, 96) || value.ZoneEpoch < 1 ||
+            value.SnapshotEpoch < 1 || Math.Abs((long)value.ZoneX) > 1_000_000 ||
+            Math.Abs((long)value.ZoneY) > 1_000_000 ||
+            value.Objects is not { Length: 3 })
+            throw new InvalidDataException("invalid zone snapshot publication");
+        foreach (var item in value.Objects)
+        {
+            if (item.UidUser == 0 || item.UidId == 0 || item.Prefab == 0 ||
+                item.OwnerRevision < 0 || item.DataRevision < 0 ||
+                !float.IsFinite(item.PositionX) ||
+                !float.IsFinite(item.PositionY) ||
+                !float.IsFinite(item.PositionZ) ||
+                string.IsNullOrEmpty(item.BodyBase64) ||
+                item.BodyBase64.Length > 1_500_000)
+                throw new InvalidDataException(
+                    "invalid zone snapshot object"
+                    + $" uid={item.UidUser}:{item.UidId}"
+                    + $" prefab={item.Prefab}"
+                    + $" owner_rev={item.OwnerRevision}"
+                    + $" data_rev={item.DataRevision}"
+                    + $" position={item.PositionX:R},{item.PositionY:R},{item.PositionZ:R}"
+                    + $" body_chars={item.BodyBase64?.Length ?? -1}");
+            try
+            {
+                if (Convert.FromBase64String(item.BodyBase64).Length is < 1 or > 1_000_000)
+                    throw new InvalidDataException(
+                        "invalid zone snapshot object body size");
+            }
+            catch (FormatException)
+            {
+                throw new InvalidDataException(
+                    "invalid zone snapshot object body base64");
+            }
+        }
     }
 
     async Task HandleValheimSessionProbeAsync(GameSession session, Envelope envelope)

@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -125,6 +125,17 @@ if ($Profile -eq 'c4') {
     $actions += @(
         New-Action 'omen-ownership-lease-pickup' 'omen' 'ownership_lease_pickup' 180
         New-Action 'i5-ownership-lease-pickup' 'i5' 'ownership_lease_pickup' 180
+    )
+}
+
+if ($Profile -eq 'c5') {
+    $actions += @(
+        New-Action 'omen-c5-zone-cross' 'omen' 'zone_cross' 25 0 72 0 east
+        New-Action 'i5-c5-zone-cross' 'i5' 'zone_cross' 25 0 72 0 west
+        New-Action 'omen-c5-membership-resume' 'omen' 'zone_membership_resume' 90
+        New-Action 'i5-c5-membership-resume' 'i5' 'zone_membership_resume' 90
+        New-Action 'omen-c5-membership-withhold' 'omen' 'zone_membership_withhold' 30
+        New-Action 'i5-c5-membership-withhold' 'i5' 'zone_membership_withhold' 30
     )
 }
 

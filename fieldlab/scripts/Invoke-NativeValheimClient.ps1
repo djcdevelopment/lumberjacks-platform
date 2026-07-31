@@ -15,7 +15,7 @@ interactive scheduled task on a remote Windows client.
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('preflight', 'start', 'smoke', 'poison-smoke', 'status', 'stop', 'install-task', 'queue-smoke', 'task-status', 'run-pending')]
+    [ValidateSet('preflight', 'start', 'smoke', 'poison-smoke', 'descriptor-smoke', 'status', 'stop', 'install-task', 'queue-smoke', 'task-status', 'run-pending')]
     [string] $Action = 'preflight',
 
     [ValidateSet('omen', 'i5')]
@@ -52,6 +52,11 @@ param(
     [switch] $EnableZdoJournalCanonicalSession,
 
     [switch] $EnableOwnershipLeaseCutover,
+
+    [switch] $EnableWorldZoneCutover,
+
+    [ValidateSet('', 'wrong_protocol', 'wrong_world_generation')]
+    [string] $WorldDescriptorFault = '',
 
     [string[]] $LaunchArguments = @(),
 
@@ -90,6 +95,7 @@ $directControlReceiptsPath = Join-Path $autotestRoot 'direct-control-cutover.jso
 $routedRpcReceiptsPath = Join-Path $autotestRoot 'routed-rpc-cutover.jsonl'
 $zdoJournalReceiptsPath = Join-Path $autotestRoot 'zdo-journal-cutover.jsonl'
 $ownershipLeaseReceiptsPath = Join-Path $autotestRoot 'ownership-lease-cutover.jsonl'
+$worldZoneReceiptsPath = Join-Path $autotestRoot 'world-zone-cutover.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
 
@@ -389,6 +395,45 @@ function Wait-ForPoison([string] $RequestedRunId, [int] $Seconds) {
     throw "A blocked native-poison receipt was not observed within $Seconds seconds."
 }
 
+function Wait-ForDescriptorRejected(
+    [string] $RequestedRunId,
+    [int] $Seconds,
+    [DateTimeOffset] $AfterUtc) {
+    $deadline = (Get-Date).AddSeconds($Seconds)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-Path -LiteralPath $worldZoneReceiptsPath -PathType Leaf) {
+            foreach ($line in Get-Content -LiteralPath $worldZoneReceiptsPath -Tail 256 -ErrorAction SilentlyContinue) {
+                try {
+                    $row = $line | ConvertFrom-Json -ErrorAction Stop
+                    $timestamp = [DateTimeOffset]::Parse([string]$row.timestamp_utc)
+                    if ($row.run_id -eq $RequestedRunId -and
+                        $timestamp -gt $AfterUtc -and
+                        $row.state -eq 'descriptor_rejected_before_scene') {
+                        $joined = @(Read-AutotestRows $RequestedRunId | Where-Object {
+                            $_.state -eq 'joined' -and
+                            ([DateTimeOffset]::Parse([string]$_.timestamp_utc) -gt $AfterUtc)
+                        })
+                        if ($joined.Count -gt 0) {
+                            throw 'The client joined despite the rejected world descriptor.'
+                        }
+                        return $row
+                    }
+                } catch {
+                    if ($_.Exception.Message -eq
+                        'The client joined despite the rejected world descriptor.') {
+                        throw
+                    }
+                }
+            }
+        }
+        if (-not (Get-Process valheim -ErrorAction SilentlyContinue)) {
+            throw 'Valheim exited before the descriptor rejection marker arrived.'
+        }
+        Start-Sleep -Seconds 1
+    }
+    throw "A pre-scene world descriptor rejection was not observed within $Seconds seconds."
+}
+
 function Copy-EvidenceFile([string] $Source, [string] $DestinationName) {
     if (-not $script:ActiveRunDirectory -or
         -not (Test-Path -LiteralPath $Source -PathType Leaf)) { return $null }
@@ -430,6 +475,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
             [bool]$EnableZdoJournalCanonicalSession
         ownership_lease_cutover_requested =
             [bool]$EnableOwnershipLeaseCutover
+        world_zone_cutover_requested = [bool]$EnableWorldZoneCutover
+        world_descriptor_fault = $WorldDescriptorFault
         preflight = $Preflight
         deployment = $Deployment
         plugin_sha256 = if (Test-Path -LiteralPath $pluginPath -PathType Leaf) {
@@ -454,6 +501,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
                 Copy-EvidenceFile $zdoJournalReceiptsPath 'zdo-journal-cutover.jsonl'
             ownership_lease_cutover =
                 Copy-EvidenceFile $ownershipLeaseReceiptsPath 'ownership-lease-cutover.jsonl'
+            world_zone_cutover =
+                Copy-EvidenceFile $worldZoneReceiptsPath 'world-zone-cutover.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'
@@ -478,6 +527,8 @@ function Write-NativeAutotestRequest([bool] $ExpectPoison) {
         zdo_journal_canonical_session =
             [bool]$EnableZdoJournalCanonicalSession
         ownership_lease_cutover = [bool]$EnableOwnershipLeaseCutover
+        world_zone_cutover = [bool]$EnableWorldZoneCutover
+        world_descriptor_fault = $WorldDescriptorFault
     }
     Write-JsonAtomic $autotestRequestPath $request
     return $now
@@ -529,6 +580,19 @@ function Start-NativeRun([bool] $StopAfterHold, [bool] $ExpectPoison) {
         [void](Stop-Valheim)
         Write-RunReceipt 'native_poison_blocked_and_stopped' $preflight $deployment
         Write-Host ("native poison blocked {0} -> {1}" -f $script:PoisonRow.funnel, $script:ActiveRunDirectory)
+        return
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($WorldDescriptorFault)) {
+        if (-not $EnableWorldZoneCutover) {
+            throw 'WorldDescriptorFault requires EnableWorldZoneCutover.'
+        }
+        $script:ScenarioTerminalRow =
+            Wait-ForDescriptorRejected $RunId $WaitSeconds ([DateTimeOffset]$attempt.launched_utc)
+        [void](Stop-Valheim)
+        Write-RunReceipt 'world_descriptor_rejected_before_scene_and_stopped' $preflight $deployment
+        Write-Host ("descriptor rejected before scene ({0}) -> {1}" -f
+            $WorldDescriptorFault, $script:ActiveRunDirectory)
         return
     }
 
@@ -603,6 +667,8 @@ function Invoke-PendingRun() {
             [bool]$pending.enable_zdo_journal_canonical_session
         EnableOwnershipLeaseCutover =
             [bool]$pending.enable_ownership_lease_cutover
+        EnableWorldZoneCutover = [bool]$pending.enable_world_zone_cutover
+        WorldDescriptorFault = [string]$pending.world_descriptor_fault
         LaunchArguments = @($pending.launch_arguments)
     }
     & $PSCommandPath @invoke
@@ -678,6 +744,8 @@ function Queue-InteractiveSmoke() {
             [bool]$EnableZdoJournalCanonicalSession
         enable_ownership_lease_cutover =
             [bool]$EnableOwnershipLeaseCutover
+        enable_world_zone_cutover = [bool]$EnableWorldZoneCutover
+        world_descriptor_fault = $WorldDescriptorFault
         launch_arguments = @($LaunchArguments)
     }
     Write-JsonAtomic $PendingRequestPath $pending
@@ -783,6 +851,17 @@ switch ($Action) {
     }
     'poison-smoke' {
         try { Start-NativeRun $true $true }
+        catch {
+            if (-not $script:ActiveRunDirectory -and $RunId) {
+                $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
+            }
+            [void](Stop-Valheim $false)
+            Write-RunReceipt 'failed_and_stopped' $null $null $_.Exception.Message
+            throw
+        }
+    }
+    'descriptor-smoke' {
+        try { Start-NativeRun $true $false }
         catch {
             if (-not $script:ActiveRunDirectory -and $RunId) {
                 $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client

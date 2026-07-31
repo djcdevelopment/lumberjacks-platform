@@ -33,6 +33,19 @@ Citations of the form `ZDOMan:724` refer to line numbers in the decompiled files
 > delta and tombstone, and the final two-recipient queue had zero pending. No
 > run-scoped ZDO row used HTTP carriage. Funnel 3 ownership transfer is unchanged and
 > is the remaining C4 boundary.
+>
+> **2026-07-30 C5 implementation overlay:** `native-20260730-c5-final` moved the
+> selected world descriptor and run-tagged zone membership onto the canonical
+> Lumberjacks session. The server blanked the native `PeerInfo` world fields; both
+> physical clients accepted the complete Lumberjacks descriptor and entered the
+> intended world. Each client applied three complete typed membership ZDO bodies,
+> dropped the socket after chunk 1 but before ACK, replayed the same reliable sequence
+> idempotently, completed exactly once, left with zero stale objects, and spawned
+> nothing when membership was withheld. AM4 removed every selected C5 object from
+> native `CreateSyncList` delivery. Wrong protocol and world-generation descriptors
+> stopped before scene entry. This promotes only the selected run-tagged
+> world/membership boundary; general-prefab breadth, motion, cold join, and the
+> underlying Steam transport remain C6-C8 work.
 
 ---
 

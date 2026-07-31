@@ -49,6 +49,10 @@ param(
 
     [switch] $EnableOwnershipLeaseCutover,
 
+    [switch] $EnableWorldZoneCutover,
+
+    [switch] $EnableGatewayJournalRestartProof,
+
     [string] $ServerGatewayUrl = 'http://100.124.12.37:4000'
 )
 
@@ -76,6 +80,13 @@ if ($EnableOwnershipLeaseCutover -and
     (-not $EnableZdoJournalCutover -or -not $EnableZdoJournalCanonicalSession)) {
     throw '-EnableOwnershipLeaseCutover requires canonical ZDO journal cutover.'
 }
+if ($EnableWorldZoneCutover -and
+    (-not $EnableZdoJournalCutover -or -not $EnableZdoJournalCanonicalSession)) {
+    throw '-EnableWorldZoneCutover requires canonical ZDO journal cutover.'
+}
+if ($EnableGatewayJournalRestartProof -and -not $EnableZdoJournalCutover) {
+    throw '-EnableGatewayJournalRestartProof requires ZDO journal cutover.'
+}
 
 $scenario = (Resolve-Path -LiteralPath $ScenarioPath -ErrorAction Stop).Path
 $dll = (Resolve-Path -LiteralPath $DllPath -ErrorAction Stop).Path
@@ -100,6 +111,9 @@ $serverJournalDisarmError = $null
 $serverOwnershipArmed = $false
 $serverOwnershipReceipts = @()
 $serverOwnershipDisarmError = $null
+$serverWorldZoneArmed = $false
+$serverWorldZoneReceipts = @()
+$serverWorldZoneDisarmError = $null
 $gatewayRestartReceipt = $null
 $omenHarnessProcess = $null
 $useRoutedRpc =
@@ -234,6 +248,18 @@ try {
         $serverOwnershipArmed = $true
     }
 
+    if ($EnableWorldZoneCutover) {
+        $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+        $worldZoneArmOutput = & $serverControl `
+            -Setting worldZoneCutoverEnabled `
+            -Value true `
+            -RequestId "$RunId-world-zone-arm"
+        if ($LASTEXITCODE -ne 0) { throw 'Server world/zone cutover arm failed.' }
+        $serverWorldZoneReceipts +=
+            (($worldZoneArmOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+        $serverWorldZoneArmed = $true
+    }
+
     & (Join-Path $i5Tools 'Deploy-ToI5.ps1') `
         -Path $clientHarness `
         -Dest C:/deploy/baseline/fieldlab/scripts
@@ -265,6 +291,9 @@ try {
         }
         if ($EnableOwnershipLeaseCutover) {
             $i5Arguments += '-EnableOwnershipLeaseCutover'
+        }
+        if ($EnableWorldZoneCutover) {
+            $i5Arguments += '-EnableWorldZoneCutover'
         }
 
         $gatewayCompose = Join-Path $repoRoot 'Lumberjacks\infra\docker'
@@ -301,6 +330,9 @@ try {
         if ($EnableOwnershipLeaseCutover) {
             $omenHarnessArguments += '-EnableOwnershipLeaseCutover'
         }
+        if ($EnableWorldZoneCutover) {
+            $omenHarnessArguments += '-EnableWorldZoneCutover'
+        }
         $omenHarnessProcess = Start-Process `
             -FilePath (Join-Path $PSHOME 'powershell.exe') `
             -ArgumentList $omenHarnessArguments `
@@ -309,70 +341,72 @@ try {
             -RedirectStandardError $omenStderr `
             -PassThru
 
-        $serverJournalPath =
-            '/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/zdo-journal-cutover.jsonl'
-        $mutationDeadline = (Get-Date).AddSeconds($WaitSeconds)
-        $mutationRow = $null
-        do {
-            $tail = & ssh -o BatchMode=yes am4 `
-                "if test -f '$serverJournalPath'; then tail -n 256 '$serverJournalPath'; fi"
-            if ($LASTEXITCODE -ne 0) {
-                throw 'Server C3 evidence tail failed while waiting for the first mutation.'
+        if ($EnableGatewayJournalRestartProof) {
+            $serverJournalPath =
+                '/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/zdo-journal-cutover.jsonl'
+            $mutationDeadline = (Get-Date).AddSeconds($WaitSeconds)
+            $mutationRow = $null
+            do {
+                $tail = & ssh -o BatchMode=yes am4 `
+                    "if test -f '$serverJournalPath'; then tail -n 256 '$serverJournalPath'; fi"
+                if ($LASTEXITCODE -ne 0) {
+                    throw 'Server C3 evidence tail failed while waiting for the first mutation.'
+                }
+                foreach ($line in @($tail)) {
+                    try {
+                        $row = $line | ConvertFrom-Json -ErrorAction Stop
+                        if ($row.run_id -eq $RunId -and
+                            $row.state -eq 'mutation_posted' -and
+                            $row.detail -notmatch 'delivery_only=True') {
+                            $mutationRow = $row
+                        }
+                    } catch { }
+                }
+                if (-not $mutationRow) { Start-Sleep -Seconds 2 }
+            } while (-not $mutationRow -and (Get-Date) -lt $mutationDeadline)
+            if (-not $mutationRow) {
+                throw 'The first durable C3 mutation was not observed before the deadline.'
             }
-            foreach ($line in @($tail)) {
-                try {
-                    $row = $line | ConvertFrom-Json -ErrorAction Stop
-                    if ($row.run_id -eq $RunId -and
-                        $row.state -eq 'mutation_posted' -and
-                        $row.detail -notmatch 'delivery_only=True') {
-                        $mutationRow = $row
-                    }
-                } catch { }
-            }
-            if (-not $mutationRow) { Start-Sleep -Seconds 2 }
-        } while (-not $mutationRow -and (Get-Date) -lt $mutationDeadline)
-        if (-not $mutationRow) {
-            throw 'The first durable C3 mutation was not observed before the deadline.'
-        }
 
-        $beforeRestart =
-            Invoke-RestMethod -Method Get -Uri "$OmenGatewayUrl/valheim/zdo-journal/status"
-        $restartStarted = [DateTimeOffset]::UtcNow
-        Push-Location $gatewayCompose
-        try {
-            & docker compose -p lumberjacks-local restart gateway
-            if ($LASTEXITCODE -ne 0) { throw 'Gateway restart for C3 replay proof failed.' }
-        } finally {
-            Pop-Location
-        }
-        $healthDeadline = (Get-Date).AddSeconds(90)
-        do {
+            $beforeRestart =
+                Invoke-RestMethod -Method Get -Uri "$OmenGatewayUrl/valheim/zdo-journal/status"
+            $restartStarted = [DateTimeOffset]::UtcNow
+            Push-Location $gatewayCompose
             try {
-                $afterRestart =
-                    Invoke-RestMethod -Method Get -Uri "$OmenGatewayUrl/valheim/zdo-journal/status"
-            } catch {
-                $afterRestart = $null
+                & docker compose -p lumberjacks-local restart gateway
+                if ($LASTEXITCODE -ne 0) { throw 'Gateway restart for C3 replay proof failed.' }
+            } finally {
+                Pop-Location
             }
-            if (-not $afterRestart) { Start-Sleep -Seconds 1 }
-        } while (-not $afterRestart -and (Get-Date) -lt $healthDeadline)
-        if (-not $afterRestart) {
-            throw 'Gateway did not restore the C3 journal status surface after restart.'
+            $healthDeadline = (Get-Date).AddSeconds(90)
+            do {
+                try {
+                    $afterRestart =
+                        Invoke-RestMethod -Method Get -Uri "$OmenGatewayUrl/valheim/zdo-journal/status"
+                } catch {
+                    $afterRestart = $null
+                }
+                if (-not $afterRestart) { Start-Sleep -Seconds 1 }
+            } while (-not $afterRestart -and (Get-Date) -lt $healthDeadline)
+            if (-not $afterRestart) {
+                throw 'Gateway did not restore the C3 journal status surface after restart.'
+            }
+            if ([long]$afterRestart.durable_objects -lt 1) {
+                throw 'Gateway restart replay restored zero durable C3 objects.'
+            }
+            $gatewayRestartReceipt = [ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                restarted_utc = $restartStarted.ToString('o')
+                mutation = $mutationRow
+                before = $beforeRestart
+                after = $afterRestart
+                durable_replay_verified = [long]$afterRestart.durable_objects -ge 1
+            }
+            Write-JsonAtomic `
+                (Join-Path $runDirectory 'gateway-journal-restart.json') `
+                $gatewayRestartReceipt
         }
-        if ([long]$afterRestart.durable_objects -lt 1) {
-            throw 'Gateway restart replay restored zero durable C3 objects.'
-        }
-        $gatewayRestartReceipt = [ordered]@{
-            schema_version = 1
-            run_id = $RunId
-            restarted_utc = $restartStarted.ToString('o')
-            mutation = $mutationRow
-            before = $beforeRestart
-            after = $afterRestart
-            durable_replay_verified = [long]$afterRestart.durable_objects -ge 1
-        }
-        Write-JsonAtomic `
-            (Join-Path $runDirectory 'gateway-journal-restart.json') `
-            $gatewayRestartReceipt
 
         $queue = Invoke-I5Harness $i5Arguments
         $queue | Write-Host
@@ -456,6 +490,16 @@ try {
             throw 'Server ownership-lease evidence retrieval failed.'
         }
     }
+    if ($EnableWorldZoneCutover) {
+        $serverDirectory = Join-Path $runDirectory 'server'
+        New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/world-zone-cutover.jsonl' `
+            "$serverDirectory\world-zone-cutover.jsonl"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Server world/zone evidence retrieval failed.'
+        }
+    }
 
     & scp -r `
         "i5:C:/deploy/baseline/fieldlab/runs/native-valheim/$RunId/i5" `
@@ -494,7 +538,7 @@ try {
         }
     }
 
-    if ($EnableZdoJournalCutover) {
+    if ($EnableGatewayJournalRestartProof) {
         $worldEpoch = [string]$gatewayRestartReceipt.mutation.world_epoch
         $finalRunStatus =
             Invoke-RestMethod -Method Get -Uri (
@@ -620,6 +664,25 @@ try {
             $serverOwnershipDisarmError = $_.Exception.Message
         }
     }
+    if ($serverWorldZoneArmed) {
+        try {
+            $worldZoneDisarmOutput =
+                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    -Setting worldZoneCutoverEnabled `
+                    -Value false `
+                    -RequestId "$RunId-world-zone-disarm"
+            if ($LASTEXITCODE -eq 0) {
+                $serverWorldZoneReceipts +=
+                    (($worldZoneDisarmOutput -join [Environment]::NewLine) |
+                        ConvertFrom-Json)
+            } else {
+                $serverWorldZoneDisarmError =
+                    "Server world/zone disarm exited $LASTEXITCODE."
+            }
+        } catch {
+            $serverWorldZoneDisarmError = $_.Exception.Message
+        }
+    }
     if ($serverJournalArmed) {
         if ($serverJournalCanonicalArmed) {
             try {
@@ -719,6 +782,16 @@ try {
                 disarm_error = $serverOwnershipDisarmError
             })
     }
+    if ($EnableWorldZoneCutover -and $serverWorldZoneReceipts.Count -gt 0) {
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'server-runtime-world-zone.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                receipts = $serverWorldZoneReceipts
+                disarm_error = $serverWorldZoneDisarmError
+            })
+    }
     if ($completed -and $serverDisarmError) {
         throw "Scenario completed but server direct-control disarm failed: $serverDisarmError"
     }
@@ -727,5 +800,8 @@ try {
     }
     if ($completed -and $serverJournalDisarmError) {
         throw "Scenario completed but server ZDO-journal cleanup failed: $serverJournalDisarmError"
+    }
+    if ($completed -and $serverWorldZoneDisarmError) {
+        throw "Scenario completed but server world/zone cleanup failed: $serverWorldZoneDisarmError"
     }
 }
