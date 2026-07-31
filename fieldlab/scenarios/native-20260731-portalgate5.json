@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "run_id": "native-20260731-portalgate5",
+  "created_utc": "2026-07-31T10:18:07.0231766+00:00",
+  "expires_utc": "2026-07-31T11:18:07.0231766+00:00",
+  "profile": "c8",
+  "actions": [
+    {
+      "id": "omen-portal-slice",
+      "client": "omen",
+      "kind": "teleport_to",
+      "deadline_seconds": 25,
+      "duration_seconds": 0,
+      "distance_meters": 0,
+      "radius_meters": 0,
+      "direction": "",
+      "target_tag": "",
+      "world_x": 3250,
+      "world_y": 80,
+      "world_z": 2250
+    },
+    {
+      "id": "omen-portal-roundtrip",
+      "client": "omen",
+      "kind": "portal_roundtrip",
+      "deadline_seconds": 30,
+      "duration_seconds": 0,
+      "distance_meters": 0,
+      "radius_meters": 256,
+      "direction": "",
+      "target_tag": ""
+    },
+    {
+      "id": "i5-portal-gate-settle",
+      "client": "i5",
+      "kind": "wait",
+      "deadline_seconds": 50,
+      "duration_seconds": 45,
+      "distance_meters": 0,
+      "radius_meters": 0,
+      "direction": "",
+      "target_tag": ""
+    }
+  ]
+}

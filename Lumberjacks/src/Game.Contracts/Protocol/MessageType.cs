@@ -39,6 +39,8 @@ public static class MessageType
     public const string ValheimDirectPulse = "valheim_direct_pulse";
     public const string ValheimLogicalPeerAttached = "valheim_logical_peer_attached";
     public const string ValheimLogicalPeerDetached = "valheim_logical_peer_detached";
+    public const string ValheimRemotePlayerDescriptor = "valheim_remote_player_descriptor";
+    public const string ValheimRemotePlayerTombstone = "valheim_remote_player_tombstone";
     public const string ValheimRoutedRpc = "valheim_routed_rpc";
     public const string ValheimZdoDelivery = "valheim_zdo_delivery";
     public const string ValheimZdoMutationReceipt = "valheim_zdo_mutation_receipt";

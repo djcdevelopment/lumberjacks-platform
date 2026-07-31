@@ -343,6 +343,12 @@ function Wait-ForJoined(
         })
         $failed = $rows | Where-Object state -eq 'failed' | Select-Object -Last 1
         if ($failed) { throw "Native autotest failed: $($failed.detail)" }
+        $bootstrapFailed = $rows |
+            Where-Object state -eq 'bootstrap_failed' |
+            Select-Object -Last 1
+        if ($bootstrapFailed) {
+            throw "Native bootstrap failed: $($bootstrapFailed.detail)"
+        }
         $recovered = $rows | Where-Object state -eq 'profile_recovered' | Select-Object -Last 1
         if ($recovered) { return $recovered }
         $joined = $rows | Where-Object state -eq 'joined' | Select-Object -Last 1

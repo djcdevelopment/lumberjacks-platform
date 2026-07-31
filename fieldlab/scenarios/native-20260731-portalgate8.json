@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "run_id": "native-20260731-portalgate8",
+  "created_utc": "2026-07-31T10:34:14.0000000+00:00",
+  "expires_utc": "2026-07-31T11:34:14.0000000+00:00",
+  "profile": "c8",
+  "actions": [
+    {
+      "id": "omen-portal-slice",
+      "client": "omen",
+      "kind": "teleport_to",
+      "deadline_seconds": 18,
+      "duration_seconds": 0,
+      "distance_meters": 0,
+      "radius_meters": 0,
+      "direction": "",
+      "target_tag": "",
+      "world_x": 3250,
+      "world_y": 80,
+      "world_z": 2250
+    },
+    {
+      "id": "omen-portal-roundtrip",
+      "client": "omen",
+      "kind": "portal_roundtrip",
+      "deadline_seconds": 35,
+      "duration_seconds": 0,
+      "distance_meters": 0,
+      "radius_meters": 256,
+      "direction": "",
+      "target_tag": ""
+    }
+  ]
+}

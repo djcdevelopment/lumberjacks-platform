@@ -1190,16 +1190,40 @@ function usage() {
   node scripts/roadmap.mjs note --milestone M0 --kind implementation --summary "..." --impact "..." [--verification "..."] [--evidence "..."]`);
 }
 
-try {
-  const [command, ...args] = process.argv.slice(2);
-  if (command === 'render') renderCommand();
-  else if (command === 'check') check(args);
-  else if (command === 'note') addNote(args);
-  else {
-    usage();
-    process.exitCode = command ? 1 : 0;
+export {
+  validate,
+  render,
+  check,
+  noteKinds,
+  statuses,
+  escapeHtml,
+  notesRelative,
+  outputRelative,
+  notesPath,
+  outputPath,
+};
+
+// Importing this module (the test suite does) must not run the CLI; only a direct
+// `node scripts/roadmap.mjs <command>` invocation dispatches. Mirrors the guard in
+// workbench.mjs, including the Windows drive-letter-case caveat.
+const cliPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
+const selfPath = fileURLToPath(import.meta.url);
+const invokedAsCli = process.platform === 'win32'
+  ? cliPath.toLowerCase() === selfPath.toLowerCase()
+  : cliPath === selfPath;
+
+if (invokedAsCli) {
+  try {
+    const [command, ...args] = process.argv.slice(2);
+    if (command === 'render') renderCommand();
+    else if (command === 'check') check(args);
+    else if (command === 'note') addNote(args);
+    else {
+      usage();
+      process.exitCode = command ? 1 : 0;
+    }
+  } catch (error) {
+    console.error(`roadmap: ${error.message}`);
+    process.exitCode = 1;
   }
-} catch (error) {
-  console.error(`roadmap: ${error.message}`);
-  process.exitCode = 1;
 }

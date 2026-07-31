@@ -49,7 +49,10 @@ function New-Action(
     [double] $DistanceMeters = 0,
     [double] $RadiusMeters = 0,
     [string] $Direction = '',
-    [string] $TargetTag = '') {
+    [string] $TargetTag = '',
+    [double] $WorldX = 0,
+    [double] $WorldY = 0,
+    [double] $WorldZ = 0) {
     [ordered]@{
         id = $Id
         client = $Client
@@ -60,12 +63,28 @@ function New-Action(
         radius_meters = $RadiusMeters
         direction = $Direction
         target_tag = $TargetTag
+        world_x = $WorldX
+        world_y = $WorldY
+        world_z = $WorldZ
     }
 }
 
 $actions = @(
     New-Action 'omen-settle' 'omen' 'wait' 10 2
     New-Action 'i5-settle' 'i5' 'wait' 10 2
+)
+
+if ($Profile -eq 'c8') {
+    # Character profiles persist their last position. A prior portal proof can leave
+    # either client inside a portal trigger, so establish a safe movement origin
+    # before any motion choreography.
+    $actions += @(
+        New-Action 'omen-c8-safe-origin' 'omen' 'teleport_to' 15 0 0 0 '' '' 2211 80 -69
+        New-Action 'i5-c8-safe-origin' 'i5' 'teleport_to' 15 0 0 0 '' '' 2211 80 -69
+    )
+}
+
+$actions += @(
     New-Action 'omen-move' 'omen' 'move' 15 3 6 0 east
     New-Action 'i5-move' 'i5' 'move' 15 3 6 0 north
 )
@@ -185,6 +204,7 @@ if ($Profile -eq 'c8') {
         New-Action 'i5-c8-motion-drive-two' 'i5' 'motion_drive' 16 6 4 0 north 'c8-i5-to-omen'
         New-Action 'omen-c8-motion-pair-two-settle' 'omen' 'wait' 10 4
         New-Action 'i5-c8-motion-pair-two-settle' 'i5' 'wait' 10 4
+        New-Action 'omen-c8-gap-observer-align' 'omen' 'wait' 10 4
         New-Action 'omen-c8-motion-drive-gap' 'omen' 'motion_drive_gap' 16 6 6 0 west 'c8-gap-omen-to-i5'
         New-Action 'i5-c8-motion-observe-gap' 'i5' 'motion_observe_gap' 16 6 0 0 west 'c8-gap-omen-to-i5'
         New-Action 'omen-c8-direct-pulse' 'omen' 'direct_control_pulse' 20
@@ -195,16 +215,22 @@ if ($Profile -eq 'c8') {
         New-Action 'i5-c8-routed-broadcast' 'i5' 'routed_broadcast' 20
         New-Action 'omen-c8-routed-target' 'omen' 'routed_target_zdo' 20
         New-Action 'i5-c8-routed-target' 'i5' 'routed_target_zdo' 20
-        New-Action 'omen-c8-zdo-journal-drive' 'omen' 'zdo_journal_drive' 300
-        New-Action 'i5-c8-zdo-journal-observe' 'i5' 'zdo_journal_observe' 300
-        New-Action 'c8-ownership-contended' 'omen' 'ownership_lease_pickup' 180
+        New-Action 'omen-c8-zdo-journal-drive' 'omen' 'zdo_journal_drive' 90
+        New-Action 'i5-c8-zdo-journal-observe' 'i5' 'zdo_journal_observe' 90
+        New-Action 'omen-c8-gateway-restart-resume' 'omen' 'gateway_restart_resume' 20
+        New-Action 'i5-c8-gateway-restart-resume' 'i5' 'gateway_restart_resume' 20
+        New-Action 'c8-ownership-contended' 'omen' 'ownership_lease_pickup' 90
         New-Action 'c8-ownership-contended' 'i5' 'ownership_contention' 60
         New-Action 'omen-c8-post-contention-settle' 'omen' 'wait' 10 3
-        New-Action 'i5-c8-ownership-pickup' 'i5' 'ownership_lease_pickup' 180
+        New-Action 'i5-c8-ownership-pickup' 'i5' 'ownership_lease_pickup' 90
         New-Action 'omen-c8-zone-cross' 'omen' 'zone_cross' 25 0 72 0 east
         New-Action 'i5-c8-zone-cross' 'i5' 'zone_cross' 25 0 72 0 west
         New-Action 'omen-c8-zone-resume' 'omen' 'zone_membership_resume' 90
         New-Action 'i5-c8-zone-resume' 'i5' 'zone_membership_resume' 90
+        New-Action 'omen-c8-portal-slice' 'omen' 'teleport_to' 15 0 0 0 '' '' 3250 80 2250
+        New-Action 'i5-c8-portal-slice' 'i5' 'teleport_to' 15 0 0 0 '' '' 3250 80 2250
+        New-Action 'omen-c8-portal-roundtrip' 'omen' 'portal_roundtrip' 22 0 0 256
+        New-Action 'i5-c8-portal-roundtrip' 'i5' 'portal_roundtrip' 22 0 0 256
     )
 }
 

@@ -111,19 +111,20 @@ public sealed class TelemetryV0SessionsEndpointsTests
         var sessions = new SessionManager();
         var session = sessions.Create(new FakeWebSocket());
         session.ValheimRecipientId = "opaque-recipient";
+        session.AuthorizeValheimCharacter(10, 20);
 
-        Assert.True(session.TryAcceptValheimMotion(10, 20, 65534));
-        Assert.False(session.TryAcceptValheimMotion(10, 20, 65534));
-        Assert.True(session.TryAcceptValheimMotion(10, 20, 65535));
-        Assert.True(session.TryAcceptValheimMotion(10, 20, 0));
-        Assert.False(session.TryAcceptValheimMotion(10, 20, 65535));
-        Assert.False(session.TryAcceptValheimMotion(10, 21, 1));
+        Assert.True(session.TryAcceptValheimMotion(10, 20, 65534, 1, 2, 3));
+        Assert.False(session.TryAcceptValheimMotion(10, 20, 65534, 1, 2, 3));
+        Assert.True(session.TryAcceptValheimMotion(10, 20, 65535, 1, 2, 3));
+        Assert.True(session.TryAcceptValheimMotion(10, 20, 0, 1, 2, 3));
+        Assert.False(session.TryAcceptValheimMotion(10, 20, 65535, 1, 2, 3));
+        Assert.False(session.TryAcceptValheimMotion(10, 21, 1, 1, 2, 3));
     }
 
     [Fact]
     public void AnonymousSessionCannotPublishValheimMotion()
     {
         var session = new SessionManager().Create(new FakeWebSocket());
-        Assert.False(session.TryAcceptValheimMotion(10, 20, 1));
+        Assert.False(session.TryAcceptValheimMotion(10, 20, 1, 1, 2, 3));
     }
 }

@@ -23,6 +23,7 @@ public class MessageRouter
     private readonly ValheimOwnershipLeaseService _ownershipLeases;
     private readonly ValheimWorldZoneService _worldZones;
     private readonly ILogger<MessageRouter> _logger;
+    private readonly ValheimPlayerLifecycle? _valheimPlayers;
 
     public MessageRouter(
         SessionManager sessions,
@@ -34,7 +35,8 @@ public class MessageRouter
         ValheimZdoJournalService zdoJournal,
         ValheimOwnershipLeaseService ownershipLeases,
         ValheimWorldZoneService worldZones,
-        ILogger<MessageRouter> logger)
+        ILogger<MessageRouter> logger,
+        ValheimPlayerLifecycle? valheimPlayers = null)
     {
         _sessions = sessions;
         _inputQueue = inputQueue;
@@ -46,6 +48,7 @@ public class MessageRouter
         _ownershipLeases = ownershipLeases;
         _worldZones = worldZones;
         _logger = logger;
+        _valheimPlayers = valheimPlayers;
     }
 
     /// <summary>
@@ -99,7 +102,7 @@ public class MessageRouter
                 break;
 
             case MessageType.ReliableAck:
-                HandleReliableAck(session, envelope);
+                await HandleReliableAckAsync(session, envelope);
                 break;
 
             case MessageType.ValheimSessionProbe:
@@ -188,7 +191,7 @@ public class MessageRouter
         }
     }
 
-    void HandleReliableAck(GameSession session, Envelope envelope)
+    async Task HandleReliableAckAsync(GameSession session, Envelope envelope)
     {
         if (!envelope.Payload.TryGetProperty("through_sequence", out var sequenceElement) ||
             !sequenceElement.TryGetInt64(out var sequence) || sequence < 1)
@@ -197,6 +200,9 @@ public class MessageRouter
         _logger.LogInformation(
             "Valheim reliable ACK connection={ConnectionId} epoch={ResumeEpoch} through={Sequence} removed={Removed}",
             session.ConnectionId, session.ResumeEpoch, sequence, removed);
+        if (string.Equals(session.ValheimRole, "client", StringComparison.Ordinal) &&
+            _zdoJournal.CurrentWorldEpoch(session.ValheimLogicalPeerId) is { } worldEpoch)
+            await SendPendingZdoDeliveriesAsync(session, worldEpoch);
     }
 
     async Task HandleValheimWorldDescriptorPublishAsync(
@@ -299,6 +305,24 @@ public class MessageRouter
             value.SaveEpoch <= 0 || double.IsNaN(value.NetworkTime) ||
             double.IsInfinity(value.NetworkTime))
             throw new InvalidDataException("world_descriptor_fields_invalid");
+        if (string.IsNullOrWhiteSpace(value.StartLocationName) ||
+            value.StartLocationName.Length > 128 ||
+            value.GlobalKeys is null || value.GlobalKeys.Length > 512 ||
+            value.GlobalKeys.Any(key =>
+                string.IsNullOrWhiteSpace(key) || key.Length > 256 ||
+                key.Any(char.IsControl)) ||
+            value.LocationIcons is null ||
+            value.LocationIcons.Length is < 1 or > 4096 ||
+            value.LocationIcons.Any(icon =>
+                string.IsNullOrWhiteSpace(icon.Name) || icon.Name.Length > 128 ||
+                icon.Name.Any(char.IsControl) ||
+                !double.IsFinite(icon.X) || !double.IsFinite(icon.Y) ||
+                !double.IsFinite(icon.Z)) ||
+            !value.LocationIcons.Any(icon =>
+                string.Equals(
+                    icon.Name, value.StartLocationName,
+                    StringComparison.Ordinal)))
+            throw new InvalidDataException("world_descriptor_bootstrap_invalid");
     }
 
     async Task HandleValheimZoneMembershipEnterAsync(
@@ -927,6 +951,13 @@ public class MessageRouter
         if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
             return;
 
+        if (control == "character_id")
+        {
+            var registration = session.AuthorizeValheimCharacter(zdoUserId, zdoId);
+            if (_valheimPlayers != null)
+                await _valheimPlayers.CharacterRegisteredAsync(session, registration);
+        }
+
         var queued = await target.SendReliableAsync(
             MessageType.ValheimLogicalPeerControl,
             new
@@ -1084,23 +1115,26 @@ public class MessageRouter
         }
 
         var result = _zdoJournal.Record(mutation);
-        var receipt = await session.SendReliableAsync(
-            MessageType.ValheimZdoMutationReceipt,
-            new
-            {
-                run_id = mutation.RunId,
-                world_epoch = mutation.WorldEpoch,
-                source_sequence = mutation.SourceSequence,
-                object_revision = mutation.ObjectRevision,
-                accepted = result.Accepted,
-                result = result.Result,
-                recipient_count = result.RecipientCount,
-                durable_objects = result.DurableObjects,
-                logical_peer_id = session.ValheimLogicalPeerId,
-            },
-            CancellationToken.None);
-        if (!receipt.Queued)
-            throw new InvalidOperationException(receipt.Reason);
+        if (mutation.ReceiptRequired)
+        {
+            var receipt = await session.SendReliableAsync(
+                MessageType.ValheimZdoMutationReceipt,
+                new
+                {
+                    run_id = mutation.RunId,
+                    world_epoch = mutation.WorldEpoch,
+                    source_sequence = mutation.SourceSequence,
+                    object_revision = mutation.ObjectRevision,
+                    accepted = result.Accepted,
+                    result = result.Result,
+                    recipient_count = result.RecipientCount,
+                    durable_objects = result.DurableObjects,
+                    logical_peer_id = session.ValheimLogicalPeerId,
+                },
+                CancellationToken.None);
+            if (!receipt.Queued)
+                throw new InvalidOperationException(receipt.Reason);
+        }
         if (!result.Accepted)
             return;
 
@@ -1154,6 +1188,11 @@ public class MessageRouter
                 {
                     run_id = interest.RunId,
                     world_epoch = interest.WorldEpoch,
+                    recipient_id = session.ValheimLogicalPeerId,
+                    zone_epoch = interest.ZoneEpoch,
+                    zone_x = interest.ZoneX,
+                    zone_y = interest.ZoneY,
+                    radius_zones = interest.RadiusZones,
                     interested_recipients = status.InterestedRecipients,
                     pending = status.Pending,
                     durable_objects = status.DurableObjects,
@@ -1520,9 +1559,13 @@ public class MessageRouter
 
     async Task SendPendingZdoDeliveriesAsync(GameSession target, string worldEpoch)
     {
+        const int controlHeadroom = 32;
         foreach (var delivery in _zdoJournal.Pending(
                      target.ValheimLogicalPeerId, worldEpoch, 1024))
         {
+            if (target.Reliable.PendingCount >=
+                ReliableGameSessionState.MaxPendingFrames - controlHeadroom)
+                break;
             if (!target.TryMarkZdoDelivery(worldEpoch, delivery.Sequence))
                 continue;
             var queued = await target.SendReliableAsync(
@@ -1537,6 +1580,10 @@ public class MessageRouter
                 CancellationToken.None);
             if (queued.Queued) continue;
             target.UnmarkZdoDelivery(worldEpoch, delivery.Sequence);
+            if (string.Equals(
+                    queued.Reason, "reliable_send_queue_full",
+                    StringComparison.Ordinal))
+                break;
             throw new InvalidOperationException(queued.Reason);
         }
     }
@@ -1667,6 +1714,9 @@ public class MessageRouter
 
     public async Task HandleDisconnectAsync(GameSession session)
     {
+        if (_valheimPlayers != null)
+            await _valheimPlayers.SessionDisconnectedAsync(session);
+
         if (session.ValheimPeerUid.HasValue &&
             !string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId))
         {

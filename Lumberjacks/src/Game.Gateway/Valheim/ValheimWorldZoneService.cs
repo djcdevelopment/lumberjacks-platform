@@ -252,4 +252,28 @@ public sealed record ValheimWorldDescriptor
 
     [JsonPropertyName("initial_zone_y")]
     public int InitialZoneY { get; init; }
+
+    [JsonPropertyName("start_location_name")]
+    public string StartLocationName { get; init; } = "";
+
+    [JsonPropertyName("global_keys")]
+    public string[] GlobalKeys { get; init; } = [];
+
+    [JsonPropertyName("location_icons")]
+    public ValheimLocationIcon[] LocationIcons { get; init; } = [];
+}
+
+public sealed record ValheimLocationIcon
+{
+    [JsonPropertyName("name")]
+    public string Name { get; init; } = "";
+
+    [JsonPropertyName("x")]
+    public double X { get; init; }
+
+    [JsonPropertyName("y")]
+    public double Y { get; init; }
+
+    [JsonPropertyName("z")]
+    public double Z { get; init; }
 }
