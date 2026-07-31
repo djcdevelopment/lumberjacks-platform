@@ -64,6 +64,20 @@ public sealed record ValheimZdoJournalObject
     // rejection followed by recovery without corrupting the snapshot used by a late joiner.
     [JsonPropertyName("delivery_only")]
     public bool DeliveryOnly { get; init; }
+
+    // Bulk AoI snapshots are self-healing: a changed interest re-snapshots the
+    // authoritative sector and client delivery is acknowledged separately. C3
+    // fault probes opt into a mutation receipt so their exact rejection/acceptance
+    // boundary remains observable without emitting one reliable control frame per
+    // world object.
+    [JsonPropertyName("receipt_required")]
+    public bool ReceiptRequired { get; init; }
+
+    // Sparse topology dependencies (for example, the remote endpoint named by
+    // an in-AoI portal) may be delivered to the requesting recipient without
+    // widening that recipient's spatial interest square.
+    [JsonPropertyName("delivery_recipient_id")]
+    public string DeliveryRecipientId { get; init; } = "";
 }
 
 public sealed record ValheimZdoJournalInterest
@@ -196,6 +210,25 @@ public sealed class ValheimZdoJournalService
 
             if (!mutation.DeliveryOnly && !isNewer)
             {
+                // A sparse topology dependency can legitimately be resent at the same
+                // revision for a new recipient or R&D correlation run. Durable state is
+                // world-scoped, so do not rewrite it; replay its current revision only to
+                // the named recipient. This keeps remote portal endpoints sparse without
+                // widening the recipient's AoI.
+                if (!string.IsNullOrWhiteSpace(mutation.DeliveryRecipientId) &&
+                    hasCurrent &&
+                    _interests.TryGetValue(
+                        mutation.DeliveryRecipientId, out var targeted) &&
+                    string.Equals(
+                        targeted.Interest.WorldEpoch, mutation.WorldEpoch,
+                        StringComparison.Ordinal))
+                {
+                    Enqueue(
+                        mutation.DeliveryRecipientId,
+                        current!.Tombstone ? "tombstone" : "snapshot",
+                        current with { RunId = targeted.Interest.RunId });
+                    return new(true, "targeted_replay", 1, _objects.Count);
+                }
                 return new(false, "stale_journal_revision", 0, _objects.Count);
             }
 
@@ -205,18 +238,48 @@ public sealed class ValheimZdoJournalService
             }
             else
             {
-                Append(mutation);
-                _objects[key] = mutation with { DeliveryOnly = false };
+                var durable = mutation with
+                {
+                    DeliveryOnly = false,
+                    DeliveryRecipientId = "",
+                };
+                Append(durable);
+                _objects[key] = durable;
                 _mutations++;
             }
 
             var kind = mutation.Tombstone ? "tombstone" : "delta";
             var recipients = 0;
-            foreach (var pair in _interests)
+            if (!string.IsNullOrWhiteSpace(mutation.DeliveryRecipientId))
             {
-                if (!Matches(pair.Value.Interest, mutation)) continue;
-                Enqueue(pair.Key, kind, mutation);
-                recipients++;
+                if (_interests.TryGetValue(
+                        mutation.DeliveryRecipientId, out var targeted) &&
+                    string.Equals(
+                        targeted.Interest.WorldEpoch, mutation.WorldEpoch,
+                        StringComparison.Ordinal))
+                {
+                    Enqueue(
+                        mutation.DeliveryRecipientId,
+                        kind,
+                        mutation with
+                        {
+                            RunId = targeted.Interest.RunId,
+                            DeliveryRecipientId = "",
+                        });
+                    recipients = 1;
+                }
+            }
+            else
+            {
+                foreach (var pair in _interests)
+                {
+                    if (!Matches(pair.Value.Interest, mutation)) continue;
+                    Enqueue(
+                        pair.Key,
+                        kind,
+                        mutation with { RunId = pair.Value.Interest.RunId });
+                    recipients++;
+                }
             }
 
             if (mutation.Tombstone) _tombstones += recipients;
@@ -242,7 +305,10 @@ public sealed class ValheimZdoJournalService
                 {
                     if (!Matches(interest, state)) continue;
                     if (HasPending(recipientId, state)) continue;
-                    Enqueue(recipientId, state.Tombstone ? "tombstone" : "snapshot", state);
+                    Enqueue(
+                        recipientId,
+                        state.Tombstone ? "tombstone" : "snapshot",
+                        state with { RunId = interest.RunId });
                     snapshots++;
                 }
                 _snapshots += snapshots;
@@ -326,6 +392,14 @@ public sealed class ValheimZdoJournalService
                     string.Equals(value.Object.RunId, runId, StringComparison.Ordinal) &&
                     string.Equals(value.Object.WorldEpoch, worldEpoch, StringComparison.Ordinal))));
         }
+    }
+
+    public string? CurrentWorldEpoch(string recipientId)
+    {
+        lock (_gate)
+            return _interests.TryGetValue(recipientId, out var state)
+                ? state.Interest.WorldEpoch
+                : null;
     }
 
     public int Reset(string? worldEpoch)
@@ -416,7 +490,6 @@ public sealed class ValheimZdoJournalService
 
     static bool Matches(ValheimZdoJournalInterest interest, ValheimZdoJournalObject state) =>
         string.Equals(interest.WorldEpoch, state.WorldEpoch, StringComparison.Ordinal) &&
-        string.Equals(interest.RunId, state.RunId, StringComparison.Ordinal) &&
         Math.Abs(interest.ZoneX - state.ZoneX) <= interest.RadiusZones &&
         Math.Abs(interest.ZoneY - state.ZoneY) <= interest.RadiusZones;
 

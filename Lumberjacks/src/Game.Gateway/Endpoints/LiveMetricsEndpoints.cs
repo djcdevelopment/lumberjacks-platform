@@ -47,6 +47,42 @@ public static class LiveMetricsEndpoints
             });
         });
 
+        // R&D composition prerequisite: this deliberately exposes only aggregate/readiness
+        // state, never session or world identity. Physical clients should not be launched until
+        // the canonical dedicated server has connected and published the selected run descriptor.
+        app.MapGet("/live/valheim-cutover", (
+            SessionManager sessions,
+            ValheimWorldZoneService worldZones) =>
+        {
+            const long heartbeatFreshnessMs = 5_000;
+            var server = sessions.GetAll().FirstOrDefault(session =>
+                string.Equals(session.ValheimRole, "server", StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId) &&
+                session.Socket.State == System.Net.WebSockets.WebSocketState.Open);
+            var descriptor = worldZones.Current();
+            var inboundAgeMs = server is null
+                ? (long?)null
+                : Math.Max(
+                    0L,
+                    (long)(DateTime.UtcNow - server.LastInboundUtc)
+                        .TotalMilliseconds);
+            var heartbeatFresh =
+                inboundAgeMs.HasValue &&
+                inboundAgeMs.Value <= heartbeatFreshnessMs;
+            return Results.Ok(new
+            {
+                ready =
+                    server is not null && heartbeatFresh &&
+                    descriptor is not null,
+                canonical_server_connected = server is not null,
+                server_heartbeat_fresh = heartbeatFresh,
+                server_heartbeat_freshness_ms = heartbeatFreshnessMs,
+                descriptor_published = descriptor is not null,
+                descriptor_run_id = descriptor?.RunId ?? "",
+                server_last_inbound_age_ms = inboundAgeMs,
+            });
+        });
+
         app.MapGet("/live/valheim-motion", (ValheimMotionTelemetry motion) =>
             Results.Ok(motion.Snapshot()));
     }

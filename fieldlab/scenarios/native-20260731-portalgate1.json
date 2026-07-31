@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "run_id": "native-20260731-portalgate1",
+  "created_utc": "2026-07-31T09:52:36.7151058+00:00",
+  "expires_utc": "2026-07-31T10:37:36.7189707+00:00",
+  "profile": "c8",
+  "actions": [
+    {
+      "id": "omen-portal-roundtrip",
+      "client": "omen",
+      "kind": "portal_roundtrip",
+      "deadline_seconds": 30,
+      "duration_seconds": 0,
+      "distance_meters": 0,
+      "radius_meters": 256,
+      "direction": "",
+      "target_tag": ""
+    },
+    {
+      "id": "i5-portal-gate-settle",
+      "client": "i5",
+      "kind": "wait",
+      "deadline_seconds": 8,
+      "duration_seconds": 5,
+      "distance_meters": 0,
+      "radius_meters": 0,
+      "direction": "",
+      "target_tag": ""
+    }
+  ]
+}

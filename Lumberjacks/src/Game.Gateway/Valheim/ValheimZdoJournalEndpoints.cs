@@ -139,6 +139,9 @@ public static class ValheimZdoJournalEndpoints
         if (!value.Tombstone && string.IsNullOrWhiteSpace(value.BodyBase64))
             return "body_b64_required";
         if (value.BodyBase64.Length > 16 * 1024 * 1024) return "body_b64_too_large";
+        if (!string.IsNullOrEmpty(value.DeliveryRecipientId) &&
+            !SafeToken(value.DeliveryRecipientId, 96))
+            return "delivery_recipient_id_invalid";
         return null;
     }
 

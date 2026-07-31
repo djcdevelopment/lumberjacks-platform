@@ -13,6 +13,18 @@ namespace Game.Gateway.WebSocket;
 /// </summary>
 public enum ProtocolMode { Json, Binary }
 
+public readonly record struct ValheimCharacterAuthority(
+    long ZdoUserId,
+    uint ZdoId,
+    long Generation);
+
+public readonly record struct ValheimCharacterRegistration(
+    bool Changed,
+    ValheimCharacterAuthority? Previous,
+    ValheimCharacterAuthority Current);
+
+public readonly record struct ValheimMotionPosition(double X, double Y, double Z);
+
 public record GameSession(
     string SessionId,
     string PlayerId,
@@ -25,12 +37,17 @@ public record GameSession(
     private readonly HashSet<string> _sentZdoDeliveries = new(StringComparer.Ordinal);
     private bool _motionSequenceSet;
     private ushort _lastMotionSequence;
+    private ValheimCharacterAuthority? _valheimCharacterAuthority;
+    private ValheimMotionPosition? _valheimMotionPosition;
+    private long _lastInboundUtcTicks = DateTime.UtcNow.Ticks;
 
     public string? GuildId { get; set; }
     public string? RegionId { get; set; }
     public string ResumeToken => Reliable.ResumeToken;
     public string ConnectionId => Reliable.ConnectionId;
     public long ResumeEpoch => Reliable.ResumeEpoch;
+    public DateTime LastInboundUtc =>
+        new(Interlocked.Read(ref _lastInboundUtcTicks), DateTimeKind.Utc);
 
     /// <summary>Wire format for this session. Set during handshake based on query param.</summary>
     public ProtocolMode Protocol { get; set; } = ProtocolMode.Json;
@@ -61,6 +78,9 @@ public record GameSession(
     /// </summary>
     public string ValheimLogicalPeerId { get; set; } = "";
 
+    public void TouchInbound() =>
+        Interlocked.Exchange(ref _lastInboundUtcTicks, DateTime.UtcNow.Ticks);
+
     /// <summary>
     /// Authenticated identity admitted to the motion lane. Public clients retain the
     /// enrollment recipient used by the existing transport canary. Private/shared-key
@@ -76,9 +96,15 @@ public record GameSession(
                 ? ValheimLogicalPeerId
                 : null;
 
-    /// <summary>The player ZDO first claimed by this authenticated session.</summary>
-    public long? ValheimMotionZdoUserId { get; private set; }
-    public uint? ValheimMotionZdoId { get; private set; }
+    public ValheimCharacterAuthority? ValheimCharacterAuthority
+    {
+        get { lock (_motionGate) return _valheimCharacterAuthority; }
+    }
+
+    public ValheimMotionPosition? ValheimMotionPosition
+    {
+        get { lock (_motionGate) return _valheimMotionPosition; }
+    }
 
     /// <summary>
     /// WebSocket permits only one outstanding send. Tick broadcasts, control replies, and the
@@ -133,17 +159,52 @@ public record GameSession(
     }
 
     /// <summary>
-    /// Bind the first observed player ZDO to this session and reject duplicates/out-of-order
-    /// datagrams thereafter. The half-range comparison handles ushort wrap without accepting an
-    /// arbitrarily old packet after wrap.
+    /// Authorize a player ZDO from the reliable native CharacterID lifecycle. A changed ZDO is a
+    /// new character generation (respawn/rejoin), so stale motion for the former object can no
+    /// longer authenticate itself merely by arriving first.
     /// </summary>
-    public bool TryAcceptValheimMotion(long zdoUserId, uint zdoId, ushort sequence)
+    public ValheimCharacterRegistration AuthorizeValheimCharacter(long zdoUserId, uint zdoId)
     {
         lock (_motionGate)
         {
-            if (string.IsNullOrWhiteSpace(ValheimMotionIdentity)) return false;
-            if (ValheimMotionZdoUserId.HasValue &&
-                (ValheimMotionZdoUserId.Value != zdoUserId || ValheimMotionZdoId != zdoId))
+            if (zdoUserId == 0 || zdoId == 0)
+                throw new ArgumentOutOfRangeException(nameof(zdoId));
+
+            var previous = _valheimCharacterAuthority;
+            if (previous is { } current &&
+                current.ZdoUserId == zdoUserId &&
+                current.ZdoId == zdoId)
+                return new ValheimCharacterRegistration(false, previous, current);
+
+            var next = new ValheimCharacterAuthority(
+                zdoUserId,
+                zdoId,
+                (previous?.Generation ?? 0) + 1);
+            _valheimCharacterAuthority = next;
+            _valheimMotionPosition = null;
+            _motionSequenceSet = false;
+            return new ValheimCharacterRegistration(true, previous, next);
+        }
+    }
+
+    /// <summary>
+    /// Accept motion only for the ZDO authorized by the reliable character lifecycle. The
+    /// half-range comparison handles ushort wrap without accepting an arbitrarily old packet.
+    /// </summary>
+    public bool TryAcceptValheimMotion(
+        long zdoUserId,
+        uint zdoId,
+        ushort sequence,
+        double x,
+        double y,
+        double z)
+    {
+        lock (_motionGate)
+        {
+            if (string.IsNullOrWhiteSpace(ValheimMotionIdentity) ||
+                _valheimCharacterAuthority is not { } authority ||
+                authority.ZdoUserId != zdoUserId ||
+                authority.ZdoId != zdoId)
                 return false;
 
             if (_motionSequenceSet)
@@ -152,11 +213,22 @@ public record GameSession(
                 if (delta == 0 || delta >= 0x8000) return false;
             }
 
-            ValheimMotionZdoUserId ??= zdoUserId;
-            ValheimMotionZdoId ??= zdoId;
             _lastMotionSequence = sequence;
             _motionSequenceSet = true;
+            _valheimMotionPosition = new ValheimMotionPosition(x, y, z);
             return true;
+        }
+    }
+
+    public void RestoreValheimCharacter(
+        ValheimCharacterAuthority? authority,
+        ValheimMotionPosition? position)
+    {
+        lock (_motionGate)
+        {
+            _valheimCharacterAuthority = authority;
+            _valheimMotionPosition = position;
+            _motionSequenceSet = false;
         }
     }
 
@@ -179,6 +251,8 @@ public record DetachedSession(
     long? ValheimPeerUid,
     string ValheimLogicalPeerId,
     string ValheimCharacter,
+    ValheimCharacterAuthority? ValheimCharacterAuthority,
+    ValheimMotionPosition? ValheimMotionPosition,
     ReliableGameSessionState Reliable,
     long DetachedEpoch,
     DateTimeOffset DetachedAt);
@@ -382,6 +456,9 @@ public class SessionManager
             ValheimLogicalPeerId = match.ValheimLogicalPeerId,
             ValheimCharacter = match.ValheimCharacter,
         };
+        session.RestoreValheimCharacter(
+            match.ValheimCharacterAuthority,
+            match.ValheimMotionPosition);
 
         _sessions[session.SessionId] = session;
         LumberjacksTelemetry.SessionCreated(resumed: true);
@@ -404,6 +481,8 @@ public class SessionManager
             session.ValheimPeerUid,
             session.ValheimLogicalPeerId,
             session.ValheimCharacter,
+            session.ValheimCharacterAuthority,
+            session.ValheimMotionPosition,
             session.Reliable,
             session.ResumeEpoch,
             DateTimeOffset.UtcNow);

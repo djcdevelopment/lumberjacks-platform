@@ -18,6 +18,8 @@ public static class MessageClassification
         [MessageType.ValheimLogicalPeerControl] = DeliveryLane.Reliable,
         [MessageType.ValheimLogicalPeerAttached] = DeliveryLane.Reliable,
         [MessageType.ValheimLogicalPeerDetached] = DeliveryLane.Reliable,
+        [MessageType.ValheimRemotePlayerDescriptor] = DeliveryLane.Reliable,
+        [MessageType.ValheimRemotePlayerTombstone] = DeliveryLane.Reliable,
         [MessageType.ValheimZdoInterest] = DeliveryLane.Reliable,
         [MessageType.ValheimZdoAck] = DeliveryLane.Reliable,
         [MessageType.ValheimZdoDelivery] = DeliveryLane.Reliable,

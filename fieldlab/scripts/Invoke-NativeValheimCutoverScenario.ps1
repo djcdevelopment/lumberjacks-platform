@@ -51,6 +51,8 @@ param(
 
     [switch] $EnableWorldZoneCutover,
 
+    [switch] $EnablePortalTraversal,
+
     [switch] $EnableMotionAuthorityCutover,
 
     [switch] $EnableSocketQuarantineCutover,
@@ -62,6 +64,8 @@ param(
     [switch] $EnableServerNativePoison,
 
     [switch] $EnableC8Composition,
+
+    [switch] $SkipGatewayBuild,
 
     [string] $ServerGatewayUrl = 'http://100.124.12.37:4000',
 
@@ -86,6 +90,7 @@ if ($EnableC8Composition) {
     $EnableZdoJournalCanonicalSession = $true
     $EnableOwnershipLeaseCutover = $true
     $EnableWorldZoneCutover = $true
+    $EnablePortalTraversal = $true
     $EnableMotionAuthorityCutover = $true
     $EnableSteamFreeColdJoin = $true
     $EnableGatewayJournalRestartProof = $true
@@ -172,6 +177,10 @@ $serverOwnershipDisarmError = $null
 $serverWorldZoneArmed = $false
 $serverWorldZoneReceipts = @()
 $serverWorldZoneDisarmError = $null
+$serverPortalTraversalChanged = $false
+$serverPortalTraversalPrevious = $null
+$serverPortalTraversalReceipts = @()
+$serverPortalTraversalRestoreError = $null
 $serverMotionArmed = $false
 $serverMotionReceipts = @()
 $serverMotionDisarmError = $null
@@ -299,6 +308,113 @@ function Invoke-I5Harness([string[]] $Arguments) {
         throw "i5 native-client command failed with exit $LASTEXITCODE."
     }
     return @($output)
+}
+
+function Get-OmenHarnessState {
+    if (-not $omenHarnessProcess) {
+        return [pscustomobject]@{
+            terminal = $false
+            success = $false
+            detail = 'not_started'
+        }
+    }
+    $omenHarnessProcess.Refresh()
+    if (-not $omenHarnessProcess.HasExited) {
+        return [pscustomobject]@{
+            terminal = $false
+            success = $false
+            detail = 'running'
+        }
+    }
+
+    $omenHarnessProcess.WaitForExit()
+    $omenHarnessProcess.Refresh()
+    $lifecyclePath = Join-Path $runDirectory 'omen\lifecycle.json'
+    if (Test-Path -LiteralPath $lifecyclePath -PathType Leaf) {
+        $lifecycle =
+            Get-Content -LiteralPath $lifecyclePath -Raw -Encoding utf8 |
+            ConvertFrom-Json
+        $success =
+            $lifecycle.run_id -eq $RunId -and
+            $lifecycle.result -eq 'joined_held_and_stopped' -and
+            $lifecycle.scenario_terminal.state -eq 'scenario_complete' -and
+            [string]::IsNullOrWhiteSpace([string]$lifecycle.error)
+        return [pscustomobject]@{
+            terminal = $true
+            success = $success
+            detail = if ($success) {
+                'scenario_complete'
+            } elseif (-not [string]::IsNullOrWhiteSpace(
+                    [string]$lifecycle.error)) {
+                [string]$lifecycle.error
+            } else {
+                "lifecycle_result=$($lifecycle.result)"
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        terminal = $true
+        success = $false
+        detail = "no lifecycle receipt; exit=$($omenHarnessProcess.ExitCode)"
+    }
+}
+
+function Get-I5HarnessState {
+    $statusText = Invoke-I5Harness @(
+        '-Action', 'task-status',
+        '-Client', 'i5')
+    $status =
+        ($statusText -join [Environment]::NewLine) |
+        ConvertFrom-Json
+    if ($status.state -ne 'Ready' -or [bool]$status.pending_request) {
+        return [pscustomobject]@{
+            terminal = $false
+            success = $false
+            detail = "state=$($status.state) pending=$($status.pending_request)"
+            raw = $status
+        }
+    }
+    return [pscustomobject]@{
+        terminal = $true
+        success = [int]$status.last_task_result -eq 0
+        detail = "last_task_result=$($status.last_task_result)"
+        raw = $status
+    }
+}
+
+function Wait-GatewayCutoverReady {
+    param([ValidateRange(1, 60)][int] $Seconds = 15)
+
+    $deadline = (Get-Date).AddSeconds($Seconds)
+    $last = $null
+    do {
+        try {
+            $last = Invoke-RestMethod `
+                -Method Get `
+                -Uri "$OmenGatewayUrl/live/valheim-cutover" `
+                -TimeoutSec 2
+        } catch {
+            $last = $null
+        }
+        if ($last -and
+            [bool]$last.ready -and
+            [bool]$last.canonical_server_connected -and
+            [bool]$last.descriptor_published -and
+            [string]$last.descriptor_run_id -eq $RunId) {
+            return $last
+        }
+        Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $deadline)
+
+    $detail = if ($last) {
+        "ready=$($last.ready) server=$($last.canonical_server_connected) " +
+        "descriptor=$($last.descriptor_published) " +
+        "descriptor_run_id=$($last.descriptor_run_id)"
+    } else {
+        'readiness_endpoint_unavailable'
+    }
+    throw "Gateway cutover prerequisites failed within ${Seconds}s: $detail. No client was launched."
 }
 
 try {
@@ -450,6 +566,25 @@ try {
         $serverWorldZoneArmed = $true
     }
 
+    if ($EnablePortalTraversal) {
+        $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+        $portalTraversalOutput = & $serverControl `
+            -Setting portalTraversalEnabled `
+            -Value true `
+            -RequestId "$RunId-portal-traversal-arm"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Server portal-traversal arm failed.'
+        }
+        $portalTraversalReceipt =
+            (($portalTraversalOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json)
+        $serverPortalTraversalReceipts += $portalTraversalReceipt
+        $serverPortalTraversalPrevious =
+            [bool]::Parse([string]$portalTraversalReceipt.old_value)
+        $serverPortalTraversalChanged =
+            -not $serverPortalTraversalPrevious
+    }
+
     if ($EnableMotionAuthorityCutover) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
         $motionArmOutput = & $serverControl `
@@ -545,12 +680,22 @@ try {
         $gatewayCompose = Join-Path $repoRoot 'Lumberjacks\infra\docker'
         Push-Location $gatewayCompose
         try {
-            & docker compose -p lumberjacks-local up -d --no-deps --build gateway
+            if ($SkipGatewayBuild) {
+                & docker compose -p lumberjacks-local up -d --no-deps gateway
+            } else {
+                & docker compose -p lumberjacks-local up -d --no-deps --build gateway
+            }
             if ($LASTEXITCODE -ne 0) {
                 throw 'Gateway deployment for the canonical-session slice failed.'
             }
         } finally {
             Pop-Location
+        }
+        if ($EnableWorldZoneCutover) {
+            $gatewayReadiness = Wait-GatewayCutoverReady -Seconds 15
+            Write-JsonAtomic `
+                (Join-Path $runDirectory 'gateway-cutover-readiness.json') `
+                $gatewayReadiness
         }
 
         $omenStdout = Join-Path $runDirectory 'omen-harness.stdout.log'
@@ -614,6 +759,14 @@ try {
             $mutationDeadline = (Get-Date).AddSeconds($WaitSeconds)
             $mutationRow = $null
             do {
+                $omenState = Get-OmenHarnessState
+                if ($omenState.terminal) {
+                    throw "OMEN harness ended before the first durable C3 mutation: $($omenState.detail)"
+                }
+                $i5State = Get-I5HarnessState
+                if ($i5State.terminal) {
+                    throw "i5 harness ended before the first durable C3 mutation: $($i5State.detail)"
+                }
                 $tail = & ssh -o BatchMode=yes am4 `
                     "if test -f '$serverJournalPath'; then tail -n 256 '$serverJournalPath'; fi"
                 if ($LASTEXITCODE -ne 0) {
@@ -622,9 +775,11 @@ try {
                 foreach ($line in @($tail)) {
                     try {
                         $row = $line | ConvertFrom-Json -ErrorAction Stop
-                        if ($row.run_id -eq $RunId -and
-                            $row.state -eq 'mutation_posted' -and
-                            $row.detail -notmatch 'delivery_only=True') {
+                        if ($row.run_id -eq $RunId -and (
+                            ($row.state -eq 'mutation_posted' -and
+                             $row.detail -notmatch 'delivery_only=True') -or
+                            ($row.state -eq 'drive_complete' -and
+                             $row.action_id -eq 'omen-c8-zdo-journal-drive'))) {
                             $mutationRow = $row
                         }
                     } catch { }
@@ -632,11 +787,14 @@ try {
                 if (-not $mutationRow) { Start-Sleep -Seconds 2 }
             } while (-not $mutationRow -and (Get-Date) -lt $mutationDeadline)
             if (-not $mutationRow) {
-                throw 'The first durable C3 mutation was not observed before the deadline.'
+                throw 'The correlated durable C3 drive was not observed before the deadline.'
             }
 
             $beforeRestart =
                 Invoke-RestMethod -Method Get -Uri "$OmenGatewayUrl/valheim/zdo-journal/status"
+            if ([long]$beforeRestart.durable_objects -lt 1) {
+                throw 'The correlated C3 drive completed with zero durable Gateway objects.'
+            }
             $restartStarted = [DateTimeOffset]::UtcNow
             Push-Location $gatewayCompose
             try {
@@ -709,53 +867,29 @@ try {
 
     $deadline = (Get-Date).AddSeconds($WaitSeconds)
     do {
-        $statusText = Invoke-I5Harness @('-Action', 'task-status', '-Client', 'i5')
-        $status = ($statusText -join [Environment]::NewLine) | ConvertFrom-Json
-        if ($status.state -eq 'Ready') { break }
+        $i5State = Get-I5HarnessState
+        $omenState = if ($useConcurrentHarness) {
+            Get-OmenHarnessState
+        } else {
+            [pscustomobject]@{
+                terminal = $true
+                success = $true
+                detail = 'synchronous'
+            }
+        }
+        if ($i5State.terminal -and -not $i5State.success) {
+            throw "i5 scheduled task failed: $($i5State.detail)"
+        }
+        if ($omenState.terminal -and -not $omenState.success) {
+            throw "OMEN cutover scenario failed: $($omenState.detail); see $omenStderr."
+        }
+        if ($i5State.terminal -and $omenState.terminal) { break }
         Start-Sleep -Seconds 2
     } while ((Get-Date) -lt $deadline)
 
-    if ($status.state -ne 'Ready') {
-        throw "i5 scheduled task did not finish within $WaitSeconds seconds."
-    }
-    if ([int]$status.last_task_result -ne 0) {
-        throw "i5 scheduled task failed with result $($status.last_task_result)."
-    }
-    if ($useConcurrentHarness) {
-        while (-not $omenHarnessProcess.HasExited -and (Get-Date) -lt $deadline) {
-            Start-Sleep -Seconds 2
-            $omenHarnessProcess.Refresh()
-        }
-        if (-not $omenHarnessProcess.HasExited) {
-            throw 'OMEN C3 harness did not finish before the scenario deadline.'
-        }
-        # PowerShell 5.1 can expose a null ExitCode until WaitForExit has
-        # synchronized the native process handle, even after HasExited is true. In
-        # some redirected-output runs it remains null after synchronization. Fail
-        # closed against the harness's atomic lifecycle receipt in that case.
-        $omenHarnessProcess.WaitForExit()
-        $omenHarnessProcess.Refresh()
-        $omenExitCode = $omenHarnessProcess.ExitCode
-        if ($null -eq $omenExitCode) {
-            $omenLifecyclePath = Join-Path $runDirectory 'omen\lifecycle.json'
-            if (-not (Test-Path -LiteralPath $omenLifecyclePath -PathType Leaf)) {
-                throw "OMEN journal harness exposed no exit code or lifecycle receipt; see $omenStderr."
-            }
-            $omenCompletedLifecycle =
-                Get-Content -LiteralPath $omenLifecyclePath -Raw |
-                ConvertFrom-Json
-            if ($omenCompletedLifecycle.run_id -ne $RunId -or
-                $omenCompletedLifecycle.result -ne 'joined_held_and_stopped' -or
-                $omenCompletedLifecycle.scenario_terminal.state -ne 'scenario_complete' -or
-                -not [string]::IsNullOrWhiteSpace(
-                    [string]$omenCompletedLifecycle.error)) {
-                throw "OMEN journal harness exposed no exit code and its lifecycle receipt is not complete; see $omenStderr."
-            }
-            $omenExitCode = 0
-        }
-        if ($omenExitCode -ne 0) {
-            throw "OMEN journal harness failed with exit $omenExitCode; see $omenStderr."
-        }
+    if (-not $i5State.terminal -or
+        ($useConcurrentHarness -and -not $omenState.terminal)) {
+        throw "The two-client scenario did not finish within $WaitSeconds seconds."
     }
     if ($EnableOwnershipLeaseCutover) {
         $serverDirectory = Join-Path $runDirectory 'server'
@@ -965,6 +1099,25 @@ try {
             }
         } catch {
             $serverPoisonDisarmError = $_.Exception.Message
+        }
+    }
+    if ($serverPortalTraversalChanged) {
+        try {
+            $portalTraversalRestoreOutput =
+                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    -Setting portalTraversalEnabled `
+                    -Value false `
+                    -RequestId "$RunId-portal-traversal-restore"
+            if ($LASTEXITCODE -eq 0) {
+                $serverPortalTraversalReceipts +=
+                    (($portalTraversalRestoreOutput -join [Environment]::NewLine) |
+                        ConvertFrom-Json)
+            } else {
+                $serverPortalTraversalRestoreError =
+                    "Server portal-traversal restore exited $LASTEXITCODE."
+            }
+        } catch {
+            $serverPortalTraversalRestoreError = $_.Exception.Message
         }
     }
     if ($serverLogicalPeerArmed) {
@@ -1184,6 +1337,18 @@ try {
                 run_id = $RunId
                 receipts = $serverWorldZoneReceipts
                 disarm_error = $serverWorldZoneDisarmError
+            })
+    }
+    if ($EnablePortalTraversal -and
+        $serverPortalTraversalReceipts.Count -gt 0) {
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'server-runtime-portal-traversal.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                persistence = 'runtime_only'
+                receipts = $serverPortalTraversalReceipts
+                restore_error = $serverPortalTraversalRestoreError
             })
     }
     if ($EnableMotionAuthorityCutover -and

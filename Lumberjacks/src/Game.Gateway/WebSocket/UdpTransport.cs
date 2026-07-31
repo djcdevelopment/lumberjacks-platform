@@ -48,6 +48,7 @@ public class UdpTransport : BackgroundService
     private readonly MessageRouter _router;
     private readonly ILogger<UdpTransport> _logger;
     private readonly ValheimMotionTelemetry _motionTelemetry;
+    private readonly ValheimPlayerLifecycle? _valheimPlayers;
     private readonly int _port;
     private readonly int _socketCount;
     private readonly object[] _sendLocks;
@@ -70,12 +71,14 @@ public class UdpTransport : BackgroundService
         MessageRouter router,
         ValheimMotionTelemetry motionTelemetry,
         IConfiguration config,
-        ILogger<UdpTransport> logger)
+        ILogger<UdpTransport> logger,
+        ValheimPlayerLifecycle? valheimPlayers = null)
     {
         _sessions = sessions;
         _router = router;
         _motionTelemetry = motionTelemetry;
         _logger = logger;
+        _valheimPlayers = valheimPlayers;
         _port = config.GetValue("Udp:Port", 4005);
 
         var replicationOptions = ReplicationOptions.FromConfiguration(config);
@@ -247,7 +250,13 @@ public class UdpTransport : BackgroundService
             return Task.CompletedTask;
         }
 
-        if (!session.TryAcceptValheimMotion(motion.ZdoUserId, motion.ZdoId, header.Seq))
+        if (!session.TryAcceptValheimMotion(
+                motion.ZdoUserId,
+                motion.ZdoId,
+                header.Seq,
+                motion.Position.X,
+                motion.Position.Y,
+                motion.Position.Z))
         {
             _motionTelemetry.DroppedStale();
             return Task.CompletedTask;
@@ -265,11 +274,30 @@ public class UdpTransport : BackgroundService
             return;
         }
 
-        foreach (var target in _sessions.GetByRegion(source.RegionId))
+        IReadOnlyCollection<GameSession> observerTargets = _valheimPlayers != null
+            ? await _valheimPlayers.ReconcileMotionAsync(source)
+            : _sessions.GetByRegion(source.RegionId);
+        var targets = observerTargets
+            // The one logical dedicated-server session is an authority/control sink, not a
+            // world observer, and therefore does not join a gameplay RegionId. It still needs
+            // each authenticated client's thin motion frame to maintain ZNetPeer.m_refPos.
+            .Concat(_sessions.GetAll().Where(
+                candidate => string.Equals(
+                    candidate.ValheimRole, "server", StringComparison.Ordinal)))
+            .DistinctBy(candidate => candidate.SessionId);
+        foreach (var target in targets)
         {
-            if (target.SessionId == source.SessionId || target.ValheimMotionIdentity == null ||
-                string.Equals(target.ValheimMotionIdentity, source.ValheimMotionIdentity,
-                    StringComparison.Ordinal))
+            var logicalServer =
+                string.Equals(target.ValheimRole, "server", StringComparison.Ordinal) &&
+                target.ValheimPeerUid.HasValue &&
+                !string.IsNullOrWhiteSpace(target.ValheimLogicalPeerId);
+            if (target.SessionId == source.SessionId ||
+                (!logicalServer && target.ValheimMotionIdentity == null) ||
+                (!logicalServer &&
+                 string.Equals(
+                     target.ValheimMotionIdentity,
+                     source.ValheimMotionIdentity,
+                     StringComparison.Ordinal)))
                 continue;
 
             if (TrySend(target, binaryFrame))

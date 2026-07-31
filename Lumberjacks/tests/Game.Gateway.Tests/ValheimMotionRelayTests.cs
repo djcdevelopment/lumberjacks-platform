@@ -170,6 +170,8 @@ public sealed class ValheimMotionRelayTests
             var session = _sessions.Create(socket);
             session.RegionId = region;
             session.ValheimRecipientId = recipient;
+            if (recipient != null)
+                session.AuthorizeValheimCharacter(100, 200);
             return new CapturingSession(session, socket);
         }
 

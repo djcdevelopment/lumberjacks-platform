@@ -8,6 +8,7 @@ namespace Game.Gateway.WebSocket;
 
 public class GameWebSocketMiddleware
 {
+    private static readonly TimeSpan ServerSessionStaleAfter = TimeSpan.FromSeconds(8);
     private readonly RequestDelegate _next;
     private readonly SessionManager _sessions;
     private readonly ILogger<GameWebSocketMiddleware> _logger;
@@ -81,11 +82,7 @@ public class GameWebSocketMiddleware
                  !string.Equals(requestedRole, session.ValheimRole,
                      StringComparison.OrdinalIgnoreCase))
         {
-            await ws.CloseAsync(
-                WebSocketCloseStatus.PolicyViolation,
-                "resumed Valheim role changed",
-                CancellationToken.None);
-            _sessions.Remove(session.SessionId);
+            await RejectAsync(ws, session, "resumed Valheim role changed");
             return;
         }
 
@@ -101,24 +98,33 @@ public class GameWebSocketMiddleware
             (resumed && !string.Equals(
                 session.ValheimLogicalPeerId, logicalPeerId, StringComparison.Ordinal)))
         {
-            await ws.CloseAsync(
-                WebSocketCloseStatus.PolicyViolation,
-                logicalPeerError ?? "resumed logical peer changed",
-                CancellationToken.None);
-            _sessions.Remove(session.SessionId);
+            await RejectAsync(
+                ws, session, logicalPeerError ?? "resumed logical peer changed");
             return;
         }
-        if (_sessions.GetAll().Any(candidate =>
-                candidate.SessionId != session.SessionId &&
-                string.Equals(candidate.ValheimLogicalPeerId, logicalPeerId,
-                    StringComparison.Ordinal)))
+        var duplicate = _sessions.GetAll().FirstOrDefault(candidate =>
+            candidate.SessionId != session.SessionId &&
+            string.Equals(candidate.ValheimLogicalPeerId, logicalPeerId,
+                StringComparison.Ordinal));
+        if (duplicate is not null)
         {
-            await ws.CloseAsync(
-                WebSocketCloseStatus.PolicyViolation,
-                "logical peer already connected",
-                CancellationToken.None);
-            _sessions.Remove(session.SessionId);
-            return;
+            var staleFor = DateTime.UtcNow - duplicate.LastInboundUtc;
+            var canRecoverCanonicalServer =
+                string.Equals(session.ValheimRole, "server", StringComparison.Ordinal) &&
+                string.Equals(duplicate.ValheimRole, "server", StringComparison.Ordinal) &&
+                principal?.Has(ValheimCapability.Producer) == true &&
+                staleFor >= ServerSessionStaleAfter;
+            if (!canRecoverCanonicalServer)
+            {
+                await RejectAsync(ws, session, "logical peer already connected");
+                return;
+            }
+
+            _sessions.Remove(duplicate.SessionId);
+            try { duplicate.Socket.Abort(); } catch { }
+            _logger.LogWarning(
+                "Replaced stale canonical Valheim server session {OldSessionId} after {StaleSeconds:F1}s without inbound traffic",
+                duplicate.SessionId, staleFor.TotalSeconds);
         }
         session.ValheimLogicalPeerId = logicalPeerId;
         session.ValheimCharacter =
@@ -183,6 +189,7 @@ public class GameWebSocketMiddleware
                 var result = await ReceiveFrameAsync(ws, buffer, CancellationToken.None);
                 if (result is null || result.MessageType == WebSocketMessageType.Close)
                     break;
+                session.TouchInbound();
 
                 try
                 {
@@ -262,6 +269,16 @@ public class GameWebSocketMiddleware
                 }
             }
         }
+        catch (WebSocketException ex)
+        {
+            // Native clients are process-driven during cutover and may disappear without a close
+            // handshake when the bounded harness stops Valheim. That is a transport detach, not
+            // an application failure; the finally block below performs the normal cleanup.
+            _logger.LogDebug(
+                ex,
+                "Session {SessionId} WebSocket ended without a close handshake",
+                session.SessionId);
+        }
         finally
         {
             // Save region before disconnect clears it (needed for resume)
@@ -316,4 +333,31 @@ public class GameWebSocketMiddleware
     }
 
     sealed record ReceivedFrame(WebSocketMessageType MessageType, byte[] Payload);
+
+    async Task RejectAsync(
+        System.Net.WebSockets.WebSocket socket,
+        GameSession session,
+        string reason)
+    {
+        try
+        {
+            if (socket.State is WebSocketState.Open or WebSocketState.CloseReceived)
+                await socket.CloseOutputAsync(
+                    WebSocketCloseStatus.PolicyViolation,
+                    reason,
+                    CancellationToken.None);
+        }
+        catch (WebSocketException ex)
+        {
+            _logger.LogDebug(
+                ex,
+                "Rejected session {SessionId} closed before acknowledging reason {Reason}",
+                session.SessionId,
+                reason);
+        }
+        finally
+        {
+            _sessions.Remove(session.SessionId);
+        }
+    }
 }

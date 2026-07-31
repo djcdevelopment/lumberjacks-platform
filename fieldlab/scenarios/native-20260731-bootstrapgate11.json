@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "native-20260731-bootstrapgate11",
+  "created_utc": "2026-07-31T11:08:00.0000000+00:00",
+  "expires_utc": "2026-07-31T12:38:00.0000000+00:00",
+  "profile": "c8",
+  "actions": [
+    {
+      "id": "omen-bootstrap-settle",
+      "client": "omen",
+      "kind": "wait",
+      "deadline_seconds": 2,
+      "duration_seconds": 0.5,
+      "distance_meters": 0,
+      "radius_meters": 0,
+      "direction": "",
+      "target_tag": ""
+    }
+  ]
+}

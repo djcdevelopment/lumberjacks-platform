@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "run_id": "native-20260731-playergate5",
+  "created_utc": "2026-07-31T09:46:34.2827825+00:00",
+  "expires_utc": "2026-07-31T10:31:34.2858552+00:00",
+  "profile": "c6",
+  "actions": [
+    {
+      "id": "omen-player-gate-settle",
+      "client": "omen",
+      "kind": "wait",
+      "deadline_seconds": 8,
+      "duration_seconds": 4,
+      "distance_meters": 0,
+      "radius_meters": 0,
+      "direction": "",
+      "target_tag": ""
+    },
+    {
+      "id": "i5-player-gate-rendezvous",
+      "client": "i5",
+      "kind": "motion_rendezvous",
+      "deadline_seconds": 20,
+      "duration_seconds": 0,
+      "distance_meters": 0,
+      "radius_meters": 0,
+      "direction": "",
+      "target_tag": ""
+    },
+    {
+      "id": "omen-player-gate-drive",
+      "client": "omen",
+      "kind": "motion_drive",
+      "deadline_seconds": 10,
+      "duration_seconds": 3,
+      "distance_meters": 2,
+      "radius_meters": 0,
+      "direction": "east",
+      "target_tag": "player-gate-omen-to-i5"
+    },
+    {
+      "id": "i5-player-gate-observe",
+      "client": "i5",
+      "kind": "motion_observe",
+      "deadline_seconds": 10,
+      "duration_seconds": 3,
+      "distance_meters": 0,
+      "radius_meters": 0,
+      "direction": "east",
+      "target_tag": "player-gate-omen-to-i5"
+    }
+  ]
+}

@@ -32,6 +32,7 @@ param(
         'zdoJournalCanonicalSessionEnabled',
         'ownershipLeaseCutoverEnabled',
         'worldZoneCutoverEnabled',
+        'portalTraversalEnabled',
         'motionAuthorityCutoverEnabled',
         'logicalPeerCutoverEnabled')]
     [Parameter(Mandatory)]

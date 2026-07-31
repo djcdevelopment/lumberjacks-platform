@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "run_id": "native-20260731-c8twoclient16",
+  "created_utc": "2026-07-31T11:35:00.0000000+00:00",
+  "expires_utc": "2026-07-31T13:05:00.0000000+00:00",
+  "profile": "c8",
+  "actions": [
+    {
+      "id": "omen-portal-slice",
+      "client": "omen",
+      "kind": "teleport_to",
+      "deadline_seconds": 15,
+      "world_x": 3250,
+      "world_y": 80,
+      "world_z": 2250
+    },
+    {
+      "id": "omen-portal-roundtrip",
+      "client": "omen",
+      "kind": "portal_roundtrip",
+      "deadline_seconds": 22,
+      "radius_meters": 256
+    },
+    {
+      "id": "omen-retain-copresence",
+      "client": "omen",
+      "kind": "wait",
+      "deadline_seconds": 20,
+      "duration_seconds": 18
+    },
+    {
+      "id": "i5-stagger",
+      "client": "i5",
+      "kind": "wait",
+      "deadline_seconds": 14,
+      "duration_seconds": 12
+    },
+    {
+      "id": "i5-portal-slice",
+      "client": "i5",
+      "kind": "teleport_to",
+      "deadline_seconds": 15,
+      "world_x": 3250,
+      "world_y": 80,
+      "world_z": 2250
+    },
+    {
+      "id": "i5-portal-roundtrip",
+      "client": "i5",
+      "kind": "portal_roundtrip",
+      "deadline_seconds": 22,
+      "radius_meters": 256
+    }
+  ]
+}
