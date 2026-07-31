@@ -29,7 +29,7 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C2a | **Complete on AM4 (2026-07-30)** | `native-20260730-c2a-final`: both physical clients applied one typed Lumberjacks direct pulse on Unity `Update`; both withheld copies became bounded stale results. Client native handlers were registered, while all 107 selected server-native attempts were suppressed before `ZRpc.Invoke` and zero native copies arrived. |
 | C2b | **Complete on AM4 (2026-07-30)** | `native-20260730-c2b-final`: both physical clients completed request/response, broadcast, real target-ZDO `RPC_ResetCloth`, deliberate withhold, and fresh-process reconnect. All 24 selected client attempts and all 19 selected server attempts were suppressed; zero native copies, duplicates, or dispatch failures were recorded. |
 | C3 | **Complete on AM4 (2026-07-30)** | `native-20260730-c3-sixth`: a run-tagged ZDO outside both native sync rings crossed a durable Lumberjacks journal, survived a Gateway restart, reached late i5 as a snapshot, then reached both clients as a valid delta and tombstone through typed apply. Stale/malformed entries were rejected before mutation; selected native `CreateSyncList` candidates and network `RPC_ZDOData` calls were zero. |
-| C4 | **In progress; C4a complete on AM4 (2026-07-30)** | `native-20260730-c4a-second`: server, OMEN, and i5 retained one distinct stable logical-peer id each while Gateway and Valheim process turnover produced new transport connection ids. All C3 mutation/interest/delivery/ACK traffic used the canonical C1 session; HTTP fallback rows and pending deliveries were zero. Ownership leases and lease-gated pickup remain. |
+| C4 | **Complete on AM4 (2026-07-30)** | `native-20260730-c4b-tenth`: the dedicated server created one real Raspberry ZDO per client; Lumberjacks issued three lease epochs, reclaimed on socket loss, rejected wrong/expired epochs, and authorized one valid action. Selected native ownership, selection, destroyed-ZDO, and inventory pickup paths were suppressed. OMEN inventory changed 9→10 and i5 11→12 exactly once; both completion frames were acknowledged and both clients completed fresh-process resume unattended. |
 | C5-C10 | Pending in dependency order | Do not skip the mandatory replans after C5 and C7. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
@@ -403,6 +403,33 @@ open at its ownership/action boundary.
 
 **Cost:** 3–6 focused days.
 
+#### C4 completion checkpoint — ownership lease and action authority
+
+`native-20260730-c4b-tenth` closed C4 on the real AM4/OMEN/i5 composition:
+
+- The dedicated server created one real Raspberry ZDO for each client. Gateway leases
+  were keyed by run, world, object, logical holder and epoch; a forced socket loss
+  reclaimed epoch 1, the wrong epoch and expired epoch 2 were rejected before mutation,
+  and reissued epoch 3 authorized the action.
+- The server temporarily assigned the selected object to the lease holder, restored
+  server ownership, destroyed the authoritative ZDO without a native destroy RPC, sent
+  one action result, and received one completed result receipt for each client.
+- Selected `CreateSyncList`, `ReleaseNearbyZDOS`/`SetOwner`, `ItemDrop.RequestOwn`,
+  `Humanoid.Pickup`, `DestroyZDO`, and destroyed-ZDO delivery paths were poisoned.
+  The live falsifying cells first exposed a swallowed completion assertion, stale
+  run state, and a native auto-pickup double credit; each remained retained and the
+  accepted cell proved the corrected boundary.
+- OMEN's inventory changed from 9 to 10 units and i5's from 11 to 12 units. Each
+  authoritative completion was applied and reliably acknowledged exactly once.
+  Both clients then launched a fresh Valheim process, resumed the scenario on the
+  intended GPU, completed, and stopped without operator input.
+- The machine reducer `ownership-lease-cutover-summary.json` passed every client,
+  server, runtime-gate, pending-delivery, and disposable-journal cleanup check.
+
+This proves the selected pickup ownership/action boundary. It does not make world
+bootstrap, zone membership, general-prefab breadth, motion, or Steam transport
+Lumberjacks-owned; those remain C5–C8.
+
 ### C5 — World bootstrap and zone/interest synchronization
 
 **Build**
@@ -653,16 +680,16 @@ at least one native Valheim client; composition slices require both clients.
 
 ## Estimated remaining cost
 
-After the C4a checkpoint, the current evidence supports **15–34 focused engineering
-days** for the remaining C4 ownership work through C10, plus the two bounded P7 world
-reloads already budgeted in C10. The range still includes 1–2 days of remaining
-direct/routed method burn-down folded into C4-C7. World/zone bootstrap and Steam-free
-cold join still dominate the architectural risk.
+After C4, the current evidence supports **12–28 focused engineering days** for C5
+through C10, plus the two bounded P7 world reloads already budgeted in C10. The range
+still includes 1–2 days of remaining direct/routed method burn-down folded into
+C5-C7. World/zone bootstrap and Steam-free cold join still dominate the architectural
+risk.
 
 | Cost class | Slices |
 | --- | --- |
 | Lower, existing substrate | C8, C9, C10 |
-| Medium, mapped interception seams | C4 ownership action, C6 |
+| Medium, mapped interception seams | C6 |
 | High, state-machine boundaries | C5, C7 |
 
 This is a burn-down estimate, not a promise to execute all slices without reassessment.
@@ -671,9 +698,9 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0-C3 and C4a are complete. Continue **C4 ownership lease/action enforcement** on
-the now-proven logical-peer and canonical-session boundary. The next falsifying cell
-must bind a server-issued lease to one run-tagged target, reject a wrong/expired epoch
-before mutation, reclaim/reissue on disconnect, and then complete one authoritative
-pickup per client with the selected native ownership trigger suppressed. Replan
-remains mandatory after C5 and C7.
+C0-C4 are complete. Continue **C5 world bootstrap and zone/interest synchronization**
+on the now-proven logical-peer, canonical-session, typed-ZDO and ownership boundaries.
+The next falsifying cell must initialize one client from a Lumberjacks world descriptor
+while the corresponding native world fields are blank, then cross one automated zone
+with native destination selection withheld and resume a chunked membership snapshot
+without duplicate objects. Replan immediately after C5, before beginning C6.

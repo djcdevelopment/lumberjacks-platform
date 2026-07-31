@@ -29,6 +29,7 @@ builder.Services.AddSingleton<ValheimZdoRedirectService>();
 builder.Services.AddSingleton<ValheimZdoJournalService>(sp =>
     new ValheimZdoJournalService(
         sp.GetRequiredService<IConfiguration>()["VALHEIM_ZDO_JOURNAL_PATH"]));
+builder.Services.AddSingleton<ValheimOwnershipLeaseService>();
 builder.Services.AddSingleton<ValheimZdoConsumerTelemetryService>();
 builder.Services.AddSingleton<ValheimZdoInjectionService>();
 builder.Services.AddSingleton<ValheimWindowActivityService>();

@@ -19,6 +19,10 @@ public static class MessageType
     public const string ValheimZdoMutation = "valheim_zdo_mutation";
     public const string ValheimZdoInterest = "valheim_zdo_interest";
     public const string ValheimZdoAck = "valheim_zdo_ack";
+    public const string ValheimOwnershipLeaseRequest = "valheim_ownership_lease_request";
+    public const string ValheimOwnershipLeaseIssue = "valheim_ownership_lease_issue";
+    public const string ValheimOwnershipAction = "valheim_ownership_action";
+    public const string ValheimOwnershipActionResult = "valheim_ownership_action_result";
 
     // Server → Client
     public const string SessionStarted = "session_started";
@@ -30,6 +34,13 @@ public static class MessageType
     public const string ValheimZdoMutationReceipt = "valheim_zdo_mutation_receipt";
     public const string ValheimZdoInterestReceipt = "valheim_zdo_interest_receipt";
     public const string ValheimZdoInterestStatus = "valheim_zdo_interest_status";
+    public const string ValheimOwnershipLeaseCommand = "valheim_ownership_lease_command";
+    public const string ValheimOwnershipLeaseGranted = "valheim_ownership_lease_granted";
+    public const string ValheimOwnershipLeaseReceipt = "valheim_ownership_lease_receipt";
+    public const string ValheimOwnershipActionRejected = "valheim_ownership_action_rejected";
+    public const string ValheimOwnershipActionAuthorized = "valheim_ownership_action_authorized";
+    public const string ValheimOwnershipActionCompleted = "valheim_ownership_action_completed";
+    public const string ValheimOwnershipResultReceipt = "valheim_ownership_result_receipt";
     public const string WorldSnapshot = "world_snapshot";
     public const string EntityUpdate = "entity_update";
     public const string EntityRemoved = "entity_removed";

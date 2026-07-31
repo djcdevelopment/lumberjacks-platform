@@ -29,7 +29,8 @@ param(
         'lumberjacksGatewayUrl',
         'routedRpcCutoverEnabled',
         'zdoJournalCutoverEnabled',
-        'zdoJournalCanonicalSessionEnabled')]
+        'zdoJournalCanonicalSessionEnabled',
+        'ownershipLeaseCutoverEnabled')]
     [Parameter(Mandatory)]
     [string] $Setting,
 

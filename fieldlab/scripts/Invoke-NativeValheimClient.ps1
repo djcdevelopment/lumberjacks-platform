@@ -51,6 +51,8 @@ param(
 
     [switch] $EnableZdoJournalCanonicalSession,
 
+    [switch] $EnableOwnershipLeaseCutover,
+
     [string[]] $LaunchArguments = @(),
 
     [string] $PendingRequestPath = '',
@@ -87,6 +89,7 @@ $gameSessionReceiptsPath = Join-Path $autotestRoot 'lumberjacks-game-session.jso
 $directControlReceiptsPath = Join-Path $autotestRoot 'direct-control-cutover.jsonl'
 $routedRpcReceiptsPath = Join-Path $autotestRoot 'routed-rpc-cutover.jsonl'
 $zdoJournalReceiptsPath = Join-Path $autotestRoot 'zdo-journal-cutover.jsonl'
+$ownershipLeaseReceiptsPath = Join-Path $autotestRoot 'ownership-lease-cutover.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
 
@@ -425,6 +428,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         zdo_journal_cutover_requested = [bool]$EnableZdoJournalCutover
         zdo_journal_canonical_session_requested =
             [bool]$EnableZdoJournalCanonicalSession
+        ownership_lease_cutover_requested =
+            [bool]$EnableOwnershipLeaseCutover
         preflight = $Preflight
         deployment = $Deployment
         plugin_sha256 = if (Test-Path -LiteralPath $pluginPath -PathType Leaf) {
@@ -447,6 +452,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
                 Copy-EvidenceFile $routedRpcReceiptsPath 'routed-rpc-cutover.jsonl'
             zdo_journal_cutover =
                 Copy-EvidenceFile $zdoJournalReceiptsPath 'zdo-journal-cutover.jsonl'
+            ownership_lease_cutover =
+                Copy-EvidenceFile $ownershipLeaseReceiptsPath 'ownership-lease-cutover.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'
@@ -470,6 +477,7 @@ function Write-NativeAutotestRequest([bool] $ExpectPoison) {
         zdo_journal_cutover = [bool]$EnableZdoJournalCutover
         zdo_journal_canonical_session =
             [bool]$EnableZdoJournalCanonicalSession
+        ownership_lease_cutover = [bool]$EnableOwnershipLeaseCutover
     }
     Write-JsonAtomic $autotestRequestPath $request
     return $now
@@ -593,6 +601,8 @@ function Invoke-PendingRun() {
         EnableZdoJournalCutover = [bool]$pending.enable_zdo_journal_cutover
         EnableZdoJournalCanonicalSession =
             [bool]$pending.enable_zdo_journal_canonical_session
+        EnableOwnershipLeaseCutover =
+            [bool]$pending.enable_ownership_lease_cutover
         LaunchArguments = @($pending.launch_arguments)
     }
     & $PSCommandPath @invoke
@@ -666,6 +676,8 @@ function Queue-InteractiveSmoke() {
         enable_zdo_journal_cutover = [bool]$EnableZdoJournalCutover
         enable_zdo_journal_canonical_session =
             [bool]$EnableZdoJournalCanonicalSession
+        enable_ownership_lease_cutover =
+            [bool]$EnableOwnershipLeaseCutover
         launch_arguments = @($LaunchArguments)
     }
     Write-JsonAtomic $PendingRequestPath $pending

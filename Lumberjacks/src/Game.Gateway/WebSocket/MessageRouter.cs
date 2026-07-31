@@ -20,6 +20,7 @@ public class MessageRouter
     private readonly PlaceStructureHandler _placeStructureHandler;
     private readonly InventoryHandler _inventoryHandler;
     private readonly ValheimZdoJournalService _zdoJournal;
+    private readonly ValheimOwnershipLeaseService _ownershipLeases;
     private readonly ILogger<MessageRouter> _logger;
 
     public MessageRouter(
@@ -30,6 +31,7 @@ public class MessageRouter
         PlaceStructureHandler placeStructureHandler,
         InventoryHandler inventoryHandler,
         ValheimZdoJournalService zdoJournal,
+        ValheimOwnershipLeaseService ownershipLeases,
         ILogger<MessageRouter> logger)
     {
         _sessions = sessions;
@@ -39,6 +41,7 @@ public class MessageRouter
         _placeStructureHandler = placeStructureHandler;
         _inventoryHandler = inventoryHandler;
         _zdoJournal = zdoJournal;
+        _ownershipLeases = ownershipLeases;
         _logger = logger;
     }
 
@@ -126,6 +129,22 @@ public class MessageRouter
 
             case MessageType.ValheimZdoAck:
                 HandleValheimZdoAck(session, envelope);
+                break;
+
+            case MessageType.ValheimOwnershipLeaseRequest:
+                await HandleValheimOwnershipLeaseRequestAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimOwnershipLeaseIssue:
+                await HandleValheimOwnershipLeaseIssueAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimOwnershipAction:
+                await HandleValheimOwnershipActionAsync(session, envelope);
+                break;
+
+            case MessageType.ValheimOwnershipActionResult:
+                await HandleValheimOwnershipActionResultAsync(session, envelope);
                 break;
 
             default:
@@ -569,6 +588,300 @@ public class MessageRouter
             result.Acknowledged, result.Unknown);
     }
 
+    async Task HandleValheimOwnershipLeaseRequestAsync(
+        GameSession session, Envelope envelope)
+    {
+        if (session.ValheimRole != "client" ||
+            string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId) ||
+            !session.ValheimPeerUid.HasValue)
+            throw new InvalidDataException(
+                "ownership lease request requires a bound logical client");
+        var payload = envelope.Payload;
+        var runId = ReadString(payload, "run_id");
+        var actionId = ReadString(payload, "action_id");
+        var phase = ReadString(payload, "phase");
+        var requestOrdinal = ReadInt32(payload, "request_ordinal");
+        var worldEpoch = ReadString(payload, "world_epoch");
+        var uidUser = ReadInt64(payload, "uid_user");
+        var uidId = ReadUInt32(payload, "uid_id");
+        var x = ReadDouble(payload, "origin_x");
+        var y = ReadDouble(payload, "origin_y");
+        var z = ReadDouble(payload, "origin_z");
+        if (!SafeToken(runId, 80) || !SafeToken(actionId, 80) ||
+            !SafeToken(worldEpoch, 96) ||
+            phase is not ("create" or "reissue") ||
+            (phase == "create" && requestOrdinal != 0) ||
+            (phase == "reissue" && requestOrdinal is < 1 or > 100) ||
+            (phase == "create" && (uidUser != 0 || uidId != 0)) ||
+            (phase == "reissue" && (uidUser == 0 || uidId == 0)) ||
+            !double.IsFinite(x) || !double.IsFinite(y) || !double.IsFinite(z) ||
+            Math.Abs(x) > 1_000_000 || Math.Abs(y) > 1_000_000 ||
+            Math.Abs(z) > 1_000_000)
+            throw new InvalidDataException("invalid ownership lease request");
+        var previousClientSequence = session.Reliable.LastClientSequence;
+        var accepted = session.Reliable.TryAcceptClientMessage(
+            envelope.Seq,
+            $"ownership-request:{runId}:{actionId}:{phase}:{requestOrdinal}:{uidUser}:{uidId}");
+        _logger.LogInformation(
+            "Valheim ownership lease request connection={ConnectionId} logical_peer={LogicalPeer} action={ActionId} phase={Phase} client_sequence={ClientSequence} previous_client_sequence={PreviousClientSequence} accepted={Accepted}",
+            session.Reliable.ConnectionId, session.ValheimLogicalPeerId,
+            actionId, phase, envelope.Seq, previousClientSequence, accepted);
+        if (!accepted)
+            return;
+        var server = _sessions.GetAll().SingleOrDefault(candidate =>
+            candidate.ValheimRole == "server" &&
+            candidate.ValheimPeerUid.HasValue);
+        if (server is null)
+        {
+            await SendErrorAsync(
+                session, "OWNERSHIP_SERVER_MISSING", actionId);
+            return;
+        }
+        var queued = await server.SendReliableAsync(
+            MessageType.ValheimOwnershipLeaseCommand,
+            new
+            {
+                run_id = runId,
+                action_id = actionId,
+                phase,
+                request_ordinal = requestOrdinal,
+                world_epoch = worldEpoch,
+                uid_user = uidUser,
+                uid_id = uidId,
+                holder_logical_peer_id = session.ValheimLogicalPeerId,
+                holder_peer_uid = session.ValheimPeerUid.Value,
+                origin_x = x,
+                origin_y = y,
+                origin_z = z,
+            },
+            CancellationToken.None);
+        if (!queued.Queued)
+            throw new InvalidOperationException(queued.Reason);
+    }
+
+    async Task HandleValheimOwnershipLeaseIssueAsync(
+        GameSession session, Envelope envelope)
+    {
+        if (session.ValheimRole != "server" ||
+            string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId))
+            throw new InvalidDataException(
+                "ownership lease issue requires the logical server");
+        var payload = envelope.Payload;
+        var runId = ReadString(payload, "run_id");
+        var actionId = ReadString(payload, "action_id");
+        var phase = ReadString(payload, "phase");
+        var requestOrdinal = ReadInt32(payload, "request_ordinal");
+        var worldEpoch = ReadString(payload, "world_epoch");
+        var holderLogical = ReadString(payload, "holder_logical_peer_id");
+        var holderPeerUid = ReadInt64(payload, "holder_peer_uid");
+        var uidUser = ReadInt64(payload, "uid_user");
+        var uidId = ReadUInt32(payload, "uid_id");
+        var duration = ReadInt32(payload, "duration_seconds");
+        var itemPrefab = ReadString(payload, "item_prefab");
+        if (!SafeToken(runId, 80) || !SafeToken(actionId, 80) ||
+            !SafeToken(worldEpoch, 96) || !SafeToken(holderLogical, 80) ||
+            !SafeToken(itemPrefab, 80) ||
+            phase is not ("create" or "reissue") ||
+            (phase == "create" && requestOrdinal != 0) ||
+            (phase == "reissue" && requestOrdinal is < 1 or > 100) ||
+            holderPeerUid == 0 || uidUser == 0 || uidId == 0)
+            throw new InvalidDataException("invalid ownership lease issue");
+        var holder = _sessions.FindByValheimLogicalPeer(holderLogical);
+        if (holder is null || holder.ValheimRole != "client" ||
+            holder.ValheimPeerUid != holderPeerUid)
+            throw new InvalidDataException("ownership lease holder is not active");
+        if (!session.Reliable.TryAcceptClientMessage(
+                envelope.Seq,
+                $"ownership-issue:{runId}:{actionId}:{phase}:{requestOrdinal}:{uidUser}:{uidId}"))
+            return;
+        var lease = _ownershipLeases.Issue(
+            runId, worldEpoch, uidUser, uidId, holderLogical, holderPeerUid,
+            actionId, duration, DateTimeOffset.UtcNow);
+        var grant = await holder.SendReliableAsync(
+            MessageType.ValheimOwnershipLeaseGranted,
+            new
+            {
+                run_id = runId,
+                action_id = actionId,
+                phase,
+                request_ordinal = requestOrdinal,
+                world_epoch = worldEpoch,
+                uid_user = uidUser,
+                uid_id = uidId,
+                holder_logical_peer_id = holderLogical,
+                holder_peer_uid = holderPeerUid,
+                lease_epoch = lease.Epoch,
+                issued_utc = lease.IssuedUtc,
+                expires_utc = lease.ExpiresUtc,
+                item_prefab = itemPrefab,
+            },
+            CancellationToken.None);
+        if (!grant.Queued)
+            throw new InvalidOperationException(grant.Reason);
+        var receipt = await session.SendReliableAsync(
+            MessageType.ValheimOwnershipLeaseReceipt,
+            new
+            {
+                run_id = runId,
+                action_id = actionId,
+                phase,
+                request_ordinal = requestOrdinal,
+                world_epoch = worldEpoch,
+                uid_user = uidUser,
+                uid_id = uidId,
+                holder_logical_peer_id = holderLogical,
+                lease_epoch = lease.Epoch,
+                expires_utc = lease.ExpiresUtc,
+            },
+            CancellationToken.None);
+        if (!receipt.Queued)
+            throw new InvalidOperationException(receipt.Reason);
+    }
+
+    async Task HandleValheimOwnershipActionAsync(
+        GameSession session, Envelope envelope)
+    {
+        if (session.ValheimRole != "client" ||
+            string.IsNullOrWhiteSpace(session.ValheimLogicalPeerId) ||
+            !session.ValheimPeerUid.HasValue)
+            throw new InvalidDataException(
+                "ownership action requires a bound logical client");
+        var payload = envelope.Payload;
+        var runId = ReadString(payload, "run_id");
+        var actionId = ReadString(payload, "action_id");
+        var attemptId = ReadString(payload, "attempt_id");
+        var worldEpoch = ReadString(payload, "world_epoch");
+        var kind = ReadString(payload, "action_kind");
+        var uidUser = ReadInt64(payload, "uid_user");
+        var uidId = ReadUInt32(payload, "uid_id");
+        var epoch = ReadInt64(payload, "lease_epoch");
+        if (!SafeToken(runId, 80) || !SafeToken(actionId, 80) ||
+            !SafeToken(attemptId, 96) || !SafeToken(worldEpoch, 96) ||
+            kind != "pickup" || uidUser == 0 || uidId == 0 || epoch < 1)
+            throw new InvalidDataException("invalid ownership action");
+        if (!session.Reliable.TryAcceptClientMessage(
+                envelope.Seq, $"ownership-action:{attemptId}"))
+            return;
+        var validation = _ownershipLeases.Validate(
+            runId, worldEpoch, uidUser, uidId,
+            session.ValheimLogicalPeerId, epoch, DateTimeOffset.UtcNow);
+        if (!validation.Accepted)
+        {
+            var rejected = await session.SendReliableAsync(
+                MessageType.ValheimOwnershipActionRejected,
+                new
+                {
+                    run_id = runId,
+                    action_id = actionId,
+                    attempt_id = attemptId,
+                    world_epoch = worldEpoch,
+                    uid_user = uidUser,
+                    uid_id = uidId,
+                    lease_epoch = epoch,
+                    reason = validation.Reason,
+                },
+                CancellationToken.None);
+            if (!rejected.Queued)
+                throw new InvalidOperationException(rejected.Reason);
+            return;
+        }
+        var server = _sessions.GetAll().SingleOrDefault(candidate =>
+            candidate.ValheimRole == "server" &&
+            candidate.ValheimPeerUid.HasValue);
+        if (server is null)
+            throw new InvalidDataException("ownership server is not active");
+        var authorized = await server.SendReliableAsync(
+            MessageType.ValheimOwnershipActionAuthorized,
+            new
+            {
+                run_id = runId,
+                action_id = actionId,
+                attempt_id = attemptId,
+                action_kind = kind,
+                world_epoch = worldEpoch,
+                uid_user = uidUser,
+                uid_id = uidId,
+                lease_epoch = epoch,
+                holder_logical_peer_id = session.ValheimLogicalPeerId,
+                holder_peer_uid = session.ValheimPeerUid.Value,
+            },
+            CancellationToken.None);
+        if (!authorized.Queued)
+            throw new InvalidOperationException(authorized.Reason);
+    }
+
+    async Task HandleValheimOwnershipActionResultAsync(
+        GameSession session, Envelope envelope)
+    {
+        if (session.ValheimRole != "server")
+            throw new InvalidDataException(
+                "ownership action result requires the logical server");
+        var payload = envelope.Payload;
+        var runId = ReadString(payload, "run_id");
+        var actionId = ReadString(payload, "action_id");
+        var attemptId = ReadString(payload, "attempt_id");
+        var worldEpoch = ReadString(payload, "world_epoch");
+        var holderLogical = ReadString(payload, "holder_logical_peer_id");
+        var uidUser = ReadInt64(payload, "uid_user");
+        var uidId = ReadUInt32(payload, "uid_id");
+        var epoch = ReadInt64(payload, "lease_epoch");
+        var success = payload.TryGetProperty("success", out var successElement) &&
+            successElement.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+            successElement.GetBoolean();
+        var itemPrefab = ReadString(payload, "item_prefab");
+        var itemCount = ReadInt32(payload, "item_count");
+        if (!success || !SafeToken(runId, 80) || !SafeToken(actionId, 80) ||
+            !SafeToken(attemptId, 96) || !SafeToken(worldEpoch, 96) ||
+            !SafeToken(holderLogical, 80) || !SafeToken(itemPrefab, 80) ||
+            uidUser == 0 || uidId == 0 || epoch < 1 ||
+            itemCount is < 1 or > 100)
+            throw new InvalidDataException("invalid ownership action result");
+        if (!session.Reliable.TryAcceptClientMessage(
+                envelope.Seq, $"ownership-result:{attemptId}"))
+            return;
+        var lease = _ownershipLeases.Complete(
+            runId, worldEpoch, uidUser, uidId, holderLogical, epoch,
+            DateTimeOffset.UtcNow);
+        var holder = _sessions.FindByValheimLogicalPeer(holderLogical)
+            ?? throw new InvalidDataException("ownership result holder is not active");
+        var completed = await holder.SendReliableAsync(
+            MessageType.ValheimOwnershipActionCompleted,
+            new
+            {
+                run_id = runId,
+                action_id = actionId,
+                attempt_id = attemptId,
+                world_epoch = worldEpoch,
+                uid_user = uidUser,
+                uid_id = uidId,
+                lease_epoch = epoch,
+                holder_logical_peer_id = holderLogical,
+                item_prefab = itemPrefab,
+                item_count = itemCount,
+                result = "authoritative_pickup",
+            },
+            CancellationToken.None);
+        if (!completed.Queued)
+            throw new InvalidOperationException(completed.Reason);
+        var receipt = await session.SendReliableAsync(
+            MessageType.ValheimOwnershipResultReceipt,
+            new
+            {
+                run_id = runId,
+                action_id = actionId,
+                attempt_id = attemptId,
+                world_epoch = worldEpoch,
+                uid_user = uidUser,
+                uid_id = uidId,
+                lease_epoch = lease.Epoch,
+                holder_logical_peer_id = holderLogical,
+                result = "completed",
+            },
+            CancellationToken.None);
+        if (!receipt.Queued)
+            throw new InvalidOperationException(receipt.Reason);
+    }
+
     async Task SendPendingZdoDeliveriesAsync(GameSession target, string worldEpoch)
     {
         foreach (var delivery in _zdoJournal.Pending(
@@ -596,6 +909,30 @@ public class MessageRouter
         payload.TryGetProperty(name, out var element)
             ? element.GetString() ?? string.Empty
             : string.Empty;
+
+    static long ReadInt64(JsonElement payload, string name) =>
+        payload.TryGetProperty(name, out var element) &&
+        element.TryGetInt64(out var value)
+            ? value
+            : throw new InvalidDataException(name + " must be int64");
+
+    static uint ReadUInt32(JsonElement payload, string name) =>
+        payload.TryGetProperty(name, out var element) &&
+        element.TryGetUInt32(out var value)
+            ? value
+            : throw new InvalidDataException(name + " must be uint32");
+
+    static int ReadInt32(JsonElement payload, string name) =>
+        payload.TryGetProperty(name, out var element) &&
+        element.TryGetInt32(out var value)
+            ? value
+            : throw new InvalidDataException(name + " must be int32");
+
+    static double ReadDouble(JsonElement payload, string name) =>
+        payload.TryGetProperty(name, out var element) &&
+        element.TryGetDouble(out var value)
+            ? value
+            : throw new InvalidDataException(name + " must be number");
 
     static bool AllowedRoutedMethod(string methodName, int methodHash)
     {

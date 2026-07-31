@@ -222,6 +222,7 @@ public sealed class ReliableGameSessionState
     public string ResumeToken { get { lock (_gate) return _resumeToken; } }
     public long ResumeEpoch { get { lock (_gate) return _resumeEpoch; } }
     public int PendingCount { get { lock (_gate) return _pending.Count; } }
+    public long LastClientSequence { get { lock (_gate) return _lastClientSequence; } }
 
     public bool CanAddProbe(string probeId)
     {

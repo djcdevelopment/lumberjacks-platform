@@ -270,6 +270,18 @@ public class GameWebSocketMiddleware
             // Restore region for detached session so resume knows where to rejoin
             session.RegionId = regionBeforeDisconnect;
 
+            // Ownership leases are mutation authority, not transport replay state.
+            // Any holder socket loss reclaims them; the same logical peer must obtain
+            // a new epoch after resume.
+            var reclaimed = _services
+                .GetRequiredService<ValheimOwnershipLeaseService>()
+                .ReclaimByLogicalPeer(
+                    session.ValheimLogicalPeerId, DateTimeOffset.UtcNow);
+            if (reclaimed > 0)
+                _logger.LogInformation(
+                    "Reclaimed {LeaseCount} Valheim ownership lease(s) for detached logical peer {LogicalPeer}",
+                    reclaimed, session.ValheimLogicalPeerId);
+
             // Detach session (preserves identity for resume within 2min window)
             _sessions.Detach(session);
             _logger.LogInformation(

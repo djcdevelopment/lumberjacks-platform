@@ -47,6 +47,8 @@ param(
 
     [switch] $EnableZdoJournalCanonicalSession,
 
+    [switch] $EnableOwnershipLeaseCutover,
+
     [string] $ServerGatewayUrl = 'http://100.124.12.37:4000'
 )
 
@@ -70,6 +72,10 @@ if ($Server -notmatch '^[^\s:]+:\d{2,5}$') {
 if ($EnableZdoJournalCanonicalSession -and -not $EnableZdoJournalCutover) {
     throw '-EnableZdoJournalCanonicalSession requires -EnableZdoJournalCutover.'
 }
+if ($EnableOwnershipLeaseCutover -and
+    (-not $EnableZdoJournalCutover -or -not $EnableZdoJournalCanonicalSession)) {
+    throw '-EnableOwnershipLeaseCutover requires canonical ZDO journal cutover.'
+}
 
 $scenario = (Resolve-Path -LiteralPath $ScenarioPath -ErrorAction Stop).Path
 $dll = (Resolve-Path -LiteralPath $DllPath -ErrorAction Stop).Path
@@ -91,6 +97,9 @@ $serverJournalArmed = $false
 $serverJournalCanonicalArmed = $false
 $serverJournalReceipts = @()
 $serverJournalDisarmError = $null
+$serverOwnershipArmed = $false
+$serverOwnershipReceipts = @()
+$serverOwnershipDisarmError = $null
 $gatewayRestartReceipt = $null
 $omenHarnessProcess = $null
 $useRoutedRpc =
@@ -213,6 +222,18 @@ try {
         }
     }
 
+    if ($EnableOwnershipLeaseCutover) {
+        $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+        $ownershipArmOutput = & $serverControl `
+            -Setting ownershipLeaseCutoverEnabled `
+            -Value true `
+            -RequestId "$RunId-ownership-arm"
+        if ($LASTEXITCODE -ne 0) { throw 'Server ownership-lease arm failed.' }
+        $serverOwnershipReceipts +=
+            (($ownershipArmOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+        $serverOwnershipArmed = $true
+    }
+
     & (Join-Path $i5Tools 'Deploy-ToI5.ps1') `
         -Path $clientHarness `
         -Dest C:/deploy/baseline/fieldlab/scripts
@@ -242,11 +263,14 @@ try {
         if ($EnableZdoJournalCanonicalSession) {
             $i5Arguments += '-EnableZdoJournalCanonicalSession'
         }
+        if ($EnableOwnershipLeaseCutover) {
+            $i5Arguments += '-EnableOwnershipLeaseCutover'
+        }
 
         $gatewayCompose = Join-Path $repoRoot 'Lumberjacks\infra\docker'
         Push-Location $gatewayCompose
         try {
-            & docker compose -p lumberjacks-local up -d --no-deps gateway
+            & docker compose -p lumberjacks-local up -d --no-deps --build gateway
             if ($LASTEXITCODE -ne 0) { throw 'Gateway deployment for C3 failed.' }
         } finally {
             Pop-Location
@@ -273,6 +297,9 @@ try {
             '-WaitSeconds', [string]$WaitSeconds)
         if ($EnableZdoJournalCanonicalSession) {
             $omenHarnessArguments += '-EnableZdoJournalCanonicalSession'
+        }
+        if ($EnableOwnershipLeaseCutover) {
+            $omenHarnessArguments += '-EnableOwnershipLeaseCutover'
         }
         $omenHarnessProcess = Start-Process `
             -FilePath (Join-Path $PSHOME 'powershell.exe') `
@@ -417,6 +444,16 @@ try {
         }
         if ($omenExitCode -ne 0) {
             throw "OMEN journal harness failed with exit $omenExitCode; see $omenStderr."
+        }
+    }
+    if ($EnableOwnershipLeaseCutover) {
+        $serverDirectory = Join-Path $runDirectory 'server'
+        New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/ownership-lease-cutover.jsonl' `
+            "$serverDirectory\ownership-lease-cutover.jsonl"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Server ownership-lease evidence retrieval failed.'
         }
     }
 
@@ -564,6 +601,25 @@ try {
             $serverRoutedDisarmError = $_.Exception.Message
         }
     }
+    if ($serverOwnershipArmed) {
+        try {
+            $ownershipDisarmOutput =
+                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    -Setting ownershipLeaseCutoverEnabled `
+                    -Value false `
+                    -RequestId "$RunId-ownership-disarm"
+            if ($LASTEXITCODE -eq 0) {
+                $serverOwnershipReceipts +=
+                    (($ownershipDisarmOutput -join [Environment]::NewLine) |
+                        ConvertFrom-Json)
+            } else {
+                $serverOwnershipDisarmError =
+                    "Server ownership-lease disarm exited $LASTEXITCODE."
+            }
+        } catch {
+            $serverOwnershipDisarmError = $_.Exception.Message
+        }
+    }
     if ($serverJournalArmed) {
         if ($serverJournalCanonicalArmed) {
             try {
@@ -650,6 +706,17 @@ try {
                 run_id = $RunId
                 receipts = $serverJournalReceipts
                 disarm_error = $serverJournalDisarmError
+            })
+    }
+    if ($EnableOwnershipLeaseCutover -and
+        $serverOwnershipReceipts.Count -gt 0) {
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'server-runtime-ownership-lease.json') `
+            ([ordered]@{
+                schema_version = 1
+                run_id = $RunId
+                receipts = $serverOwnershipReceipts
+                disarm_error = $serverOwnershipDisarmError
             })
     }
     if ($completed -and $serverDisarmError) {
