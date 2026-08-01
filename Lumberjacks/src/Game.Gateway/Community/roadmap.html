@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-01T00:33:37.948Z</span>
+        <span>Updated 2026-08-01T00:46:00.201Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260801003337-ownership-lease-frames-now-always-enqueue-on-the">
+        <div class="journal"><article class="journal-entry" id="note-20260801004600-a-local-teleport-now-announces-itself-on-the-rel">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-01T00:46:00.201Z">2026-08-01T00:46:00.201Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>A local teleport now announces itself on the reliable motion-resync lane (reason local_teleport, degenerate one-frame gap fields): the mover detects its own &gt;30m jump between queued frames and publishes the resync, the Gateway accepts the second reason, and observers re-anchor through the existing ApplyReliableResync path.</h3>
+      <p><strong>Impact:</strong> Wall class 15: full41&#39;s mover teleported to the safe origin mid-observation and the observer&#39;s fail-closed implausible-target guard correctly refused the 87m correction forever (applied=0, failures=795, resync_applied=0). The guard stays strict; legitimate jumps get a legal reliable channel. This also de-races the composition&#39;s cross-client ordering: observers re-anchor whenever the mover teleports, not only when scheduling luck put the teleport first.</p>
+      <details><summary>Verification (2)</summary><ul><li>full41 receipts: target_rejected target_error_mm=87058 stable; i5 safe-origin completed 00:38:08 after OMEN drive began 00:38:02</li><li>102/102 golden tests; mod and gateway images build clean</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/runs/native-valheim/native-20260731-c8-full41</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260801003337-ownership-lease-frames-now-always-enqueue-on-the">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

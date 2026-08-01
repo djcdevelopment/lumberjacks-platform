@@ -539,7 +539,7 @@ public class MessageRouter
             gapStart is < 1 or > ushort.MaxValue ||
             gapEnd is < 1 or > ushort.MaxValue ||
             gapEnd < gapStart ||
-            !string.Equals(reason, "gap_recovery", StringComparison.Ordinal) ||
+            reason is not ("gap_recovery" or "local_teleport") ||
             !FiniteAndBounded(x, 1_000_000) ||
             !FiniteAndBounded(y, 1_000_000) ||
             !FiniteAndBounded(z, 1_000_000) ||
