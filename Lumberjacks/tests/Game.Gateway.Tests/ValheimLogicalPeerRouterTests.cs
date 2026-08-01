@@ -93,6 +93,51 @@ public sealed class ValheimLogicalPeerRouterTests
             forwarded.Payload.GetProperty("zdo_id").GetUInt32());
     }
 
+    [Fact]
+    public async Task ClientBinding_WithReliableCharacterIdentity_AuthorizesMotionGeneration()
+    {
+        var fixture = new LogicalPeerFixture();
+        var client = fixture.Create("client", "client-logical", "Tugcorp");
+
+        await fixture.Router.RouteAsync(
+            client.Session,
+            EnvelopeFactory.Create(
+                MessageType.ValheimPeerBind,
+                new
+                {
+                    role = "client",
+                    peer_uid = 101L,
+                    character_zdo_user_id = 101L,
+                    character_zdo_id = 42U,
+                }));
+
+        var authority = Assert.IsType<ValheimCharacterAuthority>(
+            client.Session.ValheimCharacterAuthority);
+        Assert.Equal(101L, authority.ZdoUserId);
+        Assert.Equal(42U, authority.ZdoId);
+        Assert.Equal(1L, authority.Generation);
+    }
+
+    [Fact]
+    public async Task ClientBinding_RejectsCharacterIdentityFromAnotherPeer()
+    {
+        var fixture = new LogicalPeerFixture();
+        var client = fixture.Create("client", "client-logical", "Tugcorp");
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            fixture.Router.RouteAsync(
+                client.Session,
+                EnvelopeFactory.Create(
+                    MessageType.ValheimPeerBind,
+                    new
+                    {
+                        role = "client",
+                        peer_uid = 101L,
+                        character_zdo_user_id = 999L,
+                        character_zdo_id = 42U,
+                    })));
+    }
+
     sealed class LogicalPeerFixture
     {
         readonly SessionManager _sessions = new();

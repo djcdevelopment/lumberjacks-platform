@@ -864,7 +864,22 @@ public class MessageRouter
             !string.Equals(role, session.ValheimRole, StringComparison.Ordinal))
             throw new InvalidDataException("invalid Valheim peer binding");
 
-        var key = $"peer-bind:{role}:{peerUid}";
+        var hasCharacterUser =
+            payload.TryGetProperty("character_zdo_user_id", out var characterUserElement);
+        var hasCharacterId =
+            payload.TryGetProperty("character_zdo_id", out var characterIdElement);
+        long characterUserId = 0;
+        uint characterZdoId = 0;
+        if (hasCharacterUser != hasCharacterId ||
+            (hasCharacterUser &&
+             (!string.Equals(role, "client", StringComparison.Ordinal) ||
+              !characterUserElement.TryGetInt64(out characterUserId) ||
+              !characterIdElement.TryGetUInt32(out characterZdoId) ||
+              characterUserId != peerUid || characterZdoId == 0)))
+            throw new InvalidDataException("invalid Valheim character binding");
+
+        var key =
+            $"peer-bind:{role}:{peerUid}:{characterUserId}:{characterZdoId}";
         if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
         {
             if (session.ValheimPeerUid != peerUid)
@@ -883,9 +898,16 @@ public class MessageRouter
             throw new InvalidDataException("Valheim server session already bound");
 
         session.ValheimPeerUid = peerUid;
+        if (characterZdoId != 0)
+        {
+            var registration =
+                session.AuthorizeValheimCharacter(characterUserId, characterZdoId);
+            if (_valheimPlayers != null)
+                await _valheimPlayers.CharacterRegisteredAsync(session, registration);
+        }
         _logger.LogInformation(
-            "Valheim peer bound connection={ConnectionId} role={Role} peer={PeerUid}",
-            session.ConnectionId, role, peerUid);
+            "Valheim peer bound connection={ConnectionId} role={Role} peer={PeerUid} character={CharacterUser}:{CharacterZdo}",
+            session.ConnectionId, role, peerUid, characterUserId, characterZdoId);
 
         await AnnounceLogicalCounterpartsAsync(session, role);
     }
