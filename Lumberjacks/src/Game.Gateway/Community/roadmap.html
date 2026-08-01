@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-01T05:37:04.853Z</span>
+        <span>Updated 2026-08-01T06:13:19.432Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,21 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260801053704-the-i5-s-perf-receipts-were-lifted-off-the-lapto">
+        <div class="journal"><article class="journal-entry" id="note-20260801061319-the-once-per-session-cold-join-stall-is-root-cau">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-01T06:13:19.432Z">2026-08-01T06:13:19.432Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>The once-per-session cold-join stall is root-caused and was NOT a motion defect: it is Valheim&#39;s own WorldGenerator.Initialize river/lake pregeneration, called synchronously from LogicalPeerCutoverRunner.ConstructPeer, and vanilla ZNet.RPC_PeerInfo does the same thing at the same point - so the Steam-free cold join pays vanilla&#39;s join cost rather than adding one. Corroborated 8/8 against an independent receipt clock.</h3>
+      <p><strong>Impact:</strong> Two earlier claims in the C9 evidence are corrected rather than left standing: the cost was misattributed to LumberjacksMotionRunner because one perf section wraps eight runners and names only the last, and the reported missing frame hitch was a reading error - both row types stamp at completion, and reconstructed backwards the section and the respawn frame start together in all eight occurrences at 26-28 percent of that frame. The misnamed section is recorded as an unfixed observability defect because the build is frozen.</p>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260801053704-the-i5-s-perf-receipts-were-lifted-off-the-lapto">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

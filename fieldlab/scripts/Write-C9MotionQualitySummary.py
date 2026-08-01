@@ -277,6 +277,35 @@ def main() -> int:
                 client for run in per_run.values()
                 for client, c in run.items() if c["perf"]["measured"]}),
         },
+        "resolved": {
+            "cold_join_world_pregeneration": (
+                "The once-per-session multi-second section is Valheim's own "
+                "WorldGenerator.Initialize (river/lake pregeneration: FindLakes, "
+                "PlaceRivers, PlaceStreams), called synchronously on the main thread "
+                "from LogicalPeerCutoverRunner.ConstructPeer at "
+                "LogicalPeerCutoverRunner.cs:238. It is NOT the motion runner: the "
+                "perf section labelled ComfyNetworkSense.LumberjacksMotionRunner.Update "
+                "(ComfyNetworkSense.cs:301) wraps EIGHT cutover runners and names only "
+                "the last, so the label misattributes the cost. The motion runner is "
+                "inert here - ShouldRun() requires Player.m_localPlayer, which does not "
+                "exist before respawn. Corroborated 8/8 by an independent clock: every "
+                "section end matches a logical_peer_constructed receipt to ~1ms and the "
+                "announce-to-constructed gap matches the section elapsed within ~20ms. "
+                "NOT A REGRESSION: vanilla ZNet.RPC_PeerInfo does the same thing at "
+                "ZNet.cs:304, calling WorldGenerator.Initialize immediately before "
+                "setting ConnectionStatus.Connected - the same sequence ConstructPeer "
+                "reproduces at lines 238-240. The Steam-free cold join pays vanilla's "
+                "join cost, it does not add one."),
+            "no_missing_hitch_after_all": (
+                "The earlier claim that no frame hitch was recorded inside the stall was "
+                "a reading error, not an anomaly. Both perf-hitches and perf-sections "
+                "stamp timestamp_utc at COMPLETION, so a span must be reconstructed "
+                "backwards from its duration. Done that way the section and the large "
+                "'Starting respawn' frame start at the same instant in all 8 occurrences "
+                "(delta +0.03ms to +0.77ms), and the section is 26-28% of that frame "
+                "(6.7s on OMEN, 8.5-9.5s on the i5). The stall was always inside a "
+                "hitch that was correctly recorded."),
+        },
         "inferred": {
             "teleport_freeze_then_snap": (
                 "each divergence burst is one far target repeatedly refused by the "
@@ -285,19 +314,13 @@ def main() -> int:
                 "snaps. Bounded and explained, but visible."),
         },
         "unverified": {
-            "motion_runner_startup_stall": (
-                "LumberjacksMotionRunner.Update blocks once per game session and "
-                "never during steady motion. Reproduced 8/8: four sessions on OMEN "
-                "at 1861-1878ms and four on the i5 at 2241-2460ms. The pattern is "
-                "identical on both machines - two ordinary frame hitches logging "
-                "'ZNET START' immediately before the section opens, zero frame "
-                "hitches anywhere inside it, then Valheim's 'Starting respawn' "
-                "severe hitch 4.8-7.1s later. Two discriminators now hold: it fires "
-                "on the first Update after ZNet initialises, and its duration tracks "
-                "machine class rather than staying fixed, which argues for CPU-bound "
-                "one-shot work over a network timeout. Root cause NOT resolved, and "
-                "the absence of any frame hitch inside a multi-second main-thread "
-                "section is itself unexplained."),
+            "perf_section_label_misattributes": (
+                "ComfyNetworkSense.cs:301 opens one section named after "
+                "LumberjacksMotionRunner but wraps eight runners. Any cost from the "
+                "other seven is reported under the motion runner's name. This is an "
+                "observability defect that actively misleads - it is what sent the "
+                "first pass of this analysis at the wrong component - but it has not "
+                "been fixed, because the build is frozen for C9."),
             "rendered_motion_quality": (
                 "no observer clip exists yet; the two-client capture run is still "
                 "outstanding, so no subjective verdict has been taken."),
