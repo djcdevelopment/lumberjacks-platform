@@ -21,10 +21,28 @@ param(
 
     [string] $OmenOwnershipTargetTag = '',
 
-    [string] $I5OwnershipTargetTag = ''
+    [string] $I5OwnershipTargetTag = '',
+
+    # C9 needs a long enough continuous motion window to judge rendered quality;
+    # C8's accepted 6s/4m pair is too short to see anything in a clip. The
+    # defaults reproduce the accepted C8 composition exactly, so raising these
+    # widens the motion windows without changing any other boundary.
+    [ValidateRange(4, 120)]
+    [int] $MotionDurationSeconds = 6,
+
+    [ValidateRange(2, 200)]
+    [int] $MotionDistanceMeters = 4,
+
+    [ValidateRange(2, 200)]
+    [int] $MotionGapDistanceMeters = 6
 )
 
 $ErrorActionPreference = 'Stop'
+
+# C8's accepted motion cells ran 6s against a 16s deadline; keep that 10s of
+# headroom as the window grows so a longer capture cannot deadline on duration
+# alone.
+$motionDeadline = $MotionDurationSeconds + 10
 
 if ($RunId.Length -gt 80 -or $RunId -notmatch '^[A-Za-z0-9._-]+$') {
     throw "RunId must be an 80-character-or-shorter safe token: $RunId"
@@ -196,17 +214,17 @@ if ($Profile -eq 'c8') {
         New-Action 'i5-c8-rendezvous' 'i5' 'motion_rendezvous' 20
         New-Action 'omen-c8-rendezvous-ready' 'omen' 'wait' 10 3
         New-Action 'i5-c8-rendezvous-settle' 'i5' 'wait' 10 3
-        New-Action 'omen-c8-motion-drive-one' 'omen' 'motion_drive' 16 6 4 0 east 'c8-omen-to-i5'
-        New-Action 'i5-c8-motion-observe-one' 'i5' 'motion_observe' 16 6 0 0 east 'c8-omen-to-i5'
+        New-Action 'omen-c8-motion-drive-one' 'omen' 'motion_drive' $motionDeadline $MotionDurationSeconds $MotionDistanceMeters 0 east 'c8-omen-to-i5'
+        New-Action 'i5-c8-motion-observe-one' 'i5' 'motion_observe' $motionDeadline $MotionDurationSeconds 0 0 east 'c8-omen-to-i5'
         New-Action 'omen-c8-motion-pair-one-settle' 'omen' 'wait' 10 4
         New-Action 'i5-c8-motion-pair-one-settle' 'i5' 'wait' 10 4
-        New-Action 'omen-c8-motion-observe-two' 'omen' 'motion_observe' 16 6 0 0 north 'c8-i5-to-omen'
-        New-Action 'i5-c8-motion-drive-two' 'i5' 'motion_drive' 16 6 4 0 north 'c8-i5-to-omen'
+        New-Action 'omen-c8-motion-observe-two' 'omen' 'motion_observe' $motionDeadline $MotionDurationSeconds 0 0 north 'c8-i5-to-omen'
+        New-Action 'i5-c8-motion-drive-two' 'i5' 'motion_drive' $motionDeadline $MotionDurationSeconds $MotionDistanceMeters 0 north 'c8-i5-to-omen'
         New-Action 'omen-c8-motion-pair-two-settle' 'omen' 'wait' 10 4
         New-Action 'i5-c8-motion-pair-two-settle' 'i5' 'wait' 10 4
         New-Action 'omen-c8-gap-observer-align' 'omen' 'wait' 10 4
-        New-Action 'omen-c8-motion-drive-gap' 'omen' 'motion_drive_gap' 16 6 6 0 west 'c8-gap-omen-to-i5'
-        New-Action 'i5-c8-motion-observe-gap' 'i5' 'motion_observe_gap' 16 6 0 0 west 'c8-gap-omen-to-i5'
+        New-Action 'omen-c8-motion-drive-gap' 'omen' 'motion_drive_gap' $motionDeadline $MotionDurationSeconds $MotionGapDistanceMeters 0 west 'c8-gap-omen-to-i5'
+        New-Action 'i5-c8-motion-observe-gap' 'i5' 'motion_observe_gap' $motionDeadline $MotionDurationSeconds 0 0 west 'c8-gap-omen-to-i5'
         New-Action 'omen-c8-direct-pulse' 'omen' 'direct_control_pulse' 20
         New-Action 'i5-c8-direct-pulse' 'i5' 'direct_control_pulse' 20
         New-Action 'omen-c8-routed-request' 'omen' 'routed_request' 20

@@ -111,6 +111,10 @@ $worldZoneReceiptsPath = Join-Path $autotestRoot 'world-zone-cutover.jsonl'
 $motionAuthorityReceiptsPath = Join-Path $autotestRoot 'motion-authority-cutover.jsonl'
 $socketQuarantineReceiptsPath = Join-Path $autotestRoot 'socket-quarantine-cutover.jsonl'
 $logicalPeerReceiptsPath = Join-Path $autotestRoot 'logical-peer-cutover.jsonl'
+# The frozen build already writes these; only collection was missing, so
+# hitch attribution used to survive nowhere but the live client directory.
+$perfHitchesPath = Join-Path $autotestRoot 'perf-hitches.jsonl'
+$perfSectionsPath = Join-Path $autotestRoot 'perf-sections.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
 
@@ -597,6 +601,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
                 Copy-EvidenceFile $socketQuarantineReceiptsPath 'socket-quarantine-cutover.jsonl'
             logical_peer_cutover =
                 Copy-EvidenceFile $logicalPeerReceiptsPath 'logical-peer-cutover.jsonl'
+            perf_hitches = Copy-EvidenceFile $perfHitchesPath 'perf-hitches.jsonl'
+            perf_sections = Copy-EvidenceFile $perfSectionsPath 'perf-sections.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'
