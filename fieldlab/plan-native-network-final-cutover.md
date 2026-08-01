@@ -757,6 +757,29 @@ comparison.
   (vehicles/mounts, containers/stations, AI/creatures) remain, vehicles/mounts being
   the largest genuinely novel ownership work left. P2/P3 may ship behind the poison
   tripwire with the deferred bucket documented in the C10 gate.
+- **"vehicles/mounts" is two gates, not one** (pre-C10a research, 2026-08-01 —
+  [RESEARCH-vehicles-mounts-ownership](docs/RESEARCH-vehicles-mounts-ownership-2026-08-01.md)).
+  A ship separates *control* from *simulation authority*: `ShipControlls` grants the helm
+  by writing `ZDOVars.s_user` and never calls `SetOwner`, while ownership moves only via
+  `Ship.UpdateOwner` on a 2 s timer — so the steady state is helmsman ≠ physics owner and
+  rudder input round-trips through a third machine. A mount fuses the two: `Sadle.cs:349`
+  sets `s_user` and `SetOwner` in the same handler. The audit's single family therefore
+  costs and gates as two with opposite shapes; do not plan one slice for both.
+- **The lab cannot currently run the vehicle/mount experiments.** The harness cannot spawn
+  a boat or a cart and cannot tame a Lox (`spawn` and `tame` are cheat-gated and the
+  dedicated server refuses them), and no scenario verb boards a vehicle. Any C10a
+  vehicles/mounts cell therefore needs new mod code *and* a world-seeding step before it
+  can run at all — cost that belongs in the slice estimate, not discovered inside it.
+- **C4's ownership interception is scoped to one funnel, and the other five are open.**
+  Vanilla mutates ZDO ownership from client-side RPC handlers in at least five verified
+  places (`Ship.cs:696`, `Sadle.cs:349`, `Vagon.cs:141`, `ArmorStand.cs:347`,
+  `ItemStand.cs:385`), none through `ReleaseNearbyZDOS` — which falsifies the
+  single-funnel headline in [NETCODE-OWNERSHIP-MAP.md](NETCODE-OWNERSHIP-MAP.md) (the
+  narrower proximity-release claim still holds). `OwnershipLeaseCutoverRunner`'s prefix on
+  `ZDO.SetOwner(long)` is attached globally but gated on `ReleaseScopeDepth > 0`, raised
+  only inside the `ReleaseNearbyZDOS` prefix, so those five paths pass through untouched.
+  Three of them are the vehicles/mounts surface. Whether that is a gap or correct scoping
+  is a C10a question with evidence attached, not an assumption to inherit.
 - Wall 11's durable fix is a named admission, not yet built: the world/session epoch
   must incorporate the server session (or the Gateway must invalidate the zone bank on
   session change) so ZDOID-carrying banked state cannot survive a server restart. The
