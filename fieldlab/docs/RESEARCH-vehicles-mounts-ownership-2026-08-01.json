@@ -1,0 +1,1036 @@
+{
+  "schema_version": 1,
+  "receipt_type": "vehicles_mounts_ownership_research",
+  "generated_utc": "2026-08-01T06:00:00Z",
+  "status": "research_only",
+  "provenance": {
+    "method": "multi-agent workflow: 7 source lenses, 1 synthesis, 3 adversarial critics",
+    "agent_count": 11,
+    "decomp_root": "decompiled Valheim assembly_valheim (prior-session scratchpad)",
+    "caveat": "epistemic tags in the note body are the authoring agent's confidence, not an independent audit; several [V] claims were falsified by the critics"
+  },
+  "independently_verified": [
+    "ShipControlls grants control via ZDOVars.s_user and never calls SetOwner",
+    "Sadle sets both s_user and SetOwner (Sadle.cs:349)",
+    "client-side SetOwner sites: Ship.cs:696, Sadle.cs:349, Vagon.cs:141, ArmorStand.cs:347, ItemStand.cs:385",
+    "NETCODE-OWNERSHIP-MAP.md's single-funnel headline is falsified by those sites; its narrower ReleaseNearbyZDOS claim still holds"
+  ],
+  "corrections": [
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "The note never opens the mod's server-side peer bookkeeping, and that is where C6 and vehicles actually collide. `LogicalPeerCutoverRunner.DrainMotion` (network/mod/ComfyNetworkSense/Core/Services/LogicalPeerCutoverRunner.cs:109-150) writes `matched.Peer.m_refPos` directly from the C6 motion snapshot XYZ (:131-134). In vanilla that field is only ever set from `RPC_ServerSyncedPlayerData` (DECOMP/ZNet.cs:1386-1393), a direct ZRpc that native-zero suppresses. `peer.m_refPos` is the input to `ZDOMan.ReleaseNearbyZDOS(peer.m_peer.m_refPos, peer.m_peer.m_uid)` (ZDOMan.cs:605), `ZDOPeer.ShouldSend` (ZDOMan.cs:40), the per-peer sync list (ZDOMan.cs:897) and `ZoneSystem.CreateGhostZones(peer.GetRefPos())` (ZoneSystem.cs:953). So the note's fork C ('how does a rider's transform travel') is not a rendering choice \u2014 it silently decides the server's entire area-of-interest for that peer.",
+      "severity": "blocking",
+      "correction": "Rewrite fork C with a hard constraint: every attached player must keep publishing a world-space position on the C6 frame, or `DrainMotion` must be taught to resolve the parent before writing `m_refPos`. Price the two options accordingly \u2014 C2 ('let attached players fall back to native ZSyncTransform') stops refPos updates for an entire voyage, so the server stops sending ZDOs and starts releasing ownership around the boarding point while the boat sails into unloaded ocean; C1 ('parent-relative pose in the frame') writes relative coordinates into `m_refPos`, teleporting the peer's AoI to near-origin. Neither failure produces an error."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "\u00a76 leaves 'whether a ridden player is in `_remote`' as an unresolved 10-minute read that gates escalating H3. Source settles it, and it settles blocking. `DrainReceived` (LumberjacksMotionRunner.cs:644-693) keys `_remote` purely on `ZdoUserId + \":\" + ZdoId` from any received snapshot that has a descriptor (:680); `HasRemote` (:1419-1423) adds only `HasAppliedPosition`. Attach state is nowhere in the predicate. Every tracked remote player \u2014 seated in a ship chair, saddled, or standing on a deck \u2014 is in `_remote`, so `MotionAuthorityTransformPatch` suppresses their `CustomFixedUpdate` and with it the whole `ClientSync`\u2192`SyncPosition` parent-resolution path.",
+      "severity": "blocking",
+      "correction": "Promote H3 from conditional to live (gated only on the `m_characterParentSync` prefab flag) and drop the \u00a76 open item. Add the asymmetry the note misses: `OwnerSync` runs from `CustomLateUpdate` (DECOMP/ZSyncTransform.cs:480-486), which the mod does not patch, so the write side survives. The local player keeps publishing `SetConnection(SyncTransform, parent)` plus `s_relPosHash`/`s_relRotHash`/`s_attachJointHash` into its own ZDO while no peer consumes them \u2014 the data is already on the wire today, unread."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "E2 is ranked the highest-leverage cheap step but is priced as an asset dump or a new probe. It is already answerable offline from receipts the programme is currently writing. `ZdoJournalCutoverRunner` serializes the entire vanilla ZDO body \u2014 `zdo.Serialize(body)` at :607, `body_b64 = body.GetBase64()` at :625 \u2014 and `ZDO.Serialize` (DECOMP/ZDO.cs:764-778) sets bit 1 and emits the connection whenever `ZDOExtraData.GetConnection(m_uid)` is non-None.",
+      "severity": "blocking",
+      "correction": "Re-scope E2 to a base64 decode over existing `zdo-*.jsonl` receipts: if `m_characterParentSync` is set on the Player prefab, any envelope for a player who sat in a chair or rode a Lox already carries the connection bit plus the three attach fields. Zero live tests, zero new instrumentation. Also correct \u00a71.6 \u2014 'the runtime journal handles only ConnectionType.Portal' is true of explicit handling (:681) but misleading about the wire: the SyncTransform connection rides the journal opaquely inside `body_b64`."
+    },
+    {
+      "angle": "Harness feasibility and experimental discrimination: can the two-client AM4 manifest-driven composition actually run E1-E5, and would the results discriminate anything?",
+      "problem": "E1, E3 (cart leg) and E4 all presuppose a boat, cart, or tamed mount exists in the AM4 world, and the lab has no way to create one. `spawn` is registered `isCheat: true` (Terminal.cs:1206 + the trailing flags line, which carries the `ZNetScene.instance.GetPrefabNames()` options fetcher), as is `tame` (Terminal.cs:1480-1483). The gate is absolute: `IsCheatsEnabled()` returns `ZNet.instance.IsServer()` (Terminal.cs:2232-2243) and `IsValid` short-circuits on `!IsCheat || context.IsCheatsEnabled()` (Terminal.cs:236). On a client attached to a dedicated server `IsServer()` is false, so no cheat command runs regardless of admin status \u2014 the repo already knows this and worked around it for exactly one command (ComfyNetworkSense.cs:999-1001: \"the vanilla 'god'/'fly' console commands are cheat-gated on a dedicated-server client\"). `-console` IS passed at launch (Invoke-NativeValheimClient.ps1:647), which makes this failure look surprising in the moment. E1's parenthetical \"(spawn it on A)\" is therefore not a step, it is the unbudgeted prerequisite. Hand-building is not free either: a Karve needs 80 bronze nails, a Cart needs 10, a tamed Lox needs Plains plus taming time. Evidence that something saddleable is already near the test area exists but is weak and probably wild \u2014 `Setting saddle:False` (Tameable.cs:386) appears in omen bepinex.log across full32/full34/full43/c8twoclient16/portalgate14, one line each; no Karve/VikingShip/Cart/Raft string appears anywhere under fieldlab/runs or fieldlab/evidence.",
+      "severity": "blocking",
+      "correction": "Make world seeding an explicit, first, separately-scheduled item: stand up a local non-dedicated host on the ComfyEra16 save (where `IsCheatsEnabled()` is true), `spawn Karve`/`spawn Cart`/`spawn Lox`+`tame` at fixed coordinates near the existing test origin (2211,80,-69) and the Plains target (3250,80,2250), then redeploy the .db/.fwl to AM4 and re-baseline `Get-Am4SaveFingerprint` (Invoke-NativeValheimCutoverScenario.ps1:217-276 \u2014 `portals`/`spawned`/`targets`/`locations` are compared exact, so the before-baseline must be recaptured after seeding). Separately: run the whole vanilla-oracle half of section 6 (does `Ship.m_players` populate for a remote, what does `s_user` actually contain, does the attach channel emit, does a cart pull churn ownership) on that same local-host + one-client pair. It is cheat-enabled, needs no manifest, no Gateway, no poison, and no AM4 time."
+    },
+    {
+      "angle": "Harness feasibility and experimental discrimination: can the two-client AM4 manifest-driven composition actually run E1-E5, and would the results discriminate anything?",
+      "problem": "E4 is not runnable on this harness at any cost, because there is no verb that can put a player on a vehicle and no verb that can move a player in a way that respects one. The action-kind set is closed and re-validated in-process \u2014 anything else returns `manifest_action_kind_invalid` (NativeCutoverScenarioController.cs:202-278). The only two interaction verbs are `pickup_nearest`, hard-typed to `AccessTools.TypeByName(\"Pickable\")` and rejecting everything else with `pickable_type_unavailable`/`pickable_not_found` (:645-690), and `ownership_target`, which calls `ZNetView.ClaimOwnership()` on the nearest GameObject whose *name* contains a tag that must start with `cutover-<runid>` (:883-911, SafeTargetTag at :1123-1126) \u2014 no world object is ever named that, and the accepted composition does not use it. There is no board, use, helm, hitch, mount, sit, or steer verb. Worse, the two movement verbs are transform teleports, not locomotion: `move` does `((Component)Player.m_localPlayer).transform.position = target` with `target.y = _origin.y` (:337-343), and `motion_drive` does the identical thing (LumberjacksMotionRunner.cs:906-918). `_origin`/`probe.Origin` are captured in absolute world space at action start. So a \"passenger on the deck\" driven by `move` is pinned to a fixed world line and a fixed Y while the hull translates and pitches underneath \u2014 the harness's own writes would dominate the exact quantity E4 wants to measure (observer-side rider-to-deck offset), and would also fight `Character`'s deck-stick `m_body.position` write. The note's claim that E4 \"needs no new scenario kind... everything else is existing machinery\" is false in both halves.",
+      "severity": "blocking",
+      "correction": "Drop E4 from the cheap tier. If the rider-separation question survives E2 (i.e. `m_characterParentSync` is true on the Player prefab), it requires new mod code: at minimum a `vehicle_board`/`vehicle_helm` action kind driving `ShipControlls.Interact`, plus a passenger verb that does NOT write `transform.position` (or that writes parent-relative), plus a new observer-side measurement that samples rider world position against the parent ZDO's position per frame. That is a slice of work, not an experiment. In the interim the same question is answerable for free on the local-host + one-client pair with no Lumberjacks at all: it establishes the vanilla baseline offset, which you need anyway before an A/B means anything."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "\u00a71.6 and H5 state that for the C4 ownership-lease guard \"the only Harmony seam is on `ItemDrop.RequestOwn` (`:218-227`)\". This is false and it is tagged [V]. `OwnershipLeaseCutoverRunner.cs:1137-1144` installs a universal prefix on `ZDO.SetOwner(long)`:\n\n```\n[HarmonyPatch(typeof(ZDO))]\nstatic class OwnershipLeaseOwnerPatches {\n  [HarmonyPatch(\"SetOwner\", new[] { typeof(long) })]\n  static bool SetOwnerPrefix(ZDO __instance, long uid) =>\n      !OwnershipLeaseCutoverRunner.ShouldBlockRelease(__instance, uid);\n}\n```\n\nThere are four seams, not one: ZDO.SetOwner (:1137-1144), ZDOMan.DestroyZDO (:1146-1151), ItemDrop.RequestOwn (:1153-1159), plus the ReleaseNearbyZDOS scope prefix/finalizer pair (:1125-1134). The note's grep of `Patches/` missed them because they are nested classes inside the runner file.",
+      "severity": "serious",
+      "correction": "H5's conclusion survives \u2014 the three vehicle SetOwner calls are not blocked \u2014 but the reason is the predicate, not a missing hook. `ShouldBlockRelease` (:205-216) requires `ReleaseScopeDepth > 0`, and `ReleaseScopeDepth` is incremented in exactly one place: the prefix on `ZDOMan.ReleaseNearbyZDOS` (:1125-1127). So the guard is scoped exclusively to the AoI sweep, and Ship.cs:696 / Sadle.cs:349 / Vagon.cs:141 pass through because they fire outside that scope, not because they are unhookable. This cuts in the note's favour and should be corrected before the note is planned against: the universal interception point vehicles need already exists and is already proven. C10a needs a wider predicate (scope condition + target selection), not a new seam. That materially reduces the cost of fork A3 as sized in \u00a74.A."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "An entire family is absent, and vanilla itself classifies it alongside ships: fishing. `ZDOMan.ConvertOwnerships` (DECOMP/ZDOMan.cs:1305-1321) converts `s_zdoidUser`\u2192`s_user` and `s_zdoidRodOwner`\u2192`s_rodOwner` in one loop, logged as 'Converting Ships & Fishing-rods ownership' (:365). `FishingFloat` writes `ZDOVars.s_rodOwner` (FishingFloat.cs:87) \u2014 a fifth identity space beyond the three fork D enumerates \u2014 and resolves it via `ZNet.instance.GetPlayerList()` matched on `m_characterID.UserID` then `ZNetScene.FindInstance` (:100-120), the same peer-list dependency that breaks `Sadle.CalculateHaveValidUser`. `Fish` is pulled continuously toward the float by the fish ZDO's owner (`Utils.Pull`, Fish.cs:403-410) \u2014 a cross-ZDO continuous physics coupling with exactly the vehicle shape \u2014 and registers `RequestPickup`/`Pickup` with a targeted unicast `InvokeRPC(uid, \"Pickup\")` (:222-223, :303).",
+      "severity": "serious",
+      "correction": "Add fishing as a family-1 member and note that its failure mode is not the note's 'silent no-op': `FishingFloat.FixedUpdate` calls `m_nview.Destroy()` when the owner cannot be resolved (:136-145). The same missing-peer-list root cause is silent for mounts and destructive for fishing floats \u2014 that difference should drive test ordering."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "\u00a74H asks 'what is actually in family 1' and leaves it open. It is closable from source, and the answer is larger than 16 RPCs. `Catapult` carries a `Vagon` \u2014 verified, not inferred: `m_wagon = GetComponent<Vagon>()` (Catapult.cs:151). `SiegeMachine` declares `public Vagon m_wagon` (SiegeMachine.cs ~:35). `Catapult` additionally registers three of its own instance RPCs \u2014 `RPC_Shoot`, `RPC_OnLegUse(Boolean)`, `RPC_SetLoadedVisual(String)` (Catapult.cs:187-189, all three present in synthetic_baseline_v2.json under `Catapult.Start`) \u2014 and invokes `RPC_RequestOwn` on the Vagon's own ZDO for two non-vehicular reasons: leg locking (:285) and ammo loading (:341).",
+      "severity": "serious",
+      "correction": "State family 1 as {Ship, ShipControlls, Sadle, Vagon, Catapult, SiegeMachine, ShipConstructor, ShipEffects, Leviathan} and the method count as 19, not 16. Add the concrete hazard the enumeration exposes: `Vagon.RPC_RequestOwn`'s `InUse()` veto will refuse a catapult's ownership claim while it is hitched, and `RPC_OnLegUse` persists `s_locked` only `if (m_nview.IsOwner())` (:293-296) \u2014 so the state lands or silently does not, depending on a race the caller never checks. The cart lease has three consumers, not one."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "The attach channel is broader than riders and pilots, and its most important property is unstated: `AttachStart` is never replicated. `Player.AttachStart` (DECOMP/Player.cs:5948-5960) is called only locally \u2014 `Chair.Interact` (Chair.cs:68), `Bed` (Bed.cs:95), `Barber` (Barber.cs:74), `Sadle.RPC_RequestRespons` (Sadle.cs:401), `ShipControlls.RPC_RequestRespons` (ShipControlls.cs:128), `Valkyrie`. The only replicated traces are the ZSyncTransform connection and `s_inBed` (Player.cs:6049/6079). Chairs are the ship passenger-seat mechanism \u2014 `Chair.m_inShip` (Chair.cs:17) feeds `Player.m_attachedToShip` \u2014 and seat mutual exclusion is `Player.GetClosestPlayer(m_attachPoint.position, 0.1f)` (Chair.cs:56), a 10 cm scan over locally-instantiated Players, i.e. a predicate now reading a Lumberjacks-authored transform.",
+      "severity": "serious",
+      "correction": "Split \u00a72.4(c) into two channels: the transform channel (ZSyncTransform connection, which the note covers) and the *occupancy/arbitration* channel (`AttachStart` + `GetClosestPlayer`, which is unreplicated, has no RPC at all, and is therefore invisible to the RPC-shaped audit for the same reason). Note that `Chair` registers zero RPCs, so it appears in neither the 160-row table nor any C10a backlog. Also connect `SleepStart`/`SleepStop` \u2014 already in the audit's P1 set \u2014 to the same `AttachStart` mechanism; nobody has."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "Tamed followers are treated as a footnote to mounts, but the mechanism is different in kind and introduces a fourth identity space. `Tameable.Command` sends `InvokeRPC(\"Command\", user.GetZDOID(), message)` (Tameable.cs:443); `RPC_Command` resolves the commander with `ZNetScene.instance.FindInstance(characterID)` on the *creature owner's* machine and returns silently if not found (:446-462) \u2014 the same silent-no-op signature as H1, on a path H1 does not cover. The persisted follow target is `ZDOVars.s_follow` = the player **display name** (:482), re-resolved by string match over `Player.GetAllPlayers()` (:503-515). `AddSaddle` is owner-unicast that re-broadcasts `SetSaddle` to `ZNetView.Everybody` (:328-334); `RPC_UnSummon` is broadcast (:711).",
+      "severity": "serious",
+      "correction": "Add a followers row: control depends on (a) the ZDO owner having the commander's Player GameObject instantiated \u2014 under Lumberjacks that is the logical-remote ZDO path, untested for this consumer \u2014 and (b) an unauthenticated, non-unique display-name identity. Extend fork D from three id spaces to five (profile UID, ZDOID.UserID, logical-peer id, `s_follow` player name, `s_rodOwner`). Add the two broadcast paths to the ADR-0013 multicast dependency list alongside `RequestRespons`."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "\u00a72.3's 'simulation-locus, not mutation-authority' framing is correct but scoped to vehicles, and that mis-sizes fork A. `BaseAI.UpdateAI` returns early for non-owners (DECOMP/BaseAI.cs:303-309), so every creature in the world already has the 'whose machine simulates this non-player entity for the next N minutes' problem. The audit's own family 3 (AI/creatures) reduces it to 'server-to-client ownership handoff must not stall AI'.",
+      "severity": "serious",
+      "correction": "Restate fork A as a world-wide simulation-locus decision that vehicles merely force first. As written, A2 ('server simulates, clients send input') would produce a world where boats are server-simulated and every wolf, Lox and troll is client-simulated \u2014 an architectural inconsistency the fork table does not price, and one that also reopens H2's 'stand up Unity physics on the dedicated server' cost for the creature population."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "H5 tags `fieldlab/NETCODE-OWNERSHIP-MAP.md` as [U-lens] 'does not include them'. The map does not merely omit the sites \u2014 its thesis asserts the opposite. Line 13: 'ZDO ownership is 100% server-authoritative and churns through a single funnel.' Verified client-side `SetOwner` counterexamples: Ship.cs:696, Sadle.cs:349, Vagon.cs:141, ArmorStand.cs:347, ItemStand.cs:385, plus Catapult's two `RPC_RequestOwn` invokes (Catapult.cs:285, :341).",
+      "severity": "serious",
+      "correction": "Upgrade H5 from 'the enumeration is incomplete' to 'the map's headline claim is falsified', and flag the downstream artifact: `OwnershipPinRunner` was designed against that single-funnel thesis (map :113-121), so its auto-capture selector has never been evaluated against a funnel it cannot see."
+    },
+    {
+      "angle": "Harness feasibility and experimental discrimination: can the two-client AM4 manifest-driven composition actually run E1-E5, and would the results discriminate anything?",
+      "problem": "Even given a boat and a boarding verb, E4's stated A/B (\"C6 authority ON and OFF\") cannot be run inside the native-zero composition. The cutover flags are per-run request fields, not runtime toggles (NativeAutotestRequest.cs:30-38, set once at load from the file the launcher writes), so ON/OFF is two full runs rather than an A/B \u2014 that alone doubles the cost. More decisively, the mod refuses the combination: `SteamFreeColdJoin` with `!MotionAuthorityCutover` is rejected as `steam_free_request_cutover_prerequisites_invalid` (NativeAutotestRequest.cs:141-149). So the OFF cell cannot be a Steam-free cold-join run. Whatever composition you use for OFF differs from the ON cell in join path, world-descriptor handling, and peer bootstrap, which is precisely the kind of cross-composition difference that has produced calibration misses in this lane before.",
+      "severity": "serious",
+      "correction": "State the OFF cell's composition explicitly and accept that it is a vanilla-transport baseline, not a matched control. Or make the ON/OFF distinction narrower and legal \u2014 e.g. an authority-scope flag that excludes ZDOs with a resolved `SyncTransform` connection \u2014 so both cells stay inside the same accepted native-zero composition. That is a design decision for the slice, not something to discover at run time."
+    },
+    {
+      "angle": "Harness feasibility and experimental discrimination: can the two-client AM4 manifest-driven composition actually run E1-E5, and would the results discriminate anything?",
+      "problem": "E1 names an instrument that cannot carry the signal. It predicts \"`LogicalPeerCutoverRunner._suppressedInvokes` climbs (sampled log lines at counts 1-4 and powers of two)\". But `TryHandleInvoke` increments that single counter for *every* suppressed `ZRpc.Invoke` on a logical peer (LogicalPeerCutoverRunner.cs:339), and `ZDOMan.SendZDOToPeers2` invokes `ZDOData` on a 0.05s timer (ZDOMan.cs:565-571, 787) \u2014 20 Hz, continuously, plus NetTime and the rest. Over a 30-minute manual session that is roughly 36,000 increments; the power-of-two sampler fires at 16384 and then not again until 32768, i.e. once in a fourteen-minute stretch. The method name is only emitted on those samples (:367-371). You would watch a number go up and be unable to attribute a single increment to the moment someone pressed Use on a boat. The note also undersells its own strongest instrument: the run-level discriminator is the *server-side* poison ledger, because inbound `RPC_RoutedRPC` calls `NativeNetworkLedger.Observe(\"routed_rpc_receive\", \"inbound\", \"RoutedRPC\")` (NativeNetworkPatches.cs:204-206). Either the vehicle RPC never leaves the client (no server row, silent swallow, H1 confirmed) or it lands on the server and trips poison (H1 refuted, run aborts loudly). That fork is clean, already collected as `native-network-use.jsonl`, and needs no sampling at all.",
+      "severity": "serious",
+      "correction": "Rewrite E1's success criteria around the server-side `native-network-use.jsonl` trip/no-trip fork. If per-method attribution on the client is wanted (and it is, to prove *which* method was swallowed), add a small always-log carve-out in `TryHandleInvoke` for methods outside a known-noisy set (`ZDOData`, `NetTime`, `PlayerPos`), or a per-method counter dictionary \u2014 that is a two-line change but it is a change, so E1 stops being \"no code\"."
+    },
+    {
+      "angle": "Harness feasibility and experimental discrimination: can the two-client AM4 manifest-driven composition actually run E1-E5, and would the results discriminate anything?",
+      "problem": "E4's stated motion windows exceed what the mod will accept, and the composition is close to its action ceiling. The generator advertises `-MotionDurationSeconds` 4..120 and `-MotionDistanceMeters` 2..200 (New-NativeValheimCutoverScenario.ps1:30-37), but the in-process validator rejects any motion probe with `duration_seconds` outside 2..20 or `distance_meters` above 24 (NativeCutoverScenarioController.cs:263-270) \u2014 the manifest is refused wholesale with `manifest_motion_probe_invalid`, not clamped. A \"straight run and a turn\" on a longship is minutes and hundreds of metres; you get 20 seconds and 24 metres. Separately, the manifest cap is `MaxActions = 64` checked before the per-client filter (:27, :184-187), and the accepted C8 composition already uses 49 actions across both clients. Fifteen slots remain, shared, and a two-client board/helm/observe/settle cell burns them fast.",
+      "severity": "serious",
+      "correction": "Note the generator/validator range mismatch as a standing bug worth fixing regardless (the generator should not be able to emit a manifest the mod always rejects). For vehicle work, plan a separate profile rather than extending `c8` \u2014 and size the action budget before designing the choreography, not after."
+    },
+    {
+      "angle": "Harness feasibility and experimental discrimination: can the two-client AM4 manifest-driven composition actually run E1-E5, and would the results discriminate anything?",
+      "problem": "E3 is neither free nor unambiguous. The finding that `TelemetryCoordinator.RecordOwnershipChurn` exists (TelemetryCoordinator.cs:439-444) with zero callers is correct and genuinely useful \u2014 but the class exposes no static accessor a Harmony patch can reach (the only `Instance` reference in the file is `ComfyNetworkSense.Instance.Config.Reload()` at :329), so the postfix needs a static hook wired the way the other runners do it. And `ownership-churn.jsonl` is not in the orchestrator's evidence pull: the collected set for the accepted run (fieldlab/runs/native-valheim/native-20260731-c8-full44/omen/) is 18 files and does not include it, so the orchestrator needs a collection change too. Beyond cost, there is a design ambiguity the note does not resolve: measured on the *cutover* composition, `ZDO.SetOwner` churn is Lumberjacks' behaviour (the C3 journal and world/zone cutover are already in the ownership path), not vanilla's \u2014 so it cannot answer \"is cart churn folklore\" about vanilla. And the cart leg is unscriptable anyway: hitching a cart needs `Vagon.Interact`, which `pickup_nearest` cannot reach.",
+      "severity": "serious",
+      "correction": "Split E3 in two. The vanilla-baseline half belongs on the local-host + one-client pair with the mod in observe-only mode \u2014 cheap, cheat-enabled, and it answers the `ReleaseNearbyZDOS` hysteresis question the note actually cares about. The cutover half is a real instrumentation task: static hook, Harmony postfix on `ZDO.SetOwner` recording (prefab, old_owner, new_owner, callsite), plus an orchestrator collection entry. Say which side of the boundary each cell runs on."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "\u00a76 lists \"whether a ridden player is in `_remote`\" as an open [U] question and makes H3's BLOCKING status conditional on it, calling it \"a 10-minute read that I did not do\". I did the read; it is settled, and it resolves toward H3 being live.",
+      "severity": "moderate",
+      "correction": "`_remote` has exactly two insertion sites, `LumberjacksMotionRunner.cs:680` (`_remote[key] = updated;`) and `:1352` (`_remote[snapshot.ZdoUserId + \":\" + snapshot.ZdoId] = remote;`). Both key purely on the motion frame's own ZDO identity. The only admission filter on the drain path is `if (!_remoteDescriptors.ContainsKey(key)) { ... continue; }` at `:650`. Nothing anywhere in that path consults attach state, `m_attached`, a parent connection, or `GetRelativePosition`. A ridden or deck-standing remote player is an ordinary remote player and is admitted normally. H3's remaining uncertainty therefore collapses to a single prefab flag \u2014 E2's `m_characterParentSync` answer \u2014 which strengthens the note's own sequencing argument for running E2 first."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "\u00a72.4(a) closes with \"How many of the other 118 needs-lane instance rows have registrant-dependent semantics is unknown.\" It is not unknown; it is enumerable from the artifact the note already cites, and the answer is small.",
+      "severity": "moderate",
+      "correction": "Of the 120 instance rows in `synthetic_baseline_v2.json`, exactly 11 have more than one registrant: RPC_AddFuel (CookingStation/Fireplace/ShieldGenerator/Smelter), RPC_Damage (Character/Destructible/MineRock5/TreeBase/TreeLog/WearNTear), RPC_RequestOwn (ArmorStand/ItemDrop/ItemStand/Vagon), RPC_AddItem, RPC_CreateFragments, RPC_DestroyAttachment, RPC_DropItem, RPC_Extract (2 each), plus RequestControl/ReleaseControl/RequestRespons. Subtracting the vehicle trio the note already dissects and RPC_RequestOwn which it already flags at \u00a72.4(b), the residual exposure is seven families. That is a bounded, free, no-live-test work item and arguably belongs in \u00a75 ahead of E1 \u2014 it costs one script and retires an entire class of audit risk the note currently leaves open-ended."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "\u00a72.5 lists `Vagon.cs:163/186` as evidence that \"owner-authoritative physics is exactly right\", alongside Ship.cs:305-308 and BaseAI's non-owner return. Vagon has no physics-integration owner gate. Line 163 (`if (m_nview.IsOwner())`) gates attach/detach bookkeeping; :186-189 destroys the joint on non-owners. The cart's Rigidbody is stepped by Unity on every peer that has it instantiated.",
+      "severity": "moderate",
+      "correction": "Split the claim. Ship (305-308) and BaseAI (309-313) genuinely gate simulation. For Vagon what is owner-exclusive is the ConfigurableJoint, not the integration \u2014 every peer runs its own cart physics and the owner's result is imposed by whatever transform sync the prefab carries. This matters for \u00a74.A: \"designate a simulator\" for a Vagon is not the same operation as for a Ship, and the note's own H6 failure mode (a lapsed lease \u2192 non-owner tick \u2192 joint destroyed \u2192 loaded cart dropped) is a consequence of exactly this difference. It also raises the stakes on E2's `isKinematic` question for the Cart prefab, which currently sits unranked in \u00a76."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "\u00a71.3 asserts that a bystander's false `HaveValidUser` is \"silently changing that client's mount run speed, slide angle and animator source (`Character.cs:1084`, `:1493`, `:3605`)\". All three citations are genuine `HaveRider()` consumers and I verified the full chain (Character.HaveRider :1091-1098 \u2192 BaseAI.HaveRider :1763-1770 \u2192 Tameable.HaveRider :609-616 \u2192 Sadle.HaveValidUser), but the impact list overstates what a bystander actually observes.",
+      "severity": "moderate",
+      "correction": "`GetRunSpeedFactor` (:3605) and `GetSlideAngle` (:1078-1089) feed the owning peer's movement integration; a bystander is by definition a non-owner and has the creature's transform imposed by ZSyncTransform, so those two are largely inert there. Of the three, `:1493` (the animator's `s_forwardSpeed` source) is the one that plainly manifests on a bystander as a visible animation mismatch. The divergence is real and worth keeping \u2014 just scope the consequence to presentation. The note also misses a fourth consumer, `Character.cs:1317`, which selects between `m_currentVel` and `m_body.linearVelocity` on the same predicate."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "\u00a72.4(b) leaves `ArmorStand`/`ItemStand` as [U] \u2014 'whether the other two are also miscategorised is unknown'. Both are readable in under a minute and both vindicate the audit. `ArmorStand.RPC_RequestOwn` (ArmorStand.cs:343-349) and `ItemStand.RPC_RequestOwn` (ItemStand.cs:381-387) are each a bare `if (m_nview.IsOwner()) { m_nview.GetZDO().SetOwner(sender); }` \u2014 exactly the dance the C4 lease replaced.",
+      "severity": "moderate",
+      "correction": "Close the open item: the audit's 'the other registrants ride the same replaced dance' is correct for ArmorStand and ItemStand. The \u00a72.4(b) objection stands but narrows to exactly one of four registrants \u2014 `Vagon` \u2014 which strengthens rather than weakens it, because it is now a single precise row to re-bucket instead of a suspicion about three."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "The rider-attach channel has a structural limit at save/reload that no document names, and it is the same failure class that already forced wiping the gateway zone bank on server restart. `ZDOExtraData.s_connections` is `Dictionary<ZDOID, ZDOConnection>` \u2014 one connection per ZDO (ZDOExtraData.cs:198-207). At save, `RegenerateConnectionHashData` writes the reverse half as `s_connectionsHashData[s_connection.Value.m_target] = new ZDOConnectionHashData(type | Target, uniqueHash)` (:629) \u2014 keyed by the *parent's* ZDOID. A parent that is the target of two SyncTransform connections keeps only the last. `ZDOMan.ConnectSyncTransforms` (:1594-1621) then reconnects by hash pair, so at most one rider per parent is restored.",
+      "severity": "moderate",
+      "correction": "Add as a hazard: a longship with two seated passengers cannot round-trip both attachments through a save. Vanilla masks it (logout calls `AttachStop`, Game.cs:904, and player ZDOs are session objects), but any Lumberjacks structure that persists these connections inherits both the one-per-parent limit and session-scoped ZDOID staleness across a server restart."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "The \u00a76 question 'does `ZDO.Set` deduplicate?' is framed as unsettleable because `BinarySearchDictionary` is absent from the decomp, and it is flagged as materially changing the bandwidth estimate. There is partial in-source evidence and a much cheaper way to get the number that actually matters. `ZDOExtraData.SetConnection` dedupes on equality and returns false (:201-206) under the identical bool-return\u2192`IncreaseDataRevision` contract as the scalar setters \u2014 design intent, not proof. But the operational question ('does a crewed ship bump DataRevision ~50\u00d7/s') is directly measurable: `ZdoRedirectRunner` already emits `data_rev` per envelope (ZdoRedirectRunner.cs:598 region; `ZdoRedirectEnvelopeCodec.Envelope.data_rev`), and `valheim_tail_zdo_redirect` already reads them.",
+      "severity": "moderate",
+      "correction": "Keep the open question honest about the decompiler gap, but replace the blocked framing with a measurement: read `data_rev` deltas per ship ZDO from existing redirect receipts. No new instrumentation, no source resolution needed, and it answers the bandwidth model directly rather than by inference from a missing class."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "H8 names only half of the helm-grant predicate. `ShipControlls.Interact` refuses to even send `RequestControl` unless `player.GetStandingOnShip() == m_ship` (ShipControlls.cs:56), and `Character.GetStandingOnShip` (Character.cs:2398-2413) requires `InNumShipVolumes > 0` \u2014 incremented by the ship's own `OnTriggerEnter` (Ship.cs:742-746) \u2014 *and* `IsOnGround()` *and* `m_lastGroundBody` being the ship's Rigidbody.",
+      "severity": "moderate",
+      "correction": "State it as a two-machine agreement: the requester's local physics must classify itself as standing on that hull, and independently the ZDO owner's `m_players` trigger list must contain the requester. Under C6 the owner's copy of the requester is placed by direct `transform.position` writes (LumberjacksMotionRunner.cs:333), so only one of the two machines is reading real physics. That is the actual mechanism behind H8 and it changes what E1 must observe."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "There is no C5 row anywhere in the hazard list, yet vehicles are the only entity in the game that generates continuous, unattended zone transitions. `WorldZoneCutoverRunner.BeginMembershipProbe` computes a single `ZoneSystem.GetZone(position)` and mints one `zone_epoch` per probe (WorldZoneCutoverRunner.cs:408-441); membership frames are `valheim_zone_snapshot_build/chunk/complete/release` and `valheim_zone_membership_left` (:380-400). Nothing in that shape is motion-driven \u2014 it is an action-initiated request/ack.",
+      "severity": "moderate",
+      "correction": "Add a hazard: a longship crosses a 64 m zone boundary every few seconds with no actor initiating a membership action, so C5's probe-driven single-zone model has no producer for vehicle-induced membership churn. This also interacts with finding 1 \u2014 `m_refPos` is what `CreateGhostZones` uses, so the membership model and the AoI model are being fed from two different places."
+    },
+    {
+      "angle": "Harness feasibility and experimental discrimination: can the two-client AM4 manifest-driven composition actually run E1-E5, and would the results discriminate anything?",
+      "problem": "E5 measures a proxy and does not say so. It proposes instrumenting \"reliable-lane frames per lease cycle... during an existing `ownership_lease_pickup` action\" \u2014 but the existing receipts carry no frame counts at all (ownership-lease-cutover.jsonl in full44 rows carry only `native_selection_suppressed`, `native_invalid_suppressed`, `native_release_suppressed`, `native_request_own_suppressed`), so both the mod side and the Gateway side need new counters. More importantly, `ownership_lease_pickup` exercises a create -> grant -> act -> complete *transaction* (OwnershipLeaseCutoverRunner.cs:96-112, state `await_create_grant`), and the terminal `Complete` marks the slot completed. Fork F is about renewal cadence for a lease *held* across minutes, which has no implementation and therefore nothing to measure. Multiplying a transaction cost by (crossing_duration / 30s) is an estimate, not a measurement \u2014 which is exactly the \"count-by-reading\" the note criticises one sentence earlier.",
+      "severity": "moderate",
+      "correction": "Reframe E5 honestly as \"cost one lease transaction, then extrapolate\", and state the extrapolation explicitly (frames per transaction x ceil(hold_seconds/30) x riders). Or, if fork F is genuinely the blocker, note that the cheapest real answer is a Gateway-side unit/integration measurement of the reissue round trip, which needs no clients, no AM4, and no lab window at all."
+    },
+    {
+      "angle": "Harness feasibility and experimental discrimination: can the two-client AM4 manifest-driven composition actually run E1-E5, and would the results discriminate anything?",
+      "problem": "The sequencing note (\"E2 first, E1 next, E3 and E5 in parallel, E4 last\") is right about E2 but wrong about the rest, because it ranks by uncertainty-collapsed-per-cost without noticing that three of the five share an unmet prerequisite. E1, E3's cart leg and E4 all sit behind world seeding; E3 and E5 both need mod or orchestrator changes and therefore a build unfreeze (task #6, \"Run the C9 capture against the frozen build\", is still pending against that same frozen build); and E4 additionally needs new action kinds. As written the plan reads as five independent cheap probes, four of which are actually one prerequisite plus a code slice.",
+      "severity": "moderate",
+      "correction": "Re-sequence as: (0) seed vehicles into the world on a local host and re-baseline the AM4 save fingerprint; (1) E2, which is free and unblocked and gates everything about the rider channel; (2) the vanilla-oracle pass on the local-host pair, which subsumes most of E3 and answers several section 6 open questions at zero lab cost; (3) E1 against native-zero once a boat exists, scored on the server poison ledger; then decide whether E3-cutover, E4 and E5 are still worth building instrumentation for."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "H3 states \"`CustomFixedUpdate` is the only entry to `ClientSync`\". There is a second caller: `ZSyncTransform.SyncPosition:287` force-calls the *parent's* `ClientSync(dt)` to guarantee parent-before-child ordering.",
+      "severity": "minor",
+      "correction": "The direction of H3 is unaffected \u2014 a suppressed rider still never runs its own reconstruction. But the parent-ordering failure is more contingent than stated: a suppressed child cannot pull its parent forward, yet any other unsuppressed child of the same parent can. Related and worth stating explicitly since H3 turns on it: `OwnerSync` lives in `CustomLateUpdate` (:480-486), not `CustomFixedUpdate` (:472-478), so the C6 prefix suppresses only the receive path. The note implies this but never says it, and a reader could reasonably fear the prefix also kills the local send path."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "\u00a71.7 enumerates nine `SetReferencePosition` call sites (Game.cs:459/488/510/513, Player.cs:644/1502, Tracker.cs:13/31, Valkyrie.cs:180) but H2 \u2014 a BLOCKING row \u2014 describes the same evidence as \"8 call sites, all client\".",
+      "severity": "minor",
+      "correction": "There are exactly nine call sites plus the definition at ZNet.cs:1837, and the \u00a71.7 list is the correct one. Make H2 say nine. Trivial in itself, but H2 is one of three BLOCKING rows and its whole weight rests on the exhaustiveness of that sweep, so an off-by-one invites a reader to re-run the grep and doubt the rest."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "\u00a76's audit-bookkeeping note says the audit \"carries four marks \u2014 `:36`, `:37`, `:38`, and an orphaned `RPC_SetConnection [VERIFY]` at `:70`\". There are five textual `[VERIFY]` occurrences: 36, 37, 38, 70, and 71.",
+      "severity": "minor",
+      "correction": "Line 71 restates line 36's subject (RPC_TeleportPlayer) in the master table, so the count of *distinct flagged rows* is four and the note's conclusion \u2014 the audit says three at :139 but carries four \u2014 is correct. Say \"four distinct rows, five marks\" so the next reader's grep matches the note."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "\u00a71.2 says \"`ZNetView` defines only `Register` overloads and two `InvokeRPC` overloads (`ZNetView.cs:278-329`)\". That range also contains `Unregister` (:303-307) and `HandleRoutedRPC` (:309-319).",
+      "severity": "minor",
+      "correction": "The load-bearing claim is fine and I verified it independently: there is no `Invoke` member on ZNetView (grep of the whole file returns only Register/InvokeRPC), so `Ship.cs:239`'s `m_nview.Invoke(\"Rudder\", rudder)` binds to `MonoBehaviour.Invoke(string, float)`, and `.Rudder(` has zero references anywhere in the 550-file decomp. H14 stands unchanged; just widen or drop the range."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "\u00a72.1 states flatly that \"vanilla mount control costs zero bytes\". That is the steady state, not an invariant, and the note's own \u00a71.3 findings are what break it.",
+      "severity": "minor",
+      "correction": "Zero bytes holds only while the rider is still the ZDO owner. `Sadle` never clears `s_user` on ownership loss (:381-388 clears it only on explicit release; nothing clears it on death, disconnect or unload), and `ZDOMan.ReleaseNearbyZDOS` can reassign the creature ZDO on its own 2s tick with no knowledge of `s_user`. In that window rider \u2260 owner and `InvokeRPC(\"Controls\", \u2026)` does route, per-input-frame, with a Vector3+int+float payload \u2014 and `RPC_Controls` (:272-277) then drops it on the non-owner anyway. Worth one clause, because \u00a72.1 is the argument that sizes C10a down and a reviewer will probe exactly this."
+    },
+    {
+      "angle": "Adversarial verification of the note's technical claims against the actual source \u2014 spot-checking every file:line citation in the decompiled Valheim tree, the ComfyNetworkSense mod, the Game.Gateway lease service, the C8 audit, the cutover plan, synthetic_baseline_v2.json, and the C8 acceptance scenario.",
+      "problem": "Two [U-lens] citations in \u00a72.5 and \u00a71.3 are slightly off in range, and three others can be promoted outright.",
+      "severity": "minor",
+      "correction": "`BaseAI.UpdateAI`'s non-owner early return is at :309-313 (returns false at :312), not :303-309. `MonsterAI.cs:356` is exact, but \"hands its whole tick to the saddle\" overstates it \u2014 UpdateSleep, HuntPlayer and UpdateTarget all run before line 356 and the early return is conditional on `UpdateRiding(dt)` returning true. Promote to [V]: `HandleAuthorized`'s latch at OwnershipLeaseCutoverRunner.cs:422-430 (`target.Completed || target.Authorized` at :426, throws at :430); `GameWebSocketMiddleware.cs:293-299`, where the reclaim sits in the `finally` block and the comment at :293-295 states the policy verbatim, with \"Detach session (preserves identity for resume within 2min window)\" following at :305 \u2014 the note's ordering claim is exactly right; and `LumberjacksMotionRunner.cs:333` (`instance.transform.position = appliedPosition;`), which confirms H8's direct-transform-write premise."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "H1's consequence for scheduling is understated. The note shows the outbound unadmitted-method path does not `Observe` into `NativeNetworkLedger`, and correctly says this falsifies the audit's tripwire claim. It does not follow that through to the audit's *disposition*: 13 of the 16 (really 19) vehicle methods sit in the 118-row P2/P3 needs-lane bucket, and the audit's stated policy is that 'P2/P3 may ship behind the poison tripwire'. Separately, `plan-native-network-final-cutover.md:777` scopes C10a as 'admit + contract-test the **29 P1** methods' \u2014 the vehicle rows are P2 and reach C10a only via one [VERIFY] row and one family gate.",
+      "severity": "minor",
+      "correction": "Say explicitly that the audit's disposition for most vehicle methods *depends on* the tripwire H1 shows does not exist on that path, and that C10a as literally written can be executed to completion without admitting a single vehicle method. That is the scheduling risk, not just a documentation defect."
+    },
+    {
+      "angle": "Adversarial gap-check: what vehicle/mount surface the note did not open, which accepted-slice interactions it did not consider, and which families beyond ships/carts/mounts belong in C10a. All claims re-derived from source this session; where the note was right I say so rather than manufacturing an objection.",
+      "problem": "Two vanilla defects in `Ship.m_players` bookkeeping are unremarked, and both get worse under C6. `RefreshPlayerList` (Ship.cs:719-728) calls `RemoveAt(i)` inside a forward `for` loop without decrementing `i`, skipping the next element. `OnTriggerEnter` (Ship.cs:730-741) does `m_players.Add(component)` with no `Contains` guard, and the list is a plain `List<Player>` (:101).",
+      "severity": "minor",
+      "correction": "Add to H8: C6 places remote players by writing `transform.position` directly, which can generate enter/exit trigger pairs vanilla's continuous motion never produces \u2014 duplicate entries and skipped removals then propagate into `IsPlayerInBoat` (the helm grant), `GetNewOwnerID` (the 2 s handoff), speed decay and `CanBeRemoved`."
+    },
+    {
+      "angle": "Harness feasibility and experimental discrimination: can the two-client AM4 manifest-driven composition actually run E1-E5, and would the results discriminate anything?",
+      "problem": "E2's stated cost is wrong in a way that makes it look more expensive than it is, and its fallback is the expensive one. \"No live test at all... via an asset dump, or one log line from an existing probe on Awake\" \u2014 there is no existing probe that dumps serialized prefab fields, so the second option is new code, and the first (AssetRipper against the Unity bundles) is genuinely a chunk of work. But neither is needed: `ZSyncTransform` fields are public (`m_syncPosition`, `m_syncRotation`, `m_syncBodyVelocity`, `m_characterParentSync` at ZSyncTransform.cs:6-14) and readable off the loaded prefab list via `ZNetScene.instance.GetPrefab(\"Karve\")` or `Resources.FindObjectsOfTypeAll<ZSyncTransform>()` \u2014 the same reflection pattern the controller already uses at :655 and :887. The prefabs are resident on any client regardless of what is in the world, so E2 needs no boat, no AM4, no manifest, no second client, and no poison. It is the one experiment with no dependency on the seeding problem, which is a stronger argument for running it first than the one the note makes.",
+      "severity": "minor",
+      "correction": "Restate E2 as a single throwaway console command (`network_sense_prefab_flags <name>`, alongside the 29 existing `network_sense_*` commands at ComfyNetworkSense.cs:980-1080) run in a local single-player session. Include `Rigidbody.isKinematic`, `m_persistent` on the ZNetView, and the Cart's `m_playerExtraPullMass` in the same dump while you are there \u2014 all five of the section 6 prefab unknowns collapse in one call."
+    },
+    {
+      "angle": "Harness feasibility and experimental discrimination: can the two-client AM4 manifest-driven composition actually run E1-E5, and would the results discriminate anything?",
+      "problem": "Two smaller mechanical points on E1 that are worth getting right before someone books lab time. First, the session length: the autotest request is written with `expires_utc = now.AddMinutes(15)` (Invoke-NativeValheimClient.ps1:627) and the mod refuses anything already expired or more than 30 minutes out (NativeAutotestRequest.cs:126-133). This is fine \u2014 the check is at load, and the flags are static thereafter \u2014 but the harness-side bound is `-WaitSeconds`, ceiling 1800 (Invoke-NativeValheimClient.ps1:44-45), so \"~30 min\" is exactly at the ceiling with no slack for a retry. Second, a manual run must be launched with `-ScenarioPath ''` (the parameter defaults to empty, :38), because with a manifest loaded the controller force-enables god mode on every tick and fails the run on the local player dying (NativeCutoverScenarioController.cs:97-108, 938-962) \u2014 harmless but it changes what a manual pilot experiences, and a stale manifest from a previous run would drive the client out from under the human.",
+      "severity": "minor",
+      "correction": "Specify the exact invocation in the experiment writeup: `-Action start -ScenarioPath '' -WaitSeconds 1500` on both clients, and confirm `native-cutover-scenario.json` is absent from `BepInEx\\config\\comfy-network-sense\\` on both before launch."
+    }
+  ],
+  "hazards": [
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "In native-zero (poison) mode a ship has no transport at all: the movement RPCs, the helm RPCs, and the ship's ZDO transform all ride native paths that are fully suppressed",
+      "severity": "blocking",
+      "why": "NativeSteamSocketPatches (C:\\work\\baseline\\network\\mod\\ComfyNetworkSense\\Patches\\NativeNetworkPatches.cs:10-49) returns false from `ZSteamSocket.SendQueuedPackages` and nulls `Recv` for every connected socket. `Forward`/`Backward`/`Stop`/`Rudder`/`RequestControl` are ZRoutedRpc routed RPCs and `s_forward`/`s_rudder`/`s_user`/position are ZDOData \u2014 both ride that socket. The mod contains no ship references at all, so nothing replaces them. A C8-style native-zero cell with a boat in it does not degrade; the ship simply stops existing for every non-owner and the helm never grants. Any C10a plan must budget an entire vehicle lane (control RPCs + vehicle state + vehicle transform), not an allow-list addition."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "C4's one-shot lease shape does not express a continuous control claim; naively reusing it means one lease validation per rudder frame",
+      "severity": "serious",
+      "why": "C4 attaches a lease epoch to a single mutating action and the server validates before mutating. `Ship.ApplyControlls` (Ship.cs:201-225) emits an absolute rudder value up to 5x/second for as long as the pilot holds the key, plus edge-triggered throttle steps. A per-action lease check turns into a per-frame check on a hot path, and \u2014 worse \u2014 the lease *epoch* has no natural place to ride in an absolute-value stream where old frames must be dropped, not rejected. The vehicle lease needs a held-lease-with-expiry shape (grant, heartbeat, revoke) that C4 has not proven, plus a sequence number the vanilla protocol does not have."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "Vanilla's throttle is a relative state machine with no idempotency, so any retransmit/reorder/loss silently desynchronises ship speed",
+      "severity": "serious",
+      "why": "RPC_Forward/RPC_Backward (Ship.cs:257-297) step the enum rather than setting it: Stop\u2192Slow\u2192Half\u2192Full. Over a lossy or reordered UDP lane a dropped Forward leaves the owner one notch behind the pilot's belief forever (the pilot has no local m_speed prediction \u2014 it reads `s_forward` back). If Lumberjacks carries these as-is it inherits a protocol that was only ever safe over ordered, reliable Steam channels. The fix (send the absolute Speed enum) is a wire-contract change that must be decided in C10a design, not discovered in test."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "Nothing in vanilla authorizes ship movement, so the lease is a genuine new security boundary and will change observable behaviour",
+      "severity": "serious",
+      "why": "RPC_Rudder/RPC_Stop/RPC_Forward/RPC_Backward (Ship.cs:242-297) have no IsOwner check, no sender-vs-s_user check, and RPC_RequestRespons (ShipControlls.cs:117) starts doodad control on the receiver unconditionally. Introducing a server-validated lease will reject traffic vanilla accepted. Two visible consequences to plan for: (a) a passenger mashing keys currently does nothing observable only because their client never calls ApplyControlls \u2014 under a validating server it becomes a logged rejection stream; (b) contract tests must assert the *new* rejection behaviour, so there is no vanilla oracle to diff against for this row."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "`m_players` \u2014 which gates the control grant, the ownership handoff, and speed decay \u2014 is local trigger state that depends on remote player bodies being physically present, which C6 now drives",
+      "severity": "serious",
+      "why": "Ship.OnTriggerEnter/Exit (Ship.cs:730-766) build `m_players` from Unity collider callbacks; `RPC_RequestControl` refuses unless `IsPlayerInBoat(playerID)` on the OWNER's machine (ShipControlls.cs:95), and `UpdateOwner` refuses to hand off unless `m_players.Count > 0` (Ship.cs:692). LumberjacksMotionRunner applies remote positions with `instance.transform.position = appliedPosition` (LumberjacksMotionRunner.cs:333, 1337) and zeroes/sets `linearVelocity` \u2014 direct transform writes on a Rigidbody, which produce trigger events only after the physics step resolves them. If motion frames are sparse, throttled, or the remote body is held (`HoldRemote` zeroes velocity, line 1425-1429), the owner may never register a boarding, and the helm grant silently fails with no error path. This coupling is invisible until you put two real clients on one boat."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "The passenger's transform is a cross-ZDO parent edge into the vehicle ZDO, which the C6 motion lane does not model",
+      "severity": "serious",
+      "why": "ZSyncTransform.OwnerSync writes `ZDOExtraData.ConnectionType.SyncTransform` \u2192 ship ZDOID, plus s_relPos/s_relRot/s_vel in ship space (ZSyncTransform.cs:183-214), and SyncPosition resolves and steps the PARENT before placing the child (line 276-345). C6's canonical motion frame carries world position/rotation/velocity for a player. A player standing on a moving deck has a world position that is only meaningful jointly with the ship's pose at the same instant \u2014 sending world-space frames for a passenger on a ship owned by a third peer reintroduces exactly the rubber-banding C6 eliminated for ground movement. The motion frame likely needs an optional parent-ZDO + relative-frame variant, and the ordering guarantee (parent resolved first) has to be preserved."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "Ownership migrates on a 2s tick from two independent tickers, and RPCs are addressed to the owner at send time \u2014 a lease-holder can be validated against a stale owner",
+      "severity": "moderate",
+      "why": "`ZNetView.InvokeRPC` resolves the target from `m_zdo.GetOwner()` at send (ZNetView.cs:326-329); `Ship.UpdateOwner` (client, 2s) and `ZDOMan.ReleaseNearbyZDOS` (server, 2s) can both move ownership between send and receive. Vanilla tolerates this by silently dropping the input. A fail-closed Lumberjacks validator will instead reject, and if the lease is keyed to the simulating peer rather than to the vehicle, a routine 2s handoff produces a burst of lease-mismatch rejections that look like an attack. The lease must be vehicle-scoped and survive owner migration, or the migration itself must be lease-mediated."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "Two identity spaces collide in one grant path, and neither matches the Lumberjacks logical-peer id",
+      "severity": "moderate",
+      "why": "`s_user` for ships holds `Player.GetPlayerID()` \u2014 a persistent profile UID generated client-side (`Utils.GenerateUID()`, PlayerProfile.cs:120) and therefore trivially spoofable and not authenticated by the handshake; `Sadle` stores `GetZDOID().UserID` instead (Sadle.cs:224); ZDO ownership uses the session/peer id. C4's lease is keyed to an *authenticated logical-peer id*. Mapping any of these onto that id is not mechanical: the profile UID is exactly the wrong thing to trust, and RPC_ReleaseControl authorizes on the payload rather than the sender (ShipControlls.cs:111), which is a free eviction primitive today."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "On a headless dedicated server no peer necessarily simulates a ship, and the server cannot become the fallback simulator without new work",
+      "severity": "moderate",
+      "why": "`Ship.UpdateOwner` early-returns when `Player.m_localPlayer == null`, so the dedicated host never participates in ship ownership handoff. The server's own reference position is never set (every `SetReferencePosition` caller is local-player driven: Game.cs:459/488/510/513, Player.cs:644/1502, Tracker.cs, Valkyrie.cs), so its active area \u2014 and therefore its `ReleaseNearbyZDOS` seize window \u2014 sits at the world origin. If Lumberjacks moves vehicle simulation server-side (the natural fail-closed design), that is a genuinely new capability: the server must instantiate, own and step Ship rigidbodies in zones nobody has claimed, with the water/Heightmap dependencies (`Floating.GetWaterLevel`, `Heightmap.ForceGenerateAll` at Ship.cs:156) those forces need."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "Client-side rudder prediction has a hard 1s reconciliation hold that will read as a bug under a new transport",
+      "severity": "minor",
+      "why": "Ship.UpdateControlls (Ship.cs:576-579) refuses to accept the authoritative `s_rudder` for 1 full second after the local peer's last send. Under the current native lane the round trip hides inside that window. If a Lumberjacks lease adds validation latency or a rejection, the pilot sees their predicted rudder held for up to a second and then snap \u2014 indistinguishable from lag in a C9-style motion-quality capture unless the reconciliation policy is deliberately re-specified alongside the transport."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "hazard": "`Ship.Rudder(float)` is a trap for a mechanical port",
+      "severity": "minor",
+      "why": "Ship.cs:237-240 reads `m_nview.Invoke(\"Rudder\", rudder)`, which is `MonoBehaviour.Invoke(methodName, delay)` \u2014 ZNetView defines no such method (ZNetView.cs only defines Register/InvokeRPC). It is unreferenced dead code across the whole decomp. An agent enumerating 'ship RPC surface' by method name will admit a phantom `Rudder` entry point and may wire real behaviour to it."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "C6 motion authority silently disables the rider's attach-to-mount glue on every observer",
+      "severity": "blocking",
+      "why": "On a remote observer the rider's parent-relative placement is produced inside ZSyncTransform.ClientSync -> SyncPosition (ZSyncTransform.cs:276-345), reached only from CustomFixedUpdate. MotionAuthorityTransformPatch prefixes exactly that method and returns false for any ZDO Lumberjacks tracks (LumberjacksMotionRunner.cs:1369). A ridden player IS tracked. So the moment the C6 lane owns a rider, the attach-joint snap stops running and the rider is placed by absolute Lumberjacks motion frames while the mount underneath is still placed by native ZDO interpolation. Two independent placement lanes for two rigidly-coupled bodies means guaranteed visible separation, worst at speed and on turns. This is not a tuning problem \u2014 the coupling code is simply not executing."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "Mount ownership and steering intent replicate on different channels with no epoch tying them together",
+      "severity": "blocking",
+      "why": "Sadle.cs:346-349 writes s_user (DataRevision) and SetOwner (OwnerRevision) as two independent facts, and tells the client it has control BEFORE issuing the ownership change. C4's lease proved a server-originated epoch on a one-shot action. A mount lease must instead bind (a) rider identity, (b) simulation rights, and (c) a continuous validity window into one epoch, and must survive the entire ride. There is no vanilla mechanism to copy here \u2014 the vanilla design just assumes the two revisions converge."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "Making the server the mount's ZDO owner converts a zero-byte control loop into a per-input-frame wire message",
+      "severity": "serious",
+      "why": "Sadle.ApplyControlls fires every input frame (Sadle.cs:268 via PlayerController.cs:160/164) and ZRoutedRpc short-circuits it locally today because the rider owns the ZDO (ZRoutedRpc.cs:130). Any Lumberjacks design that keeps mount authority server-side turns that into ~60 msg/s per rider with no vanilla rate limiting, batching, or sequencing. There is also no ack, no sequence number, and RPC_Controls has sticky-state semantics (Sadle.cs:279-298) that are order-sensitive \u2014 a dropped or reordered Speed transition leaves the mount stuck walking or turning."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "BaseAI/MonsterAI simulation rights are inseparable from ZDO ownership",
+      "severity": "serious",
+      "why": "BaseAI.UpdateAI hard-returns on non-owners (BaseAI.cs:309) and MonsterAI hands its whole tick to the saddle (MonsterAI.cs:356). You cannot split 'the server validates control' from 'the rider simulates the creature' without either replacing the AI tick gate or accepting that the rider's client remains the physics authority for a non-player entity \u2014 which is exactly the thing C6 removed for players. Whichever way this goes, the ownership handoff must not stall the AI tick: a mid-transfer window where NEITHER machine owns the ZDO stops the creature dead (the C8 audit already flags AI handoff stalls as a needed verification cell)."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "HaveRider() is computed from a peer-scoped list and is already wrong on bystander clients in vanilla",
+      "severity": "serious",
+      "why": "ZNet.GetAllCharacterZDOS (ZNet.cs:1847-1867) returns the local character plus directly-connected peers' characters. A client on a dedicated server sees only its own. So Sadle.CalculateHaveValidUser (Sadle.cs:363-379) yields false on every non-rider client, silently changing mount run speed, slide angle and animation there (Character.cs:1084/1493/3603). Lumberjacks replaces the peer/handshake layer, and the whole thing hangs off the direct (non-routed) ZRpc 'CharacterID' message (ZNet.cs:1806-1825). If that mapping is not carried, the SERVER also stops being able to evaluate rider validity \u2014 which is the one place that check has to work if the lease is server-issued."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "Nothing clears s_user on disconnect, death, or unload; recovery depends on a fragile derived check",
+      "severity": "serious",
+      "why": "Exhaustive grep shows s_user is written only at Sadle.cs:346 and Sadle.cs:385. Rider disconnect and rider death both leave it populated (Player.OnDeath has no release path; Player.cs:745 gates the release path behind !IsDead()). Vanilla un-sticks only because CalculateHaveValidUser fails the 10 m distance test or finds no matching character ZDO. If Lumberjacks changes how the rider's character ZDO is registered or how positions are sourced, that implicit recovery can invert: a mount permanently reporting a valid user, refusing every RequestControl and refusing saddle removal (Sadle.cs:331-337 requires !HaveValidUser)."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "Abandoned mount reclaim depends entirely on the generic 2 s server sweep, which only touches Persistent ZDOs",
+      "severity": "moderate",
+      "why": "ZDOMan.RemovePeer does nothing mount-specific (ZDOMan.cs:498-509); recovery is ReleaseNearbyZDOS (ZDOMan.cs:623-648), server-only, every 2 s, filtered by `if (!tempNearObject.Persistent) continue`. If a Lumberjacks ownership lane replaces or bypasses that sweep, a mount whose rider crashed mid-ride stays owned by a dead session and stops being simulated by anyone. The 2 s worst case also means a mid-ride disconnect leaves a rider-shaped hole where the creature is frozen for up to two seconds before another client takes over \u2014 visible to everyone nearby."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "The rider's position is resolved by string bone-name lookup at presentation time, not by any transform you control",
+      "severity": "moderate",
+      "why": "The remote path does Utils.FindChild(mountGO.transform, attachJointName) and snaps to that child's world position (ZSyncTransform.cs:301-306), and it force-ticks the mount's ZSyncTransform first (line 287) so the parent is current in the same frame. Any Lumberjacks rider representation must reproduce both the name-keyed resolution AND that intra-frame ordering. Re-implementing rider placement as an absolute position stream loses the ordering guarantee even if the numbers are right \u2014 you'd be one frame stale against the mount's own update, every frame."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "Rider rotation is forced to the mount's rotation, so a rider motion frame carrying its own rotation is wrong by construction",
+      "severity": "moderate",
+      "why": "Player.GetRelativePosition returns relativeRot = Quaternion.identity for a Character parent (Player.cs:6713-6714), and SyncPosition slerps toward parentRot * relRot then sets usedLocalRotation = true, suppressing the absolute-rotation branch (ZSyncTransform.cs:330-337). C6's motion frames are the sole remote source of player rotation. While mounted, that authority is supposed to be delegated to the mount's rotation, not asserted by the rider \u2014 the lane needs an explicit 'attached, rotation deferred' state or riders will visibly counter-rotate against their mounts."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "RPC_RequestRespons acts on Player.m_localPlayer with no correlation to the request",
+      "severity": "moderate",
+      "why": "Sadle.cs:390-408 mounts the local player on any granted response that reaches this client, with no check that this client sent the RequestControl and no request/response id. Vanilla is protected only by the fact that the grant is unicast to `sender`. Lumberjacks routing must preserve strict unicast for RequestRespons; any broadcast or mis-fanout (the ADR-0013 multicast work is explicitly in flight and unproven) would mount uninvolved players onto creatures they never touched."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "Mount control shares the ZDO field name and the RPC names with ships",
+      "severity": "minor",
+      "why": "Sadle and ShipControlls both register RequestControl / ReleaseControl / RequestRespons and both use ZDOVars.s_user \u2014 same hashes, different ZDOs. A lease lane keyed on method-name hash rather than on (ZDO, prefab kind) will conflate the two, even though their ownership semantics differ (Sadle forces SetOwner, ShipControlls does not). Poison guards and contract tests must be per-target-ZDO, not per-RPC-name."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "hazard": "Saddle add/remove/drop are separate ZDO+broadcast facts that can desync from the ride state",
+      "severity": "minor",
+      "why": "s_haveSaddleHash plus an Everybody 'SetSaddle' RPC (Tameable.cs:328-344) toggles the saddle GameObject active, and Sadle.Awake registers its RPCs on the creature's ZNetView regardless. If SetSaddle deactivates the saddle object while a rider is attached \u2014 or if the Everybody broadcast is lost on one client \u2014 that client's mount renders saddle-less with a floating rider, and Sadle.FixedUpdate stops running there (UpdateRiding checks base.isActiveAndEnabled at Sadle.cs:132)."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "There is no server-side cart simulator to move authority to",
+      "severity": "blocking",
+      "why": "The joint, the Rigidbody integration, and the pulling forces exist only on the cart's owning CLIENT (Vagon.cs:181-189, 252-285). A dedicated server never instantiates the cart because `ZNet.GetReferencePosition()` is never set away from origin on a headless node (ZNetScene.cs:358-366; every SetReferencePosition call site is client-side). So a server-issued lease can say who may drive the cart, but the server cannot itself hold or validate the resulting motion the way C6 validates player motion frames. Either the design accepts client-authoritative cart physics under a lease (and the lease governs *who*, not *what*), or C10a takes on running Unity physics for vehicles server-side \u2014 a category of work C0-C8 has never done."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "The vanilla churn funnel actively fights a continuous lease",
+      "severity": "blocking",
+      "why": "`ZDOMan.ReleaseNearbyZDOS` runs server-side every 2 s and releases/reseizes persistent ZDOs purely on active-area geometry, with no knowledge of `attachJoint` or `InUse()` (ZDOMan.cs:623-648). A lease for a cart must therefore either suppress this funnel for leased objects (the existing OwnershipPinRunner shape) or accept that the world can revoke the lease under the holder every 2 s. Note the difference from C4: an item pickup completes inside one interaction; a cart pull spans minutes of movement across zone boundaries \u2014 exactly the input that funnel keys on."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "There is no grant message to carry, and the client attaches by observing ownership",
+      "severity": "blocking",
+      "why": "`Vagon.RPC_RequestOwn` grants by `SetOwner(sender)` with no reply (Vagon.cs:130-144); the requester attaches on the first FixedUpdate where `IsOwner()` is true (Vagon.cs:163-180). Only the DENY has a wire message. If Lumberjacks replaces the ZDO-owner change with a lease, the attach trigger disappears \u2014 `IsOwner()` will be whatever the redirected ZDO layer says, which may no longer correlate with holding the lease. The contract test has to pin down what makes the joint appear, and it cannot be 'the client noticed it became owner'."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "Attach intent never expires; a lease epoch does",
+      "severity": "serious",
+      "why": "`m_useRequester` is cleared only inside the owner branch of FixedUpdate or by RPC_RequestDenied (Vagon.cs:146-153, 163-180). Combined with the unowned-cart broadcast (ZNetView.cs:326-329 + ZRoutedRpc.Everybody == 0), a press that goes nowhere leaves a live intent that fires whenever ownership eventually lands \u2014 including from the server's unrelated reseize. Under a lease with an epoch and an expiry, a stale intent can attach the cart against an expired or reissued lease. Vanilla's own 'cart didn't respond, then grabbed by itself' behaviour is this bug."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "Losing the lease mid-pull silently detaches and re-arms friendly fire",
+      "severity": "serious",
+      "why": "The non-owner branch is one unconditional line \u2014 `else if (IsAttached()) { Detach(); }` (Vagon.cs:186-189) \u2014 so any lease revocation drops the joint that tick with no player-facing message, and `Attack` stops skipping the cart because the immunity test reads the local joint (Attack.cs:1249-1253, Vagon.cs:207-214). Lease reclaim/expiry policy for vehicles needs a defined UX and a grace window, or normal AoI movement will look like the cart 'dropping' and players will start chopping their own carts."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "Stale `attachJoint = 1` marks a free cart as in-use, and persists into the save",
+      "severity": "serious",
+      "why": "`Detach` clears the ZDO flag only when `IsOwner()` (Vagon.cs:302-305), and `OnDestroy` clears nothing at all (Vagon.cs:101-104) even though `ZNetScene.RemoveObjects` destroys the object on active-area exit (ZNetScene.cs:305-316). Vanilla self-heals on the next owner's FixedUpdate; a Lumberjacks lease lane that derives 'is this vehicle in use' from the replicated flag inherits a field that is written by one side, cleared conditionally, never cleared on unload, and saved to disk in the true state."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "Two ownership-transfer paths into the same ZDO, only one of which is the vehicle path",
+      "severity": "serious",
+      "why": "`Container.RPC_RequestOpen`/`RPC_RequestStack`/`RPC_RequestTakeAll` each do `ForceSendZDO(uid, \u2026)` then `SetOwner(uid)` on the cart's ZNetView (Container.cs:293-294, 339-340, and the parallel take-all at :383-395), cross-guarded against `m_wagon.InUse()`. C10a's family-1 (vehicles) and family-2 (containers/duping) gates therefore collide on the cart: the same lease must cover both the pull and the inventory. Also note vanilla's ordering \u2014 state flush BEFORE handover \u2014 which any lease handoff should replicate or it will hand a new owner a stale inventory."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "`attachJoint` is an int on cart ZDOs and a string on character ZDOs",
+      "severity": "serious",
+      "why": "`ZDOVars.s_attachJointHash` (ZDOVars.cs:29) is written by Vagon via `Set(hash, bool)` \u2192 int table (ZDO.cs:381-384) and by ZSyncTransform via `Set(hash, string)` \u2192 string table (ZSyncTransform.cs:190, read at :289). Vanilla tolerates this because ZDOExtraData is type-partitioned and the two live on different ZDOs. A Lumberjacks ZDO journal or contract test that maps stable-hash \u2192 a single declared type will mis-decode one of them, and the failure mode is a cart that reads as permanently attached or a rider whose attach point decodes as garbage."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "Riders create cross-ZDO transform connections that compete with C6 motion authority",
+      "severity": "serious",
+      "why": "A character standing in the cart writes `SetConnection(ConnectionType.SyncTransform, cartZdo)` plus relPos/relRot/relVel onto its OWN ZDO (Character.cs:3732-3753, ZSyncTransform.cs:183-214), and remote clients then position that character relative to the cart, invoking the cart's `ClientSync` re-entrantly and directly (ZSyncTransform.cs:281-291) \u2014 bypassing `CustomFixedUpdate`, which is where `MotionAuthorityTransformPatch` hooks (MotionAuthorityPatches.cs:11-17). So the C6 seam does not cover the parent-driven path. C6 established motion frames as the sole remote source of player transform; a rider's transform is by construction relative to a non-player entity, which is precisely the 'different in kind' the brief suspected \u2014 and it is real."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "The audit's `RPC_RequestOwn` = superseded row is not true for Vagon, and orphans `RPC_RequestDenied`",
+      "severity": "serious",
+      "why": "C8-BREADTH-AUDIT-2026-07-31.md:39 says the ArmorStand/ItemStand/Vagon registrants ride the replaced dance, but the only implemented patch is `[HarmonyPatch(nameof(ItemDrop.RequestOwn))]` (OwnershipLeaseCutoverRunner.cs:1156-1158) \u2014 the ItemDrop caller method, not the shared RPC name, and nothing at all on Vagon. Meanwhile `RPC_RequestDenied` (Vagon.Awake, per synthetic_baseline_v2.json) sits in the 118-row needs-lane bucket: the reply is scheduled for admission while the request it replies to is marked superseded. C10a should re-open that single row rather than inherit an inconsistent pair."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "Under the current native-zero composition carts are already broken, untested",
+      "severity": "serious",
+      "why": "`RpcRoutedRpcPrefix` poisons the inbound routed funnel wholesale (NativeNetworkPatches.cs:201-209) and the Lumberjacks admission dictionary holds seven method names (RoutedRpcCutoverRunner.cs:526-538), none of them Vagon's. By source, a poison-armed C8 build cannot deliver RPC_RequestOwn or RPC_RequestDenied. This is inferred, not observed \u2014 no cart was in any C8 scenario \u2014 but it means 'C8 native-zero passed' carries no signal about carts, and a first cart contract test should expect failure, not regression."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "Unowned-cart interaction broadcasts to every peer",
+      "severity": "moderate",
+      "why": "`InvokeRPC(method)` targets `m_zdo.GetOwner()` (ZNetView.cs:326-329); owner 0 equals `ZRoutedRpc.Everybody` (ZRoutedRpc.cs:41) and `RouteRPC` fans out to all ready peers (ZRoutedRpc.cs:146-164). Every cart is unowned immediately after a world load. A Lumberjacks lane must decide explicitly where an ownerless-vehicle request goes \u2014 the gateway is the natural answer, and it is strictly better than vanilla's broadcast-and-hope."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "The priority classifier bands a moving cart with chests",
+      "severity": "moderate",
+      "why": "LumberjacksPriorityClassifier.cs:44 matches `\"cart\"` into `storage_crafting` at rank 4 \u2014 below structural anchors. A pulled cart needs transform updates at motion rates; a parked one does not, and a name-only rule cannot tell them apart. The band policy itself is distance-based (ZdoBandPolicy), so the interaction between the two needs checking before a cart test is meaningful."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "Every cart stream-in forces a full heightmap regeneration",
+      "severity": "moderate",
+      "why": "`Heightmap.ForceGenerateAll()` in `Vagon.Awake` (Vagon.cs:86). If Lumberjacks' AoI causes carts to enter/leave the active set more often than vanilla \u2014 plausible if the band policy drops and re-adds a rank-4 object as its distance oscillates \u2014 this becomes a repeated client hitch attributable to the new transport."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "Non-owners write to the cart's physics and its ZDO with nothing stopping them",
+      "severity": "moderate",
+      "why": "`Detach` runs `m_body.WakeUp(); m_body.AddForce(0f, 1f, 0f);` unguarded (Vagon.cs:306-307) and is reachable on non-owned carts via the static `DetachAll()` and the non-owner FixedUpdate branch. More broadly, `ZDO.Set(int, int, bool okForNotOwner = false)` never reads its own guard parameter (ZDO.cs:352-358) \u2014 vanilla has no ownership enforcement on field writes at all. A fail-closed lease design must add that enforcement rather than assume it exists."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "Puller extra-mass leaks on unload",
+      "severity": "minor",
+      "why": "`SetExtraMass` mutates the local Rigidbody mass directly (Character.cs:3885-3888) and is reverted only in `Detach`; `OnDestroy` does not call it (Vagon.cs:101-104). If `m_playerExtraPullMass` is non-zero on the prefab, a cart unloading while attached leaves the player permanently heavier until the next attach/detach cycle. Cosmetic in vanilla, but it is client-local state that diverges from anything the server believes."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "hazard": "OwnerRevision is a 16-bit counter compared with `>`",
+      "severity": "minor",
+      "why": "ZDOMan.cs:828 gates the owner apply on `num3 > zDO.OwnerRevision` where the revision is a `ushort` (ZDO.cs:203). Long sessions with heavy churn \u2014 carts being exactly the churn-heavy case \u2014 can wrap it, after which ownership updates stall on the stale branch. Worth a bound in the contract test rather than a fix."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "There is no server-side vehicle simulation to become authoritative over \u2014 this is greenfield, not a replacement",
+      "severity": "blocking",
+      "why": "ZNet.m_referencePosition (ZNet.cs:163) is only ever set from local-player code (Player.cs:644/1502, Game.cs:459/488/510/513), so a headless server leaves it at Vector3.zero and ZNetScene (:202, :360-365) never instantiates a ship at sea. No GameObject means no Rigidbody, no buoyancy solver, no ZSyncTransform. Every previous slice replaced a native mechanism that existed on the server; a server-authoritative ship has nothing to replace and would require Baseline to stand up vehicle physics on the server from scratch (or accept designated-client authority and validate rather than simulate). This distinction should be settled before C10a scoping, because 'extend the C4 lease to vehicles' quietly assumes the server can adjudicate a position it cannot compute."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "The canonical motion frame cannot express a vehicle's orientation",
+      "severity": "blocking",
+      "why": "ValheimMotionSnapshot (ValheimMotionCodec.cs:120-138) carries Yaw as a single float. Vanilla replicates full Euler rotation (ZDO.cs:471) plus body_avel angular velocity (ZSyncTransform.cs:239). A longship pitches and rolls on waves and a cart tips on slopes; a yaw-only frame renders both perfectly flat and loses the upside-down state that Ship.UpdateUpsideDmg (Ship.cs:422-437) uses to deal damage. Extending motion authority to vehicles requires a wider frame, not a wider enrolment predicate."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "Continuous control has no lease-shaped handoff to extend \u2014 the only handoff is a one-frame snap with no epoch",
+      "severity": "blocking",
+      "why": "ZSyncTransform.cs:129-151 is the entire vanilla control transfer: on the rising edge of ownership, reload transform + linear/angular velocity from the ZDO and Physics.SyncTransforms(). There is no epoch, expiry, reason or ack, and the C4 lease vocabulary has no counterpart for 'restore my rigidbody state at the moment I take the wheel'. A lease-based vehicle handoff that omits this restore will make a ship teleport or lurch on every control change; one that includes it must define whose velocity is canonical at the transfer instant. This is genuinely new protocol design, which is why the C8 audit's 'largest novel ownership work' label is right."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "Three incompatible, unauthenticated ownership-transfer mechanisms will all be poisoned by a fail-closed lease lane",
+      "severity": "serious",
+      "why": "Ship.UpdateOwner (Ship.cs:690-699) unilaterally calls ZDO.SetOwner every 2 s to hand the boat to a passenger; Vagon.RPC_RequestOwn (Vagon.cs:130-144) does SetOwner(sender) on request; Sadle.RPC_RequestControl (Sadle.cs:339-356) does Set(s_user) AND SetOwner(sender) in one shot on the CREATURE's ZDO. The audit marks RPC_RequestOwn 'superseded (kept)' because ItemDrop.RequestOwn was replaced \u2014 but carts genuinely depend on it, and Ship's timer path is not an RPC at all, so an RPC-level poison will not catch it. Poisoning ownership writes without a vehicle lease first will strand ships with a departed owner and freeze carts mid-haul."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "C6's player motion authority actively breaks the rider-on-vehicle case if naively extended",
+      "severity": "serious",
+      "why": "For a rider, the truth is parent-relative: connection ConnectionType.SyncTransform + relPos/relRot on the RIDER's ZDO, resolved in the parent's frame (ZSyncTransform.cs:276-341). C6 replaces the remote player's transform with a WORLD-space Lumberjacks frame (SuppressNativeTransform, LumberjacksMotionRunner.cs:1369) and masks native ZDO position writes (:1384). A remote player standing on a moving deck would then be placed by a 5-30 Hz world-space frame instead of being pinned to the deck, so they will visibly slide, lag behind the hull, and interact with the C6 implausible-target guard (the code already treats >30 m jumps as needing the reliable resync lane, and a fast longship covers that in seconds). This is the concrete reason vehicles are 'different in kind' \u2014 it is not just a wider entity set, it is a different coordinate frame."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "The parent-before-child in-frame ordering guarantee has no analogue in the Lumberjacks lane",
+      "severity": "serious",
+      "why": "ZSyncTransform.SyncPosition reaches into the parent and calls component.ClientSync(dt) directly (:287), protected by the m_lastUpdateFrame dedupe (:379-383), precisely so the vehicle's transform is final before the rider is placed on it. A Lumberjacks motion applier that processes entities in arbitrary order will place riders against a one-frame-stale hull, producing a persistent visual offset proportional to ship speed."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "The native OWNER-side writer is entirely unpatched and will race any new vehicle authority",
+      "severity": "serious",
+      "why": "MotionAuthorityPatches.cs:11 patches only ZSyncTransform.CustomFixedUpdate. OwnerSync/CustomLateUpdate keeps writing SetPosition/SetRotation/vel/body_vel into every owned ZDO (ZSyncTransform.cs:169-242). The moment Lumberjacks starts asserting a vehicle transform, two writers exist for the same ZDO on the same machine and the last LateUpdate wins. The C6 pattern of a paired suppress-writer/mask-ZDO-write will need a vehicle-shaped equivalent, and ZDO.InternalSetPosition masking alone will not cover SetRotation or the body_vel hashes."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "Suppressing ClientSync for a vehicle also silently re-enables its remote physics",
+      "severity": "serious",
+      "why": "ZSyncTransform.cs:430-452 is where a non-owner forces m_body.useGravity = false and either injects body_vel/body_avel or Sleep()s the body. A Harmony prefix that returns false on CustomFixedUpdate skips all of that. Every remote client's ship would then have gravity re-enabled with an awake, unconstrained Rigidbody \u2014 it would sink, drift, and fight the injected transform. The C6 player case survives this only because remote players are handled by other suppression; a vehicle replacement must explicitly own this side-effect."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "'vel' means two different things depending on parenting, and both meanings are on the wire today",
+      "severity": "moderate",
+      "why": "OwnerSync writes world velocity into ZDOVars.s_velHash at :179 and then overwrites it with parent-relative velocity at :202 in the same pass when parented. The receiver reads it as relative at :292 and as world at :357, discriminated only by whether the SyncTransform connection resolves. Any Lumberjacks schema that types 'vel' as a single world-space vector is wrong for every rider, and the error is silent \u2014 it produces plausible-looking drift, not a crash."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "Distance band shaping will visibly stutter a moving vehicle",
+      "severity": "moderate",
+      "why": "ZdoRedirectRunner.IsPlayerCharacterZdo (:664-681) matches only peer character ZDOIDs, so ships and carts get no fast lane. Defaults (PluginConfig.cs:797-825) thin 30-64 m to 5 Hz and DROP beyond 64 m. A longship at full sail crosses a 64 m band in a few seconds, so an observer watching a boat sail past sees it thinned then dropped, relying entirely on ZSyncTransform's 2 s dead-reckoning (:311) to paper over it. A vehicle fast lane, or a velocity-aware band, is a prerequisite for any honest vehicle acceptance test."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "Motion smoothing is coupled to unrelated ZDO writes through DataRevision",
+      "severity": "moderate",
+      "why": "m_posRevision compares zdo.DataRevision (ZSyncTransform.cs:294, :348) and resets the extrapolation timer on ANY change. A ship writes 'forward' and 'rudder' from UpdateControlls every FixedUpdate (Ship.cs:571-572) on the same ZDO. If those writes bump DataRevision, the receiver's extrapolation clock resets ~50x/second and dead reckoning is effectively disabled for ships; if a Lumberjacks lane synthesizes DataRevision differently than native, it changes the visible smoothing behaviour without touching any motion code."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "Vehicle control RPCs are unauthenticated even against the vehicle's own user field",
+      "severity": "moderate",
+      "why": "Ship's RPC_Rudder/RPC_Forward/RPC_Backward/RPC_Stop (Ship.cs:242-297) never check the sender against ShipControlls' s_user, and never check IsOwner. Sadle.RPC_Controls at least checks IsOwner (:274). Any lane that routes these RPCs through Lumberjacks inherits an authorization hole that C4's lease vocabulary is well positioned to close \u2014 but that means the lease must gate a CONTINUOUS RPC stream (rudder every 0.2 s, Controls every input frame), not a one-shot mutating action, which is a different validation shape than the C4 pickup proof."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "Vagon attachment state is not replicated at all \u2014 only a bool is",
+      "severity": "minor",
+      "why": "AttachTo builds a local Unity ConfigurableJoint (Vagon.cs:252-285) and publishes only a bool under 'attachJoint'. Non-owners destroy their joint every FixedUpdate (:186-189). A cart's physical coupling to the player exists on exactly one machine. Any Baseline model that treats 'who is pulling this cart' as replicated state is modelling something vanilla does not have."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "hazard": "Vagon writes ZDOVars.s_attachJointHash as a bool while ZSyncTransform writes it as a string",
+      "severity": "minor",
+      "why": "Vagon.cs:279 does Set(s_attachJointHash, value: true) (int-backed); ZSyncTransform.cs:190 does Set(s_attachJointHash, string). Separate ZDOExtraData type tables mean no runtime collision, but a Lumberjacks ZDO field schema keyed on the hash name will mistype one of them. Worth a contract test in C10a rather than a runtime surprise."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "hazard": "Attachment is invisible on the Lumberjacks wire, and the code that would have used it is switched off",
+      "severity": "blocking",
+      "why": "The 36-byte motion payload (ValheimMotionCodec.cs:43-54) has no parent ZDOID, no attach-joint string, and no relative pose. Independently, the Harmony prefix on ZSyncTransform.CustomFixedUpdate (MotionAuthorityPatches.cs:11-16) deletes the ENTIRE reconstruction path for a canonical remote \u2014 connection lookup, parent-first ClientSync ordering, TransformPoint(relPos), the mount bone snap, and relative-velocity extrapolation. Even if native ZDO replication still delivered relPos, no observer would read it. C10a cannot treat vehicles as an RPC-admission problem: the motion contract itself needs a parent/attachment channel, or a separate attachment lane that the observer consults before applying a world-space frame."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "hazard": "A freshness hold strands a rider in world space while the vehicle sails out from under them, with no native recovery",
+      "severity": "blocking",
+      "why": "On a stale sample the authority path calls HoldRemote (LumberjacksMotionRunner.cs:207, 1425-1431), which zeroes velocity and sets a reason but does NOT clear HasAppliedPosition. Since HasRemote (line 1419) gates suppression on that flag, native ZSyncTransform stays suppressed throughout the hold. Default lumberjacksMotionFreshSeconds is 0.5 s (PluginConfig.cs:545). Under native relative sync a stale rider stays glued to the deck because relPos is constant; under Baseline the rider freezes at a world point and the ship leaves. Fail-closed is the right policy for a walking player and the wrong policy for an attached one, because the correct hold behaviour is 'hold in the vehicle frame', which Baseline has no representation of."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "hazard": "Positional error scales with vehicle speed, where native error was structurally zero",
+      "severity": "serious",
+      "why": "Native relative sync makes a seated rider's tangential error zero by construction, and gives the mount case an exact per-FixedUpdate bone snap with no interpolation (ZSyncTransform.cs:299-306). Baseline's error is (one-way network latency + the ~56 ms smoothing time constant from lumberjacksMotionSmoothing=18, LumberjacksMotionRunner.cs:198) multiplied by vehicle speed, plus up to one 20 Hz send interval. At longship speeds that is metres of visible aft-slide \u2014 a passenger apparently standing in the sea, or a rider bobbing behind a running Lox. This is a quality regression that will not show up in any on-foot A/B."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "hazard": "The 30 m implausible-target guard is a speed-dependent tripwire that raises authority_failures, not just a visual glitch",
+      "severity": "serious",
+      "why": "ImplausibleTargetMeters is a hard 30.0 f (LumberjacksMotionRunner.cs:35) applied to |current - target| on the ordinary lane; exceeding it calls HoldRemote AND increments _authorityFailures (lines 312-322), which fails the probe gates outright (EvaluateProbe requires failures == 0, lines 955-985). Combined with the 0.5 s freshness window, any stall on a moving vehicle can present a resumed target beyond the bound, converting a routine packet gap into a recorded authority failure. The bound was calibrated for on-foot speeds; the sender-side teleport-resync detector (line 607-612) uses the same 30 m constant between consecutive 20 Hz samples and will not fire for legitimate vehicle motion, so nothing re-anchors the rider."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "hazard": "A lagging remote passenger can fall out of the ship's trigger volume on the OWNER's client and stop the boat or deny the helm",
+      "severity": "serious",
+      "why": "Ship.m_players is built from local OnTriggerEnter/OnTriggerExit against the rendered collider (Ship.cs:730-766) \u2014 i.e. against whatever position Baseline wrote. On the ship's ZDO owner, that list gates real behaviour: m_players.Count == 0 forces Speed.Stop and zeroes the rudder (Ship.cs:311-315), CanBeRemoved() becomes true (Ship.cs:181), and ShipControlls.RPC_RequestControl refuses the helm unless IsPlayerInBoat(playerID) on that same owner (ShipControlls.cs:95). Baseline's world-space placement is exactly the input to those triggers, so presentation lag becomes a gameplay-state fault on a machine that is not the lagging player's."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "hazard": "Rotation is yaw-only, so riders cannot tilt with a rolling deck or a moving mount",
+      "severity": "moderate",
+      "why": "Baseline forces Quaternion.Euler(0, yaw, 0) (LumberjacksMotionRunner.cs:334) and the wire carries yaw as a uint16 at 0.1-degree resolution (ValheimMotionCodec.cs:51). Native reconstructs the attached rotation as parentRotation * relRot \u2014 a full quaternion (ZSyncTransform.cs:334) \u2014 and Player.UpdateAttach copies the attach point's full rotation locally (Player.cs:5987). Remote riders will be gimbal-upright on a pitching longship and misaligned in a saddle, intersecting hull and mount geometry. Note this also means the rider's own client and every observer disagree about the rider's orientation, which matters for any future hit/aim work."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "hazard": "Non-owner rigidbody gravity and sleep management lived inside the method the prefix skips",
+      "severity": "moderate",
+      "why": "m_body.useGravity = false, m_body.Sleep(), and the velocity assignment for non-owned bodies are all inside ZSyncTransform.ClientSync (lines 430-453), reachable only through the suppressed CustomFixedUpdate. Baseline writes body.linearVelocity in LateUpdate (lines 338-344) but never disables gravity and never calls Physics.SyncTransforms() after writing transform.position \u2014 native calls it after every write (lines 338-341, 364-367). For a walking remote this is masked by a per-frame position rewrite; for an attached rider whose target is a moving frame it compounds with the lag. I did not find another site that disables gravity on remote player bodies, but I could not prove absence \u2014 see open questions."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "hazard": "Vagon does not fit a vehicle-lease abstraction copied from Ship/Sadle",
+      "severity": "moderate",
+      "why": "The cart has no player attachment, no attach point on the player, no relative transform, and no control seat. It is a local ConfigurableJoint that exists only on the cart's owner and is torn down by every non-owner (Vagon.cs:186-189, 252-285), coordinated by the pre-lease RPC_RequestOwn (line 130). The C8 audit already lists RPC_RequestOwn as 'superseded' by the C4 lease, which is right for the ownership handshake but says nothing about the joint. A single 'vehicle control lease' shape modelled on Ship/Sadle will silently mis-describe the cart, and the cart's pull force on the player also mutates the player's own mass (SetExtraMass, line 283)."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "hazard": "Scope is 'anyone aboard', not 'anyone in a control seat'",
+      "severity": "moderate",
+      "why": "Base Character.GetRelativePosition (Character.cs:3732-3746) parents any character standing on a ZNetView-bearing rigidbody, with a real relative velocity term. So an unseated deckhand walking a longship, and any tamed creature or enemy standing on it, are relatively synced natively. Sizing C10a's vehicle work around RequestControl/ReleaseControl (the two [VERIFY] rows named in the C8 audit) will undercount the surface by the whole passenger and cargo-creature population."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "hazard": "No existing ZDO field names which player is attached to which seat, so the attachment channel must invent that identity",
+      "severity": "minor",
+      "why": "The only replicated traces of attachment are the SyncTransform connection plus relPos/relRot/attachJoint (all written by ZSyncTransform, which Baseline neither writes nor reads), the s_inBed bool set in AttachStart (Player.cs:5961), the attach animation bool on ZSyncAnimation, and s_user on the vehicle. There is no chair-occupancy field at all \u2014 Chair.Interact does a purely local GetClosestPlayer proximity check (Chair.cs:56-61). A Lumberjacks attachment lane cannot mirror an existing field; it has to define seat identity from scratch, which is a contract-design task, not a port."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "The authorization gate is a one-shot latch \u2014 a continuous-control lease has no shape in the built model",
+      "severity": "blocking",
+      "why": "OwnershipLeaseCutoverRunner.cs:426 throws if `target.Completed || target.Authorized`, and the Gateway marks the slot `completed` on the first result (ValheimOwnershipLeaseService.cs:102-104). A helm lease that authorizes rudder input for the duration of a voyage cannot be expressed by extending C4; it needs a second lifecycle state ('held/streaming') that no code, contract or test currently has. This is the difference-in-kind the C8 audit suspected, and it is confirmed in source."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "Maximum lease lifetime is 30 seconds, hard-thrown at the Gateway",
+      "severity": "blocking",
+      "why": "ValheimOwnershipLeaseService.cs:24 rejects any duration > 30 s. A crossing, a cart haul or a ride is minutes. Sustained control therefore requires renewal at \u22652/minute per vehicle per rider, and the only renewal verb is `reissue` \u2014 a full client\u2192Gateway\u2192game-server\u2192Gateway\u2192client round trip (MessageRouter.cs:1230-1414) that mints a NEW epoch, invalidating every action frame already in flight under the old one (Validate requires exact epoch equality, line 61). Renewal is a stop-the-world event, not a heartbeat."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "There is no lease-request verb for a pre-existing world object",
+      "severity": "blocking",
+      "why": "phase=='create' requires uid_user/uid_id == 0 (MessageRouter.cs:1257-1259) and the game server responds by INSTANTIATING the target (OwnershipLeaseCutoverRunner.cs:352-359); phase=='reissue' requires the uid to match the object that same action created (lines 383-390). 'Give me control of that longship' has no message in the protocol. Every C4 gate ran against an object the lease command spawned, so the admission path for an arbitrary existing ZDO is entirely unbuilt \u2014 not merely unproven."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "Reclaim-on-disconnect is blanket and terminal, and the game server is never told",
+      "severity": "blocking",
+      "why": "GameWebSocketMiddleware.cs:296-299 reclaims all of a peer's active leases on ANY socket loss, ahead of the 2-minute resume window the transport otherwise honours, and emits no frame to the logical server. Mid-voyage a 3-second WebSocket blip therefore (a) strips helm authority with no notification to the helmsman, (b) leaves the vehicle's native ZDO owner wherever the last authorized action put it, and (c) leaves nobody designated to simulate the boat's physics. For C4's 0.75 s ownership blip this divergence was invisible; for a vehicle it is the central failure mode."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "No handoff / transfer verb \u2014 contention is rejection-only",
+      "severity": "serious",
+      "why": "The 'contend' phase (MessageRouter.cs:1274-1305) answers a second peer with holder_mismatch and never mutates the lease; the only route from holder A to holder B is A's lease dying then B obtaining a fresh Issue. Vanilla ships do the opposite: Ship.UpdateOwner (Ship.cs:690-699) reassigns ownership peer-to-peer every 2 s when the owner leaves the boat, and Sadle.RPC_RequestControl (Sadle.cs:349) transfers ownership as part of granting control. Passing the helm, or an owner walking off a moving boat, is exactly the case with no lease-model expression."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "The frame budget does not survive vehicle cadence",
+      "severity": "serious",
+      "why": "One lease+action cycle is ~10 reliable frames (request, command, issue, granted, receipt, action, authorized, result, completed, result-receipt) plus per-frame ACKs, all on the single ordered per-connection reliable lane (MessageClassification.cs:29-46), against a 256-frame window on both sides. Vanilla control cadence is 5 Hz for the ship rudder (Ship.cs:218) and per-input-frame for Sadle 'Controls' (Sadle.cs:268 via Player.cs:6182). Even at one lease-validated action per rudder tick that is ~50 reliable frames/s/rider before any ZDO journal traffic. Wall 14 already proved this lane starvable at exactly 256 with a benign interest re-publish; a vehicle would be the flood, not the victim."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "The Gateway's outbound reliable window has no control-frame bypass, and a refusal throws",
+      "severity": "serious",
+      "why": "Wall 14's fix (LumberjacksGameSessionRunner.cs:1178-1186) force-enqueues ownership frames on the MOD side only. ReliableGameSessionState.TryEnqueue (SessionManager.cs:338-346) has no `force`, and every ownership SendReliableAsync in MessageRouter throws InvalidOperationException on `!Queued` (e.g. lines 1394-1395, 1484-1485). A grant or authorization to a busy holder can still be refused with reliable_send_queue_full \u2014 and the refusal takes down the connection rather than degrading. The half of wall 14 that faces the client is unfixed."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "Exactly one in-flight lease per client, and exactly one lease slot per object",
+      "severity": "serious",
+      "why": "OwnershipLeaseCutoverRunner.cs:92 refuses a second concurrent probe, and the Gateway key is one lease per object (line 137). A vehicle scene is inherently multi-object and multi-authority: the cart plus the ox pulling it (Vagon.cs:130-144 has its own RPC_RequestOwn \u2192 SetOwner dance), the helm plus each passenger's attachment, the mount plus its MonsterAI. The model has no notion of a correlated lease set, and no notion of two peers holding non-conflicting rights over the same vehicle."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "Rider-relative transform has no carriage in any replacement lane",
+      "severity": "serious",
+      "why": "ZSyncTransform's characterParentSync writes a ConnectionType.SyncTransform connection plus s_relPos/s_relRot/s_vel into the RIDER's ZDO (ZSyncTransform.cs:183-207), and Player.UpdateAttach slaves the rider's world transform to the attach point every frame (Player.cs:5980-5999). C6's motion lane is player-world-position only and masks player-ZDO position writes (LumberjacksMotionRunner.cs:1384-1398); the journal carries only ConnectionType.Portal at runtime (ZdoJournalCutoverRunner.cs:680). So a passenger on a moving boat is currently a player whose canonical world position is being authored by a motion lane that knows nothing about the deck they are standing on."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "Nothing designates who simulates a non-player rigidbody",
+      "severity": "serious",
+      "why": "C6 established sole remote authority for PLAYER transforms; the lease established a 0.75 s ownership blip for a one-shot mutation. Neither answers 'whose machine runs the boat's physics for the next four minutes, and what happens the instant that machine stops answering'. Vanilla answers it with ZDO ownership (Ship.CustomFixedUpdate early-returns on !IsOwner, Ship.cs:305-308), which is precisely the mechanism the cutover is replacing."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "Fail-closed-by-throw is the wrong failure mode for a control stream",
+      "severity": "moderate",
+      "why": "Both ends treat contract violations as fatal: the mod throws InvalidDataException out of Update on any invariant miss (e.g. OwnershipLeaseCutoverRunner.cs:301, 331, 492, 621) and the router throws on malformed or non-'pickup' actions. That is correct for an unattended probe that must not silently degrade. Applied to a 5\u201360 Hz control stream, one stale-epoch frame arriving after a reissue \u2014 a normal race, not a defect \u2014 terminates the runner or the connection."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "The result contract cannot express a failed action, and its payload is inventory-shaped",
+      "severity": "moderate",
+      "why": "MessageRouter.cs:1508 throws when success is false, and the completion payload is item_prefab + item_count 1..100, re-checked on the client against `payload.item_count != 1` and the Raspberry prefab (OwnershipLeaseCutoverRunner.cs:611-621). Vehicle control outcomes ('rudder applied', 'out of stamina', 'collision, control lost') have neither a success-shape nor a failure-shape here."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "Unbounded per-session state under repeated lease traffic",
+      "severity": "moderate",
+      "why": "_leases is never pruned (ValheimOwnershipLeaseService.cs:11 \u2014 no Remove anywhere in the file) and _acceptedClientMessages accumulates one idempotency key per accepted reliable client message forever (SessionManager.cs:296, 387). At C4's handful of leases per run this is free; at a renewal every \u226430 s per vehicle per player across a long session it is a monotonic leak in a process whose restart is the documented fail-closed reset for all authority."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "Lease keys are world-stable while ZDOIDs are server-session-scoped",
+      "severity": "moderate",
+      "why": "The mod derives world_epoch from GetWorldUID (OwnershipLeaseCutoverRunner.cs:787-789) while ZDOIDs are minted as (m_sessionID, m_nextUid++) with a per-boot random session id (ZDOMan.cs:77, 404). A game-server restart under a surviving Gateway therefore leaves lease records naming objects that no longer exist \u2014 the same class as wall 11, whose durable fix (session-scoped epoch) is still open C10a work. Harmless for a 20 s pickup; for a long-lived vehicle lease it is stale authority in the store."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "hazard": "Issue is a seize, not a grant \u2014 it never checks the incumbent",
+      "severity": "minor",
+      "why": "ValheimOwnershipLeaseService.Issue (line 29-37) overwrites any existing record for the slot and bumps the epoch with no check that the current lease is active or held by someone else. C4 never exercises this because 'create' always mints a fresh object, so mutual exclusion has in practice lived in the mod's per-action_id bookkeeping. The moment leases target pre-existing shared objects, the store itself becomes the contention point and this unconditional overwrite is the wrong default."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "Boarding a boat or hitching a cart fails silently under the native-zero build, with no poison trip",
+      "severity": "blocking",
+      "why": "All 16 vehicle/mount RPCs are outside the seven-method admitted set (RoutedRpcCutoverRunner.cs:526-538), so AllowNativeRoute returns true and the call takes the native path, where TryHandleInvoke suppresses it without an Observe (LogicalPeerCutoverRunner.cs:339). The player presses Use and nothing happens. C8's acceptance pair never touched a vehicle, so this has never been observed \u2014 and the audit's stated safety net is precisely the mechanism that does not fire here."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "The C6 motion frame cannot represent a rider or a passenger",
+      "severity": "blocking",
+      "why": "ValheimMotionCodec's 36-byte payload carries absolute world position, velocity and a single yaw. Vanilla replicates an attached character as parent ZDOID + attach-joint name, or parent + relPos + relRot quaternion (ZSyncTransform.cs:276-345, Player.cs:6702-6727). C6 also suppressed the native remote-transform writers that implement that path. A passenger on a moving deck would be written in world space while the deck moves out from under them; a mounted rider, whose relPos is Vector3.zero and whose real position comes from a bone lookup, would sit at the world origin of the mount's ZDO."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "Sadle and ShipControlls need different contracts for the same RPC name",
+      "severity": "serious",
+      "why": "Sadle.RPC_RequestControl calls SetOwner(sender) (Sadle.cs:349); ShipControlls.RPC_RequestControl does not (ShipControlls.cs:93-107). One admission entry keyed on the method name will either grant ownership on a boat that never wanted it, or fail to grant it on a mount that requires it. The extractor sees only name and signature, so the instrument cannot flag this class."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "Ship.UpdateOwner reassigns ownership from a client every 2 seconds, unguarded",
+      "severity": "serious",
+      "why": "Ship.cs:190 InvokeRepeating + Ship.cs:696 SetOwner. The C4 guard requires ReleaseNearbyZDOS scope and a run-tagged target (OwnershipLeaseCutoverRunner.cs:207-208), so this fires straight through. Any Lumberjacks lease on a ship is overwritten roughly twice a minute per departing owner, and no ownership document in the programme mentions this site."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "The vehicle work is invisible to the gate that is supposed to block fallback deletion",
+      "severity": "serious",
+      "why": "Zero of the 29 P1 admissions are registered by Ship, ShipControlls, Sadle, Vagon or Tameable. C10 can therefore satisfy 'admit + contract-test the 29 P1 methods' with the entire vehicle surface untouched, while the same audit calls that surface the largest ownership work left. The [VERIFY] rows and family gates are the only thing holding it, and they have no acceptance criteria written."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "Lease expiry semantics that are correct for pickup are destructive for vehicles",
+      "severity": "serious",
+      "why": "C4 proved expiry by rejecting a mutation. Vagon.FixedUpdate destroys the ConfigurableJoint on any non-owner instance every frame (Vagon.cs:186-189), so a lapsed lease unhitches a loaded cart mid-pull. On a mount the same lapse moves MonsterAI back across the network mid-stride (Sadle.cs:154-172)."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "The two component-family gates cannot be run independently on a mount",
+      "severity": "serious",
+      "why": "Sadle, Tameable, MonsterAI and Character share the Character's single ZNetView and ZDO (Sadle.cs:64-67). The audit's family 1 gate (vehicles/mounts, tug-of-war verification) and family 3 gate (AI/creatures, handoff must not stall AI) are the same ZDO's ownership under two names. Passing them separately proves less than the plan implies."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "Cross-lane ordering between the vehicle's transform and the rider's",
+      "severity": "moderate",
+      "why": "Vanilla guarantees parent-before-child inside one frame by force-calling the parent's ClientSync (ZSyncTransform.cs:287). Under the split, a vehicle arrives via the C3 journal on Unity Update and a rider via the C6 motion lane. No ordering guarantee exists between them, and nothing in the documents acknowledges the dependency."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "Yaw-only rotation is wrong for anything standing on a boat",
+      "severity": "moderate",
+      "why": "The motion frame quantises rotation to a single uint16 yaw at 0.1 degree. Vanilla replicates s_relRotHash as a full quaternion because a deck pitches and rolls. Even setting the rider case aside, a player standing on a ship in heavy sea is under-described by the current frame."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "Server-authoritative vehicle physics is an undecided design commitment hiding inside 'lease-lane extension'",
+      "severity": "moderate",
+      "why": "The audit's phrasing implies vehicles are an extension of a proven lane. But the plan's sole-mutation-authority principle (line 64-66) sits against vanilla's deliberate placement of buoyancy and mount AI on the controlling client for latency. Whether the server simulates boats, or a client does under lease, changes the tick budget, the frame schema and the tug-of-war test \u2014 and it is the decision C10a would have to make before any of that work can be scoped."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "Twelve of the sixteen vehicle/mount methods have no retrievable priority",
+      "severity": "moderate",
+      "why": "Their classification lives only in HEARTH artifact art_40ef58c9015d9d7a343b48f87f7f2916, which is not in the repo, and none of the twelve names appears anywhere in fieldlab/ or docs/. C10a would have to redo the classification before it could schedule it."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "hazard": "Ashlands vehicles may widen the family beyond the four named classes",
+      "severity": "minor",
+      "why": "Catapult, SiegeMachine and Leviathan are in the 122-component ZNetView list. The audit's family is given as '(Ship, ShipControlls, Sadle, Vagon, \u2026)' with an ellipsis and no enumeration anywhere retained. I did not read those classes, so I cannot say whether they carry vehicle-shaped ownership \u2014 but nothing in the programme has ruled them in or out."
+    }
+  ],
+  "open_questions": [
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "question": "Does the Ship prefab actually carry a ZSyncTransform, and with which flags (m_syncPosition/m_syncRotation/m_syncBodyVelocity/m_characterParentSync)? Ship.cs never references ZSyncTransform, and the flags are Unity prefab asset data that is not present in the decompiled C#. ZSyncTransform is the only generic transform replicator and ZDOVars.s_bodyVelHash/s_bodyAVelHash handling is clearly written for rigidbodies, so the inference is strong \u2014 but the exact flag values (which decide whether non-owners extrapolate velocity or snap) are NOT settled by this source and must be read off the prefab or observed at runtime."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "question": "Do the ship's ZSyncTransform writes go through `ZDO.InternalSetPosition`, i.e. would the existing C6 `MotionAuthorityPositionPatch` mask ship positions if a ship ZDOID were ever added to the motion runner's remote set? ZSyncTransform.OwnerSync calls `zDO.SetPosition(position2)` which delegates to InternalSetPosition (ZDO.cs:425-441), so the seam exists \u2014 but whether the C10a design wants ships routed through the motion lane or a separate vehicle lane is undecided, and the two lanes' interaction (a passenger's parent edge pointing at a ZDO whose position is masked) is unexplored."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "question": "Does Unity fire `Ship.OnTriggerExit` when a passenger's GameObject is destroyed (client crash, ZNetScene despawn) rather than moved out? If not, `m_players` retains a dangling Player reference, `HaveValidUser()` keeps returning true for a departed helmsman, and the helm lock never clears until `RefreshPlayerList` happens to run (only inside UpdateOwner, and only when the owner is off the boat). The source does not settle this; it is engine behaviour plus destruction ordering."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "question": "What is the actual physics behaviour when the ship owner and a passenger are different peers and both are simulating in the same FixedUpdate? MonoUpdaters.cs:38-50 fixes the order (ZSyncTransform \u2192 Floating \u2192 Ship \u2192 \u2026 \u2192 Character), but whether the passenger's `m_body.position = position` hard-set (Character.cs:1620, the non-owner branch) fights the ship's AddForceAtPosition in a way that produces measurable jitter is an empirical question this source cannot answer."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "question": "How does a Ship behave when its ZDO is owned but the owning peer has the ship outside its active area (owner sailed away in a second boat, or is mid-teleport)? `ReleaseNearbyZDOS` should release it, but `Ship.UpdateOwner` only fires while the owner still has the instance loaded \u2014 and if ZNetScene has already destroyed the instance the InvokeRepeating stops. Whether there is a window where a ship is owned-but-unsimulated for longer than 2s is not settled here."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "question": "Whether `Speed.Slow`/`Speed.Back` (the oar/paddle modes) have any distinct network shape from sail modes. They differ in force application (Ship.cs:403-417) and in requiring `HaveControllingPlayer()` to persist (line 316-319 forces Stop when the helm is empty), which makes the helm-lock liveness signal load-bearing for physics, not just animation \u2014 but I did not trace whether that produces a visible stall when the lock flickers."
+    },
+    {
+      "lens": "Ship control and ownership (Valheim `Ship` / `ShipControlls`) \u2014 vanilla source of truth for C10a vehicle admission",
+      "question": "What the third [VERIFY] vehicle question \u2014 `Vagon` and `Sadle` \u2014 needs beyond ships. I confirmed both call `SetOwner(sender)` on grant (Vagon.cs:141, Sadle.cs:349) where ships do not, and that Sadle adds a fifth RPC `Controls(Vector3, int, float)` (Sadle.cs:72, 272) and a `RemoveSaddle(Vector3)`. Whether one lease abstraction can cover control-with-ownership (Sadle/Vagon) and control-without-ownership (Ship) is a design question this lens raises but does not answer."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "question": "Whether m_characterParentSync is actually enabled on the Player prefab's ZSyncTransform. The ENTIRE rider-attach network path (ZSyncTransform.cs:183 write side and :276 read side) is gated on that bool, and it is a prefab/asset field not present in the decompiled C#. Player.GetRelativePosition's Character-parent branch (Player.cs:6710) is only reachable through it, which strongly implies it is on \u2014 but that is inference, not source. Confirm against the actual prefab or with a runtime probe before designing around it."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "question": "Whether tamed-creature prefabs set ZNetView.m_persistent = true. ZDOMan.ReleaseNearbyZDOS skips non-persistent ZDOs outright (ZDOMan.cs:631-634), so this single asset flag decides whether an abandoned mount is ever reclaimed after a rider disconnect. Not determinable from the decompiled source."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "question": "Whether the mount's own ZSyncTransform sets m_syncBodyVelocity and whether the creature Rigidbody is kinematic. ClientSync takes a completely different branch for kinematic bodies (ZSyncTransform.cs:384-414, MovePosition/MoveRotation) versus non-kinematic (SyncPosition + interpolation). Which branch a ridden mount takes on observers determines how the rider's bone-name snap behaves. Prefab data, not code."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "question": "What the dedicated server's ZNet.GetReferencePosition() actually is during normal operation. It decides which sectors the server itself can seize ownership in during ReleaseZDOS (ZDOMan.cs:602). I found it set from Game.cs spawn/logout paths and Player.cs:644 \u2014 all client paths. Whether a headless server ever sets a meaningful reference position, and therefore whether the SERVER can reclaim an abandoned mount when no other client is nearby, is not settled by what I read."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "question": "Whether the RequestControl grant can lose a race with ZDOMan's 2 s ReleaseNearbyZDOS seize. Both call ZDO.SetOwner and both bump OwnerRevision; reconciliation is highest-revision-wins in RPC_ZDOData. Vanilla contains no arbitration for the specific case 'rider was granted control at T, sweep re-seizes at T+delta'. It may be benign in practice; the source does not say. This deserves an explicit two-client contention cell rather than reasoning."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "question": "How Lumberjacks' remote-motion tracking set is populated \u2014 specifically whether a ridden player is added to or removed from it on attach. IsCanonicalRemote/HasRemote key on ZDOID (LumberjacksMotionRunner.cs:1409-1423) and I did not trace every site that inserts into _remote. If riders are excluded while attached, the C6/attach conflict may already be avoided; if not, it is the blocking hazard above. Worth reading the insertion sites directly rather than assuming either way."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "question": "Whether ZNet.SetCharacterID's direct ZRpc 'CharacterID' message (ZNet.cs:1806-1813, sent to m_peers[0] only) is already carried or replaced by the Lumberjacks handshake. I did not find it in the C8 audit table excerpt I read. It is not a routed RPC, so it may have been missed by an audit that enumerated routed/instance RPCs \u2014 and Sadle's rider-validity check on the server depends on it entirely."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "question": "The exact input-frame rate at which Sadle.ApplyControlls fires, and therefore the real message rate if mount ownership moves server-side. PlayerController calls SetControls from Update (PlayerController.cs:160/164), so it is per-render-frame, not per-fixed-tick \u2014 meaning the rate scales with client FPS and is unbounded from the server's perspective. I did not find any throttle in the vanilla path, but I did not read all of PlayerController."
+    },
+    {
+      "lens": "Mounts (saddle / tamed creature) \u2014 Sadle, Tameable, MonsterAI/BaseAI, Character/Player attach, ZSyncTransform relative sync",
+      "question": "Whether a rider's ZDO connection (ConnectionType.SyncTransform) survives the mount's ZDO changing owner mid-ride. SyncPosition requires zdo.HasOwner() on the RIDER's zdo and a resolvable parent instance (ZSyncTransform.cs:276-282); the failure mode when the parent is momentarily unresolvable is a silent fall-through to absolute positioning (line 346 onward). How visible that is during an ownership handoff is an empirical question, not a source one."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "question": "Prefab data is not in the decompile, so several cart facts are unresolved: does the Cart prefab's ZSyncTransform have `m_syncBodyVelocity` (which decides whether remote clients apply body/angular velocity or just Sleep the body, ZSyncTransform.cs:433-452), `m_characterParentSync`, and `m_syncRotation`? Does the cart even carry a ZSyncTransform? Everything about cart transform replication above assumes it does \u2014 that assumption is strongly implied by ZSyncTransform being the only writer of ZDO position for non-character rigidbodies, but I did not confirm it from an asset."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "question": "What is `m_playerExtraPullMass` on the Cart prefab? The class default is 0f (Vagon.cs:43), and `Catapult`/`SiegeMachine` also carry a Vagon. If it is 0 for the cart, the extra-mass leak hazard is inert for carts and live only for siege machines."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "question": "Does the cart's Container use `m_rootObjectOverride` (Container.cs:64) \u2014 i.e. share the cart root's ZNetView and ZDO \u2014 or does it have its own ZNetView? This decides whether opening the chest churns the *cart's* ownership or a sibling ZDO's, and therefore whether the vehicle lease and the container lease are one lease or two. The cross-guards (`m_wagon.InUse()` / `m_container.IsInUse()`) work either way, so the source does not settle it."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "question": "What is the cart ZDO's `Type` (Default / Prioritized / Solid)? ZDOMan's send comparator special-cases `ObjectType.Prioritized` (ZDOMan.cs:971), which would change how a moving cart competes for bandwidth. Prefab data, not in the decompile."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "question": "I asserted that a dedicated server never owns a cart because its reference position stays at origin. I verified every `SetReferencePosition` call site is client-side (Game.cs, Player.cs, Tracker.cs, Valkyrie.cs) and that the server's own `ReleaseNearbyZDOS` pass uses that position \u2014 but I did not exhaustively rule out a headless bootstrap path that sets it. If one exists, a cart near world origin could be owned by a server that has no instance to simulate it, which would be a distinct and worse failure mode."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "question": "The 'carts are an ownership churn hotspot' claim is established here as STRUCTURALLY true (a continuous hold governed by a 2 s geometric reassignment loop that cannot see the hold, plus two independent transfer paths and an unexpiring local intent) but not MEASURED. I found no per-prefab ownership-transfer telemetry for Vagon in the repo \u2014 the ownership churn probe and OwnershipPinRunner are generic. How often ownership actually moves during a real cart pull, and whether it moves at all when the puller stays inside one peer's active area, is unmeasured. Instrumenting `ZDO.SetOwner` filtered to Vagon prefabs during a scripted pull across two zone boundaries would settle it cheaply and should precede any lease design."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "question": "Related: I could not determine from source whether the release branch actually fires during a normal pull. The release condition needs the owner's own active area to stop covering the cart's sector, and the cart is joint-locked ~2 m from the puller \u2014 so the hysteresis band (FindSectorObjects over `m_activeArea`, decisions over `m_activeArea - 1`) may make single-player pulls churn-free and only multi-peer proximity contentious. That is the single highest-value empirical question for C10a's vehicle work."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "question": "`Vagon.Interact` returns `false` on every path, including after firing the ownership request (Vagon.cs:116-128) \u2014 meaning the interaction is reported as not-handled. I did not trace what the caller (`Player.Interact` / `Humanoid`) does with a false return here, so whether a cart press also triggers other interaction handling in the same frame is unresolved."
+    },
+    {
+      "lens": "Carts (Vagon) \u2014 attach/detach, cart ZDO ownership, physics locus, and ownership churn, read from decompiled vanilla source and cross-checked against the Baseline mod's cutover seams",
+      "question": "How the C8 audit bucketed `RPC_RequestDenied` is not stated. The summary implies it falls in the 118-row needs-lane set, but it is not in the listed P1 set (C8-BREADTH-AUDIT-2026-07-31.md:100-105) and no per-row table is in the markdown \u2014 the full table lives in the HEARTH draft artifact `art_40ef58c9015d9d7a343b48f87f7f2916`, which I did not fetch."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "question": "PREFAB COMPOSITION IS NOT READABLE FROM THE DECOMP. I established that Ship, Vagon and Sadle-driven creatures must use ZSyncTransform by ELIMINATION \u2014 there are only four ZDO.SetPosition call sites and two ZDO.SetRotation call sites in all 603 classes, and none of them is in a vehicle class. I did NOT directly observe a ZSyncTransform component on the Karve/Longship/Cart/Lox prefabs, nor the values of m_syncPosition / m_syncRotation / m_syncBodyVelocity / m_characterParentSync / m_syncScale on them, nor Rigidbody.isKinematic (which selects between two completely different receive paths at ZSyncTransform.cs:384 vs :415). These flags decide whether a ship replicates body_vel at all and whether it is dead-reckoned or MovePosition-tracked. Reading them needs an asset dump (AssetRipper/UABE on the prefab bundles), not the C# decompile. This is the single highest-value cheap next step for C10a."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "question": "BinarySearchDictionary.SetValue return semantics are unknown \u2014 the type is not in the 603-class decomp set (ZDOHelper.cs:53 calls container[zid].SetValue(hash, value) and returns its bool, but BinarySearchDictionary itself lives in another assembly). If SetValue returns true unconditionally, Ship's per-FixedUpdate 'forward'/'rudder' writes (Ship.cs:571-572) bump DataRevision ~50x/second on every ship ZDO, which would defeat receiver dead-reckoning entirely and change the AoI cost model. If it dedupes on equality, they are nearly free. I could not settle this and it materially changes the vehicle bandwidth estimate."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "question": "Whether ZDOMan.ReleaseNearbyZDOS can ever assign a vehicle ZDO to the dedicated SERVER's own session id. I read the summary in fieldlab/NETCODE-OWNERSHIP-MAP.md (which says the server runs release/seize per peer reference position) but did not read ZDOMan.cs:623-648 line by line this pass. If the server can seize an unowned ship, the ZDO would be owned by a peer that has no GameObject for it (reference position stays Vector3.zero) \u2014 nothing would ever run OwnerSync for it, and ZSyncTransform's :276 guard (zdo.HasOwner()) would still pass. That combination is worth confirming because it is a plausible source of 'ghost ship that never moves for anyone'."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "question": "Whether Baseline's ZDO redirect lane currently ADMITS vehicle ZDOs in practice. The band policy is purely distance-based with no prefab filter, so structurally it should, but I found no evidence run, receipt, or scenario in fieldlab/ that exercises a ship or cart. Every scenario name I saw is player-motion or pickup shaped. 'It should work' is not the same as 'it has been observed working', and per the standing rule I am not going to assume it."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "question": "What Player.AttachStart(..., onShip: true) changes downstream. ShipControlls passes onShip: true (ShipControlls.cs:128) and Sadle passes onShip: false (Sadle.cs:401); AttachStart stores it as m_attachedToShip (Player.cs:5955). I did not trace every consumer of m_attachedToShip, so I cannot say whether it alters the replicated transform path or is purely local (camera, collision, liquid depth). Character.cs:3065 uses IsAttachedToShip() to zero liquid depth, which suggests at least some gameplay coupling."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "question": "Whether MonoUpdaters actually ticks ZSyncTransform.Instances on a dedicated server at all. Structurally it should (MonoUpdaters.cs:38, :94 are unconditional), but with the reference position at origin the Instances list would only ever contain objects near world origin. I did not verify empirically, and it matters for whether a server-side vehicle authority could be built by simply moving the server's reference position \u2014 which would be a far cheaper path than standing up a separate physics simulation, and is worth a spike."
+    },
+    {
+      "lens": "ZSyncTransform and non-player entity motion \u2014 how vehicle/creature transforms actually replicate in vanilla Valheim, and what carries them today under Baseline's Lumberjacks transport.",
+      "question": "How a vehicle lease should interact with Ship's existing 1-second client-side rudder prediction window (Ship.cs:576: 'if (Time.time - m_sendRudderTime > 1f)'). Vanilla already grants the local input authority over replicated state for one second. Whether Lumberjacks preserves, shortens, or removes that window is a gameplay-feel decision that the source raises but cannot answer."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "question": "m_characterParentSync is a prefab-serialized bool on ZSyncTransform (ZSyncTransform.cs:14) and the decompiled C# cannot show its value. EVERY relative-sync behaviour described here is gated on it, on both the writer (OwnerSync, line 183) and the reader (SyncPosition, line 276). The code strongly implies it is set on Player (Player overrides GetRelativePosition, and that override is only reachable through this flag), but that must be confirmed against the actual Player prefab / a runtime dump before planning. Likewise unknown: which vehicle prefabs have it, and whether Ship's ZSyncTransform uses m_syncBodyVelocity or is kinematic."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "question": "Whether the remote player's Rigidbody actually keeps gravity enabled once ZSyncTransform.CustomFixedUpdate is prefixed off. I found the gravity-disable only inside ClientSync (ZSyncTransform.cs:432) and Character.CustomFixedUpdate's physics is owner-gated (Character.cs:641), but I did not exhaustively search every component on the Player prefab for another writer of useGravity/isKinematic. This needs a runtime probe, not more reading."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "question": "Ship top speed in m/s. It is a product of prefab-serialized m_sailForceFactor, sail size, rigidbody mass and the damping constants (Ship.cs:49-61, 388-418) \u2014 not derivable from source. Without it I cannot say how often the 30 m implausible-target guard would actually trip, only that the guard is speed-dependent and was calibrated for walking."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "question": "Multi-level parenting. The SyncTransform connection is a single ZDOID and SyncPosition ticks exactly one parent (ZSyncTransform.cs:284-288). What happens to a rider on a mount that is itself standing on a ship, or a cart on a ship deck, is not settled by the code I read \u2014 the connection would name one of them, and I did not trace which."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "question": "Whether the attach animation state reaches observers at all under a native-zero cutover. AttachStart sets m_zanim.SetBool(attachAnimation, true) (Player.cs:5960), which is ZSyncAnimation's business; REMOTE-PLAYER-LIFECYCLE-MAP.md already marks animation presentation OPEN for C9. I did not read ZSyncAnimation, so I cannot say whether the sit/ride pose is a separate replication problem or falls out of the same fix."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "question": "Whether ZSyncTransform.OwnerSync (CustomLateUpdate) remaining unpatched matters. The rider's own client still computes and writes the connection + relPos to its own local ZDO every frame; under native-zero those bytes go nowhere. That is arguably a free source of truth an attachment lane could read instead of recomputing \u2014 but I have not checked whether the C7/C8 native-zero poisoning already breaks OwnerSync by another route."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "question": "Whether the dedicated server needs any view of attachment. LumberjacksMotionRunner refuses to run on a dedicated server (lines 192, 456), and Sadle's rider-liveness check reads ZDO positions on the mount's owner (Sadle.cs:371-378) \u2014 a client. I did not establish which, if any, server-side consumer depends on a rider's position being vehicle-correct."
+    },
+    {
+      "lens": "Rider and passenger transform relationship \u2014 how an attached player is positioned locally and replicated, and what Baseline's motion authority does to it",
+      "question": "Whether Baseline's missing Physics.SyncTransforms() after the LateUpdate transform write (LumberjacksMotionRunner.cs:333) has any observable effect. Native calls it after every write; the difference depends on the project's Physics.autoSyncTransforms setting, which I did not check."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "question": "What the Gateway would actually do when two peers legitimately request the same PRE-EXISTING object is not determined by the source. `Issue` overwrites unconditionally (ValheimOwnershipLeaseService.cs:29-37), but no reachable path reaches it twice for one slot with different holders, because 'create' always mints a new object. The C8 two-peer contention cell exercises the read-only 'contend' rejection branch (MessageRouter.cs:1274-1305), not a real competing Issue. Treat the store's contention behaviour as UNTESTED, not as designed."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "question": "Whether a rider's attach state can be represented at all. ZSyncTransform.characterParentSync writes a ConnectionType.SyncTransform connection plus s_relPos/s_relRot into the rider's ZDO (ZSyncTransform.cs:183-207). I found no runtime carriage of that connection type anywhere in the mod \u2014 only ConnectionType.Portal in the journal (ZdoJournalCutoverRunner.cs:680) and a load-time filter mask mentioning SyncTransform in SpawnerConnectionCache.cs:36-38. I did NOT verify whether the C6 position mask also suppresses the relPos/connection writes, or whether they leak through unmasked. That needs a direct read of the ZDO delta path before anyone plans passenger sync."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "question": "Who is expected to simulate a vehicle when no client holds a lease, and whether the dedicated server is even willing to. Ship.CustomFixedUpdate early-returns on !IsOwner (Ship.cs:305-308); nothing in the mod assigns or retains vehicle ownership. The C4 pattern (server owns, blips to holder for 0.75 s, takes it back) may or may not generalise to 'server owns and simulates continuously, client sends inputs' \u2014 that is an architectural choice the source does not make for us, and it has very different frame-budget consequences from the lease-the-vehicle-to-the-client shape."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "question": "Whether the two vanilla control paths need the same treatment. Ship separates control (ShipControlls: RequestControl sets ZDOVars.s_user only, ShipControlls.cs:93-107) from ownership (Ship.UpdateOwner reassigns the ZDO owner on a 2 s timer, Ship.cs:690-699), whereas Sadle fuses them (RPC_RequestControl sets s_user AND SetOwner(sender), Sadle.cs:339-355) and Vagon uses the bare RPC_RequestOwn \u2192 SetOwner dance (Vagon.cs:130-144). Whether one lease shape covers all three, or whether 'who steers' and 'who simulates' must be two separate leases, is not settled by the source."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "question": "The real cost of a lease cycle in wall-clock and frames on the live composition. I counted ~10 reliable frames plus ACKs per cycle by reading the handlers; I found no measured receipt for lease round-trip latency or per-cycle frame count in the evidence I read. The retro explicitly wants a per-second queue-depth-by-frame-type reducer (SESSION-RETRO-2026-07-31.md:118-119) that does not exist yet. Any renewal-cadence design should be sized against a measurement, not against my count."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "question": "Whether native poison currently trips on vehicle use at all. The lease lane's SetOwner suppression is scoped to _selectedTargets inside ReleaseNearbyZDOS only (OwnershipLeaseCutoverRunner.cs:205-216), so Ship/Sadle/Vagon SetOwner calls are untouched \u2014 but I did not read the poison ledger's classification to determine whether boarding a boat in a native-zero build trips a poison guard, silently falls back, or passes unobserved. That determines whether vehicles are currently broken-loud or broken-quiet, which changes how C10a should sequence the work."
+    },
+    {
+      "lens": "Baseline lease model and its assumptions \u2014 the C4 ownership-lease contract as actually built (Gateway ValheimOwnershipLeaseService + mod OwnershipLeaseCutoverRunner + MessageRouter), and which of its assumptions a continuous-control object (ship/cart/mount) violates.",
+      "question": "Whether the Gateway process can even host a long-lived authority. Every lease is process-scoped and a Gateway restart deliberately drops all of them (ValheimOwnershipLeaseService.cs:3-7). C8 exercised a Gateway restart as an acceptance cell for one-shot actions. What a Gateway restart should mean for four players mid-crossing is an unanswered product question, not just an implementation gap."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "INTERNAL CONTRADICTION \u2014 the audit says 'three [VERIFY] flags' (line 139) but carries four [VERIFY] marks: lines 36 (RPC_TeleportPlayer), 37 (UseStamina), 38 (the vehicle row) and 70 (RPC_SetConnection, portal linking, P2). The plan (755) and landscape (61) both propagate 'three' and name only the first three. RPC_SetConnection's [VERIFY] is orphaned from every count and every gate \u2014 is it a fourth obligation or a stray mark?"
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "INTERNAL CONTRADICTION \u2014 the plan names the vehicle row as 'vehicle RequestControl/ReleaseControl' (plan:755). The audit's row covers THREE methods including RequestRespons (audit:38). Whoever executes C10a from the plan text will contract-test two of three."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "INTERNAL CONTRADICTION \u2014 the audit's summary table (line 44-49) gives routed superseded=7 and needs-lane=11. The routed table it summarises has 8 superseded (DestroyZDO, GlobalKeys, LocationIcons, Ping, Pong, RemoveGlobalKey, RequestZDO, SetGlobalKey) and 10 needs-lane. The 19 total is right; the split is not. Minor, but C10a is meant to use these counts as a work queue."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "COUNT DISPUTE \u2014 '29 P1 admissions' (audit:136, plan:753, landscape:61) counts only the INSTANCE P1 list. The routed table marks four more as P1: ChatMessage, ShowMessage, SleepStart, SleepStop. The real P1 set is 33. Either the four routed rows are outside the gate that blocks fallback deletion, or the number is wrong."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "CONTRADICTS SOURCE \u2014 'RPC_RequestOwn ... (ArmorStand, ItemStand, Vagon) ride the same replaced dance' (audit:39). Vagon.cs:130-144 is owner-side admission control with an InUse veto and an RPC_RequestDenied reply, acquiring continuous joint control. That is the audit's own stated reason for reopening the Sadle/ShipControlls row one line earlier. I did not read ArmorStand.cs or ItemStand.cs, so I cannot say whether those two are also miscategorised."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "INTERNAL CONTRADICTION \u2014 RPC_RequestOwn is bucketed superseded while its handshake partner RPC_RequestDenied (Vagon.Awake, per synthetic_baseline_v2.json) sits in needs-lane. Two halves of one protocol in two buckets with two different fates."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "CONTRADICTS SOURCE \u2014 the audit gives one bucket, one lane and one priority to RequestControl/ReleaseControl/RequestRespons across both registrants, but Sadle.RPC_RequestControl calls SetOwner (Sadle.cs:349) and ShipControlls.RPC_RequestControl does not (ShipControlls.cs:93-107). A payload contract keyed on the method name alone will be wrong for one of them. The extractor records only a name and a signature, so the instrument cannot see this class of divergence at all \u2014 how many of the other 118 needs-lane instance RPCs have registrant-dependent semantics?"
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "CONTRADICTS SOURCE \u2014 families 1 (vehicles/mounts: Sadle) and 3 (AI/creatures: Tameable, MonsterAI) are written as independent gates (audit:115-122), but on a mount Sadle, Tameable, MonsterAI and Character all share the Character's single ZNetView and ZDO (Sadle.cs:64-67). One ZDO, one owner, two 'independent' gates."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "CONTRADICTS SOURCE (mod) \u2014 'the poison ledger remains the runtime tripwire for anything classified wrongly here' (audit:28) does not hold outbound. An unadmitted routed method runs native RouteRPC (RoutedRpcCutoverRunner.cs:152), reaches ZRpc.Invoke, and is suppressed by LogicalPeerCutoverRunner.TryHandleInvoke without any NativeNetworkLedger.Observe call (LogicalPeerCutoverRunner.cs:332-373). No trip is recorded. I verified this statically only \u2014 I did not run a boat under the native-zero build to watch it happen, and this deserves a live falsification before it is treated as fact."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "GAP \u2014 priorities for 12 of the 16 vehicle/mount RPCs (Forward, Backward, Rudder, Stop, Controls, RemoveSaddle, AddSaddle, SetSaddle, Command, SetName, RPC_UnSummon, RPC_RequestDenied) exist only in HEARTH artifact art_40ef58c9015d9d7a343b48f87f7f2916, which is not in the repo. The audit says 'Priorities from the machine draft stand' (line 97) and points at an artifact nobody can open. C10a cannot schedule what it cannot read."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "GAP \u2014 NETCODE-OWNERSHIP-MAP.md enumerates ZDOMan-level SetOwner sites (ZDOMan:1115, 852, 415, 1305-1554) and states 'ZDO ownership is 100% server-authoritative and churns through a single funnel' (line 13). Ship.cs:696, Sadle.cs:349 and Vagon.cs:141 are client-side, component-level SetOwner calls. The document's central claim is false for these families and the map has not been revised. The plan's C4 exit bullet, 'Native ownership-transfer triggers cannot change the owner' (line 405), inherits the gap \u2014 its own checkpoint scopes it to 'the selected pickup ownership/action boundary' (433), but the exit bullet as written does not."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "UNSETTLED \u2014 the ordering dependency in ZSyncTransform.SyncPosition (287) forces the parent's ClientSync before the child's within one frame. Under the C6 split the rider would arrive on the motion lane while the vehicle arrives via the C3 journal on Unity Update. Nothing in either document addresses cross-lane ordering, and I found no code that does. Whether this manifests as jitter, as riders lagging a frame behind the deck, or not at all, is not answerable from source."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "UNSETTLED \u2014 who should own a vehicle under Lumberjacks is not decided anywhere I can find. The plan's principle 5 says the server is 'the sole mutation authority' (line 64-66), which reads as server-owned vehicles, but vanilla deliberately puts ship buoyancy and mount AI on a player's client for latency. A server-authoritative boat is a real design choice with a real cost, and no document makes it."
+    },
+    {
+      "lens": "What the programme already claims about vehicles and mounts \u2014 the three [VERIFY] rows, the component-family gates, the vehicle/mount share of the 29 P1 admissions, and every ownership claim already made for these families \u2014 separated into RECEIPTED / ASSERTED / LISTED, with contradictions against the vanilla source flagged.",
+      "question": "UNSETTLED \u2014 I read Ship, ShipControlls, Sadle, Vagon, Tameable, ZSyncTransform and the relevant Character/Player overrides. I did not read Character.cs or Player.cs whole, nor MonsterAI.cs, ZNetView.cs, ZDO.cs or ZNetScene.cs, and I did not check whether the Ashlands vehicles (Catapult, SiegeMachine, Leviathan appear in the 122-component list) carry vehicle-shaped ownership. The 'largest genuinely novel ownership work left' may be larger than the four classes the audit's ellipsis implies."
+    }
+  ]
+}
