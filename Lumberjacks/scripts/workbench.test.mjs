@@ -114,6 +114,39 @@ test('a preview-stamped artifact in a clean tree fails check for that stated rea
   assert.equal(fixture.readHtml(), first);
 });
 
+// The environment the generator MUST work in went untested, and it was the one that broke it.
+// A pre-commit hook inherits GIT_DIR, and from a linked worktree that points at
+// <repo>/.git/worktrees/<name>, outside the work tree; git stops discovering and treats the
+// current directory as the top of the tree, so `status --porcelain` reported the committed,
+// clean provenance inputs as untracked. Mode flipped to preview and check() rejected a
+// correctly-published page — "carries a published provenance stamp but the provenance inputs
+// have uncommitted changes" — for a commit that only touched docs/workbench/ (observed
+// 2026-08-01, worked around with --no-verify in cab0486).
+test('provenance stays production from a linked worktree, where git hands the hook a GIT_DIR outside the work tree', (t) => {
+  // The package must sit at a prefix, as it does in the baseline monorepo: that is what makes
+  // "treat the current directory as the top of the work tree" wrong rather than merely
+  // redundant, and it is the difference between reproducing this bug and missing it.
+  const fixture = makeFixtureRepo({ prefix: 'Lumberjacks/' });
+  t.after(fixture.dispose);
+
+  assert.equal(fixture.run('render').status, 0);
+  fixture.commitAll('fixture: rendered artifact');
+  const sha7 = fixture.inputSha7();
+
+  const linked = fixture.linkedWorktree();
+  assert.match(linked.gitDir, /worktrees/, 'fixture must really be a linked worktree');
+
+  // Rendering under the hook environment must still name the input commit, not fall back to
+  // a preview stamp — that stamp is the visible half of the same failure.
+  const rendered = linked.run('render', linked.hookEnv());
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(linked.readHtml(), new RegExp(`Published from ${sha7} · `));
+  assert.doesNotMatch(linked.readHtml(), /Preview rendered /);
+
+  const checked = linked.run('check', linked.hookEnv());
+  assert.equal(checked.status, 0, checked.stderr);
+});
+
 test('check refuses to vouch for provenance without a git checkout', (t) => {
   const fixture = makeFixtureRepo({ git: false });
   t.after(fixture.dispose);

@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-01T08:16:12.522Z</span>
+        <span>Updated 2026-08-01T08:32:50.089Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260801081612-make-the-project-owned-mcp-independently-reprodu">
+        <div class="journal"><article class="journal-entry" id="note-20260801083250-make-the-workbench-provenance-stamp-survive-the-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-01T08:32:50.089Z">2026-08-01T08:32:50.089Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>Make the workbench provenance stamp survive the hook environment</h3>
+      <p><strong>Impact:</strong> provenance() built its git helper without scrubbing GIT_DIR/GIT_WORK_TREE, so from a linked worktree git stopped discovering the repository, treated Lumberjacks/ as the top of the work tree, and reported the committed provenance inputs as untracked. The mode flipped to preview and the pre-commit gate rejected a correctly-published page for any commit touching docs/workbench/ (worked around with --no-verify in cab0486). The generator now drops the inherited pointers exactly as roadmap.mjs already does.</p>
+      <details><summary>Verification (1)</summary><ul><li>node --test scripts/workbench.test.mjs: 20/20, including a new linked-worktree test that renders and checks under the GIT_DIR git exports for a hook; the test was confirmed red against the unfixed generator.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>Lumberjacks/scripts/workbench.mjs</code> <code>Lumberjacks/scripts/workbench.test.mjs</code> <code>cab0486</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260801081612-make-the-project-owned-mcp-independently-reprodu">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

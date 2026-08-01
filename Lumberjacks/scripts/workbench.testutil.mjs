@@ -132,28 +132,48 @@ export function baseWorkbench() {
   };
 }
 
+/// A child environment scrubbed of the pointers these fixtures exist to control. Scrubbing is
+/// the DEFAULT and not an option a caller can forget: this suite can be run from inside a git
+/// hook, where an unscrubbed `git init` would inherit GIT_DIR and land on the real repository.
+function childEnv(overrides = {}) {
+  const env = { ...process.env };
+  delete env.GIT_DIR;
+  delete env.GIT_WORK_TREE;
+  delete env.GIT_INDEX_FILE;
+  return { ...env, ...overrides };
+}
+
 function git(root, args) {
   return execFileSync('git', args, {
     cwd: root,
+    env: childEnv(),
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   }).trim();
 }
 
 /// Build a throwaway repo: real generator bytes, fixture catalog, one commit (unless
-/// { git: false }). Callers own cleanup via the returned dispose(); tests register it with
-/// t.after so a failing assertion still removes the tree.
-export function makeFixtureRepo({ workbench = baseWorkbench(), git: withGit = true } = {}) {
+/// { git: false }). `prefix` places the package under a subdirectory of the repository (the
+/// baseline monorepo's 'Lumberjacks/') rather than at the repo root — which only matters for
+/// the environments where git stops discovering the repository and treats the package
+/// directory as the top of the work tree. Callers own cleanup via the returned dispose();
+/// tests register it with t.after so a failing assertion still removes the tree.
+export function makeFixtureRepo({ workbench = baseWorkbench(), git: withGit = true, prefix = '' } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-fixture-'));
-  fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
-  fs.mkdirSync(path.join(root, 'docs', 'workbench'), { recursive: true });
-  fs.copyFileSync(realScriptPath, path.join(root, 'scripts', 'workbench.mjs'));
+  const pkg = path.join(root, prefix);
+  const linkedRoots = [];
+  fs.mkdirSync(path.join(pkg, 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(pkg, 'docs', 'workbench'), { recursive: true });
+  fs.copyFileSync(realScriptPath, path.join(pkg, 'scripts', 'workbench.mjs'));
+
+  const htmlRelative = 'src/Game.Gateway/Community/workbench.html';
 
   const fixture = {
     root,
-    scriptPath: path.join(root, 'scripts', 'workbench.mjs'),
-    jsonPath: path.join(root, 'docs', 'workbench', 'workbench.json'),
-    htmlPath: path.join(root, 'src', 'Game.Gateway', 'Community', 'workbench.html'),
+    pkg,
+    scriptPath: path.join(pkg, 'scripts', 'workbench.mjs'),
+    jsonPath: path.join(pkg, 'docs', 'workbench', 'workbench.json'),
+    htmlPath: path.join(pkg, ...htmlRelative.split('/')),
 
     writeWorkbench(value) {
       fs.writeFileSync(fixture.jsonPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
@@ -161,23 +181,68 @@ export function makeFixtureRepo({ workbench = baseWorkbench(), git: withGit = tr
     readHtml() {
       return fs.readFileSync(fixture.htmlPath, 'utf8');
     },
-    run(command) {
+    run(command, env = childEnv()) {
       const result = spawnSync(process.execPath, [fixture.scriptPath, command], {
-        cwd: root,
+        cwd: pkg,
+        env,
         encoding: 'utf8',
       });
       return { status: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
+    },
+    /// The same repository checked out again as a linked worktree, plus `hookEnv` — exactly
+    /// what `git commit` exports for a hook running inside one. That environment is the whole
+    /// point: GIT_DIR names <repo>/.git/worktrees/<name>, whose parent is not the work tree,
+    /// and a generator that inherits it stops discovering the repository. Nothing is faked
+    /// here because the assertions are about how git itself behaves.
+    linkedWorktree() {
+      const container = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-worktree-'));
+      linkedRoots.push(container);
+      const linkedRoot = path.join(container, 'wt');
+      git(root, ['worktree', 'add', '--quiet', '--detach', linkedRoot]);
+      const linkedPkg = path.join(linkedRoot, prefix);
+      const gitDir = git(linkedRoot, ['rev-parse', '--absolute-git-dir']);
+      return {
+        root: linkedRoot,
+        pkg: linkedPkg,
+        gitDir,
+        hookEnv: (overrides = {}) => childEnv({
+          GIT_DIR: gitDir,
+          GIT_INDEX_FILE: path.join(gitDir, 'index'),
+          ...overrides,
+        }),
+        readHtml() {
+          return fs.readFileSync(path.join(linkedPkg, ...htmlRelative.split('/')), 'utf8');
+        },
+        run(command, env) {
+          const result = spawnSync(process.execPath, [path.join(linkedPkg, 'scripts', 'workbench.mjs'), command], {
+            cwd: linkedPkg,
+            env,
+            encoding: 'utf8',
+          });
+          return { status: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
+        },
+      };
     },
     commitAll(message) {
       git(root, ['add', '-A']);
       git(root, ['commit', '--quiet', '-m', message]);
     },
     /// The sha7 the production stamp must name: last commit touching the provenance inputs.
+    /// Addressed from the repo root, so the pathspecs carry the package prefix.
     inputSha7() {
-      return git(root, ['log', '-1', '--format=%H', '--', 'docs/workbench/workbench.json', 'scripts/workbench.mjs']).slice(0, 7);
+      return git(root, [
+        'log', '-1', '--format=%H', '--',
+        `${prefix}docs/workbench/workbench.json`,
+        `${prefix}scripts/workbench.mjs`,
+      ]).slice(0, 7);
     },
     dispose() {
-      fs.rmSync(root, { recursive: true, force: true });
+      // A leaked temp directory must never mask the assertion that just failed.
+      for (const container of [...linkedRoots, root]) {
+        try {
+          fs.rmSync(container, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+        } catch { /* ignore */ }
+      }
     },
   };
 

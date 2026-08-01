@@ -80,9 +80,25 @@ function formatUtc(iso) {
 /// inputs, so the stamp stays stable until the next input change.
 const provenanceInputs = [workbenchRelative, 'scripts/workbench.mjs'];
 
+// Both calls below are written against `cwd: repoRoot` and let git discover the repository
+// from there. Git hooks break that assumption, the same way roadmap.mjs already documents for
+// its own git(): git exports GIT_DIR into the hook environment, and from a linked worktree it
+// points at <repo>/.git/worktrees/<name>, whose parent is NOT the work tree. Git then stops
+// discovering and treats the current directory as the top of the work tree, so every path in
+// this package reads as untracked -- `status --porcelain` reported '?? docs/workbench/
+// workbench.json' for a file that is committed and clean. dirty flipped true, the mode flipped
+// to preview, and check() rejected a correctly-published page from a worktree while passing
+// from the main checkout (observed 2026-08-01, worked around with --no-verify in cab0486).
+// Dropping the inherited pointers restores discovery. GIT_INDEX_FILE is deliberately kept:
+// nothing here reads the index, and during a hook it names the index being committed.
+const gitEnv = { ...process.env };
+delete gitEnv.GIT_DIR;
+delete gitEnv.GIT_WORK_TREE;
+
 function provenance() {
   const git = (args) => execFileSync('git', args, {
     cwd: repoRoot,
+    env: gitEnv,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
   }).trim();
