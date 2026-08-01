@@ -16,6 +16,13 @@ primary operator surface; `/join/update` and its Steam/OpenID callback remain on
 The Companion receives only the installed profile association and redacted status, never Steam
 credentials or raw access keys.
 
+The Workbench is the one-stop local control surface. A fresh launch defaults to **Explore**;
+`-Profile Admin` enables the claimed owner maintenance lane, while `-Profile Dev` and
+`-Profile Lab` additionally start the loopback-only project Dev MCP and SDK tool-runner. Use
+`-Profile Production` for a player-facing appliance: the Dev MCP, source checkout mount, and
+build runner are absent. The browser Standard/Advanced toggle changes presentation only and
+cannot grant a profile capability.
+
 ## Docker on Windows (preferred for OMEN and i5)
 
 This is the verified alpha path. It uses the repository's .NET 9 SDK container, so the host does
@@ -26,6 +33,30 @@ cd C:\work\baseline\Lumberjacks
 .\tools\companion\Start-LocalCompanion.ps1
 Start-Process http://127.0.0.1:8080
 ```
+
+Developer/lab launch (explicitly opt in):
+
+```powershell
+.\tools\companion\Start-LocalCompanion.ps1 -Profile Dev
+```
+
+The legacy Dev MCP host port is `8720`, but that port is not currently a safe
+identity boundary: an enabled `ComfyGatewayBoot` task owns a retired Comfy
+checkout there. Baseline Dev/Lab launchers now default to the explicit project
+port `8721` (or another explicitly recorded free loopback port). The launcher
+checks it after profile convergence and fails clearly if another local MCP owns
+it; endpoint identity is then verified by the read-only checker rather than
+inferred from reachability. See the
+[endpoint provenance audit](../../docs/audit/2026-08-01-mcp-endpoint-provenance-audit.md).
+Run `tools\workbench\Test-WorkbenchMcpIdentity.ps1 -Profile Dev -McpPort 8721`
+for the authenticated identity receipt, or
+`tools\workbench\Test-WorkbenchProfileBoundary.ps1 -Profile Explore` for a
+read-only report of any unmanaged listener before normal gameplay.
+
+The host-side `Start-WorkbenchHostRunner.ps1` is a bounded allow-list, not a general shell.
+Companion and Dev MCP never receive the Docker socket. The runner is started hidden for the
+interactive Windows user and writes durable Workbench job receipts to the retained
+`companion-data` volume.
 
 `Start-LocalCompanion.ps1` starts the canonical `lumberjacks-companion` compose project with the
 Valheim mount and retires the known legacy read-only project named `companion` when it was created

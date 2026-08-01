@@ -12,10 +12,11 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ReleaseId,
 
-    [string]$OutputDirectory = (Join-Path $PSScriptRoot 'dist')
+    [string]$OutputDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $PSScriptRoot 'dist' }
 $lumberjacksRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $repoRoot = Split-Path -Parent $lumberjacksRoot
 $packageVerifier = Join-Path $PSScriptRoot 'Test-CompanionBootstrapPackage.ps1'
@@ -40,7 +41,7 @@ try {
     # artifact from tools\companion\dist or a machine-specific compose override.
     $bundleTools = Join-Path $bundleRoot 'tools\companion'
     New-Item -ItemType Directory -Force -Path $bundleTools | Out-Null
-    foreach ($file in 'docker-compose.yml', 'docker-compose.valheim.yml.example', 'README.md') {
+    foreach ($file in 'docker-compose.yml', 'docker-compose.valheim.yml.example', 'README.md', 'Start-WorkbenchHostRunner.ps1') {
         Copy-Item -LiteralPath (Join-Path $lumberjacksRoot "tools\companion\$file") -Destination $bundleTools
     }
     Copy-Item -LiteralPath (Join-Path $lumberjacksRoot 'tools\companion\bootstrap') -Destination $bundleTools -Recurse
@@ -50,8 +51,18 @@ try {
     # not just a UI with commands that only work from the developer checkout.
     $bundleRepoTools = Join-Path $bundleRoot 'tools'
     New-Item -ItemType Directory -Force -Path $bundleRepoTools | Out-Null
-    foreach ($dir in 'wave0', 'i5') {
-        Copy-Item -LiteralPath (Join-Path $repoRoot "tools\$dir") -Destination $bundleRepoTools -Recurse
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'tools\wave0') -Destination $bundleRepoTools -Recurse
+    # The i5 README is an operator-local lane record and intentionally contains
+    # machine-specific enrollment details. The distributable needs the runnable
+    # scripts, not that private documentation.
+    $bundleI5Tools = Join-Path $bundleRepoTools 'i5'
+    New-Item -ItemType Directory -Force -Path $bundleI5Tools | Out-Null
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot 'tools\i5') -File -Filter '*.ps1' |
+        ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $bundleI5Tools }
+    $bundleWorkbenchTools = Join-Path $bundleRepoTools 'workbench'
+    New-Item -ItemType Directory -Force -Path $bundleWorkbenchTools | Out-Null
+    foreach ($file in 'Test-WorkbenchZipPrivacy.ps1', 'Test-WorkbenchSupportExport.ps1', 'Test-WorkbenchProfileBoundary.ps1', 'Test-WorkbenchMcpIdentity.ps1') {
+        Copy-Item -LiteralPath (Join-Path $repoRoot "tools\workbench\$file") -Destination $bundleWorkbenchTools
     }
 
     $bootstrapRelease = [ordered]@{

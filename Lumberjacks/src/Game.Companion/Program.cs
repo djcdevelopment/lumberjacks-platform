@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Lumberjacks.Companion;
@@ -11,6 +12,15 @@ builder.Services.AddSingleton<CompanionStateStore>();
 builder.Services.AddSingleton<ValheimLocator>();
 builder.Services.AddSingleton<ModpackInstaller>();
 builder.Services.AddHttpClient<TransportTruthCaptureService>(client => client.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddSingleton<WorkbenchStore>();
+builder.Services.AddSingleton<WorkbenchJobStore>();
+builder.Services.AddSingleton<WorkbenchRegistry>();
+builder.Services.AddSingleton<WorkbenchService>();
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+    options.SerializerOptions.PropertyNameCaseInsensitive = true;
+});
 
 var app = builder.Build();
 app.Use(async (context, next) =>
@@ -18,6 +28,8 @@ app.Use(async (context, next) =>
     context.Response.Headers.CacheControl = "no-store, max-age=0";
     await next();
 });
+
+WorkbenchEndpoints.Map(app);
 
 app.MapGet("/health", () => Results.Ok(new { ok = true, service = "lumberjacks-companion" }));
 app.MapGet("/api/v0/companion/status", (CompanionStateStore state, ValheimLocator locator) =>
@@ -401,9 +413,11 @@ app.MapGet("/api/v0/telemetry/{**tail}", (HttpContext context, GatewayClient gat
 app.MapGet("/live/{**tail}", (HttpContext context, GatewayClient gateway, CancellationToken cancellationToken) =>
     gateway.ProxyGet(context, "/live/" + (context.Request.RouteValues["tail"] ?? string.Empty), cancellationToken));
 
-app.MapGet("/workbench", () => Results.Content(WorkbenchPage.Html, "text/html"));
+app.MapGet("/workbench", () => Results.Text(WorkbenchV1Page.Html, "text/html", Encoding.UTF8));
 
-app.MapGet("/", () => Results.Content(CompanionPage.Html, "text/html"));
+app.MapGet("/companion", () => Results.Text(CompanionPage.Html, "text/html", Encoding.UTF8));
+
+app.MapGet("/", () => Results.Text(WorkbenchV1Page.Html, "text/html", Encoding.UTF8));
 app.Run();
 
 static string? HashShort(string? value)
@@ -1634,6 +1648,7 @@ static class Json
         WriteIndented = true,
         PropertyNameCaseInsensitive = true,
     };
+    public static readonly JsonSerializerOptions CompactOptions = new(Options) { WriteIndented = false };
 }
 
 static class CompanionLegacyPage

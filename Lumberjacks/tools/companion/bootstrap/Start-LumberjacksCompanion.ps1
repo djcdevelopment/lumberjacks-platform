@@ -11,11 +11,16 @@ Valheim installation, writes a local compose override, and opens the loopback da
 [CmdletBinding()]
 param(
     [string]$ValheimPath,
+    [ValidateSet('Explore','Admin','Dev','Lab','Production')]
+    [string]$Profile = 'Explore',
+    [ValidateRange(1024,65535)]
+    [int]$McpPort = 8721,
     [switch]$NoBrowser
 )
 
 $ErrorActionPreference = 'Stop'
-$bundleRoot = Split-Path -Parent $PSScriptRoot
+$companionRoot = Split-Path -Parent $PSScriptRoot
+$bundleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $compose = Join-Path $bundleRoot 'tools\companion\docker-compose.yml'
 $overrideTemplate = Join-Path $bundleRoot 'tools\companion\docker-compose.valheim.yml.example'
 $override = Join-Path $bundleRoot 'tools\companion\docker-compose.valheim.yml'
@@ -84,6 +89,20 @@ if (-not (Test-Path -LiteralPath $override)) {
     Copy-Item -LiteralPath $overrideTemplate -Destination $override
 }
 $env:LUMBERJACKS_VALHEIM_HOST_PATH = $valheimPath
+$env:LUMBERJACKS_WORKBENCH_PROFILE = $Profile
+$env:COMFY_WORKBENCH_MCP_PORT = [string]$McpPort
+$env:LUMBERJACKS_WORKBENCH_REPO_ROOT = $bundleRoot
+$workbenchData = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Lumberjacks\Workbench'
+New-Item -ItemType Directory -Force -Path $workbenchData | Out-Null
+$runnerTokenPath = Join-Path $workbenchData 'runner-token'
+if (-not (Test-Path -LiteralPath $runnerTokenPath -PathType Leaf)) {
+    $runnerBytes = New-Object byte[] 32
+    $runnerRng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $runnerRng.GetBytes($runnerBytes) } finally { $runnerRng.Dispose() }
+    $runnerToken = [Convert]::ToBase64String($runnerBytes).Replace('+','-').Replace('/','_').TrimEnd('=')
+    [IO.File]::WriteAllText($runnerTokenPath, $runnerToken + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+}
+$env:LUMBERJACKS_WORKBENCH_RUNNER_TOKEN_PATH = $runnerTokenPath
 $env:LUMBERJACKS_COMPANION_SOURCE_BRANCH = 'release-bundle'
 $env:LUMBERJACKS_COMPANION_SOURCE_DIRTY = 'false'
 if (Test-Path -LiteralPath $bootstrapReleaseFile) {
@@ -92,7 +111,7 @@ if (Test-Path -LiteralPath $bootstrapReleaseFile) {
         if ($bootstrapRelease.release) {
             $env:LUMBERJACKS_COMPANION_BOOTSTRAP_RELEASE = $bootstrapRelease.release
             $env:LUMBERJACKS_COMPANION_SOURCE_REVISION = 'bundle:' + $bootstrapRelease.release
-            $env:LUMBERJACKS_COMPANION_IMAGE = 'lumberjacks-companion:' + $bootstrapRelease.release
+            $env:LUMBERJACKS_COMPANION_IMAGE = 'lumberjacks-companion-companion:' + $bootstrapRelease.release
         }
     }
     catch {
@@ -101,7 +120,20 @@ if (Test-Path -LiteralPath $bootstrapReleaseFile) {
 }
 Push-Location (Join-Path $bundleRoot 'tools\companion')
 try {
-    & $docker compose -p lumberjacks-companion -f docker-compose.yml -f docker-compose.valheim.yml up --build -d
+    $downArgs = @('compose', '-p', 'lumberjacks-companion', '-f', 'docker-compose.yml', '-f', 'docker-compose.valheim.yml', '--profile', 'dev', '--profile', 'lab', 'down')
+    & $docker @downArgs
+    if ($LASTEXITCODE -ne 0) { throw 'Companion profile convergence failed.' }
+    if ($Profile -in @('Dev', 'Lab')) {
+        $listeners = @(Get-NetTCPConnection -LocalPort $McpPort -State Listen -ErrorAction SilentlyContinue)
+        if ($listeners.Count -gt 0) {
+            $owners = @($listeners | ForEach-Object { "PID $($_.OwningProcess)" } | Sort-Object -Unique)
+            throw "Dev MCP loopback port $McpPort is already listening ($($owners -join ', ')). Stop the existing Dev MCP or rerun with -McpPort <free-port>."
+        }
+    }
+    $composeArgs = @('compose', '-p', 'lumberjacks-companion', '-f', 'docker-compose.yml', '-f', 'docker-compose.valheim.yml')
+    if ($Profile -in @('Dev', 'Lab')) { $composeArgs += @('--profile', $Profile.ToLowerInvariant()) }
+    $composeArgs += @('up', '--build', '-d')
+    & $docker @composeArgs
     if ($LASTEXITCODE -ne 0) { throw 'Companion container build or start failed.' }
 }
 finally {
@@ -118,6 +150,20 @@ do {
     Start-Sleep -Seconds 2
 } while ([DateTime]::UtcNow -lt $deadline)
 if (-not $health.ok) { throw 'Companion did not answer on http://127.0.0.1:8080.' }
+
+$runner = Join-Path $bundleRoot 'tools\companion\Start-WorkbenchHostRunner.ps1'
+if (Test-Path -LiteralPath $runner) {
+    Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $runner,
+        '-CompanionUrl', 'http://127.0.0.1:8080',
+        '-ContainerName', 'lumberjacks-companion-companion-1',
+        '-ProjectName', 'lumberjacks-companion',
+        '-Profile', $Profile,
+        '-ComposeFile', ('"{0}"' -f $compose),
+        '-RepoRoot', ('"{0}"' -f $bundleRoot),
+        '-ValheimPath', ('"{0}"' -f $valheimPath)
+    ) | Out-Null
+}
 
 Write-Host 'Lumberjacks Companion is ready at http://127.0.0.1:8080' -ForegroundColor Green
 if (-not $NoBrowser) { Start-Process 'http://127.0.0.1:8080' }

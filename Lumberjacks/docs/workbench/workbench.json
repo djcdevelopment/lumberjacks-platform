@@ -344,8 +344,8 @@
       "name": "MCP Mod Channel",
       "one_liner": "A localhost MCP server that talks to the running game mod: apply a config profile, run a bounded lab test, read back what happened.",
       "status": "dev-only",
-      "status_detail": "It runs, and it really does drive the live mod. It is reachable only from 127.0.0.1 with a dev key, and that is deliberate rather than unfinished: it is a development channel, never a console or shell bridge, and every mutation it can perform is whitelisted and bounded. There is no download and no remote mode.",
-      "what_it_does": "A local Python MCP server on 127.0.0.1:8720 (header X-Comfy-Key, dev value comfy-dev-local) speaks bidirectionally with the running mod: apply config profiles, run bounded lab motion tests through an atomic mailbox, tail mod telemetry and logs, assemble session bundles, and get local-Ollama explanations of what it just saw.",
+      "status_detail": "It runs, and it really does drive the live mod. It is reachable only from 127.0.0.1 with a dev key, and that is deliberate rather than unfinished: it is a development channel, never a console or shell bridge, and every mutation it can perform is whitelisted and bounded. The Workbench migration requires an explicit project-owned port and machine-readable endpoint identity; the legacy shared :8720 listener is not accepted as Baseline evidence until proven. There is no download and no remote mode.",
+      "what_it_does": "A local Python MCP server on an explicit Workbench Dev/Lab loopback port (current candidate 8721; header X-Comfy-Key, dev value comfy-dev-local) speaks bidirectionally with the running mod: apply config profiles, run bounded lab motion tests through an atomic mailbox, tail mod telemetry and logs, assemble session bundles, and get local-Ollama explanations of what it just saw.",
       "who_its_for": "Mod developers, and anyone curious about wiring an AI tool to a live game process without handing it a shell.",
       "time_to_first_result": "about 20 minutes",
       "requires": [

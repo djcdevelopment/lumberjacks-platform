@@ -53,8 +53,14 @@ try {
         'src\Game.Companion\Game.Companion.csproj',
         'tools\companion\docker-compose.yml',
         'tools\companion\docker-compose.valheim.yml.example',
+        'tools\companion\Start-WorkbenchHostRunner.ps1',
         'tools\companion\bootstrap\Start-LumberjacksCompanion.cmd',
-        'tools\companion\bootstrap\Start-LumberjacksCompanion.ps1'
+        'tools\companion\bootstrap\Start-LumberjacksCompanion.ps1',
+        'tools\i5\Test-I5Link.ps1',
+        'tools\workbench\Test-WorkbenchZipPrivacy.ps1',
+        'tools\workbench\Test-WorkbenchSupportExport.ps1',
+        'tools\workbench\Test-WorkbenchProfileBoundary.ps1',
+        'tools\workbench\Test-WorkbenchMcpIdentity.ps1'
     )
 
     $program = Read-ZipEntryText $archive 'src\Game.Companion\Program.cs'

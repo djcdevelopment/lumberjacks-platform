@@ -436,9 +436,16 @@ function Invoke-FileScan {
     $results += Invoke-RuleScan -Text $FileInfo.Name -RelativePath $relative -ScanType 'filename' -Rules $Rules
     $results += Test-ForbiddenFileName -FileInfo $FileInfo -RelativePath $relative
 
+    # The distributable includes this scanner so support capsules can be checked
+    # locally. Its own source necessarily contains every deny pattern and the
+    # poisoned self-test fixtures. Keep structural/filename checks active, but do
+    # not report those deliberate literals as leaks in the enclosing package.
+    $normalizedRelative = $relative.Replace('/', '\')
+    $isBundledScannerSource = $normalizedRelative -ieq 'tools\workbench\Test-WorkbenchZipPrivacy.ps1'
+
     # Content scan: only allowlisted text extensions.
     $ext = $FileInfo.Extension.ToLowerInvariant()
-    if ($TextExtensions -contains $ext) {
+    if (($TextExtensions -contains $ext) -and (-not $isBundledScannerSource)) {
         if ($FileInfo.Length -le $Script:ContentScanSizeCapBytes) {
             $text = $null
             try {
@@ -615,7 +622,7 @@ function New-CleanFixture {
     )
 
     Write-TextFileUtf8 -Path (Join-Path $Dir 'loopback-ok.md') -Content (
-        "The project MCP gateway listens on http://127.0.0.1:8720/mcp.`n" +
+        "The project MCP gateway uses the explicit Dev/Lab port http://127.0.0.1:8721/mcp.`n" +
         "A dev web server on localhost:3000 is fine, and so is 127.0.0.1:87101 -`n" +
         "the rule is anchored to the whole port, so a longer port that merely starts`n" +
         "with 8710 is not the private endpoint.`n" +

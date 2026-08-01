@@ -22,12 +22,20 @@ will not work.
 .PARAMETER NoLegacyCleanup
 Do not stop the known legacy `companion` compose project before starting.
 
+.PARAMETER McpPort
+Loopback host port for the Dev MCP in Dev/Lab profiles. The launcher refuses a
+collision instead of silently starting an unreachable container.
+
 .EXAMPLE
 .\Start-LocalCompanion.ps1
 #>
 [CmdletBinding()]
 param(
     [string]$ValheimPath = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim',
+    [ValidateSet('Explore','Admin','Dev','Lab','Production')]
+    [string]$Profile = 'Explore',
+    [ValidateRange(1024,65535)]
+    [int]$McpPort = 8721,
     [switch]$ReadOnly,
     [switch]$NoLegacyCleanup
 )
@@ -35,9 +43,11 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $ToolRoot = $PSScriptRoot
-$RepoRoot = Resolve-Path (Join-Path $ToolRoot '..\..')
+$LumberjacksRoot = Resolve-Path (Join-Path $ToolRoot '..\..')
+$RepoRoot = Resolve-Path (Join-Path $ToolRoot '..\..\..')
 $ComposeFile = Resolve-Path (Join-Path $ToolRoot 'docker-compose.yml')
 $ValheimComposeFile = Resolve-Path (Join-Path $ToolRoot 'docker-compose.valheim.yml')
+$RunnerScript = Resolve-Path (Join-Path $ToolRoot 'Start-WorkbenchHostRunner.ps1')
 $LatestBootstrapFile = Join-Path $ToolRoot 'latest-bootstrap.json'
 $ProjectName = 'lumberjacks-companion'
 $LegacyProjectName = 'companion'
@@ -45,11 +55,29 @@ $LegacyProjectName = 'companion'
 function Set-WorkbenchSourceMetadata {
     $revision = (& git -C $RepoRoot.Path rev-parse HEAD 2>$null | Select-Object -First 1)
     $branch = (& git -C $RepoRoot.Path branch --show-current 2>$null | Select-Object -First 1)
-    $dirty = (& git -C $RepoRoot.Path status --porcelain --untracked-files=no 2>$null)
+    # Untracked source is still part of the image build and must be visible in
+    # source identity; a pre-live gate must never mistake it for a clean checkout.
+    $dirty = (& git -C $RepoRoot.Path status --porcelain 2>$null)
     $env:LUMBERJACKS_COMPANION_SOURCE_REVISION = if ($revision) { $revision.ToString().Trim() } else { 'unknown' }
     $env:LUMBERJACKS_COMPANION_SOURCE_BRANCH = if ($branch) { $branch.ToString().Trim() } else { 'unknown' }
     $env:LUMBERJACKS_COMPANION_SOURCE_DIRTY = if ($dirty) { 'true' } else { 'false' }
-    $env:LUMBERJACKS_COMPANION_IMAGE = "$ProjectName:local"
+    $env:LUMBERJACKS_COMPANION_IMAGE = "$ProjectName-companion:local"
+    $env:LUMBERJACKS_WORKBENCH_PROFILE = $Profile
+    $env:LUMBERJACKS_WORKBENCH_REPO_ROOT = $RepoRoot.Path
+}
+
+function Initialize-WorkbenchRunnerKey {
+    $root = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Lumberjacks\Workbench'
+    New-Item -ItemType Directory -Force -Path $root | Out-Null
+    $path = Join-Path $root 'runner-token'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        $bytes = New-Object byte[] 32
+        $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+        try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+        $token = [Convert]::ToBase64String($bytes).Replace('+','-').Replace('/','_').TrimEnd('=')
+        [IO.File]::WriteAllText($path, $token + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+    }
+    $env:LUMBERJACKS_WORKBENCH_RUNNER_TOKEN_PATH = $path
 }
 
 function Test-DockerServer {
@@ -123,6 +151,15 @@ function Assert-PortAvailableOrOwnedByProject {
     }
 }
 
+function Assert-DevMcpPortAvailable {
+    if ($Profile -notin @('Dev', 'Lab')) { return }
+    $listeners = @(Get-NetTCPConnection -LocalPort $McpPort -State Listen -ErrorAction SilentlyContinue)
+    if ($listeners.Count -gt 0) {
+        $owners = @($listeners | ForEach-Object { "PID $($_.OwningProcess)" } | Sort-Object -Unique)
+        throw "Dev MCP loopback port $McpPort is already listening ($($owners -join ', ')). Stop the existing Dev MCP or rerun with -McpPort <free-port>; the launcher will not silently strand the container."
+    }
+}
+
 $dockerState = Test-DockerServer
 if (-not $dockerState.Ok) {
     throw "Docker Desktop Linux engine is not ready: $($dockerState.Detail). Start Docker Desktop, wait until it is running, then retry."
@@ -140,7 +177,10 @@ Assert-PortAvailableOrOwnedByProject
 
 Set-Location $RepoRoot
 Set-WorkbenchSourceMetadata
+Initialize-WorkbenchRunnerKey
+$env:COMFY_WORKBENCH_MCP_PORT = [string]$McpPort
 $composeArgs = @('compose', '-p', $ProjectName, '-f', $ComposeFile.Path)
+if ($Profile -in @('Dev', 'Lab')) { $composeArgs += @('--profile', $Profile.ToLowerInvariant()) }
 if (Test-Path -LiteralPath $LatestBootstrapFile) {
     try {
         $latestBootstrap = Get-Content -LiteralPath $LatestBootstrapFile -Raw | ConvertFrom-Json
@@ -159,6 +199,12 @@ if ($ReadOnly) {
 }
 $composeArgs += @('up', '-d', '--build')
 
+ # Converge the Compose project before starting so switching from Dev/Lab to
+ # Explore/Admin/Production actually removes the Dev MCP and tool-runner.
+$profileDownArgs = @('compose', '-p', $ProjectName, '-f', $ComposeFile.Path, '--profile', 'dev', '--profile', 'lab', 'down')
+docker @profileDownArgs
+if ($LASTEXITCODE -ne 0) { throw 'could not converge the prior Companion profile' }
+Assert-DevMcpPortAvailable
 docker @composeArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -184,3 +230,16 @@ if (-not $ReadOnly -and (-not $status.valheim.found -or -not $status.valheim.con
 }
 
 $status | ConvertTo-Json -Depth 8
+
+$runnerArguments = @(
+    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $RunnerScript.Path,
+    '-CompanionUrl', 'http://127.0.0.1:8080',
+    '-ContainerName', "$ProjectName-companion-1",
+    '-ProjectName', $ProjectName,
+    '-Profile', $Profile,
+    '-ComposeFile', ('"{0}"' -f $ComposeFile.Path),
+    '-RepoRoot', ('"{0}"' -f $RepoRoot.Path),
+    '-ValheimPath', ('"{0}"' -f $ValheimPath)
+)
+Start-Process -FilePath 'powershell.exe' -ArgumentList $runnerArguments -WindowStyle Hidden | Out-Null
+Write-Host "Workbench host runner started for profile $Profile"

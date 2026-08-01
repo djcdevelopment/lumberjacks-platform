@@ -8,8 +8,10 @@ profile, run a bounded lab test, read back what actually happened.
 A local MCP gateway, intentionally separate from any general-purpose MCP
 gateway already running on the operator's machine — its own auth header,
 port, ledger, and tool registry, scoped to Valheim mod development. It
-ships in this repository and runs from it. It listens at
-`http://127.0.0.1:8720/mcp`
+ships in this repository and runs from it. The Workbench Dev/Lab migration
+uses an explicit project-owned loopback port (currently `8721`); the legacy
+`http://127.0.0.1:8720/mcp` listener is not accepted as Baseline evidence
+until its source identity is proven.
 (header `X-Comfy-Key: comfy-dev-local` for dev use; a separate
 `valheim-mod-local` key is reserved for a future in-mod client) and also
 exposes a few plain dev HTTP routes (`/healthz`, `/valheim/report`,
@@ -48,24 +50,31 @@ with a dev key, on purpose.
 1. From the repo root, make a project-local virtual environment and install
    the declared dependencies:
    `python -m venv .venv; .\.venv\Scripts\Activate.ps1; pip install -r network\mcp\requirements.txt`
-2. Still at the repo root: `.\network\mcp\etc\start-comfy-gateway.cmd`. It
+2. Still at the repo root, start the Workbench Dev profile with an explicit
+   project port: `.\Lumberjacks\tools\companion\Start-LocalCompanion.ps1 -Profile Dev -McpPort 8721`.
+   The source launcher now defaults to the explicit project `:8721` path, but
+   it is still not an identity check until `/identity` is verified. It
    uses `%COMFY_GATEWAY_PYTHON%` if you've set that to a specific
    interpreter, and otherwise plain `python` on `PATH` — the venv you just
    activated. Either way that environment needs the requirements installed;
    the variable only changes which interpreter runs, not the dependency.
 
    Or run it directly:
-   `$env:PYTHONPATH = "$PWD\network\mcp"; python -m comfy_gateway.kernel.gateway`
+   `$env:PYTHONPATH = "$PWD\network\mcp"; python -m comfy_gateway.kernel.gateway --host 127.0.0.1 --port 8721`
 
    Or skip local Python entirely and build the image:
    `docker build -t comfy-mcp-gateway network\mcp`
-3. From any MCP client, point it at `http://127.0.0.1:8720/mcp` with
+3. From any MCP client, point it at `http://127.0.0.1:8721/mcp` with
    header `X-Comfy-Key: comfy-dev-local`, and list its tools.
+   Before accepting a result, run
+   `tools\workbench\Test-WorkbenchMcpIdentity.ps1 -Profile Dev -McpPort 8721`.
 
 ## What you'll see
 
-A running local server on port 8720. `curl http://127.0.0.1:8720/healthz`
-should answer. From an MCP client you'll see roughly 16 tools registered —
+A running local server on the selected explicit project port. Verify its
+machine-readable identity before accepting results; a green response from the
+legacy `:8720` task is insufficient. From an MCP client you'll see roughly 16
+tools registered —
 `comfy_gateway_status`, `local_generate`, and the `valheim_*` family
 (`valheim_networksense_report`, `valheim_list_sessions`,
 `valheim_session_bundle`, `valheim_apply_config_profile`,
@@ -76,14 +85,16 @@ nothing to report until it is.
 ## What's rough
 
 - Reaching `X-Comfy-Key` currently means using the shared dev value
-  (`comfy-dev-local`) — there's no per-caller key issuance yet, so treat it
-  as "trusted local dev," not "authenticated."
+  (`comfy-dev-local`) — the gateway authenticates it, but there is no
+  per-caller key issuance yet, so treat it as "trusted local dev," not a
+  production identity system.
 - The `valheim-mod-local` key is reserved in the docs for a future in-mod
   client that doesn't exist yet.
 - `network/mcp/tests/test_gateway_basics.py` covers the ledger, auth
   resolution, the NetworkSense report path, whitelisted config-profile
-  application, and the netcode-gate tool registration (6 tests total) — but
-  that's the whole automated test surface for a fairly large tool list.
+  application, identity attestation, and the netcode-gate tool registration
+  (11 tests currently) — but that's still the whole automated test surface for
+  a fairly large tool list.
 
 ## First tasks
 
@@ -103,7 +114,7 @@ repo, covered by the root `LICENSE` / `LICENSING.md`.
 
 Privacy/safety: this gateway is bound to `127.0.0.1` on purpose — its
 entire safety story is that only your own machine can reach it. Do not
-expose port 8720 beyond localhost, and do not wire its output into
+expose the selected port beyond localhost, and do not wire its output into
 anything that executes automatically; every design rule above exists to
 keep a model's output advisory, not authoritative, over a live game
 process.

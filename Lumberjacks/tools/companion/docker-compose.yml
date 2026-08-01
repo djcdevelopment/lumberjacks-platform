@@ -1,6 +1,7 @@
 services:
   companion:
     init: true
+    image: "${LUMBERJACKS_COMPANION_IMAGE:-lumberjacks-companion-companion:local}"
     build:
       context: ../..
       dockerfile: src/Game.Companion/Dockerfile
@@ -17,10 +18,61 @@ services:
       LUMBERJACKS_COMPANION_SOURCE_REVISION: "${LUMBERJACKS_COMPANION_SOURCE_REVISION:-unknown}"
       LUMBERJACKS_COMPANION_SOURCE_BRANCH: "${LUMBERJACKS_COMPANION_SOURCE_BRANCH:-unknown}"
       LUMBERJACKS_COMPANION_SOURCE_DIRTY: "${LUMBERJACKS_COMPANION_SOURCE_DIRTY:-unknown}"
-      LUMBERJACKS_COMPANION_IMAGE: "${LUMBERJACKS_COMPANION_IMAGE:-lumberjacks-companion:local}"
+      LUMBERJACKS_COMPANION_IMAGE: "${LUMBERJACKS_COMPANION_IMAGE:-lumberjacks-companion-companion:local}"
+      LUMBERJACKS_WORKBENCH_PROFILE: "${LUMBERJACKS_WORKBENCH_PROFILE:-Explore}"
+      LUMBERJACKS_WORKBENCH_RUNNER_TOKEN_FILE: /run/workbench/runner-token
     volumes:
       - companion-data:/data
+      - "${LUMBERJACKS_WORKBENCH_RUNNER_TOKEN_PATH:-./runner-token}:/run/workbench/runner-token:ro"
     restart: unless-stopped
+
+  # Development-only surfaces. They are deliberately absent from the default
+  # Explore/Admin/Production launch and neither service receives the Docker socket.
+  workbench-tool-runner:
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    profiles: ["dev", "lab"]
+    working_dir: /workspace/source
+    command: ["sleep", "infinity"]
+    volumes:
+      - "${LUMBERJACKS_WORKBENCH_REPO_ROOT:-../../../}:/workspace/source:ro"
+      - "${LUMBERJACKS_VALHEIM_HOST_PATH:-C:/Program Files (x86)/Steam/steamapps/common/Valheim}:/valheim:ro"
+
+  dev-mcp:
+    image: "${COMFY_WORKBENCH_MCP_IMAGE:-lumberjacks-companion-dev-mcp:local}"
+    build:
+      context: ../../../network/mcp
+      dockerfile: Dockerfile
+    profiles: ["dev", "lab"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${COMFY_WORKBENCH_MCP_PORT:-8721}:8720"
+    environment:
+      PYTHONPATH: /workspace/network/mcp
+      COMFY_MCP_ROOT: /workspace/network/mcp
+      COMFY_MCP_PROFILE: "${LUMBERJACKS_WORKBENCH_PROFILE:-Dev}"
+      COMFY_MCP_HOST_PORT: "${COMFY_WORKBENCH_MCP_PORT:-8721}"
+      COMFY_MCP_SOURCE_REVISION: "${LUMBERJACKS_COMPANION_SOURCE_REVISION:-unknown}"
+      COMFY_MCP_SOURCE_BRANCH: "${LUMBERJACKS_COMPANION_SOURCE_BRANCH:-unknown}"
+      COMFY_MCP_SOURCE_DIRTY: "${LUMBERJACKS_COMPANION_SOURCE_DIRTY:-unknown}"
+      COMFY_MCP_IMAGE: "${COMFY_WORKBENCH_MCP_IMAGE:-lumberjacks-companion-dev-mcp:local}"
+      COMFY_WORKBENCH_URL: http://companion:8080
+      COMFY_WORKBENCH_TOKEN_FILE: /data/workbench/browser-token
+      COMFY_MATRIX_VAR_DIR: /workspace/network/mcp/var/matrix
+      COMFY_VALHEIM_NOTES: /workspace/network/mcp/var/valheim-dev-notes.jsonl
+    volumes:
+      - companion-data:/data:ro
+      - "${LUMBERJACKS_WORKBENCH_REPO_ROOT:-../../../}/network/mcp/var:/workspace/network/mcp/var"
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8720"
+      - --callers
+      - /workspace/network/mcp/comfy_gateway/etc/callers.json
+      - --providers
+      - comfy_gateway.toolsurface.valheim,comfy_gateway.toolsurface.inference,comfy_gateway.toolsurface.workbench
+    depends_on:
+      - companion
 
 volumes:
   companion-data:
