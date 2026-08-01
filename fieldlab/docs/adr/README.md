@@ -21,6 +21,7 @@ Format follows the standard Status / Context / Decision / Consequences shape.
 | [0013](0013-ownership-visibility-split.md) | Ownership, visibility, delivery, and ack are four things — split them for area co-presence | Proposed | Valheim netcode / multi-player density |
 | [0014](0014-boot-must-converge-or-say-so.md) | Boot must converge on its own, or say so loudly | Accepted | cross-cutting / P7 stack lifecycle |
 | [0015](0015-pin-line-endings-for-load-bearing-bytes.md) | Pin line endings for bytes that are hashed or parsed elsewhere | Accepted | cross-cutting / repo hygiene |
+| [0016](0016-banked-state-must-carry-session-identity.md) | Banked state must carry the identity scope of what it banks | Accepted | netcode / canonical session |
 
 Canon: [`Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json`](../../../Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json)
 (state — milestones, gate/proof state) ·
