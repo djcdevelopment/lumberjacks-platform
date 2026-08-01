@@ -85,6 +85,70 @@ function requireObjectArray(value, label, fields) {
   });
 }
 
+// current_focus was a bare string[] until 2026-08-01. On that day it was found asserting
+// two separate falsehoods on the public page: that the networking lane was on hard hold
+// (reopened 07-30) and that P7 was serving (terminated 07-29). Both had been re-rendered
+// under a fresh updated_at for days, and `roadmap:check` was green the whole time, because
+// nothing in the contract could tell prose from truth.
+//
+// The field now admits ONLY present-tense state, and every entry carries the date it was
+// last affirmed. Completed work and future gates are not merely discouraged here — they
+// fail validation, because the milestone record already models both and a claim living in
+// two places is a claim that will disagree with itself.
+const focusStatuses = Object.freeze({
+  active: 'ACTIVE NOW',
+  deployed_config: 'LAST DEPLOYED CONFIG',
+  dormant: 'ARMED, DORMANT',
+});
+
+// How long an entry may sit unaffirmed before the check goes red. The 2026-08-01 rot took
+// four days to put a false claim in front of the public, so this is deliberately shorter
+// than a sprint: re-affirming means re-reading, which is the whole mechanism.
+const focusReviewDays = 14;
+
+const isoDayPattern = /^\d{4}-\d{2}-\d{2}$/;
+
+function requireFocusArray(value, label, milestoneIds, updatedAt) {
+  if (!Array.isArray(value)) fail(`${label} must be an array`);
+  if (value.length === 0) fail(`${label} must not be empty — if nothing is active, say so in one entry`);
+
+  const allowed = Object.keys(focusStatuses).join(', ');
+  let newest = -Infinity;
+
+  value.forEach((item, index) => {
+    const at = `${label}[${index}]`;
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      fail(`${at} must be an object with status, as_of and text — the bare-string form was retired on 2026-08-01 because it could hold a stale claim invisibly`);
+    }
+    requireString(item.text, `${at}.text`);
+    requireString(item.status, `${at}.status`);
+    if (!Object.hasOwn(focusStatuses, item.status)) {
+      fail(`${at}.status must be one of ${allowed} — got "${item.status}". current_focus describes the present only: completed work belongs in the milestone's status and exit_evidence, and a future gate belongs in its exit_criteria, so that each fact has exactly one home`);
+    }
+    requireString(item.as_of, `${at}.as_of`);
+    if (!isoDayPattern.test(item.as_of) || Number.isNaN(Date.parse(`${item.as_of}T00:00:00Z`))) {
+      fail(`${at}.as_of must be a YYYY-MM-DD date naming when this entry was last affirmed true`);
+    }
+    const asOf = Date.parse(`${item.as_of}T00:00:00Z`);
+    if (asOf > Date.parse(updatedAt)) {
+      fail(`${at}.as_of (${item.as_of}) is after roadmap.updated_at — an entry cannot be affirmed in the future`);
+    }
+    if (asOf > newest) newest = asOf;
+
+    if (item.milestone !== undefined) {
+      requireString(item.milestone, `${at}.milestone`);
+      if (!milestoneIds.has(item.milestone)) {
+        fail(`${at}.milestone is not a milestone id: ${item.milestone}`);
+      }
+    }
+  });
+
+  const ageDays = Math.floor((Date.parse(updatedAt) - newest) / 86400000);
+  if (ageDays > focusReviewDays) {
+    fail(`${label} has not been affirmed in ${ageDays} days (limit ${focusReviewDays}) — re-read each entry and set as_of to today, or correct the text. This field has no other expiry; on 2026-08-01 it was found stating two things that had been false for days while every other check stayed green`);
+  }
+}
+
 function dependencyLayers(milestones) {
   const byId = new Map(milestones.map((milestone, index) => [milestone.id, { milestone, index }]));
   const indegree = new Map(milestones.map((milestone) => [milestone.id, milestone.depends_on.length]));
@@ -180,7 +244,8 @@ function validate(roadmap, notes, rawText = '') {
   requireString(roadmap.updated_at, 'roadmap.updated_at');
   if (Number.isNaN(Date.parse(roadmap.updated_at))) fail('roadmap.updated_at must be an ISO timestamp');
   requireString(roadmap.claim, 'roadmap.claim');
-  requireStringArray(roadmap.current_focus, 'roadmap.current_focus');
+  // roadmap.current_focus is validated after the milestones below, because an entry may
+  // reference a milestone id and that set has to exist before it can be checked.
   if (!roadmap.primer || typeof roadmap.primer !== 'object') fail('roadmap.primer is required');
   requireString(roadmap.primer.title, 'roadmap.primer.title');
   requireString(roadmap.primer.summary, 'roadmap.primer.summary');
@@ -246,6 +311,13 @@ function validate(roadmap, notes, rawText = '') {
     }
   }
   dependencyLayers(roadmap.milestones);
+
+  requireFocusArray(
+    roadmap.current_focus,
+    'roadmap.current_focus',
+    new Set(roadmap.milestones.map((milestone) => milestone.id)),
+    roadmap.updated_at,
+  );
 
   if (!roadmap.latest_observation || typeof roadmap.latest_observation !== 'object') fail('roadmap.latest_observation is required');
   for (const field of ['id', 'kind', 'label', 'captured_at', 'scope', 'delivery_result', 'system_verdict', 'verdict_reason', 'milestone_effect', 'operational_observation']) {
@@ -499,7 +571,10 @@ function render(roadmap, notes) {
   const milestones = roadmap.milestones.map(renderMilestone).join('\n');
   const dependencyDag = renderDependencyDag(roadmap.milestones);
   const journal = [...notes].reverse().map(renderNote).join('\n');
-  const focus = list(roadmap.current_focus, 'focus-list');
+  const focus = roadmap.current_focus.map((item) => `<article class="focus-card ${cssToken(item.status)}">
+    <div class="focus-head"><span class="pill ${cssToken(item.status)}">${escapeHtml(focusStatuses[item.status])}</span>${item.milestone ? `<span class="dep">${escapeHtml(item.milestone)}</span>` : ''}<span class="focus-asof">affirmed ${escapeHtml(item.as_of)}</span></div>
+    <p>${escapeHtml(item.text)}</p>
+  </article>`).join('');
   const tracks = roadmap.tracks.map((track) => `<article class="track ${escapeHtml(track.id)}">
     <div class="track-label">${escapeHtml(track.name)}</div>
     <p>${escapeHtml(track.description)}</p>
@@ -631,6 +706,15 @@ function render(roadmap, notes) {
     .section-copy { color: var(--muted); max-width: 780px; }
     .truth-grid, .readiness-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .truth-card, .readiness-card, .proof-card, .no-go-card { padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(150deg, var(--panel), var(--paper)); box-shadow: var(--shadow); }
+    .focus-note { margin: -4px 0 14px; color: var(--muted); font-size: .84rem; line-height: 1.5; }
+    .focus-card { padding: 13px 15px; border: 1px solid var(--line); border-left-width: 3px; border-radius: 10px; background: var(--paper); margin-bottom: 10px; }
+    .focus-card:last-child { margin-bottom: 0; }
+    .focus-card.active { border-left-color: var(--green); }
+    .focus-card.deployed-config { border-left-color: var(--blue); }
+    .focus-card.dormant { border-left-color: var(--amber); }
+    .focus-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .focus-asof { margin-left: auto; color: var(--muted); font-size: .74rem; letter-spacing: .04em; text-transform: uppercase; }
+    .focus-card p { margin: 0; line-height: 1.62; }
     .truth-card.proved { border-color: rgba(104,211,145,.38); }
     .truth-card.not-yet { border-color: rgba(246,196,83,.38); }
     .truth-card h3 { margin-bottom: 11px; color: var(--green); }
@@ -938,7 +1022,7 @@ function render(roadmap, notes) {
           <article class="truth-card proved"><h3>Proved now</h3><p>One enrolled client closed the complete observed all-prefab ZDO window through Lumberjacks priority delivery with exact durable accounting.</p><p><a href="#proof">See the validated result ↓</a></p></article>
           <article class="truth-card not-yet"><h3>Not proved yet</h3>${list(['Safe public credential transport and authoritative admission.', 'A clean no-hand-edit package for a non-developer.', 'Per-session and per-recipient retained proof.', 'Two simultaneous consumers with isolated pending and ACK state.', 'Lumberjacks-owned candidate relevance, simulation, or non-ZDO RPCs.'])}</article>
         </div>
-        <div class="truth-card" style="margin-top:16px"><h3 style="color:var(--blue)">Next actions</h3>${focus}</div>
+        <div class="truth-card" style="margin-top:16px"><h3 style="color:var(--blue)">Where things stand</h3><p class="focus-note">Present state only, each line dated when it was last checked against reality. Finished work lives in the milestones below; what comes next is in each milestone's exit criteria.</p>${focus}</div>
         <article class="primer">
           <div class="primer-head"><h3>${escapeHtml(roadmap.primer.title)}</h3><p>${escapeHtml(roadmap.primer.summary)}</p></div>
           <div class="denominator"><strong>The exact denominator</strong>${escapeHtml(roadmap.primer.denominator)}</div>

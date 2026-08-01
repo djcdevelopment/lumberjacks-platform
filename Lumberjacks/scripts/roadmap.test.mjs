@@ -349,3 +349,76 @@ test('the staged gate holds for a standalone checkout under a hook, where the pa
     assert.ok(result.ok, result.output);
   });
 });
+
+/// current_focus guards.
+///
+/// This field was a bare string[] until 2026-08-01, when it was found asserting two
+/// falsehoods on the public page at once — that the networking lane was on hard hold
+/// (reopened 07-30) and that P7 was serving (terminated 07-29) — both re-rendered daily
+/// under a fresh updated_at while roadmap:check stayed green. Nothing below tests
+/// formatting; each case is a shape the old contract accepted silently.
+
+function focusEntry(overrides = {}) {
+  return { status: 'active', as_of: '2026-08-01', text: 'Something is true right now', ...overrides };
+}
+
+function withFocus(entries) {
+  const roadmap = baseRoadmap();
+  roadmap.updated_at = '2026-08-01T12:00:00Z';
+  roadmap.current_focus = entries;
+  return roadmap;
+}
+
+test('a well-formed current_focus entry validates', () => {
+  validate(withFocus([focusEntry()]), [baseNote()]);
+});
+
+test('the retired bare-string form is rejected — it is what let a stale claim hide', () => {
+  expectFailure([baseNote()], /bare-string form was retired/, withFocus(['ACTIVE - everything is fine']));
+});
+
+test('current_focus may not be empty — silence is not the same as nothing being active', () => {
+  expectFailure([baseNote()], /must not be empty/, withFocus([]));
+});
+
+test('completed work is refused here, and the failure names the milestone field that owns it', () => {
+  expectFailure([baseNote()], /exit_evidence/, withFocus([focusEntry({ status: 'complete' })]));
+});
+
+test('a future gate is refused here, and the failure names exit_criteria', () => {
+  expectFailure([baseNote()], /exit_criteria/, withFocus([focusEntry({ status: 'next' })]));
+});
+
+test('every declared focus status is accepted', () => {
+  for (const status of ['active', 'deployed_config', 'dormant']) {
+    validate(withFocus([focusEntry({ status })]), [baseNote()]);
+  }
+});
+
+test('as_of must be a plain YYYY-MM-DD day', () => {
+  expectFailure([baseNote()], /as_of must be a YYYY-MM-DD date/, withFocus([focusEntry({ as_of: '2026-08-01T00:00:00Z' })]));
+});
+
+test('an entry cannot be affirmed in the future', () => {
+  expectFailure([baseNote()], /cannot be affirmed in the future/, withFocus([focusEntry({ as_of: '2026-09-01' })]));
+});
+
+test('a focus entry may not point at a milestone that does not exist', () => {
+  expectFailure([baseNote()], /is not a milestone id: M99/, withFocus([focusEntry({ milestone: 'M99' })]));
+});
+
+test('a focus entry may name a real milestone', () => {
+  validate(withFocus([focusEntry({ milestone: knownMilestone })]), [baseNote()]);
+});
+
+test('current_focus goes red once it has gone unaffirmed too long — the actual 2026-08-01 failure', () => {
+  expectFailure([baseNote()], /has not been affirmed in \d+ days/, withFocus([focusEntry({ as_of: '2026-06-01' })]));
+});
+
+test('the freshness gate measures the newest entry, so one fresh line keeps the field green', () => {
+  validate(withFocus([focusEntry({ as_of: '2026-06-01' }), focusEntry({ as_of: '2026-08-01' })]), [baseNote()]);
+});
+
+test('the live roadmap satisfies the current_focus contract', () => {
+  validate(baseRoadmap(), [baseNote()]);
+});

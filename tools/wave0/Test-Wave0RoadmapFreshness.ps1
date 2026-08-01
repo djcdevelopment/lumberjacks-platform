@@ -56,7 +56,11 @@ $expectedPackageSha = [string]$modManifest.package.sha256
 $expectedGateway = [string]$deployment.lumberjacks_version
 $expectedBootstrap = [string]$bootstrap.release
 $expectedBootstrapShort = $expectedBootstrap -replace '^companion-bootstrap-20260723-', ''
-$focusText = [string]::Join("`n", @($roadmap.current_focus))
+# current_focus became an array of {status, as_of, milestone?, text} objects on 2026-08-01.
+# Joining the objects themselves stringifies each as its type name, so both current-focus
+# checks below would pass their Has-Text call a haystack of "System.Management.Automation.
+# PSCustomObject" and go red for a reason nobody would trace back to the schema change.
+$focusText = [string]::Join("`n", @($roadmap.current_focus | ForEach-Object { [string]$_.text }))
 
 $checks = @()
 $checks += New-Check 'roadmap-current-release-id' `
