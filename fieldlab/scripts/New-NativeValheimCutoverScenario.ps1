@@ -229,8 +229,13 @@ if ($Profile -eq 'c8') {
         New-Action 'i5-c8-zone-resume' 'i5' 'zone_membership_resume' 90
         New-Action 'omen-c8-portal-slice' 'omen' 'teleport_to' 15 0 0 0 '' '' 3250 80 2250
         New-Action 'i5-c8-portal-slice' 'i5' 'teleport_to' 15 0 0 0 '' '' 3250 80 2250
-        New-Action 'omen-c8-portal-roundtrip' 'omen' 'portal_roundtrip' 22 0 0 256
-        New-Action 'i5-c8-portal-roundtrip' 'i5' 'portal_roundtrip' 22 0 0 256
+        # 40s covers BOTH legs: vanilla's distant-teleport completion can take up to
+        # 2s minimum + 15s FindFloor fallback PER LEG once the area is ready, and the
+        # journal path converges readiness in ~4-5s per side. full43's return leg
+        # inherited only ~5s of the old 22s budget and deadlined 0.2s after the area
+        # went ready - a calibration miss, not a boundary defect.
+        New-Action 'omen-c8-portal-roundtrip' 'omen' 'portal_roundtrip' 40 0 0 256
+        New-Action 'i5-c8-portal-roundtrip' 'i5' 'portal_roundtrip' 40 0 0 256
     )
 }
 
