@@ -17,6 +17,12 @@ manifest with an expiring native-autotest request.
 - i5 is reachable through the existing BatchMode SSH lane and has its one-time Steam
   login and character seed.
 - Build `ComfyNetworkSense` in Release before invoking the composition.
+- The BepInEx console must stay DISABLED on both physical clients
+  (`[Logging.Console] Enabled = false`). A console window freezes the whole client the
+  moment anything clicks into it (Windows QuickEdit selection blocks the console
+  `WriteFile` on Unity's main thread indefinitely) — root-caused from a full42 hang
+  dump: one thread in `NtWriteFile`, 316 in ordinary waits. Disk logging carries all
+  evidence; the console adds nothing but the freeze vector.
 
 If i5 preflight says the laptop is offline, stop and report that state. Do not retry
 in a loop and do not fall back to password authentication.
