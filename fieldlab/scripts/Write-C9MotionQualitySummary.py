@@ -286,18 +286,18 @@ def main() -> int:
         },
         "unverified": {
             "motion_runner_startup_stall": (
-                "LumberjacksMotionRunner.Update blocks about 1.87s exactly once per "
-                "session, roughly 4.8s before Valheim logs Starting respawn, and "
-                "never during steady motion. Reproduced 4/4 across both runs with "
-                "under 20ms variance. Candidates are the synchronous udp.Connect "
-                "hostname resolution and the legacy-lane teardown when the "
-                "canonical session takes over. NOT resolved: needs one instrumented "
-                "run with a lowered section threshold."),
-            "i5_frame_timing": (
-                "the i5's perf-hitches/perf-sections were never collected into the "
-                "run bundle and the lane went offline before they could be lifted, "
-                "so hitch attribution is measured on OMEN only. This is unmeasured "
-                "on the i5, not clean."),
+                "LumberjacksMotionRunner.Update blocks once per game session and "
+                "never during steady motion. Reproduced 8/8: four sessions on OMEN "
+                "at 1861-1878ms and four on the i5 at 2241-2460ms. The pattern is "
+                "identical on both machines - two ordinary frame hitches logging "
+                "'ZNET START' immediately before the section opens, zero frame "
+                "hitches anywhere inside it, then Valheim's 'Starting respawn' "
+                "severe hitch 4.8-7.1s later. Two discriminators now hold: it fires "
+                "on the first Update after ZNet initialises, and its duration tracks "
+                "machine class rather than staying fixed, which argues for CPU-bound "
+                "one-shot work over a network timeout. Root cause NOT resolved, and "
+                "the absence of any frame hitch inside a multi-second main-thread "
+                "section is itself unexplained."),
             "rendered_motion_quality": (
                 "no observer clip exists yet; the two-client capture run is still "
                 "outstanding, so no subjective verdict has been taken."),
