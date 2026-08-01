@@ -239,7 +239,8 @@ $runnerArguments = @(
     '-Profile', $Profile,
     '-ComposeFile', ('"{0}"' -f $ComposeFile.Path),
     '-RepoRoot', ('"{0}"' -f $RepoRoot.Path),
-    '-ValheimPath', ('"{0}"' -f $ValheimPath)
+    '-ValheimPath', ('"{0}"' -f $ValheimPath),
+    '-ReplaceExisting'
 )
 Start-Process -FilePath 'powershell.exe' -ArgumentList $runnerArguments -WindowStyle Hidden | Out-Null
 Write-Host "Workbench host runner started for profile $Profile"

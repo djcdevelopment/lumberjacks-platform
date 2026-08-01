@@ -23,6 +23,7 @@ param(
     [string]$Profile = '',
     [string]$RunnerId = '',
     [ValidateRange(1, 30)][int]$PollSeconds = 2,
+    [switch]$ReplaceExisting,
     [switch]$Once
 )
 
@@ -38,6 +39,25 @@ function Write-RunnerDiagnostic {
 trap {
     Write-RunnerDiagnostic ("fatal: " + $_.Exception.Message)
     break
+}
+
+if ($ReplaceExisting) {
+    # A runner loads this script once and then remains in its poll loop. Rebuilding
+    # containers or changing profile does not update that in-memory function set.
+    # Replace only PowerShell processes whose -File argument is this exact script;
+    # never terminate a generic shell or a runner from another checkout/bundle.
+    $runnerPattern = '(?i)-File\s+"?' + [regex]::Escape([IO.Path]::GetFullPath($PSCommandPath)) + '(?:"|\s|$)'
+    $existing = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.ProcessId -ne $PID -and
+            $_.Name -in @('powershell.exe', 'pwsh.exe') -and
+            $_.CommandLine -match $runnerPattern
+        })
+    foreach ($process in $existing) {
+        Write-RunnerDiagnostic ("replacing runner pid {0} for profile {1}" -f $process.ProcessId, $Profile)
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+        Wait-Process -Id $process.ProcessId -Timeout 5 -ErrorAction SilentlyContinue
+    }
 }
 $script:RunnerMutex = [Threading.Mutex]::new($false, 'Local\BaselineWorkbenchHostRunner')
 if (-not $script:RunnerMutex.WaitOne(0)) { exit 0 }

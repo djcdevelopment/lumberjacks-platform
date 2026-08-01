@@ -42,6 +42,15 @@ if ($projection.profile.effective -ne $ExpectedProfile) {
     throw "runner ownership fixture requires effective profile '$ExpectedProfile'; current profile is '$($projection.profile.effective)'."
 }
 
+$runnerSource = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Start-WorkbenchHostRunner.ps1') -Raw
+$launcherSource = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Start-LocalCompanion.ps1') -Raw
+if ($runnerSource -notmatch '\[switch\]\$ReplaceExisting' -or $runnerSource -notmatch '\-File\\s\+') {
+    throw 'runner replacement contract is missing from Start-WorkbenchHostRunner.ps1.'
+}
+if ($launcherSource -notmatch "'\-ReplaceExisting'") {
+    throw 'local launcher does not request runner convergence.'
+}
+
 $security = Get-Json -Path '/api/v1/workbench/security'
 $browserHeaders = @{ 'X-Workbench-Token' = $security.browser_token }
 $runnerToken = (& docker exec $ContainerName sh -lc 'cat /run/workbench/runner-token 2>/dev/null || cat /data/workbench/runner-token' 2>$null | Out-String).Trim()
@@ -81,6 +90,7 @@ $receipt = Get-Json -Path ("/api/v1/workbench/jobs/{0}/receipt" -f [Uri]::Escape
     stale_runner_http = $staleStatus
     receipt_reason = $receipt.reason_code
     executed_external_operation = $false
+    replace_existing_contract = $true
 } | ConvertTo-Json -Depth 10
 
 if ($completed.state -ne 'succeeded' -or $staleStatus -ne 404) { exit 1 }

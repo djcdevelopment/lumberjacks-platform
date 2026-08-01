@@ -161,7 +161,8 @@ if (Test-Path -LiteralPath $runner) {
         '-Profile', $Profile,
         '-ComposeFile', ('"{0}"' -f $compose),
         '-RepoRoot', ('"{0}"' -f $bundleRoot),
-        '-ValheimPath', ('"{0}"' -f $valheimPath)
+        '-ValheimPath', ('"{0}"' -f $valheimPath),
+        '-ReplaceExisting'
     ) | Out-Null
 }
 
