@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-01T00:06:59.704Z</span>
+        <span>Updated 2026-08-01T00:33:37.948Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260801000659-the-zdo-journal-drive-now-actually-enqueues-its-">
+        <div class="journal"><article class="journal-entry" id="note-20260801003337-ownership-lease-frames-now-always-enqueue-on-the">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-01T00:33:37.948Z">2026-08-01T00:33:37.948Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Ownership lease frames now always enqueue on the canonical session - the 256-frame outbound cap is a bulk-data cap, not a control-plane cap - closing the priority inversion where a post-resume interest re-publish flood rejected the lease reissue grant at queue_depth=256 and starved the holder probe to its deadline.</h3>
+      <p><strong>Impact:</strong> Wall class 14, receipted end to end: full40&#39;s server session events show ownership_frame_queue_rejected at queue_depth=256 with sequences 877 to 2639 in three seconds while the grant tried to enqueue. One queue is kept so reliable-sequence ordering is untouched; overshoot is bounded by the probes&#39; own attempt budgets. Same class explains full39&#39;s contender seeing lease_missing.</p>
+      <details><summary>Verification (2)</summary><ul><li>server session receipt: ownership_frame_queue_rejected seq=2639 queue_depth=256</li><li>102/102 golden tests; build 0 warnings</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/runs/native-valheim/native-20260731-c8-full40</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260801000659-the-zdo-journal-drive-now-actually-enqueues-its-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
