@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-01T06:30:42.810Z</span>
+        <span>Updated 2026-08-01T06:42:40.277Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,21 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260801063042-landed-the-pre-c10a-vehicles-mounts-research-sev">
+        <div class="journal"><article class="journal-entry" id="note-20260801064240-split-the-eight-runner-perf-section-in-comfynetw">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-01T06:42:40.277Z">2026-08-01T06:42:40.277Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Split the eight-runner perf section in ComfyNetworkSense.Update into one named Measure() section per runner, inside an honestly named ComfyNetworkSense.CutoverRunners.Update roll-up. The old single section was named after only the last runner it wrapped, so every over-threshold row in perf-sections.jsonl charged seven other runners&#39; cost to LumberjacksMotionRunner.</h3>
+      <p><strong>Impact:</strong> Closes the observability defect that sent the first pass of the C9 stall analysis at the wrong component and put a vanilla worldgen cost into evidence as a motion defect. Source-only: the C9 build freeze holds and the deployed artifact is still mod SHA-256 765090d1 from c0db122, so the new labels first appear in the build C10a cuts. Because a section row is written only above PerfSectionWarnThresholdMs (25ms default), splitting changes which rows appear - the culprit runner is now named instead of hidden, and same-named LumberjacksMotionRunner rows are not comparable across the label change.</p>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260801063042-landed-the-pre-c10a-vehicles-mounts-research-sev">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
