@@ -33,8 +33,8 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C5 | **Complete on AM4 (2026-07-30)** | `native-20260730-c5-final`: both physical clients entered from a validated Lumberjacks world descriptor while native `PeerInfo` world fields were blank. Each resumed the same first snapshot chunk after a forced socket drop, applied three typed objects, completed once, unloaded to zero stale objects, and spawned nothing when membership was withheld. AM4 suppressed every selected native membership candidate. Wrong protocol/world-generation cells stopped before scene entry. |
 | C6 | **Complete on AM4 (2026-07-30)** | `native-20260730-c6-eighth`: both physical clients applied numbered Lumberjacks motion to the real remote player in both directions while the selected native transform writer and position writes were suppressed. OMEN withheld sequences 600–619; i5 held without native fallback, applied the reliable resync, and queued its ACK. Both clients completed a fresh-process resume; i5 also proved binary-WebSocket fallback when its advertised UDP path was unreachable. |
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
-| C8 | **Ready after mandatory C7 replan (2026-07-31)** | Compose the already-swapped boundaries under unconditional client/server poison, audit remaining method/prefab breadth, and run the full AM4 fault scenario twice. |
-| C9-C10 | Pending in dependency order | Motion-quality evidence begins only after both C8 runs; P7 promotion and fallback deletion remain last. |
+| C8 | **Complete on AM4 (2026-08-01)** | `native-20260731-c8-full44` + `native-20260731-c8-full45`: the full 49-action composition twice from clean launches on one frozen build, unconditional client AND server poison, composition/save-integrity/coverage all passed with zero failed checks both runs. The road there receipted and closed six wall classes (restart-staled zone bank, observe-verdict blindness, never-sent drive delivery, QuickEdit console freeze, outbound priority inversion, unannounced teleport) plus one deadline calibration — none of them gameplay-boundary defects. |
+| C9-C10 | Pending in dependency order | Motion-quality evidence next (see the mandatory post-C8 replan); P7 promotion, the P1 admission backlog, the session-scoped epoch fix, and fallback deletion remain last. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -713,6 +713,81 @@ world reloads.
 server-poison classification, two complete fault compositions, and save-integrity
 comparison.
 
+#### Mandatory replan after C8 â€” 2026-08-01
+
+**What the boundary proved**
+
+- C8 closed on the acceptance pair full44 + full45 on one frozen build: the complete
+  49-action composition (Steam-free cold join, co-presence, movement both directions,
+  pickup both clients, target-ZDO, two-peer ownership contention, zone exit/enter,
+  Gateway restart, WebSocket resume, UDP drop window, clean disconnect/rejoin) run
+  twice from clean client launches with unconditional client AND server native poison,
+  zero poison trips, clean save integrity, and 20/20 machine-checked coverage per run.
+- The road there receipted six additional wall classes in one night, none of them
+  gameplay-boundary defects: (11) the canonical zone bank keys on the world-stable
+  epoch while ZDO ids are server-session-scoped, so a server restart replays phantom
+  uids and a duplicate terrain compiler livelocks spawn readiness; (12a) the journal
+  observe verdict was blind to idempotent receipt-snapshot arrival; (12b) the drive
+  protocol constructed but never enqueued its valid receipt-required delivery â€” the
+  verdict had been passing on bank warmth; (13) the intermittent whole-client freeze
+  was the Windows QuickEdit console selection blocking the BepInEx console WriteFile
+  on Unity's main thread (root-caused from a live hang dump; consoles now disabled on
+  both clients); (14) lease control frames shared the bulk outbound cap and a
+  post-resume interest re-publish flood starved a reissue grant at queue_depth=256;
+  (15) a legitimate local teleport had no legal channel past the observer's 30m
+  fail-closed guard and now announces on the reliable resync lane. A seventh finding
+  (the portal roundtrip return leg deadlining 0.2s after area-ready) was calibration,
+  fixed against the decompiled vanilla teleport contract.
+- The earlier drive-object leak finding (zone 35,-1, 1245 â†’ 1790) was real but
+  coincidental to the spawn failures; the run-tagged `cutoverResidueCleanup` verb now
+  rides the orchestrator's cleanup path unconditionally and receipts `destroyed=0` on
+  clean runs as the steady-state hygiene proof.
+- Method note: every wall above was closed from receipts plus decompiled/read source
+  (ilspycmd against the pinned assembly, dump analysis via procdump + WinDbg), one
+  named defect per failed run. The observability the campaign built is what made that
+  cadence possible.
+
+**Limits that remain explicit**
+
+- C8 proves the selected/registered method and prefab surface, not complete gameplay
+  breadth. Per the C8 breadth audit (`C8-BREADTH-AUDIT-2026-07-31.md`): the 29 P1
+  methods must be admitted and contract-tested before native fallback deletion in
+  C10; three [VERIFY] rows (`RPC_TeleportPlayer`, `UseStamina`, vehicle
+  `RequestControl`/`ReleaseControl`) and three component-family gates
+  (vehicles/mounts, containers/stations, AI/creatures) remain, vehicles/mounts being
+  the largest genuinely novel ownership work left. P2/P3 may ship behind the poison
+  tripwire with the deferred bucket documented in the C10 gate.
+- Wall 11's durable fix is a named admission, not yet built: the world/session epoch
+  must incorporate the server session (or the Gateway must invalidate the zone bank on
+  session change) so ZDOID-carrying banked state cannot survive a server restart. The
+  operational rule until then: discard the journal WAL after any AM4 server restart.
+  C10 must land the durable fix â€” P7 restarts are routine and the operational rule
+  does not survive contact with production.
+- The blast radius of phantom-uid replay is bounded by construction: a full-assembly
+  sweep found exactly two load-time non-owned-destroy sites (`TerrainComp.Awake`,
+  `SmokeSpawner.Awake`). The epoch fix removes the class.
+
+**Revised ordered gates**
+
+1. **C9 â€” rendered motion quality:** run the already-built motion phase capture
+   against the native-zero candidate; produce one side-by-side observer clip covering
+   both direction/role combinations; tune only the Lumberjacks presentation path if
+   objective evidence requires. C9 must not reopen C0â€“C8 architecture without new
+   evidence. Derek's optional verdict on the retained clip is one word.
+2. **C10a â€” admissions and epoch:** admit + contract-test the 29 P1 methods, resolve
+   the three [VERIFY] rows and three component-family gates, and land the
+   session-scoped epoch fix (wall 11's durable half).
+3. **C10b â€” P7 promotion and close:** boot P7 per `RUNBOOK-boot-determinism.md`
+   (step 1 evidence BEFORE applying the boot fix), cut one release from one commit,
+   run the pair scenario on P7 poison-armed, delete migration-only fallback branches,
+   cut and promote the final artifact, re-prove the five boundaries, flip every
+   landscape row to `Swapped`, supersede the PINNED notes.
+
+No new product decision is opened: existing policy already rejects an opaque tunnel,
+requires fail-closed native poison, and keeps AM4 as the development lane. The revised
+remaining estimate is **2â€“6 focused days** (C9 1â€“3, C10 1â€“3) plus C10's two bounded P7
+world reloads.
+
 ### C9 — Post-replacement motion quality and rendered evidence
 
 This is the first slice allowed to use `fieldlab/experiments/`, patch-load A/B, or the
@@ -839,9 +914,11 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0-C7 and every mandatory replan through C7 are complete. Begin **C8a candidate
-closure**: make descriptor rejection single-shot, define unconditional server poison
-without misclassifying idle dedicated-host accept polling, and machine-audit the
-scenario manifest against the complete C8 action/fault list. Then run C8b and C8c
-from clean OMEN/i5 launches. Do not begin motion tuning or the transpiling lab until
-both full compositions are native-zero and save-integrity clean.
+C0-C8 and every mandatory replan through C8 are complete; the acceptance pair
+full44+full45 is retained. Begin **C9 — rendered motion quality**: run the
+already-built motion phase capture against the native-zero candidate and produce one
+side-by-side observer clip covering both direction/role combinations. C9 must not
+reopen C0-C8 architecture without new evidence. C10's preconditions (the 29 P1
+admissions, the three [VERIFY] rows, the component-family gates, and the
+session-scoped epoch fix from wall 11) are queued behind it — see the mandatory
+post-C8 replan.
