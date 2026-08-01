@@ -108,6 +108,15 @@ const focusReviewDays = 14;
 
 const isoDayPattern = /^\d{4}-\d{2}-\d{2}$/;
 
+// The monorepo root, or null when this package runs detached from the wider tree — in
+// a temp test fixture, or a standalone checkout that holds only Lumberjacks. Outermost
+// candidate wins, and the marker is docs/decisions/README.md rather than AGENTS.md,
+// which exists at BOTH the root and inside this package and so resolves to the wrong
+// one. A partial copy of the package does not carry docs/decisions/, which is exactly
+// the case where verify_by paths cannot be adjudicated and must not be failed.
+const gitRoot = [path.resolve(repoRoot, '..'), repoRoot]
+  .find((root) => fs.existsSync(path.join(root, 'docs/decisions/README.md'))) ?? null;
+
 function requireFocusArray(value, label, milestoneIds, updatedAt) {
   if (!Array.isArray(value)) fail(`${label} must be an array`);
   if (value.length === 0) fail(`${label} must not be empty — if nothing is active, say so in one entry`);
@@ -141,11 +150,39 @@ function requireFocusArray(value, label, milestoneIds, updatedAt) {
         fail(`${at}.milestone is not a milestone id: ${item.milestone}`);
       }
     }
+
+    // PD-4: every claim carries the route to check it. A pointer cannot adjudicate
+    // whether a sentence is true, but it turns "is this still right?" from an
+    // afternoon of archaeology into a ten-second read, and it is the part that stays
+    // useful even when the claim it was attached to turns out to be wrong.
+    if (!Array.isArray(item.verify_by) || item.verify_by.length === 0) {
+      fail(`${at}.verify_by must list at least one place to check this claim — a repo path, a runbook, or a command. See docs/decisions/pd-4-evidence-standard.md`);
+    }
+    item.verify_by.forEach((source, sourceIndex) => {
+      requireString(source, `${at}.verify_by[${sourceIndex}]`);
+      // Repo-relative paths are checked to exist. A pointer to a file that was renamed
+      // or deleted is worse than none: it reads as evidence while leading nowhere.
+      // Resolved against both plausible roots: repoRoot is the Lumberjacks package, but
+      // a pointer like fieldlab/... lives at the git root above it. In a standalone
+      // checkout the package IS the root (see the staged-gate tests), so accept either
+      // rather than failing on a layout difference.
+      const looksLikePath = /^[\w.@-]+(?:\/[\w.@-]+)+$/.test(source);
+      // Pointers are written relative to the git root. Only adjudicate when that root
+      // is positively identified: the package gets copied into temp fixtures and
+      // standalone checkouts where the wider tree is legitimately absent, and a guard
+      // that fires on a layout instead of on a mistake teaches people to ignore it.
+      if (looksLikePath && gitRoot && !fs.existsSync(path.join(gitRoot, source))) {
+        fail(`${at}.verify_by names a path that does not exist: ${source}`);
+      }
+    });
   });
 
   const ageDays = Math.floor((Date.parse(updatedAt) - newest) / 86400000);
   if (ageDays > focusReviewDays) {
-    fail(`${label} has not been affirmed in ${ageDays} days (limit ${focusReviewDays}) — re-read each entry and set as_of to today, or correct the text. This field has no other expiry; on 2026-08-01 it was found stating two things that had been false for days while every other check stayed green`);
+    const route = value
+      .map((item, index) => `  [${index}] affirmed ${item.as_of} — check: ${item.verify_by.join(', ')}`)
+      .join('\n');
+    fail(`${label} has not been affirmed in ${ageDays} days (limit ${focusReviewDays}). This field renders onto the public page and has no other expiry; on 2026-08-01 it was found stating two things that had been false for days while every other check stayed green.\nRe-read each source below, correct the text if reality moved, then set as_of to today:\n${route}`);
   }
 }
 
@@ -574,6 +611,7 @@ function render(roadmap, notes) {
   const focus = roadmap.current_focus.map((item) => `<article class="focus-card ${cssToken(item.status)}">
     <div class="focus-head"><span class="pill ${cssToken(item.status)}">${escapeHtml(focusStatuses[item.status])}</span>${item.milestone ? `<span class="dep">${escapeHtml(item.milestone)}</span>` : ''}<span class="focus-asof">affirmed ${escapeHtml(item.as_of)}</span></div>
     <p>${escapeHtml(item.text)}</p>
+    <p class="focus-verify"><span>check this against</span>${item.verify_by.map((source) => `<code>${escapeHtml(source)}</code>`).join('')}</p>
   </article>`).join('');
   const tracks = roadmap.tracks.map((track) => `<article class="track ${escapeHtml(track.id)}">
     <div class="track-label">${escapeHtml(track.name)}</div>
@@ -715,6 +753,9 @@ function render(roadmap, notes) {
     .focus-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
     .focus-asof { margin-left: auto; color: var(--muted); font-size: .74rem; letter-spacing: .04em; text-transform: uppercase; }
     .focus-card p { margin: 0; line-height: 1.62; }
+    .focus-verify { margin-top: 9px !important; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: .74rem; }
+    .focus-verify span { color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .focus-verify code { padding: 1px 6px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); background: var(--panel); font-size: .95em; }
     .truth-card.proved { border-color: rgba(104,211,145,.38); }
     .truth-card.not-yet { border-color: rgba(246,196,83,.38); }
     .truth-card h3 { margin-bottom: 11px; color: var(--green); }

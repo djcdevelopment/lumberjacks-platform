@@ -359,7 +359,7 @@ test('the staged gate holds for a standalone checkout under a hook, where the pa
 /// formatting; each case is a shape the old contract accepted silently.
 
 function focusEntry(overrides = {}) {
-  return { status: 'active', as_of: '2026-08-01', text: 'Something is true right now', ...overrides };
+  return { status: 'active', as_of: '2026-08-01', text: 'Something is true right now', verify_by: ['AGENTS.md'], ...overrides };
 }
 
 function withFocus(entries) {
@@ -421,4 +421,33 @@ test('the freshness gate measures the newest entry, so one fresh line keeps the 
 
 test('the live roadmap satisfies the current_focus contract', () => {
   validate(baseRoadmap(), [baseNote()]);
+});
+
+/// verify_by guards (PD-4). A claim on the public page carries the route to check it.
+
+test('a focus entry must say where its claim can be checked', () => {
+  const entry = focusEntry();
+  delete entry.verify_by;
+  expectFailure([baseNote()], /verify_by must list at least one place/, withFocus([entry]));
+});
+
+test('an empty verify_by is refused — the field exists to be usable, not present', () => {
+  expectFailure([baseNote()], /verify_by must list at least one place/, withFocus([focusEntry({ verify_by: [] })]));
+});
+
+test('a verify_by pointer to a path that no longer exists is refused, because a dead pointer reads as evidence', () => {
+  expectFailure(
+    [baseNote()],
+    /verify_by names a path that does not exist: fieldlab\/docs\/adr\/9999-nope\.md/,
+    withFocus([focusEntry({ verify_by: ['fieldlab/docs/adr/9999-nope.md'] })]),
+  );
+});
+
+test('verify_by accepts a real repo path and a prose instruction side by side', () => {
+  validate(withFocus([focusEntry({ verify_by: ['AGENTS.md', 'gcloud compute instances describe (P7)'] })]), [baseNote()]);
+});
+
+test('the staleness failure hands over the inspection route instead of just blocking', () => {
+  const stale = focusEntry({ as_of: '2026-06-01', verify_by: ['AGENTS.md'] });
+  expectFailure([baseNote()], /Re-read each source below[\s\S]*check: AGENTS\.md/, withFocus([stale]));
 });

@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-08-01T09:31:56.678Z",
+  "updated_at": "2026-08-01T09:42:13.990Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -198,31 +198,54 @@
     {
       "status": "active",
       "as_of": "2026-08-01",
-      "text": "NETWORKING LANE REOPENED. The 2026-07-28 hard hold is superseded: it existed because every remaining step needed a human driving two Steam clients by hand, and the unattended OMEN+i5 harness removed that dependency. The lane now runs as the native-network final cutover, sequenced in fieldlab/plan-native-network-final-cutover.md; fieldlab/PINNED-networking-lane-2026-07.md is retained only as the historical record of the pause and its task list is not current instruction. Slices C0-C8 are complete and C9 frame-timing evidence is gathered. This remains an unattended-harness lane — no live two-human Steam test is scheduled, which was the point of the original hold and has not changed. The adoption track continues in parallel: A7 Community Workbench, a public catalog of the tools a volunteer can run today, each with an honest status, a cold-start package, one discussion thread, and a named first task."
+      "text": "NETWORKING LANE REOPENED. The 2026-07-28 hard hold is superseded: it existed because every remaining step needed a human driving two Steam clients by hand, and the unattended OMEN+i5 harness removed that dependency. The lane now runs as the native-network final cutover, sequenced in fieldlab/plan-native-network-final-cutover.md; fieldlab/PINNED-networking-lane-2026-07.md is retained only as the historical record of the pause and its task list is not current instruction. Slices C0-C8 are complete and C9 frame-timing evidence is gathered. This remains an unattended-harness lane — no live two-human Steam test is scheduled, which was the point of the original hold and has not changed. The adoption track continues in parallel: A7 Community Workbench, a public catalog of the tools a volunteer can run today, each with an honest status, a cold-start package, one discussion thread, and a named first task.",
+      "verify_by": [
+        "fieldlab/plan-native-network-final-cutover.md",
+        "fieldlab/PINNED-networking-lane-2026-07.md",
+        "git log --oneline -20 -- fieldlab/"
+      ]
     },
     {
       "status": "deployed_config",
       "as_of": "2026-08-01",
       "milestone": "M1",
-      "text": "P7 IS CURRENTLY STOPPED (terminated 2026-07-29); everything in this entry describes what was last deployed there, not a running environment. P7 Gateway and server were left on admitted release m30-rolecontrol-20260723-r1. The public client-pull pointer is m31-motionphase-20260724-r1, retaining the admitted m30 mod identity; OMEN and i5 installed the same verified package and client DLL through Companion with rollback backups. The i5 workbench now recovers a post-sleep Valheim bind-mount stall through its durable interactive Docker task without starting the game. CRE-E06 attributes phase evidence through final contiguous APPLY and OBSERVE role segments, rejects OBSERVE-side APPLY activity as contradictory, and keeps writer identity explicitly unresolved. CRE-E07 rejected fixed delay; CRE-E08 then derived a 100-200 ms relative-transit adaptive candidate that passed its repeatable synthetic A/B gate while retaining first-burst limitations. No new DLL was built. The next live gate is one bounded straight-movement role reversal with shared phase summaries; no broader network authority changed."
+      "text": "P7 IS CURRENTLY STOPPED (terminated 2026-07-29); everything in this entry describes what was last deployed there, not a running environment. P7 Gateway and server were left on admitted release m30-rolecontrol-20260723-r1. The public client-pull pointer is m31-motionphase-20260724-r1, retaining the admitted m30 mod identity; OMEN and i5 installed the same verified package and client DLL through Companion with rollback backups. The i5 workbench now recovers a post-sleep Valheim bind-mount stall through its durable interactive Docker task without starting the game. CRE-E06 attributes phase evidence through final contiguous APPLY and OBSERVE role segments, rejects OBSERVE-side APPLY activity as contradictory, and keeps writer identity explicitly unresolved. CRE-E07 rejected fixed delay; CRE-E08 then derived a 100-200 ms relative-transit adaptive candidate that passed its repeatable synthetic A/B gate while retaining first-burst limitations. No new DLL was built. The next live gate is one bounded straight-movement role reversal with shared phase summaries; no broader network authority changed.",
+      "verify_by": [
+        "HANDOFF-2026-07-29.md",
+        "fieldlab/docs/adr/0014-boot-must-converge-or-say-so.md",
+        "gcloud compute instances describe (P7) — the VM state is the only authority here"
+      ]
     },
     {
       "status": "deployed_config",
       "as_of": "2026-08-01",
       "milestone": "M1",
-      "text": "P7 is stopped (terminated 2026-07-29) and nothing is serving from it; this describes the configuration it will come back up on. Mod identity m30-rolecontrol-20260723-r1 was last deployed on P7 with the transport boundary collapsed by default, a side NET SHOW/HIDE recovery tab, alpha fault switches, client-pull updates, redacted Companion diagnostics, retained two-machine captures, bounded apply/observe role control, and the m31 client-only motion-phase evidence build. Public TLS preserves enrolled recipients through WebSocket setup and exposes a config-preserving update package; native Valheim still owns simulation, ownership, non-ZDO RPCs, relevance, and presentation unless a tester explicitly enables local motion apply. Distinct-recipient fan-out and role-reversal visual proof remain a two-owned-account canary gate. TLS/Caddy still gives anonymous requests private-socket capability and remains accepted only for the known-cohort alpha; stop-ship before widening."
+      "text": "P7 is stopped (terminated 2026-07-29) and nothing is serving from it; this describes the configuration it will come back up on. Mod identity m30-rolecontrol-20260723-r1 was last deployed on P7 with the transport boundary collapsed by default, a side NET SHOW/HIDE recovery tab, alpha fault switches, client-pull updates, redacted Companion diagnostics, retained two-machine captures, bounded apply/observe role control, and the m31 client-only motion-phase evidence build. Public TLS preserves enrolled recipients through WebSocket setup and exposes a config-preserving update package; native Valheim still owns simulation, ownership, non-ZDO RPCs, relevance, and presentation unless a tester explicitly enables local motion apply. Distinct-recipient fan-out and role-reversal visual proof remain a two-owned-account canary gate. TLS/Caddy still gives anonymous requests private-socket capability and remains accepted only for the known-cohort alpha; stop-ship before widening.",
+      "verify_by": [
+        "Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json (current_release block)",
+        "HANDOFF-2026-07-29.md"
+      ]
     },
     {
       "status": "dormant",
       "as_of": "2026-08-01",
       "milestone": "M7",
-      "text": "AoI BAND-SHAPING — distance-band area-of-interest was armed permanently on P7 as of 2026-07-21 and stays armed whenever P7 next runs, but P7 is stopped, so none of this is observable in play today (near <30m full rate · mid 30–64m thinned to 5Hz · far >64m dropped · landmarks by granted reach), mod-side on the redirect producer (ADR 0011). It reshapes the eligible ZDO set upstream: at the densest single-player build ~85% of candidates drop, losslessly. Open before it earns full trust: the far→approach re-sync of a dropped static object, and multi-player density."
+      "text": "AoI BAND-SHAPING — distance-band area-of-interest was armed permanently on P7 as of 2026-07-21 and stays armed whenever P7 next runs, but P7 is stopped, so none of this is observable in play today (near <30m full rate · mid 30–64m thinned to 5Hz · far >64m dropped · landmarks by granted reach), mod-side on the redirect producer (ADR 0011). It reshapes the eligible ZDO set upstream: at the densest single-player build ~85% of candidates drop, losslessly. Open before it earns full trust: the far→approach re-sync of a dropped static object, and multi-player density.",
+      "verify_by": [
+        "fieldlab/docs/adr/0011-aoi-lives-on-the-producer.md",
+        "HANDOFF-2026-07-29.md"
+      ]
     },
     {
       "status": "deployed_config",
       "as_of": "2026-08-01",
       "milestone": "M1",
-      "text": "the community-facing surface no longer runs on P7 at all; it moved to AM4, so a stopped P7 does not take it down. On P7 itself, Gateway image m30-rolecontrol-20260723-r1 was configured to serve the local Companion surfaces, m31-motionphase-20260724-r1 runtime client-pull pointer, Wave 0 handoff packet, and public credential-free Companion bootstrap lane. Modpack current.json is verified by Gateway on every request, and Companion bootstrap r26 includes the operator scripts required by the UI command surface."
+      "text": "the community-facing surface no longer runs on P7 at all; it moved to AM4, so a stopped P7 does not take it down. On P7 itself, Gateway image m30-rolecontrol-20260723-r1 was configured to serve the local Companion surfaces, m31-motionphase-20260724-r1 runtime client-pull pointer, Wave 0 handoff packet, and public credential-free Companion bootstrap lane. Modpack current.json is verified by Gateway on every request, and Companion bootstrap r26 includes the operator scripts required by the UI command surface.",
+      "verify_by": [
+        "HANDOFF-2026-07-29.md",
+        "Lumberjacks/docs/workbench/workbench.json",
+        "tools/wave0/Test-Wave0RoadmapFreshness.ps1"
+      ]
     }
   ],
   "tracks": [
