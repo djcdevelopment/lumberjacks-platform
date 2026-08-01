@@ -352,7 +352,7 @@
       <div class="headline">M0 CLOSED â€” FROZEN RELEASE LIVE AND PUBLIC Â· VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-01T07:35:28.351Z</span>
+        <span>Updated 2026-08-01T08:16:12.522Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -982,7 +982,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260801073528-committed-the-nine-c8-wall-hunt-scenario-files-t">
+        <div class="journal"><article class="journal-entry" id="note-20260801081612-make-the-project-owned-mcp-independently-reprodu">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-01T08:16:12.522Z">2026-08-01T08:16:12.522Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>baseline</span>
+        <span>A7</span>
+      </div>
+      <h3>Make the project-owned MCP independently reproducible</h3>
+      <p><strong>Impact:</strong> network/mcp is Baseline&#39;s own localhost mod-dev gateway, but its launcher carried a second interpreter rung pointing at a private operator virtual environment, so a component documented as project-owned silently preferred one machine. That rung is removed: the launcher now resolves COMFY_GATEWAY_PYTHON when explicitly set and otherwise plain python on PATH, with no machine-specific fallback. Dependencies are declared once in network/mcp/requirements.txt, and both the contributor setup in the README and the Docker image install from that same declaration, so a local environment and a built image resolve identical versions. The mod and MCP test instructions now run under the active project environment. This is an architectural correction about coupling, not a prohibition on naming: HEARTH and Mechnet remain valid terminology for development provenance and for drawing the product boundary, and what the new checks reject is concrete private environment configuration reaching into the distributable surface.</p>
+      <details><summary>Verification (5)</summary><ul><li>Gateway starts and answers healthz both from PATH-resolved python with no environment variable set and from an explicitly supplied interpreter.</li><li>New distribution-independence test scans only the distributable MCP and workbench-tool surface, leaving internal evidence and provenance untouched; proven to fail when the original launcher rung is reintroduced, then restored green.</li><li>Zip privacy scanner gains narrowly scoped private-configuration rules, drops its own hardcoded machine path, and now proves in its clean fixture that bare provenance naming and unrelated loopback endpoints stay legal.</li><li>Full set green after integrating the inbound-direction boundary clause: 10 MCP tests, 28 roadmap tests, 19 workbench tests, 14 scanner rules, both generator checks current, telemetry-starter zip built CLEAN through the mandatory gate.</li><li>Append-only history was not modified: the existing journal and the generated community roadmap page are byte-for-byte unchanged, and the new note validator is wired into note authoring only.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>network/mcp/etc/start-comfy-gateway.cmd</code> <code>network/mcp/requirements.txt</code> <code>network/mcp/tests/test_distribution_independence.py</code> <code>docs/audit/2026-08-01-hearth-boundary-audit.md</code></div>
+      <div class="containing-commit">Recorded by Claude · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260801073528-committed-the-nine-c8-wall-hunt-scenario-files-t">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

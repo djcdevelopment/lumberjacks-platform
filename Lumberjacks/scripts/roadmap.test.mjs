@@ -14,7 +14,13 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { validate, noteKinds, notesRelative, outputRelative } from './roadmap.mjs';
+import {
+  validate,
+  validatePrivateEnvironment,
+  noteKinds,
+  notesRelative,
+  outputRelative,
+} from './roadmap.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const schemaPath = path.join(repoRoot, 'docs/roadmap/commit-note.schema.json');
@@ -125,6 +131,56 @@ test('the declarative schema agrees with the enforced kind vocabulary', () => {
     [...schema.required].sort(),
     Object.keys(baseNote()).sort(),
   );
+});
+
+/// validatePrivateEnvironment guards newly authored public notes only. The line it has
+/// to hold is between naming a private system (legal — provenance and boundary language)
+/// and publishing its configuration (not legal). Both halves are asserted: a guard that
+/// only proves rejections would be satisfied by a blanket name ban, which is precisely
+/// the rule that got rejected on 2026-08-01.
+const privateEnvironmentRejections = [
+  ['a private operator repository path', 'Packed the files from C:\\work\\commandcenter\\hearth for review', /private operator repository path/],
+  ['a user-profile absolute path', 'Wrote the bundle to C:\\Users\\someaccount\\Downloads\\kit.zip', /user-profile absolute path/],
+  ['the private endpoint by IP', 'Routed the draft through http://127.0.0.1:8710/mcp', /private HEARTH gateway endpoint/],
+  ['the private endpoint by hostname', 'Routed the draft through localhost:8710/mcp', /private HEARTH gateway endpoint/],
+  ['a credential header value', 'Called it with X-Hearth-Key: redacted as the caller', /credential header value/],
+  ['a private interpreter path', 'Ran it under fleet-worker-node\\.venv-omen\\Scripts\\python.exe', /private interpreter path/],
+];
+
+for (const [label, text, fragment] of privateEnvironmentRejections) {
+  test(`a new public note may not publish ${label}`, () => {
+    assert.throws(
+      () => validatePrivateEnvironment(text, 'new roadmap note'),
+      (error) => {
+        assert.match(error.message, fragment);
+        return true;
+      },
+      `expected ${label} to be rejected`,
+    );
+  });
+}
+
+const privateEnvironmentAllowed = [
+  ['bare provenance attribution', 'Survey drafted via a HEARTH-routed large-context pass over Gateway sources'],
+  ['boundary clarification naming both systems', 'HEARTH/Mechnet, the operator\'s personal AI lab, is explicitly NOT part of any Baseline deliverable'],
+  ['an unrelated loopback endpoint', 'The project MCP gateway listens on http://127.0.0.1:8720/mcp'],
+  ['a longer port that merely starts with the private one', 'The probe bound 127.0.0.1:87101 for the run'],
+  ['a placeholder profile path', 'Extract the kit under C:\\Users\\<you>\\Downloads and run it cold'],
+  ['a repo-relative path', 'Evidence lives at network/mcp/etc/start-comfy-gateway.cmd'],
+];
+
+for (const [label, text] of privateEnvironmentAllowed) {
+  test(`a new public note may still contain ${label}`, () => {
+    assert.doesNotThrow(() => validatePrivateEnvironment(text, 'new roadmap note'));
+  });
+}
+
+test('the whole existing journal predates the guard and is exempt — it is never re-validated against it', () => {
+  // The guard is wired into addNote, not validate(), on purpose: history is
+  // append-only. If this ever moves into validate(), this test says why not.
+  const journal = fs.readFileSync(path.join(repoRoot, 'docs/roadmap/commit-notes.jsonl'), 'utf8');
+  assert.ok(/HEARTH/i.test(journal), 'fixture assumption: the journal does name HEARTH');
+  assert.doesNotThrow(() => validate(baseRoadmap(), [baseNote()]));
 });
 
 test('the live journal satisfies its own schema', () => {

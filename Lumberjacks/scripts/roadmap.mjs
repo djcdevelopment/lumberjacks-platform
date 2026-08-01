@@ -148,6 +148,31 @@ function validateLicenseWording(text, label) {
   }
 }
 
+// The public roadmap may name private systems; it may not expose or prescribe their
+// configuration. Historical journal records are append-only and exempt — a note saying
+// work was drafted, routed, or reviewed through HEARTH is legitimate development
+// provenance and stays exactly as written. Newly authored notes may likewise name
+// HEARTH or Mechnet for provenance or to draw the product boundary; the names are not
+// secrets and banning them would suppress accurate architecture language while catching
+// none of the unnamed coupling that actually breaks project independence (see the
+// network/mcp launcher defect, 2026-08-01, which pointed at a private venv without
+// naming any private system at all). What is rejected below is concrete private
+// environment detail: paths, endpoints, credentials, and interpreter selection.
+function validatePrivateEnvironment(text, label) {
+  const rules = [
+    { what: 'a private operator repository path', regex: /C:\\work\\commandcenter/i },
+    { what: 'a user-profile absolute path', regex: /C:\\Users\\[A-Za-z0-9._-]+\\/i },
+    { what: 'the private HEARTH gateway endpoint', regex: /(?:127\.0\.0\.1|localhost):8710\b/i },
+    { what: 'a credential header value', regex: /x-(?:hearth|comfy|lumberjacks-telemetry)-key\s*[:=]\s*\S+/i },
+    { what: 'a private interpreter path', regex: /\.venv-omen|fleet-worker-node/i },
+  ];
+  for (const rule of rules) {
+    if (rule.regex.test(text)) {
+      fail(`${label} exposes ${rule.what} — the public roadmap may name a private system for provenance or boundary clarity, but must not publish its configuration`);
+    }
+  }
+}
+
 function validate(roadmap, notes, rawText = '') {
   if (roadmap.schema_version !== 2) fail('roadmap.schema_version must be 2');
   requireString(roadmap.title, 'roadmap.title');
@@ -1102,10 +1127,9 @@ function addNote(args) {
     verification: many(options, 'verification'),
     evidence: many(options, 'evidence'),
   };
-  validateLicenseWording(
-    [note.summary, note.impact, ...note.verification, ...note.evidence].join(' '),
-    'new roadmap note',
-  );
+  const noteText = [note.summary, note.impact, ...note.verification, ...note.evidence].join(' ');
+  validateLicenseWording(noteText, 'new roadmap note');
+  validatePrivateEnvironment(noteText, 'new roadmap note');
   const nextNotes = [...notes, note];
   roadmap.updated_at = at;
   const roadmapRaw = `${JSON.stringify(roadmap, null, 2)}\n`;
@@ -1227,6 +1251,7 @@ function usage() {
 
 export {
   validate,
+  validatePrivateEnvironment,
   render,
   check,
   noteKinds,

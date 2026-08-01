@@ -19,9 +19,16 @@ and the matched text truncated to 60 characters.
 A .zip file or a directory to scan.
 
 .PARAMETER SelfTest
-Builds a clean fixture and a poisoned fixture (one violation per rule) under the
-session scratchpad, runs both through the scanner, asserts the clean fixture is
+Builds a clean fixture and a poisoned fixture (one violation per rule) under a
+temporary directory, runs both through the scanner, asserts the clean fixture is
 spotless and the poisoned fixture trips every rule, and prints PASS/FAIL per rule.
+The clean fixture also carries deliberate allowed-control cases (bare private-system
+names used as attribution, unrelated loopback endpoints) that must NOT be flagged.
+Finally it asserts this script's own source contains no user-specific absolute path.
+
+.PARAMETER ScratchRoot
+Directory to build self-test fixtures under. Defaults to a per-run directory in the
+system temp location. Nothing machine-specific is baked into this script.
 
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File Test-WorkbenchZipPrivacy.ps1 -Path C:\staging\quest-picker
@@ -37,15 +44,26 @@ param(
     [Parameter(Position = 0)]
     [string]$Path,
 
-    [switch]$SelfTest
+    [switch]$SelfTest,
+
+    [string]$ScratchRoot
 )
 
 # ----------------------------------------------------------------------------
 # Constants
 # ----------------------------------------------------------------------------
 
-$Script:RepoRoot = 'C:\work\baseline'
-$Script:ScratchpadRoot = 'C:\Users\derek\AppData\Local\Temp\claude\C--work-baseline\a2bacb2d-1122-4c2c-8b49-4e6ea15132e6\scratchpad'
+# Both roots are resolved from context, never hardcoded: this script is itself a
+# distributable artifact, so a machine-specific path baked in here would be the
+# very leak it exists to catch (and the self-test now proves it stays clean).
+# tools\workbench\ -> tools\ -> repo root.
+$Script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).ProviderPath
+
+if ($ScratchRoot) {
+    $Script:ScratchpadRoot = $ScratchRoot
+} else {
+    $Script:ScratchpadRoot = Join-Path ([System.IO.Path]::GetTempPath()) 'workbench-zip-privacy'
+}
 
 # Text files get a full content scan on top of the always-on filename scan.
 $Script:TextExtensions = @(
@@ -257,9 +275,35 @@ function Get-ScanRules {
         AllowedValues = @()
     }
 
-    # f) absolute local paths that leak machine layout
-    $rules += [PSCustomObject]@{ Id = 'f.path-users-derek'; Pattern = '(?i)C:\\Users\\derek'; AllowedValues = @() }
+    # f) absolute local paths that leak machine layout.
+    #
+    # f.path-user-profile is deliberately generic rather than one hardcoded
+    # account name: naming the account in the rule would put a user-specific
+    # path in this very file. Placeholder forms a doc legitimately uses -
+    # C:\Users\<you>\, C:\Users\%USERNAME%\ - do not match, because the angle
+    # and percent characters are outside the name class.
+    $rules += [PSCustomObject]@{
+        Id = 'f.path-user-profile'; Pattern = '(?i)C:\\Users\\[A-Za-z0-9._-]+\\'; AllowedValues = @()
+    }
     $rules += [PSCustomObject]@{ Id = 'f.path-commandcenter'; Pattern = '(?i)C:\\work\\commandcenter'; AllowedValues = @() }
+
+    # f.path-private-interpreter: the operator's private venv / fleet-worker
+    # layout. These are the concrete couplings that let a "project-owned" tool
+    # quietly require the operator's machine - the launcher defect this rule was
+    # written for named no private system at all, it just pointed at one.
+    $rules += [PSCustomObject]@{
+        Id = 'f.path-private-interpreter'; Pattern = '(?i)\.venv-omen|fleet-worker-node'; AllowedValues = @()
+    }
+
+    # h) the specific private HEARTH gateway endpoint. Scoped to the exact
+    # host:port pair in both spellings actually used - NOT loopback generally and
+    # NOT port 8710 independently, either of which a project-owned container or
+    # local service may legitimately bind. The names HEARTH and Mechnet are not
+    # secrets and are not matched: they are valid in provenance, boundary docs,
+    # and architecture records. What may not ship is private *configuration*.
+    $rules += [PSCustomObject]@{
+        Id = 'h.private-hearth-endpoint'; Pattern = '(?i)(?:127\.0\.0\.1|localhost):8710\b'; AllowedValues = @()
+    }
 
     # g) GCP external IP - only added when unambiguously found (see Get-GcpExternalIp)
     $gcpIp = Get-GcpExternalIp -RepoRoot $RepoRoot
@@ -485,9 +529,11 @@ function Write-ScanReport {
         'd.steamid64'          = 'SteamID64'
         'e.cred-header'        = 'Non-default service credential header value'
         'e.cred-generic'       = 'Generic secret/password/token/api-key literal'
-        'f.path-users-derek'   = 'Absolute path leaking C:\Users\derek'
+        'f.path-user-profile'  = 'Absolute path into a user profile (C:\Users\<name>\)'
         'f.path-commandcenter' = 'Absolute path leaking C:\work\commandcenter'
+        'f.path-private-interpreter' = 'Machine-specific private interpreter/service path'
         'g.gcp-external-ip'    = "P7 GCP VM external IPv4 address"
+        'h.private-hearth-endpoint' = 'Private HEARTH gateway endpoint (host:port)'
     }
 
     Write-Host "Test-WorkbenchZipPrivacy scan of: $SourcePath"
@@ -557,6 +603,25 @@ function New-CleanFixture {
         "No SteamID, no credentials, no tailnet hosts here."
     )
 
+    # Allowed controls. These exist to prove the rules stay narrow: a bare
+    # private-system NAME used as attribution or boundary language is legal, and
+    # so is any loopback endpoint that is not the private gateway's. Only concrete
+    # private configuration is a finding. If a future rule flags either of these,
+    # the clean fixture fails and the rule gets reconsidered before it ships.
+    Write-TextFileUtf8 -Path (Join-Path $Dir 'attribution.md') -Content (
+        "This section was drafted by Gemini Pro via HEARTH and reviewed here.`n" +
+        "HEARTH/Mechnet is the operator's private lab and is not part of this toolkit;`n" +
+        "naming it to draw that boundary is exactly what this file is checking stays legal.`n"
+    )
+
+    Write-TextFileUtf8 -Path (Join-Path $Dir 'loopback-ok.md') -Content (
+        "The project MCP gateway listens on http://127.0.0.1:8720/mcp.`n" +
+        "A dev web server on localhost:3000 is fine, and so is 127.0.0.1:87101 -`n" +
+        "the rule is anchored to the whole port, so a longer port that merely starts`n" +
+        "with 8710 is not the private endpoint.`n" +
+        "Loopback is not the problem; one specific private endpoint is.`n"
+    )
+
     Write-TextFileUtf8 -Path (Join-Path $Dir 'data.csv') -Content "col1,col2`nval1,val2`n"
 }
 
@@ -590,13 +655,48 @@ function New-PoisonedFixture {
 
     Write-TextFileUtf8 -Path (Join-Path $Dir 'poison-e-generic.cfg') -Content 'secret = "stripe-token-redacted"'
 
-    Write-TextFileUtf8 -Path (Join-Path $Dir 'poison-f-users.txt') -Content 'Local path: C:\Users\derek\projects\secret-notes'
+    # Assembled from parts on purpose. A complete user-profile path written as a
+    # literal here would be a user-specific absolute path *in this script*, which
+    # Test-NoUserSpecificPathInSelf exists to forbid. The fixture file on disk
+    # still gets the full path, so the rule fires normally.
+    $profilePath = @('C:\Users', 'fixtureaccount', 'projects', 'secret-notes') -join '\'
+    Write-TextFileUtf8 -Path (Join-Path $Dir 'poison-f-users.txt') -Content "Local path: $profilePath"
 
     Write-TextFileUtf8 -Path (Join-Path $Dir 'poison-f-commandcenter.txt') -Content 'See C:\work\commandcenter\.mcp.json for the key'
+
+    Write-TextFileUtf8 -Path (Join-Path $Dir 'poison-f-interpreter.txt') -Content (
+        'Interpreter: C:\somewhere\fleet-worker-node\.venv-omen\Scripts\python.exe'
+    )
+
+    # Both spellings of the private gateway endpoint, since both appear in real docs.
+    Write-TextFileUtf8 -Path (Join-Path $Dir 'poison-h-endpoint-ip.txt') -Content 'Door is at http://127.0.0.1:8710/mcp'
+    Write-TextFileUtf8 -Path (Join-Path $Dir 'poison-h-endpoint-host.txt') -Content 'Or reach it via localhost:8710/mcp'
 
     if ($GcpIp) {
         Write-TextFileUtf8 -Path (Join-Path $Dir 'poison-g-ip.txt') -Content "Server lives at $GcpIp for now."
     }
+}
+
+# ----------------------------------------------------------------------------
+# Self-inspection: this script ships inside the toolkit, so it is held to the
+# same rule it enforces. A hardcoded scratchpad path under a real account is
+# exactly the leak f.path-user-profile describes, and it lived here until
+# 2026-08-01 - a scanner cannot be the one file exempt from its own deny list.
+# ----------------------------------------------------------------------------
+
+function Test-NoUserSpecificPathInSelf {
+    $selfPath = $PSCommandPath
+    if (-not $selfPath) { $selfPath = Join-Path $PSScriptRoot 'Test-WorkbenchZipPrivacy.ps1' }
+    if (-not (Test-Path -LiteralPath $selfPath)) {
+        return [PSCustomObject]@{ Pass = $false; Detail = "could not locate own source at $selfPath" }
+    }
+    $text = Read-TextFileUtf8 -Path $selfPath
+    $hits = [regex]::Matches($text, '(?i)C:\\Users\\[A-Za-z0-9._-]+\\')
+    if ($hits.Count -eq 0) {
+        return [PSCustomObject]@{ Pass = $true; Detail = 'no user-specific absolute path in own source' }
+    }
+    $shown = (@($hits | ForEach-Object { $_.Value }) | Select-Object -Unique) -join ', '
+    return [PSCustomObject]@{ Pass = $false; Detail = "own source contains user-specific path(s): $shown" }
 }
 
 # ----------------------------------------------------------------------------
@@ -639,7 +739,8 @@ function Invoke-SelfTest {
             'c.tailnet-fqdn', 'c.hostname-i5laptop',
             'd.steamid64',
             'e.cred-header', 'e.cred-generic',
-            'f.path-users-derek', 'f.path-commandcenter'
+            'f.path-user-profile', 'f.path-commandcenter', 'f.path-private-interpreter',
+            'h.private-hearth-endpoint'
         )
         if ($sampleOwner) { $expectedRules += 'a.player-handle' }
         if ($ctx.GcpIp) { $expectedRules += 'g.gcp-external-ip' }
@@ -647,7 +748,17 @@ function Invoke-SelfTest {
         $overallPass = $true
 
         Write-Host ''
-        Write-Host '--- CLEAN fixture result ---'
+        Write-Host '--- SELF-INSPECTION: no user-specific absolute path in this script ---'
+        $selfCheck = Test-NoUserSpecificPathInSelf
+        if ($selfCheck.Pass) {
+            Write-Host ("PASS: {0}" -f $selfCheck.Detail)
+        } else {
+            $overallPass = $false
+            Write-Host ("FAIL: {0}" -f $selfCheck.Detail)
+        }
+
+        Write-Host ''
+        Write-Host '--- CLEAN fixture result (includes allowed controls: bare HEARTH/Mechnet attribution, unrelated loopback endpoints) ---'
         if ($cleanFindings.Count -eq 0) {
             Write-Host 'PASS: clean fixture produced 0 findings.'
         } else {
@@ -667,6 +778,24 @@ function Invoke-SelfTest {
             } else {
                 $overallPass = $false
                 Write-Host "FAIL: $ruleId NOT caught"
+            }
+        }
+
+        # Per-rule coverage above is satisfied by a single hit, which would let one
+        # spelling of the private endpoint pass unnoticed. Both are used in real
+        # docs, so both are asserted by file.
+        Write-Host ''
+        Write-Host '--- Private-endpoint spellings (both must be caught) ---'
+        foreach ($pair in @(
+            @{ File = 'poison-h-endpoint-ip.txt';   Label = '127.0.0.1:8710' },
+            @{ File = 'poison-h-endpoint-host.txt'; Label = 'localhost:8710' }
+        )) {
+            $hit = @($poisonFindings | Where-Object { $_.Rule -eq 'h.private-hearth-endpoint' -and $_.File -eq $pair.File })
+            if ($hit.Count -gt 0) {
+                Write-Host ("PASS: {0} caught" -f $pair.Label)
+            } else {
+                $overallPass = $false
+                Write-Host ("FAIL: {0} NOT caught" -f $pair.Label)
             }
         }
 

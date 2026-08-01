@@ -5,9 +5,11 @@ profile, run a bounded lab test, read back what actually happened.
 
 ## What it is
 
-A local MCP gateway, intentionally separate from the fleet-wide Hearth
-gateway — its own auth header, port, ledger, and tool registry, scoped to
-Valheim mod development. It listens at `http://127.0.0.1:8720/mcp`
+A local MCP gateway, intentionally separate from any general-purpose MCP
+gateway already running on the operator's machine — its own auth header,
+port, ledger, and tool registry, scoped to Valheim mod development. It
+ships in this repository and runs from it. It listens at
+`http://127.0.0.1:8720/mcp`
 (header `X-Comfy-Key: comfy-dev-local` for dev use; a separate
 `valheim-mod-local` key is reserved for a future in-mod client) and also
 exposes a few plain dev HTTP routes (`/healthz`, `/valheim/report`,
@@ -43,18 +45,20 @@ with a dev key, on purpose.
 
 ## Run it in about 20 minutes
 
-1. Get a Python environment with `mcp==1.28.1` installed. Set
-   `COMFY_GATEWAY_PYTHON` to that interpreter's path if you don't want to
-   rely on the fallback chain below.
-2. From the repo root: `.\network\mcp\etc\start-comfy-gateway.cmd`. It
-   picks its interpreter in this order: `%COMFY_GATEWAY_PYTHON%` (if set)
-   → Hearth's OMEN venv, if that path happens to exist on your machine →
-   plain `python` on `PATH`. Whichever one it picks still needs
-   `mcp==1.28.1` installed — the env var only changes which interpreter
-   runs, not the dependency.
+1. From the repo root, make a project-local virtual environment and install
+   the declared dependencies:
+   `python -m venv .venv; .\.venv\Scripts\Activate.ps1; pip install -r network\mcp\requirements.txt`
+2. Still at the repo root: `.\network\mcp\etc\start-comfy-gateway.cmd`. It
+   uses `%COMFY_GATEWAY_PYTHON%` if you've set that to a specific
+   interpreter, and otherwise plain `python` on `PATH` — the venv you just
+   activated. Either way that environment needs the requirements installed;
+   the variable only changes which interpreter runs, not the dependency.
 
    Or run it directly:
-   `$env:PYTHONPATH = "C:\work\baseline\network\mcp"; python -m comfy_gateway.kernel.gateway`
+   `$env:PYTHONPATH = "$PWD\network\mcp"; python -m comfy_gateway.kernel.gateway`
+
+   Or skip local Python entirely and build the image:
+   `docker build -t comfy-mcp-gateway network\mcp`
 3. From any MCP client, point it at `http://127.0.0.1:8720/mcp` with
    header `X-Comfy-Key: comfy-dev-local`, and list its tools.
 
