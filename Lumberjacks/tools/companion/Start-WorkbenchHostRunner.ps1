@@ -325,8 +325,12 @@ function Invoke-RenderedC6 {
     if ([string]::IsNullOrWhiteSpace([string]$source.image) -or [string]$source.image -eq 'unknown') {
         return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; source = $source }; reason = 'rendered_prelive_image_identity_missing' }
     }
-    $imageId = (& docker image inspect ([string]$source.image) --format '{{.Id}}' 2>$null | Select-Object -First 1)
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$imageId)) {
+    # Do not pipe Docker into Select-Object -First: closing that native pipeline
+    # after the first line makes a successful Docker CLI report exit -1 on
+    # Windows. The formatted inspect emits exactly one line for one image.
+    $imageId = & docker image inspect ([string]$source.image) --format '{{.Id}}' 2>$null
+    $imageInspectExit = $LASTEXITCODE
+    if ($imageInspectExit -ne 0 -or [string]::IsNullOrWhiteSpace([string]$imageId)) {
         return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; image = $source.image }; reason = 'rendered_prelive_image_missing' }
     }
     $requiredNodes = @('runner', 'docker', 'am4', 'i5')
