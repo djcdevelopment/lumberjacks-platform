@@ -1072,7 +1072,10 @@ sealed class ModpackInstaller(CompanionStateStore stateStore, ValheimLocator loc
         var current = stateStore.Read();
         if (string.Equals(current.last_error, "local_state_unreadable", StringComparison.Ordinal))
             return InstallResult.Fail("local_state_unreadable");
-        if (current.installed is null || !Directory.Exists(current.installed.backup_path)) return InstallResult.Fail("rollback_backup_missing");
+        if (current.installed is null) return InstallResult.Fail("rollback_backup_missing");
+        if (current.installed.transaction_schema_version != 1)
+            return InstallResult.Fail("rollback_not_reversible_legacy_state");
+        if (!Directory.Exists(current.installed.backup_path)) return InstallResult.Fail("rollback_backup_missing");
         var valheimPath = locator.Find();
         if (valheimPath is null) return InstallResult.Fail("valheim_not_found");
         if (ValheimLocator.IsRunning()) return InstallResult.Fail("valheim_is_running");
@@ -1118,7 +1121,7 @@ sealed class ModpackInstaller(CompanionStateStore stateStore, ValheimLocator loc
             }
         }
         catch (Exception ex) { return InstallResult.Fail("rollback_restore_failed", ex.Message); }
-        var installed = rollingBack.transaction_schema_version == 1 ? rollingBack.previous : rollingBack;
+        var installed = rollingBack.previous;
         var nextState = CopyState(current, installed);
         try { stateStore.Write(nextState); }
         catch (Exception ex) { return InstallResult.Fail("rollback_state_write_failed", ex.Message); }

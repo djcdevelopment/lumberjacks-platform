@@ -77,6 +77,19 @@ $expectedGatewayTarget = if ($gatewayUri.IsLoopback -or $gatewayUri.Host -in @('
 Assert-That ($gatewayNode.target -eq $expectedGatewayTarget) 'Gateway topology target does not match the configured origin'
 Assert-That ($expectedGatewayTarget -eq 'P7' -or $p7Node.state -eq 'excluded') 'P7 topology is active when the configured Gateway is not P7'
 
+$companionStatus = Get-Json '/api/v0/companion/status'
+$rollbackCapability = $projection.capabilities | Where-Object id -eq 'operate.mod.rollback' | Select-Object -First 1
+$rollbackReady = $companionStatus.installed.transaction_schema_version -eq 1
+Assert-That ($null -ne $rollbackCapability) 'rollback capability missing'
+Assert-That ($rollbackCapability.eligible -eq $rollbackReady) 'rollback eligibility does not match reversible transaction state'
+if (-not $rollbackReady) {
+    Assert-That ($rollbackCapability.reason_code -eq 'rollback_not_available') 'legacy rollback reason is not deterministic'
+    Expect-HttpStatus {
+        Post-Json '/api/v1/workbench/capabilities/operate.mod.rollback/jobs' `
+            @{ target = 'OMEN'; inputs = @{ game_closed_confirmed = $true } } $browserHeaders
+    } 400
+}
+
 Expect-HttpStatus { Post-Json '/api/v1/workbench/capabilities/explore.system.inspect/jobs' @{ target = 'local'; inputs = @{ arbitrary_command = 'whoami' } } $browserHeaders } 400
 Expect-HttpStatus { Post-Json '/api/v1/workbench/capabilities/recover.recreate.verify/jobs' @{ target = 'local'; inputs = @{} } $browserHeaders } 400
 Expect-HttpStatus { Get-Json '/api/v1/workbench/jobs/invalid%20id' } 404

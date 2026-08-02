@@ -275,7 +275,12 @@ function Invoke-CompanionCapture {
         $duration = 15
         if ($Inputs -and $Inputs.PSObject.Properties['duration_seconds']) { $duration = [Math]::Min(180, [Math]::Max(5, [int]$Inputs.duration_seconds)) }
         $capture = Invoke-RestMethod -Uri "$CompanionUrl/api/v0/companion/transport-capture" -Method Post -Headers @{ 'Content-Type' = 'application/json' } -Body (@{ duration_seconds = $duration; interval_seconds = 1; label = "workbench-$JobId" } | ConvertTo-Json) -TimeoutSec ([Math]::Max(30, $duration + 30))
-        return @{ verdict = 'passed'; result = @{ capability = 'operate.transport.capture'; run_id = $capture.run_id; verdict = $capture.verdict }; reason = 'transport_capture_complete' }
+        $conclusive = $capture.verdict -notin @('no_peer_window', 'incomplete_telemetry')
+        return @{
+            verdict = if ($conclusive) { 'passed' } else { 'failed' }
+            result = @{ capability = 'operate.transport.capture'; run_id = $capture.run_id; verdict = $capture.verdict }
+            reason = if ($conclusive) { 'transport_capture_complete' } else { "transport_capture_$($capture.verdict)" }
+        }
     } catch {
         return @{ verdict = 'failed'; result = @{ capability = 'operate.transport.capture'; error = $_.Exception.Message }; reason = 'transport_capture_failed' }
     }

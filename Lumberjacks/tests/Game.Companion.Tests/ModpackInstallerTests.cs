@@ -172,7 +172,7 @@ public sealed class ModpackInstallerTests : IDisposable
     }
 
     [Fact]
-    public void LegacyRollbackRestoresBackupWithoutInventingPriorIdentity()
+    public void LegacyRollbackFailsClosedWithoutChangingBytesOrIdentity()
     {
         WriteRelative("BepInEx/plugins/existing.dll", "new bytes");
         var backupRoot = Path.Combine(_data, "backups", "legacy");
@@ -186,9 +186,26 @@ public sealed class ModpackInstallerTests : IDisposable
 
         var result = Installer(store).RollbackLatest();
 
-        Assert.True(result.ok);
-        Assert.Equal("old bytes", ReadRelative("BepInEx/plugins/existing.dll"));
+        Assert.False(result.ok);
+        Assert.Equal("rollback_not_reversible_legacy_state", result.result);
+        Assert.Equal("new bytes", ReadRelative("BepInEx/plugins/existing.dll"));
         Assert.Equal("legacy", store.Read().installed?.release);
+    }
+
+    [Fact]
+    public void RegistryDisablesRollbackWithoutReversibleTransactionState()
+    {
+        var registry = new WorkbenchRegistry();
+
+        var unavailable = registry.For("Lab", runnerReady: true, rollbackReady: false)
+            .Single(capability => capability.Id == "operate.mod.rollback");
+        var available = registry.For("Lab", runnerReady: true, rollbackReady: true)
+            .Single(capability => capability.Id == "operate.mod.rollback");
+
+        Assert.False(unavailable.Eligible);
+        Assert.Equal("rollback_not_available", unavailable.ReasonCode);
+        Assert.True(available.Eligible);
+        Assert.Null(available.ReasonCode);
     }
 
     [Fact]
@@ -199,7 +216,7 @@ public sealed class ModpackInstallerTests : IDisposable
         var store = new CompanionStateStore();
         var state = store.Read();
         state.installed = new InstalledRelease("unsafe", "mod", "hash", DateTime.UtcNow,
-            outsideBackup, []);
+            outsideBackup, [], transaction_schema_version: 1);
         store.Write(state);
 
         var result = Installer(store).RollbackLatest();

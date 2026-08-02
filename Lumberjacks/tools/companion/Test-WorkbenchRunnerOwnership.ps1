@@ -60,7 +60,8 @@ $runnerAst = [Management.Automation.Language.Parser]::ParseInput(
     [ref]$parseErrors)
 if ($parseErrors.Count -gt 0) { throw 'host runner does not parse for process-wrapper verification.' }
 $modOperationSource = $null
-foreach ($functionName in @('Quote-ProcessArgument', 'Invoke-RunnerChildProcess', 'Test-ValheimHostStopped', 'Invoke-ModOperation')) {
+$captureOperationSource = $null
+foreach ($functionName in @('Quote-ProcessArgument', 'Invoke-RunnerChildProcess', 'Test-ValheimHostStopped', 'Invoke-ModOperation', 'Invoke-CompanionCapture')) {
     $definition = $runnerAst.Find({
         param($node)
         $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
@@ -68,6 +69,7 @@ foreach ($functionName in @('Quote-ProcessArgument', 'Invoke-RunnerChildProcess'
     }, $true)
     if ($null -eq $definition) { throw "host runner is missing $functionName." }
     if ($functionName -eq 'Invoke-ModOperation') { $modOperationSource = $definition.Extent.Text }
+    if ($functionName -eq 'Invoke-CompanionCapture') { $captureOperationSource = $definition.Extent.Text }
     Invoke-Expression $definition.Extent.Text
 }
 $zeroExit = Invoke-RunnerChildProcess `
@@ -141,6 +143,24 @@ if (-not $dispatchGate.passed) {
     throw "mod operation did not fail closed at the host process gate (reason=$($dispatchGate.reason), REST=$($dispatchGate.unexpected_rest_call))."
 }
 
+$captureGate = & {
+    param([string]$FunctionSource)
+    Invoke-Expression $FunctionSource
+    function Invoke-RestMethod {
+        return [pscustomobject]@{ run_id = 'no-peer-fixture'; verdict = 'no_peer_window' }
+    }
+    $result = Invoke-CompanionCapture -JobId 'capture-fixture' -Inputs ([pscustomobject]@{ duration_seconds = 5 })
+    [pscustomobject]@{
+        passed = $result.verdict -eq 'failed' -and
+            $result.reason -eq 'transport_capture_no_peer_window' -and
+            $result.result.verdict -eq 'no_peer_window'
+        reason = $result.reason
+    }
+} $captureOperationSource
+if (-not $captureGate.passed) {
+    throw "no-peer transport capture was not classified as inconclusive (reason=$($captureGate.reason))."
+}
+
 $security = Get-Json -Path '/api/v1/workbench/security'
 $browserHeaders = @{ 'X-Workbench-Token' = $security.browser_token }
 $runnerToken = (& docker exec $ContainerName sh -lc 'cat /run/workbench/runner-token 2>/dev/null || cat /data/workbench/runner-token' 2>$null | Out-String).Trim()
@@ -189,6 +209,7 @@ $receipt = Get-Json -Path ("/api/v1/workbench/jobs/{0}/receipt" -f [Uri]::Escape
     child_exit_code_contract = $zeroExit -eq 0 -and $nonzeroExit -eq 7
     host_process_gate = $hostProcessGate
     host_process_dispatch_gate = $dispatchGate.passed
+    no_peer_capture_fails_closed = $captureGate.passed
 } | ConvertTo-Json -Depth 10
 
 if ($completed.state -ne 'succeeded' -or $staleStatus -ne 404) { exit 1 }

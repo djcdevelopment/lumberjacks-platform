@@ -418,7 +418,7 @@ sealed class WorkbenchRegistry
         new WorkbenchCapability("recover.recreate.verify", "Verify safe container recreate", "Recover", "destructive_recovery", "operator_recovery", new[] { "Admin", "Dev", "Lab", "Production" }, new[] { "local" }, false, "host_runner", "{\"type\":\"object\",\"required\":[\"confirm_recreate\"]}", "private_local", true),
     };
 
-    public IReadOnlyList<WorkbenchCapabilityView> For(string profile, bool runnerReady = true) => All
+    public IReadOnlyList<WorkbenchCapabilityView> For(string profile, bool runnerReady = true, bool rollbackReady = true) => All
         .Select(capability => new WorkbenchCapabilityView
         {
             Id = capability.Id,
@@ -433,10 +433,16 @@ sealed class WorkbenchRegistry
             InputSchema = capability.InputSchema,
             PrivacyClass = capability.PrivacyClass,
             SupportsCancellation = capability.SupportsCancellation,
-            Eligible = capability.EligibleProfiles.Contains(profile, StringComparer.OrdinalIgnoreCase) && (capability.Runner != "host_runner" || runnerReady),
+            Eligible = capability.EligibleProfiles.Contains(profile, StringComparer.OrdinalIgnoreCase) &&
+                (capability.Runner != "host_runner" || runnerReady) &&
+                (capability.Id != "operate.mod.rollback" || rollbackReady),
             ReasonCode = !capability.EligibleProfiles.Contains(profile, StringComparer.OrdinalIgnoreCase)
                 ? "profile_not_eligible"
-                : capability.Runner == "host_runner" && !runnerReady ? "runner_unavailable" : null,
+                : capability.Runner == "host_runner" && !runnerReady
+                    ? "runner_unavailable"
+                    : capability.Id == "operate.mod.rollback" && !rollbackReady
+                        ? "rollback_not_available"
+                        : null,
         }).ToList();
 
     public WorkbenchCapability? Find(string id) => All.FirstOrDefault(x => x.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
@@ -448,13 +454,16 @@ sealed class WorkbenchService
     readonly WorkbenchJobStore _jobs;
     readonly WorkbenchRegistry _registry;
     readonly ValheimLocator _locator;
+    readonly CompanionStateStore _companionState;
 
-    public WorkbenchService(WorkbenchStore store, WorkbenchJobStore jobs, WorkbenchRegistry registry, ValheimLocator locator)
+    public WorkbenchService(WorkbenchStore store, WorkbenchJobStore jobs, WorkbenchRegistry registry,
+        ValheimLocator locator, CompanionStateStore companionState)
     {
         _store = store;
         _jobs = jobs;
         _registry = registry;
         _locator = locator;
+        _companionState = companionState;
     }
 
     public WorkbenchInstallation Installation => _store.ReadInstallation();
@@ -502,7 +511,7 @@ sealed class WorkbenchService
                 public_support = "explicit_redacted_export_only",
                 excluded_by_default = new[] { "player_names", "steam_ids", "coordinates", "free_text", "secrets", "raw_remote_bodies" },
             },
-            capabilities = _registry.For(profile, runnerReady),
+            capabilities = _registry.For(profile, runnerReady, RollbackReady()),
             jobs = _jobs.List(),
             topology = Topology(profile),
         };
@@ -512,7 +521,7 @@ sealed class WorkbenchService
     {
         schema_version = 1,
         effective_profile = EffectiveProfile,
-        capabilities = _registry.For(EffectiveProfile, IsRunnerReady()),
+        capabilities = _registry.For(EffectiveProfile, IsRunnerReady(), RollbackReady()),
     };
 
     public object Topology(string? profile = null)
@@ -577,6 +586,8 @@ sealed class WorkbenchService
             return (false, "profile_not_eligible", null);
         if (capability.Runner == "host_runner" && !IsRunnerReady())
             return (false, "runner_unavailable", null);
+        if (capability.Id == "operate.mod.rollback" && !RollbackReady())
+            return (false, "rollback_not_available", null);
         if (!Installation.Claimed && !capability.ReadOnly)
             return (false, "installation_claim_required", null);
         var resolvedTarget = string.IsNullOrWhiteSpace(target) ? capability.EligibleTargets[0] : target.Trim();
@@ -595,7 +606,7 @@ sealed class WorkbenchService
             {
                 profile,
                 topology = Topology(profile),
-                capability_count = _registry.For(profile, IsRunnerReady()).Count,
+                capability_count = _registry.For(profile, IsRunnerReady(), RollbackReady()).Count,
                 freshness = "local_projection",
             };
             job = _jobs.Complete(job, "passed", result);
@@ -653,6 +664,7 @@ sealed class WorkbenchService
     public string BrowserToken() => _store.BrowserToken();
 
     bool IsRunnerReady() => _store.ReadHeartbeat() is { } heartbeat && heartbeat.ObservedUtc > DateTimeOffset.UtcNow.AddSeconds(-45);
+    bool RollbackReady() => _companionState.Read().installed?.transaction_schema_version == 1;
 
     static JsonElement EmptyObject() => JsonDocument.Parse("{}").RootElement.Clone();
 

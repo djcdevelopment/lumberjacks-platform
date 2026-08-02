@@ -61,6 +61,8 @@ Assert-That ($html -match 'First visit: start safely') 'first-visit orientation 
 Assert-That ($html -match 'Inspect system.*read-only') 'first-visit safe action is not explained'
 Assert-That ($html -match 'Factory reset is intentionally separate') 'first-visit recovery boundary missing'
 Assert-That ($html -match 'applyStorySurface') 'Story/Advanced capability target adapter missing'
+Assert-That ($html -match 'No reversible Workbench install is currently active') 'legacy rollback unavailability guidance missing'
+Assert-That ($html -match 'capabilityReason') 'capability reason presentation adapter missing'
 Assert-That (([regex]::Matches($html, 'function capabilityCard')).Count -eq 1) 'capabilityCard declaration is duplicated or missing'
 Assert-That (([regex]::Matches($html, 'async function startJob')).Count -eq 1) 'startJob declaration is duplicated or missing'
 Assert-That ($html -notmatch '<script[^>]+src=') 'external script dependency found in local shell'

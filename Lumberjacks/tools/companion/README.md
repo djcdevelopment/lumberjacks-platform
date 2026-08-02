@@ -98,6 +98,11 @@ before either mutation because the Linux Companion container cannot reliably see
 host game processes. The verifier never launches the game, captures player
 traffic, or contacts GCP.
 
+Rollback is available only for installs written with the reversible transaction
+schema. Older Companion records do not contain a trustworthy prior-release
+identity, so the Workbench disables their rollback action and the compatibility
+endpoint fails closed rather than applying the same historical backup repeatedly.
+
 The legacy Dev MCP host port is `8720`, but that port is not currently a safe
 identity boundary: an enabled `ComfyGatewayBoot` task owns a retired Comfy
 checkout there. Baseline Dev/Lab launchers now default to the explicit project
