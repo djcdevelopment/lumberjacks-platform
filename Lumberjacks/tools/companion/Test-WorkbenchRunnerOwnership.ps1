@@ -72,6 +72,49 @@ foreach ($functionName in @('Quote-ProcessArgument', 'Invoke-RunnerChildProcess'
     if ($functionName -eq 'Invoke-CompanionCapture') { $captureOperationSource = $definition.Extent.Text }
     Invoke-Expression $definition.Extent.Text
 }
+
+$renderedC6Definition = $runnerAst.Find({
+    param($node)
+    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
+        $node.Name -eq 'Invoke-RenderedC6'
+}, $true)
+if ($null -eq $renderedC6Definition) { throw 'host runner is missing Invoke-RenderedC6.' }
+$renderedCommands = @($renderedC6Definition.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.CommandAst]
+}, $true))
+$provenanceCommand = @($renderedCommands | Where-Object {
+    $_.GetCommandName() -eq 'powershell.exe' -and $_.Extent.Text -match '\$provenanceGate'
+})[0]
+$projectionCommand = @($renderedCommands | Where-Object { $_.Extent.Text -match 'api/v1/workbench' })[0]
+$i5Command = @($renderedCommands | Where-Object {
+    $_.GetCommandName() -eq 'powershell.exe' -and $_.Extent.Text -match '\$i5Link'
+})[0]
+$orchestratorCommand = @($renderedCommands | Where-Object {
+    $_.GetCommandName() -eq 'Invoke-RunnerChildProcess'
+})[0]
+if ($null -eq $provenanceCommand -or $null -eq $projectionCommand -or
+    $null -eq $i5Command -or $null -eq $orchestratorCommand) {
+    throw 'rendered C6 provenance/prelive command contract is incomplete.'
+}
+if ($provenanceCommand.Extent.Text -match 'AllowRetainedStateBridge') {
+    throw 'rendered C6 must not admit the temporary retained-state bridge.'
+}
+if ($provenanceCommand.Extent.StartOffset -ge $projectionCommand.Extent.StartOffset -or
+    $provenanceCommand.Extent.StartOffset -ge $i5Command.Extent.StartOffset -or
+    $provenanceCommand.Extent.StartOffset -ge $orchestratorCommand.Extent.StartOffset) {
+    throw 'rendered C6 provenance gate must precede projection, i5, and client orchestration.'
+}
+foreach ($requiredText in @(
+    'fieldlab\scripts\Test-LabRuntimeProvenance.ps1',
+    'rendered_prelive_lab_provenance_gate_missing',
+    'rendered_prelive_lab_provenance_receipt_invalid',
+    'rendered_prelive_lab_provenance_failed')) {
+    if ($renderedC6Definition.Extent.Text -notmatch [regex]::Escape($requiredText)) {
+        throw "rendered C6 provenance contract is missing: $requiredText"
+    }
+}
+
 $zeroExit = Invoke-RunnerChildProcess `
     -JobId 'process-wrapper-fixture' `
     -FilePath 'powershell.exe' `

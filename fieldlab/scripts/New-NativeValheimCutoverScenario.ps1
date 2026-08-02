@@ -177,7 +177,19 @@ if ($Profile -eq 'c5') {
 }
 
 if ($Profile -eq 'c6') {
+    # Character profiles persist their last position. The retained-state Lab bridge can
+    # leave OMEN and i5 thousands of metres apart, outside the Gateway's interest edge;
+    # without an edge the motion rendezvous has no remote descriptor to bootstrap from.
+    # Use the same bounded, fail-closed safe origin as C8 so C6 tests the motion lane
+    # rather than whichever world position a prior session happened to leave behind.
     $actions += @(
+        # The retained world settles this location at roughly y=33.  Using a
+        # high vertical target (y=80) leaves one client reporting a remote
+        # descriptor nearly 50m above the other, which the authority guard
+        # must reject as an implausible correction.  Keep both clients on the
+        # known ground plane so C6 measures the motion lane itself.
+        New-Action 'omen-c6-safe-origin' 'omen' 'teleport_to' 15 0 0 0 '' '' 2211 33 -69
+        New-Action 'i5-c6-safe-origin' 'i5' 'teleport_to' 15 0 0 0 '' '' 2211 33 -69
         New-Action 'omen-c6-rendezvous-settle' 'omen' 'wait' 12 5
         New-Action 'i5-c6-rendezvous' 'i5' 'motion_rendezvous' 15
         New-Action 'i5-c6-rendezvous-settle' 'i5' 'wait' 10 3

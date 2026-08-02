@@ -156,6 +156,7 @@ if ($EnableC8Composition -and $scenarioDocument.profile -ne 'c8') {
 $scenarioName = Split-Path -Leaf $scenario
 $remoteScenarioDirectory = 'C:/deploy/baseline/fieldlab/scenarios'
 $remoteScenarioPath = "$remoteScenarioDirectory/$scenarioName"
+$remoteEvidenceRoot = 'C:/deploy/baseline/fieldlab/runs/native-valheim'
 $runDirectory = Join-Path $EvidenceRoot $RunId
 $completed = $false
 $gatewayTunnel = $null
@@ -688,6 +689,7 @@ try {
     }
     if ($EnableMotionAuthorityCutover) {
         $i5Arguments += '-EnableMotionAuthorityCutover'
+        $i5Arguments += '-EnableLabSession'
     }
     if ($EnableSocketQuarantineCutover) {
         $i5Arguments += '-EnableSocketQuarantineCutover'
@@ -752,6 +754,10 @@ try {
         }
         if ($EnableMotionAuthorityCutover) {
             $omenHarnessArguments += '-EnableMotionAuthorityCutover'
+            # C6/C8 are disposable Lab runs. The client harness enables the
+            # canonical session/motion lane only for this bounded smoke and
+            # restores the exact at-rest config afterward.
+            $omenHarnessArguments += '-EnableLabSession'
         }
         if ($EnableSocketQuarantineCutover) {
             $omenHarnessArguments += '-EnableSocketQuarantineCutover'
@@ -1114,6 +1120,19 @@ try {
         # left an orphan that fail-closed the next run), so sweep briefly
         # until no Valheim process remains.
         & $clientHarness -Action stop -Client omen | Out-Null
+        # A forced OMEN harness stop can bypass its in-process finally block.
+        # Restore from the durable pre-Lab-session backup after the game is
+        # stopped so a failed rendered run cannot leave the canonical lane
+        # enabled at rest.
+        try {
+            & $clientHarness `
+                -Action restore-lab-session `
+                -Client omen `
+                -RunId $RunId `
+                -EvidenceRoot $EvidenceRoot | Out-Null
+        } catch {
+            Write-Warning ("OMEN Lab-session restore failed: " + $_.Exception.Message)
+        }
         try {
             [void](Invoke-I5Harness @('-Action', 'stop', '-Client', 'i5'))
         } catch { }
@@ -1131,10 +1150,37 @@ try {
                 Start-Sleep -Seconds 5
             } while ((Get-Date) -lt $i5DrainDeadline)
         } catch { }
+        try {
+            [void](Invoke-I5Harness @(
+                '-Action', 'restore-lab-session',
+                '-Client', 'i5',
+                '-RunId', $RunId,
+                '-EvidenceRoot', $remoteEvidenceRoot))
+        } catch {
+            Write-Warning ("i5 Lab-session restore failed: " + $_.Exception.Message)
+        }
         for ($sweep = 0; $sweep -lt 3; $sweep++) {
             Start-Sleep -Seconds 4
             if (-not (Get-Process -Name valheim -ErrorAction SilentlyContinue)) { break }
             & $clientHarness -Action stop -Client omen | Out-Null
+        }
+        # Preserve the remote i5 lifecycle and logs even when the OMEN leg
+        # fails first. A failed composition is still evidence; losing the
+        # second client's receipt makes a rendezvous failure look like an
+        # unexplained one-sided timeout.
+        try {
+            $i5EvidenceDirectory = Join-Path $runDirectory 'i5'
+            if ($i5Queued -and
+                -not (Test-Path (Join-Path $i5EvidenceDirectory 'lifecycle.json'))) {
+                & scp -r `
+                    "i5:$remoteEvidenceRoot/$RunId/i5" `
+                    "$runDirectory\"
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Warning "i5 failure evidence retrieval exited $LASTEXITCODE."
+                }
+            }
+        } catch {
+            Write-Warning ("i5 failure evidence retrieval failed: " + $_.Exception.Message)
         }
     }
     if ($gatewayTunnel -and -not $gatewayTunnel.HasExited) {

@@ -19,6 +19,7 @@ COPY src/Game.Companion/Game.Companion.csproj src/Game.Companion/
 COPY tests/Game.Contracts.Tests/Game.Contracts.Tests.csproj tests/Game.Contracts.Tests/
 COPY tests/Game.Simulation.Tests/Game.Simulation.Tests.csproj tests/Game.Simulation.Tests/
 COPY tests/Game.Gateway.Tests/Game.Gateway.Tests.csproj tests/Game.Gateway.Tests/
+COPY tests/Game.Companion.Tests/Game.Companion.Tests.csproj tests/Game.Companion.Tests/
 
 # Restore the same solution used by local development. This keeps the SDK, restore graph, and
 # test dependencies identical for host builds, CI, and release-image builds.

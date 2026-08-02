@@ -15,7 +15,7 @@ interactive scheduled task on a remote Windows client.
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('preflight', 'start', 'smoke', 'poison-smoke', 'descriptor-smoke', 'cold-join-failure-smoke', 'status', 'stop', 'install-task', 'queue-smoke', 'task-status', 'run-pending')]
+    [ValidateSet('preflight', 'start', 'smoke', 'poison-smoke', 'descriptor-smoke', 'cold-join-failure-smoke', 'status', 'stop', 'restore-lab-session', 'install-task', 'queue-smoke', 'task-status', 'run-pending')]
     [string] $Action = 'preflight',
 
     [ValidateSet('omen', 'i5')]
@@ -59,6 +59,11 @@ param(
 
     [switch] $EnableMotionAuthorityCutover,
 
+    # Lab-only session gate.  Normal gameplay remains at-rest with the
+    # canonical Lumberjacks session and motion lane disabled; a bounded smoke
+    # run may opt in and restores the exact config bytes when it stops.
+    [switch] $EnableLabSession,
+
     [switch] $EnableSocketQuarantineCutover,
 
     [switch] $EnableSteamFreeColdJoin,
@@ -85,6 +90,8 @@ $script:ColdJoinFailureRow = $null
 $script:ScenarioTerminalRow = $null
 $script:ResumeCount = 0
 $script:ProfileRecoveryCount = 0
+$script:LabConfigChanged = $false
+$script:LabConfigBackup = $null
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if ([string]::IsNullOrWhiteSpace($EvidenceRoot)) {
@@ -111,10 +118,12 @@ $worldZoneReceiptsPath = Join-Path $autotestRoot 'world-zone-cutover.jsonl'
 $motionAuthorityReceiptsPath = Join-Path $autotestRoot 'motion-authority-cutover.jsonl'
 $socketQuarantineReceiptsPath = Join-Path $autotestRoot 'socket-quarantine-cutover.jsonl'
 $logicalPeerReceiptsPath = Join-Path $autotestRoot 'logical-peer-cutover.jsonl'
-# The frozen build already writes these; only collection was missing, so
-# hitch attribution used to survive nowhere but the live client directory.
+# The frozen build writes these; the native harness retains them in the run
+# bundle so synchronous hitch attribution and asynchronous stall evidence do
+# not survive only in the live client directory.
 $perfHitchesPath = Join-Path $autotestRoot 'perf-hitches.jsonl'
 $perfSectionsPath = Join-Path $autotestRoot 'perf-sections.jsonl'
+$perfWatchdogPath = Join-Path $autotestRoot 'perf-watchdog.jsonl'
 $bepInExLogPath = Join-Path $ValheimRoot 'BepInEx\LogOutput.log'
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\Player.log'
 
@@ -265,6 +274,96 @@ function Stop-Valheim([bool] $FailIfNotStopped = $true) {
         throw "Valheim did not stop; remaining process ids: $(@($remaining.Id) -join ',')"
     }
     return $remaining.Count -eq 0
+}
+
+function Enable-LabSessionConfig() {
+    if (-not $EnableLabSession -or $script:LabConfigChanged) { return $null }
+    if (-not (Test-Path -LiteralPath $configRoot -PathType Container)) {
+        throw "Valheim config directory is missing: $configRoot"
+    }
+    $configPath = Join-Path $configRoot 'djcdevelopment.valheim.comfynetworksense.cfg'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        throw "ComfyNetworkSense config is missing: $configPath"
+    }
+    $originalBytes = [IO.File]::ReadAllBytes($configPath)
+    $content = [Text.Encoding]::UTF8.GetString($originalBytes)
+    $updated = $content
+    foreach ($setting in @('lumberjacksGameSessionEnabled', 'lumberjacksMotionEnabled')) {
+        $pattern = '(?m)^(' + [regex]::Escape($setting) + '\s*=\s*)\S+\s*$'
+        if (-not [regex]::IsMatch($updated, $pattern)) {
+            throw "Lab session setting is missing from config: $setting"
+        }
+        $updated = [regex]::Replace($updated, $pattern, '${1}true')
+    }
+    $script:LabConfigBackup = Join-Path $script:ActiveRunDirectory 'config-before-lab-session.cfg'
+    [IO.File]::WriteAllBytes($script:LabConfigBackup, $originalBytes)
+    [IO.File]::WriteAllText($configPath, $updated, [Text.UTF8Encoding]::new($false))
+    $script:LabConfigChanged = $true
+    return [ordered]@{
+        path = $configPath
+        backup = $script:LabConfigBackup
+        enabled_settings = @('lumberjacksGameSessionEnabled', 'lumberjacksMotionEnabled')
+        before_sha256 = (Get-FileHash -LiteralPath $script:LabConfigBackup -Algorithm SHA256).Hash.ToLowerInvariant()
+        active_sha256 = (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+}
+
+function Restore-LabSessionConfig() {
+    if (-not $script:LabConfigChanged -or [string]::IsNullOrWhiteSpace($script:LabConfigBackup)) {
+        return $null
+    }
+    $configPath = Join-Path $configRoot 'djcdevelopment.valheim.comfynetworksense.cfg'
+    if (-not (Test-Path -LiteralPath $script:LabConfigBackup -PathType Leaf)) {
+        throw "Lab session config backup is missing: $script:LabConfigBackup"
+    }
+    [IO.File]::WriteAllBytes($configPath, [IO.File]::ReadAllBytes($script:LabConfigBackup))
+    $restoredHash = (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $backupHash = (Get-FileHash -LiteralPath $script:LabConfigBackup -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($restoredHash -ne $backupHash) {
+        throw "Lab session config restore hash mismatch: $configPath"
+    }
+    $script:LabConfigChanged = $false
+    return [ordered]@{
+        path = $configPath
+        restored = $true
+        sha256 = $restoredHash
+    }
+}
+
+function Restore-LabSessionConfigFromRun() {
+    if ([string]::IsNullOrWhiteSpace($RunId) -or
+        -not (Test-SafeToken $RunId)) {
+        throw 'restore-lab-session requires a safe RunId.'
+    }
+    $runDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
+    $backupPath = Join-Path $runDirectory 'config-before-lab-session.cfg'
+    if (-not (Test-Path -LiteralPath $backupPath -PathType Leaf)) {
+        throw "Lab session config backup is missing: $backupPath"
+    }
+    $configPath = Join-Path $configRoot 'djcdevelopment.valheim.comfynetworksense.cfg'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        throw "ComfyNetworkSense config is missing: $configPath"
+    }
+    $backupHash = (Get-FileHash -LiteralPath $backupPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    [IO.File]::WriteAllBytes($configPath, [IO.File]::ReadAllBytes($backupPath))
+    $restoredHash = (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($restoredHash -ne $backupHash) {
+        throw "Lab session config restore hash mismatch: $configPath"
+    }
+    $receipt = [ordered]@{
+        schema_version = 1
+        receipt_type = 'native_valheim_lab_session_restore'
+        generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
+        run_id = $RunId
+        client = $Client
+        backup = $backupPath
+        config = $configPath
+        restored = $true
+        sha256 = $restoredHash
+    }
+    New-Item -ItemType Directory -Force -Path $runDirectory | Out-Null
+    Write-Utf8NoBom (Join-Path $runDirectory 'lab-session-restore.json') (($receipt | ConvertTo-Json -Depth 8) + [Environment]::NewLine)
+    return $receipt
 }
 
 function Deploy-Mod() {
@@ -553,6 +652,9 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         scenario_terminal = $script:ScenarioTerminalRow
         resume_count = $script:ResumeCount
         profile_recovery_count = $script:ProfileRecoveryCount
+        lab_session_requested = [bool]$EnableLabSession
+        lab_session_config_changed = [bool]$script:LabConfigChanged
+        lab_session_config_backup = $script:LabConfigBackup
         native_network_poison_requested =
             $Action -eq 'poison-smoke' -or [bool]$EnableSteamFreeColdJoin
         routed_rpc_cutover_requested = [bool]$EnableRoutedRpcCutover
@@ -603,6 +705,7 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
                 Copy-EvidenceFile $logicalPeerReceiptsPath 'logical-peer-cutover.jsonl'
             perf_hitches = Copy-EvidenceFile $perfHitchesPath 'perf-hitches.jsonl'
             perf_sections = Copy-EvidenceFile $perfSectionsPath 'perf-sections.jsonl'
+            perf_watchdog = Copy-EvidenceFile $perfWatchdogPath 'perf-watchdog.jsonl'
         }
     }
     $path = Join-Path $script:ActiveRunDirectory 'lifecycle.json'
@@ -685,10 +788,12 @@ function Start-NativeRun([bool] $StopAfterHold, [bool] $ExpectPoison) {
         mod = Deploy-Mod
         scenario = Deploy-Scenario
     }
+    $deployment.lab_session = Enable-LabSessionConfig
     $attempt = Start-NativeProcess $ExpectPoison
     if ($ExpectPoison) {
         $script:PoisonRow = Wait-ForPoison $RunId $WaitSeconds
         [void](Stop-Valheim)
+        $null = Restore-LabSessionConfig
         Write-RunReceipt 'native_poison_blocked_and_stopped' $preflight $deployment
         Write-Host ("native poison blocked {0} -> {1}" -f $script:PoisonRow.funnel, $script:ActiveRunDirectory)
         return
@@ -700,6 +805,7 @@ function Start-NativeRun([bool] $StopAfterHold, [bool] $ExpectPoison) {
                 $RunId $ColdJoinFailureMode $WaitSeconds `
                 ([DateTimeOffset]$attempt.launched_utc)
         [void](Stop-Valheim)
+        $null = Restore-LabSessionConfig
         Write-RunReceipt 'cold_join_failed_closed_and_stopped' $preflight $deployment
         Write-Host ("cold join failed closed ({0}) -> {1}" -f
             $ColdJoinFailureMode, $script:ActiveRunDirectory)
@@ -713,6 +819,7 @@ function Start-NativeRun([bool] $StopAfterHold, [bool] $ExpectPoison) {
         $script:ScenarioTerminalRow =
             Wait-ForDescriptorRejected $RunId $WaitSeconds ([DateTimeOffset]$attempt.launched_utc)
         [void](Stop-Valheim)
+        $null = Restore-LabSessionConfig
         Write-RunReceipt 'world_descriptor_rejected_before_scene_and_stopped' $preflight $deployment
         Write-Host ("descriptor rejected before scene ({0}) -> {1}" -f
             $WorldDescriptorFault, $script:ActiveRunDirectory)
@@ -756,6 +863,7 @@ function Start-NativeRun([bool] $StopAfterHold, [bool] $ExpectPoison) {
     if ($StopAfterHold) {
         if ($HoldSeconds -gt 0) { Start-Sleep -Seconds $HoldSeconds }
         [void](Stop-Valheim)
+        $restore = Restore-LabSessionConfig
         Write-RunReceipt 'joined_held_and_stopped' $preflight $deployment
         Write-Host ("smoke completed and stopped -> {0}" -f $script:ActiveRunDirectory)
     } else {
@@ -793,6 +901,7 @@ function Invoke-PendingRun() {
         EnableWorldZoneCutover = [bool]$pending.enable_world_zone_cutover
         EnableMotionAuthorityCutover =
             [bool]$pending.enable_motion_authority_cutover
+        EnableLabSession = [bool]$pending.enable_lab_session
         EnableSocketQuarantineCutover =
             [bool]$pending.enable_socket_quarantine_cutover
         EnableSteamFreeColdJoin =
@@ -877,6 +986,7 @@ function Queue-InteractiveSmoke() {
         enable_world_zone_cutover = [bool]$EnableWorldZoneCutover
         enable_motion_authority_cutover =
             [bool]$EnableMotionAuthorityCutover
+        enable_lab_session = [bool]$EnableLabSession
         enable_socket_quarantine_cutover =
             [bool]$EnableSocketQuarantineCutover
         enable_steam_free_cold_join = [bool]$EnableSteamFreeColdJoin
@@ -941,6 +1051,9 @@ switch ($Action) {
         } | ConvertTo-Json -Depth 4
         if (-not $stopped) { exit 1 }
     }
+    'restore-lab-session' {
+        Restore-LabSessionConfigFromRun | ConvertTo-Json -Depth 8
+    }
     'install-task' {
         Install-InteractiveTask | ConvertTo-Json -Depth 6
     }
@@ -970,6 +1083,7 @@ switch ($Action) {
                 $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
             }
             [void](Stop-Valheim $false)
+            try { Restore-LabSessionConfig } catch { Write-Warning $_.Exception.Message }
             Write-RunReceipt 'failed_and_stopped' $null $null $_.Exception.Message
             throw
         }
@@ -981,6 +1095,7 @@ switch ($Action) {
                 $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
             }
             [void](Stop-Valheim $false)
+            try { Restore-LabSessionConfig } catch { Write-Warning $_.Exception.Message }
             Write-RunReceipt 'failed_and_stopped' $null $null $_.Exception.Message
             throw
         }
@@ -992,6 +1107,7 @@ switch ($Action) {
                 $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
             }
             [void](Stop-Valheim $false)
+            try { Restore-LabSessionConfig } catch { Write-Warning $_.Exception.Message }
             Write-RunReceipt 'failed_and_stopped' $null $null $_.Exception.Message
             throw
         }
@@ -1003,6 +1119,7 @@ switch ($Action) {
                 $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
             }
             [void](Stop-Valheim $false)
+            try { Restore-LabSessionConfig } catch { Write-Warning $_.Exception.Message }
             Write-RunReceipt 'failed_and_stopped' $null $null $_.Exception.Message
             throw
         }
@@ -1014,6 +1131,7 @@ switch ($Action) {
                 $script:ActiveRunDirectory = Join-Path (Join-Path $EvidenceRoot $RunId) $Client
             }
             [void](Stop-Valheim $false)
+            try { Restore-LabSessionConfig } catch { Write-Warning $_.Exception.Message }
             Write-RunReceipt 'failed_and_stopped' $null $null $_.Exception.Message
             throw
         }

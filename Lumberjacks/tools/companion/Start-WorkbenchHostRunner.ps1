@@ -122,6 +122,18 @@ function Test-ValheimHostStopped {
     return @(Get-Process -Name valheim, valheim_server -ErrorAction SilentlyContinue).Count -eq 0
 }
 
+function Get-LocalSourceIdentity {
+    $revision = ((& git -C $RepoRoot rev-parse HEAD 2>$null | Out-String).Trim())
+    $branch = ((& git -C $RepoRoot symbolic-ref --short -q HEAD 2>$null | Out-String).Trim())
+    $status = @(& git -C $RepoRoot status --porcelain --untracked-files=all 2>$null)
+    return [ordered]@{
+        source_revision = if ([string]::IsNullOrWhiteSpace($revision)) { 'unknown' } else { $revision }
+        source_branch = if ([string]::IsNullOrWhiteSpace($branch)) { 'unknown' } else { $branch }
+        source_dirty = if ($status.Count -eq 0) { 'false' } else { 'true' }
+        source_status_count = $status.Count
+    }
+}
+
 $script:RemoteProbeIntervalSeconds = 30
 $script:RemoteProbeCache = [ordered]@{
     observed_utc = [DateTimeOffset]::MinValue
@@ -163,6 +175,7 @@ function Send-Heartbeat {
         $script:RemoteProbeCache.observed_utc = $now
     }
 
+    $source = Get-LocalSourceIdentity
     $heartbeat = [ordered]@{
         schema_version = 1
         observed_utc = $now.ToString('O')
@@ -172,7 +185,9 @@ function Send-Heartbeat {
         omen_state = $omen
         i5_state = $script:RemoteProbeCache.i5_state
         docker_ready = $dockerReady
-        source_revision = (& git -C $RepoRoot rev-parse HEAD 2>$null | Select-Object -First 1)
+        source_revision = $source.source_revision
+        source_branch = $source.source_branch
+        source_dirty = $source.source_dirty
     }
     try { Invoke-WorkbenchApi -Method Post -Path '/api/v1/workbench/runner/heartbeat' -Body $heartbeat | Out-Null } catch { }
 }
@@ -238,6 +253,7 @@ function Invoke-RunnerChildProcess {
 
 function Invoke-DockerModBuild {
     param([string]$JobId)
+    $buildSource = Get-LocalSourceIdentity
     if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot 'network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj'))) {
         return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; required = 'source_checkout' }; reason = 'source_checkout_required' }
     }
@@ -260,13 +276,13 @@ function Invoke-DockerModBuild {
     )
     $output = @(& docker @args 2>&1 | ForEach-Object { $_.ToString() })
     if ($LASTEXITCODE -ne 0) {
-        return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; output_tail = @($output | Select-Object -Last 80) }; reason = 'container_build_failed' }
+        return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; build_source = $buildSource; output_tail = @($output | Select-Object -Last 80) }; reason = 'container_build_failed' }
     }
     if (-not (Test-Path -LiteralPath $dll)) {
-        return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; output_tail = @($output | Select-Object -Last 80) }; reason = 'build_artifact_missing' }
+        return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; build_source = $buildSource; output_tail = @($output | Select-Object -Last 80) }; reason = 'build_artifact_missing' }
     }
     $hash = (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
-    return @{ verdict = 'passed'; result = @{ capability = 'build.mod.release'; artifact_name = 'ComfyNetworkSense.dll'; artifact_sha256 = $hash; plugin_copy = $false; valheim_mount = 'readonly'; host_sdk_required = $false; output_tail = @($output | Select-Object -Last 30) }; reason = 'container_build_verified' }
+    return @{ verdict = 'passed'; result = @{ capability = 'build.mod.release'; artifact_name = 'ComfyNetworkSense.dll'; artifact_sha256 = $hash; plugin_copy = $false; valheim_mount = 'readonly'; host_sdk_required = $false; build_source = $buildSource; output_tail = @($output | Select-Object -Last 30) }; reason = 'container_build_verified' }
 }
 
 function Invoke-CompanionCapture {
@@ -388,16 +404,70 @@ function Invoke-RecreateVerify {
 
 function Invoke-RenderedC6 {
     param([string]$JobId)
+
+    # A rendered acceptance is stricter than the temporary PD-7 bridge posture.
+    # Run the read-only verifier without -AllowRetainedStateBridge so the next
+    # player/motion window cannot start until the Lab state root is fully under
+    # Baseline. Keep this before every source, remote-host, scenario, and client
+    # action so a provenance failure is guaranteed to be pre-live.
+    $provenanceGate = Join-Path $RepoRoot 'fieldlab\scripts\Test-LabRuntimeProvenance.ps1'
+    if (-not (Test-Path -LiteralPath $provenanceGate -PathType Leaf)) {
+        return @{
+            verdict = 'failed'
+            result = @{
+                capability = 'build.rendered.c6-role-reversal'
+                required = 'lab_runtime_provenance_gate'
+            }
+            reason = 'rendered_prelive_lab_provenance_gate_missing'
+        }
+    }
+    $provenanceOutput = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $provenanceGate 2>&1 |
+        ForEach-Object { $_.ToString() })
+    $provenanceExit = $LASTEXITCODE
+    $provenanceText = (($provenanceOutput -join [Environment]::NewLine).Trim())
+    $provenanceReceipt = $null
+    if (-not [string]::IsNullOrWhiteSpace($provenanceText)) {
+        try { $provenanceReceipt = $provenanceText | ConvertFrom-Json } catch { }
+    }
+    if ($null -eq $provenanceReceipt) {
+        return @{
+            verdict = 'failed'
+            result = @{
+                capability = 'build.rendered.c6-role-reversal'
+                gate_exit_code = $provenanceExit
+                output_tail = @($provenanceOutput | Select-Object -Last 40)
+            }
+            reason = 'rendered_prelive_lab_provenance_receipt_invalid'
+        }
+    }
+    if ($provenanceExit -ne 0 -or [string]$provenanceReceipt.verdict -ne 'passed') {
+        return @{
+            verdict = 'failed'
+            result = @{
+                capability = 'build.rendered.c6-role-reversal'
+                lab_runtime_provenance = $provenanceReceipt
+            }
+            reason = 'rendered_prelive_lab_provenance_failed'
+        }
+    }
+
     $projection = Invoke-RestMethod -Uri "$CompanionUrl/api/v1/workbench" -Method Get -TimeoutSec 20
     $source = $projection.source
-    if ([string]::IsNullOrWhiteSpace([string]$source.source_revision) -or [string]$source.source_revision -eq 'unknown') {
-        return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; source = $source }; reason = 'rendered_prelive_source_identity_missing' }
+    $localSource = Get-LocalSourceIdentity
+    if ([string]$localSource.source_revision -eq 'unknown') {
+        return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; source = $source; local_source = $localSource }; reason = 'rendered_prelive_source_identity_missing' }
     }
-    if ([string]$source.source_dirty -ne 'false') {
-        return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; source = $source }; reason = 'rendered_prelive_source_dirty' }
+    if ([string]$localSource.source_dirty -ne 'false') {
+        return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; source = $source; local_source = $localSource }; reason = 'rendered_prelive_source_dirty' }
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$source.source_revision) -or [string]$source.source_revision -eq 'unknown') {
+        return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; source = $source; local_source = $localSource }; reason = 'rendered_prelive_image_source_identity_missing' }
+    }
+    if ([string]$source.source_revision -ne [string]$localSource.source_revision) {
+        return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; source = $source; local_source = $localSource }; reason = 'rendered_prelive_source_image_mismatch' }
     }
     if ([string]::IsNullOrWhiteSpace([string]$source.image) -or [string]$source.image -eq 'unknown') {
-        return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; source = $source }; reason = 'rendered_prelive_image_identity_missing' }
+        return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; source = $source; local_source = $localSource }; reason = 'rendered_prelive_image_identity_missing' }
     }
     # Do not pipe Docker into Select-Object -First: closing that native pipeline
     # after the first line makes a successful Docker CLI report exit -1 on
@@ -441,7 +511,7 @@ function Invoke-RenderedC6 {
         '-EnableMotionAuthorityCutover', '-WaitSeconds', '900'
     )
     if ($orchestratorExit -ne 0) { return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; run_id = $runId; evidence_root = $evidence }; reason = 'rendered_role_reversal_failed' } }
-    return @{ state = 'waiting_human'; result = @{ capability = 'build.rendered.c6-role-reversal'; run_id = $runId; evidence_root_name = Split-Path -Leaf $evidence; dll_sha256 = $dllHash; prelive = @{ required_nodes = $requiredNodes; i5 = 'passed'; source_revision = $source.source_revision; image = $source.image; image_id = ([string]$imageId).Trim() }; human_observation = 'required_after_machine_run' }; reason = 'rendered_role_reversal_complete' }
+    return @{ state = 'waiting_human'; result = @{ capability = 'build.rendered.c6-role-reversal'; run_id = $runId; evidence_root_name = Split-Path -Leaf $evidence; dll_sha256 = $dllHash; prelive = @{ required_nodes = $requiredNodes; i5 = 'passed'; source_revision = $localSource.source_revision; source_branch = $localSource.source_branch; image = $source.image; image_id = ([string]$imageId).Trim(); lab_runtime_provenance = $provenanceReceipt }; human_observation = 'required_after_machine_run' }; reason = 'rendered_role_reversal_complete' }
 }
 
 function Invoke-Job {

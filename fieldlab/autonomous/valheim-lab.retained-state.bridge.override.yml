@@ -1,0 +1,19 @@
+# Temporary PD-7 bridge override.
+#
+# The compose source is Baseline, while AUTONOMOUS_ROOT deliberately points at
+# the retained legacy state root until the full state migration is approved.
+# Keep this file limited to the existing server posture; do not add clients or
+# a legacy MCP listener here.
+services:
+  valheim-server:
+    environment:
+      SERVER_NAME: Comfy Era16 Lab
+      WORLD_NAME: ComfyEra16
+      SERVER_PASS: ""
+      SERVER_PUBLIC: "false"
+      SERVER_PORT: "2456"
+      CROSSPLAY: "false"
+      BEPINEX: "true"
+      BACKUPS: "true"
+      UPDATE_IF_IDLE: "true"
+      RESTART_IF_IDLE: "true"
