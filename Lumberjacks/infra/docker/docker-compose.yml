@@ -45,6 +45,10 @@ services:
         condition: service_healthy
 
   gateway:
+    # A physical cutover run sets this to the exact release image already
+    # verified by New-ReleaseCut. The default remains the rebuildable local-dev
+    # image, but acceptance tooling refuses that uncut `dev` artifact.
+    image: "${LUMBERJACKS_GATEWAY_IMAGE:-lumberjacks-local-gateway:latest}"
     build:
       context: ../..
       target: gateway

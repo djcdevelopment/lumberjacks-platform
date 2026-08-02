@@ -1,0 +1,26 @@
+{
+    "schema_version":  1,
+    "receipt_type":  "c10a_vehicle_scenario_coverage",
+    "generated_utc":  "2026-08-02T22:07:30.6546700+00:00",
+    "run_id":  "native-20260802-c10a-vehicle-r27-1",
+    "scenario_sha256":  "10dff5d00ea36d373dcfd1320796f984b503683d37ae5cacfa23fe42b9ab8492",
+    "action_count":  34,
+    "checks":  {
+                   "profile_is_c10a_vehicle":  true,
+                   "run_id_matches":  true,
+                   "action_ids_unique_per_client":  true,
+                   "first_leg_pair_present":  true,
+                   "first_leg_observer_covers_driver":  true,
+                   "first_release_gate_present":  true,
+                   "transfer_follows_release_and_settle":  true,
+                   "explicit_owner_handoff_pair_present":  true,
+                   "second_leg_pair_present":  true,
+                   "second_leg_observer_covers_driver":  true,
+                   "second_release_gate_precedes_hold":  true,
+                   "proof_holds_cover_disconnect_skew":  true
+               },
+    "result":  "passed",
+    "failed_checks":  [
+
+                      ]
+}

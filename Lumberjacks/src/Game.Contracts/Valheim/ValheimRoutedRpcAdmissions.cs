@@ -73,7 +73,20 @@ public sealed class ValheimRoutedRpcAdmission
         Disposition = disposition;
         Priority = priority;
         ReplacementLane = replacementLane;
-        RequiredTargetKind = requiredTargetKind ?? string.Empty;
+        var targetKinds = string.IsNullOrEmpty(requiredTargetKind)
+            ? Array.Empty<string>()
+            : requiredTargetKind.Split(new[] { '|' }, StringSplitOptions.None);
+        var uniqueTargetKinds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var targetKind in targetKinds)
+            if (string.IsNullOrWhiteSpace(targetKind)
+                || !uniqueTargetKinds.Add(targetKind))
+                throw new ArgumentException(
+                    "typed routed RPC target kinds must be non-empty and unique",
+                    nameof(requiredTargetKind));
+        TargetKinds = Array.AsReadOnly(targetKinds);
+        RequiredTargetKind = TargetKinds.Count == 1
+            ? TargetKinds[0]
+            : string.Empty;
         PayloadSignatures = Array.AsReadOnly(
             payloadSignatures ?? Array.Empty<string>());
         _payloadTypes = new string[PayloadSignatures.Count][];
@@ -92,7 +105,15 @@ public sealed class ValheimRoutedRpcAdmission
     public ValheimRoutedRpcDisposition Disposition { get; }
     public ValheimRoutedRpcPriority Priority { get; }
     public string ReplacementLane { get; }
+    /// <summary>
+    /// Exact component classifications allowed to use this method contract.
+    /// An empty collection means the envelope must be untyped. More than one
+    /// entry is valid when Valheim registers one name/hash and payload shape on
+    /// components whose runtime semantics are kept separate after admission.
+    /// </summary>
+    public ReadOnlyCollection<string> TargetKinds { get; }
     public string RequiredTargetKind { get; }
+    public bool RequiresTypedTarget => TargetKinds.Count > 0;
     public ReadOnlyCollection<string> PayloadSignatures { get; }
 
     public bool AcceptsTarget(
@@ -105,12 +126,18 @@ public sealed class ValheimRoutedRpcAdmission
         var scopeAccepted = Scope == ValheimRoutedRpcScope.Instance
             ? hasCompleteTarget
             : hasNoTarget;
-        return scopeAccepted &&
-            (RequiredTargetKind.Length == 0 ||
-             string.Equals(
-                 RequiredTargetKind,
-                 targetKind,
-                 StringComparison.Ordinal));
+        return scopeAccepted && AcceptsTargetKind(targetKind);
+    }
+
+    public bool AcceptsTargetKind(string targetKind)
+    {
+        var normalized = targetKind ?? string.Empty;
+        if (TargetKinds.Count == 0)
+            return normalized.Length == 0;
+        foreach (var allowed in TargetKinds)
+            if (string.Equals(allowed, normalized, StringComparison.Ordinal))
+                return true;
+        return false;
     }
 
     public bool AcceptsPayload(byte[] parameters) =>
@@ -143,6 +170,8 @@ public static class ValheimRoutedRpcAdmissions
     public const string ModServerPulse = "ComfyNetworkSense_ServerPulse";
     public const string ModShipSnapshot =
         "ComfyNetworkSense_ShipSnapshot";
+    public const string ModSaddleSnapshot =
+        "ComfyNetworkSense_SaddleSnapshot";
     public const string CutoverShipSpawnRequest =
         "ComfyNetworkSense_CutoverShipSpawnRequest";
     public const string CutoverShipSpawnResponse =
@@ -151,7 +180,16 @@ public static class ValheimRoutedRpcAdmissions
         "ComfyNetworkSense_CutoverShipTransferRequest";
     public const string CutoverShipTransferResponse =
         "ComfyNetworkSense_CutoverShipTransferResponse";
+    public const string CutoverSaddleSpawnRequest =
+        "ComfyNetworkSense_CutoverSaddleSpawnRequest";
+    public const string CutoverSaddleSpawnResponse =
+        "ComfyNetworkSense_CutoverSaddleSpawnResponse";
+    public const string CutoverSaddleTransferRequest =
+        "ComfyNetworkSense_CutoverSaddleTransferRequest";
+    public const string CutoverSaddleTransferResponse =
+        "ComfyNetworkSense_CutoverSaddleTransferResponse";
     public const string ShipTargetKind = "ship";
+    public const string SaddleTargetKind = "saddle";
 
     static readonly ValheimRoutedRpcAdmission[] EntryArray = BuildEntries();
     static readonly ReadOnlyCollection<ValheimRoutedRpcAdmission> EntryView =
@@ -172,12 +210,23 @@ public static class ValheimRoutedRpcAdmissions
         int methodHash,
         out ValheimRoutedRpcAdmission admission)
     {
+        return TryGet(
+            methodName,
+            methodHash,
+            string.Empty,
+            out admission);
+    }
+
+    public static bool TryGet(
+        string methodName,
+        int methodHash,
+        string targetKind,
+        out ValheimRoutedRpcAdmission admission)
+    {
         if (!TryGetByHash(methodHash, out admission))
             return false;
-        return string.Equals(
-            admission.Name,
-            methodName,
-            StringComparison.Ordinal);
+        return string.Equals(admission.Name, methodName, StringComparison.Ordinal)
+            && admission.AcceptsTargetKind(targetKind);
     }
 
     public static bool AllowsEnvelope(
@@ -206,7 +255,11 @@ public static class ValheimRoutedRpcAdmissions
     {
         return parameters != null
             && parameters.Length <= MaximumParameterBytes
-            && TryGet(methodName, methodHash, out var admission)
+            && TryGet(
+                methodName,
+                methodHash,
+                targetKind ?? string.Empty,
+                out var admission)
             && admission.AcceptsTarget(
                 targetZdoUserId,
                 targetZdoId,
@@ -250,7 +303,11 @@ public static class ValheimRoutedRpcAdmissions
                 targetZdoId,
                 targetKind,
                 parameters)
-            && TryGet(methodName, methodHash, out var admission)
+            && TryGet(
+                methodName,
+                methodHash,
+                targetKind ?? string.Empty,
+                out var admission)
             && admission.Disposition == ValheimRoutedRpcDisposition.Route;
     }
 
@@ -311,11 +368,16 @@ public static class ValheimRoutedRpcAdmissions
             Harness(CutoverShipSpawnResponse, ValheimRoutedRpcScope.Global, "ZPackage"),
             Harness(CutoverShipTransferRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
             Harness(CutoverShipTransferResponse, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverSaddleSpawnRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverSaddleSpawnResponse, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverSaddleTransferRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverSaddleTransferResponse, ValheimRoutedRpcScope.Global, "ZPackage"),
 
             Runtime(ModAutoPort, ValheimRoutedRpcScope.Global, "ZPackage"),
             Runtime(ModGameplayEvent, ValheimRoutedRpcScope.Global, "ZPackage"),
             Runtime(ModServerPulse, ValheimRoutedRpcScope.Global, "ZPackage"),
             Runtime(ModShipSnapshot, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Runtime(ModSaddleSnapshot, ValheimRoutedRpcScope.Global, "ZPackage"),
 
             // These native calls still occur during normal Valheim bookkeeping,
             // but their semantics are already owned by the named replacement lane.
@@ -341,6 +403,7 @@ public static class ValheimRoutedRpcAdmissions
             // The first poison-armed C10 candidate run observed these during the
             // ordinary C8 movement/combat/event window. Per the breadth audit, a
             // normal-play trip reopens the row instead of leaving it behind fallback.
+            P2("FlashShield", ValheimRoutedRpcScope.Instance, ""),
             P2("RPC_DamageText", ValheimRoutedRpcScope.Global, "ZPackage"),
             P2("RPC_HealthChanged", ValheimRoutedRpcScope.Instance, "Single"),
             P2("RPC_UpdateMaterial", ValheimRoutedRpcScope.Instance, "Int32"),
@@ -362,11 +425,11 @@ public static class ValheimRoutedRpcAdmissions
             // component before dispatch. An untyped generic envelope remains
             // rejected even though the payload itself has the right shape.
             TypedP2("RequestControl", ValheimRoutedRpcScope.Instance,
-                ShipTargetKind, "Int64"),
+                ShipTargetKind + "|" + SaddleTargetKind, "Int64"),
             TypedP2("ReleaseControl", ValheimRoutedRpcScope.Instance,
-                ShipTargetKind, "Int64"),
+                ShipTargetKind + "|" + SaddleTargetKind, "Int64"),
             TypedP2("RequestRespons", ValheimRoutedRpcScope.Instance,
-                ShipTargetKind, "Boolean"),
+                ShipTargetKind + "|" + SaddleTargetKind, "Boolean"),
             TypedP2("Stop", ValheimRoutedRpcScope.Instance,
                 ShipTargetKind, ""),
             TypedP2("Forward", ValheimRoutedRpcScope.Instance,
@@ -375,6 +438,16 @@ public static class ValheimRoutedRpcAdmissions
                 ShipTargetKind, ""),
             TypedP2("Rudder", ValheimRoutedRpcScope.Instance,
                 ShipTargetKind, "Single"),
+
+            // Sadle (the spelling used by Valheim) shares its three control
+            // handshake hashes with ShipControlls but transfers the creature's
+            // ZDO owner to the rider and identifies that rider by session/ZDO
+            // user id. It therefore requires a separate target-resolved
+            // contract even though the serialized payload shapes collide.
+            TypedP2("Controls", ValheimRoutedRpcScope.Instance,
+                SaddleTargetKind, "Vector3,Int32,Single"),
+            TypedP2("RemoveSaddle", ValheimRoutedRpcScope.Instance,
+                SaddleTargetKind, "Vector3"),
 
             P1("ChatMessage", ValheimRoutedRpcScope.Global,
                 "Vector3,Int32,UserInfo,String"),

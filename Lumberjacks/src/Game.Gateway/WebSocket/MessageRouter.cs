@@ -24,6 +24,7 @@ public class MessageRouter
     private readonly ValheimOwnershipLeaseService _ownershipLeases;
     private readonly ValheimWorldZoneService _worldZones;
     private readonly ValheimShipControlService _shipControls;
+    private readonly ValheimSaddleControlService _saddleControls;
     private readonly ILogger<MessageRouter> _logger;
     private readonly ValheimPlayerLifecycle? _valheimPlayers;
 
@@ -39,7 +40,8 @@ public class MessageRouter
         ValheimWorldZoneService worldZones,
         ILogger<MessageRouter> logger,
         ValheimPlayerLifecycle? valheimPlayers = null,
-        ValheimShipControlService? shipControls = null)
+        ValheimShipControlService? shipControls = null,
+        ValheimSaddleControlService? saddleControls = null)
     {
         _sessions = sessions;
         _inputQueue = inputQueue;
@@ -51,6 +53,7 @@ public class MessageRouter
         _ownershipLeases = ownershipLeases;
         _worldZones = worldZones;
         _shipControls = shipControls ?? new ValheimShipControlService();
+        _saddleControls = saddleControls ?? new ValheimSaddleControlService();
         _logger = logger;
         _valheimPlayers = valheimPlayers;
     }
@@ -1110,23 +1113,6 @@ public class MessageRouter
             return;
         }
 
-        if (string.Equals(
-                targetKind,
-                ValheimRoutedRpcAdmissions.ShipTargetKind,
-                StringComparison.Ordinal))
-        {
-            var validation = _shipControls.Validate(
-                methodName,
-                senderPeerId,
-                targetPeerId,
-                targetZdoUserId,
-                targetZdoId,
-                parameterBytes,
-                DateTimeOffset.UtcNow);
-            if (!validation.Accepted)
-                throw new InvalidDataException(validation.Reason);
-        }
-
         IReadOnlyCollection<GameSession> targets;
         if (targetPeerId == 0)
         {
@@ -1147,6 +1133,39 @@ public class MessageRouter
         {
             await SendErrorAsync(session, "VALHEIM_ROUTE_TARGET_MISSING", routeId);
             return;
+        }
+
+        if (string.Equals(
+                targetKind,
+                ValheimRoutedRpcAdmissions.ShipTargetKind,
+                StringComparison.Ordinal))
+        {
+            var validation = _shipControls.Validate(
+                methodName,
+                senderPeerId,
+                targetPeerId,
+                targetZdoUserId,
+                targetZdoId,
+                parameterBytes,
+                DateTimeOffset.UtcNow);
+            if (!validation.Accepted)
+                throw new InvalidDataException(validation.Reason);
+        }
+        else if (string.Equals(
+                     targetKind,
+                     ValheimRoutedRpcAdmissions.SaddleTargetKind,
+                     StringComparison.Ordinal))
+        {
+            var validation = _saddleControls.Validate(
+                methodName,
+                senderPeerId,
+                targetPeerId,
+                targetZdoUserId,
+                targetZdoId,
+                parameterBytes,
+                DateTimeOffset.UtcNow);
+            if (!validation.Accepted)
+                throw new InvalidDataException(validation.Reason);
         }
 
         if (mode == "withhold")

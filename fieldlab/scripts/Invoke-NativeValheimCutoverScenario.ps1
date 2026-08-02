@@ -71,6 +71,11 @@ param(
 
     [switch] $SkipGatewayBuild,
 
+    # Physical acceptance runs the exact paired image built by
+    # New-ReleaseCut, never a second compose-local `dev` build. When omitted,
+    # the tag is derived from the mod DLL's baked release metadata.
+    [string] $GatewayImage = '',
+
     [string] $ServerGatewayUrl = 'http://100.124.12.37:4000',
 
     [string] $ServerContainer = 'comfy-valheim-server-am4-valheim-server-1',
@@ -153,6 +158,22 @@ if ($EnableSteamFreeColdJoin -and $EnableSocketQuarantineCutover) {
 
 $scenario = (Resolve-Path -LiteralPath $ScenarioPath -ErrorAction Stop).Path
 $dll = (Resolve-Path -LiteralPath $DllPath -ErrorAction Stop).Path
+$releaseIdentityLibrary = Join-Path $repoRoot `
+    'infra\gcp\p7\scripts\lib\ReleaseIdentity.ps1'
+. $releaseIdentityLibrary
+$modRelease = Get-AssemblyMetadataValue `
+    -DllPath $dll `
+    -Key 'LumberjacksModReleaseId'
+if ([string]::IsNullOrWhiteSpace($modRelease) -or
+    $modRelease -notmatch '^m\d+-[a-z0-9]+-\d{8}-r\d+$') {
+    throw "The physical cutover DLL is not a cut release: '$modRelease'."
+}
+if ([string]::IsNullOrWhiteSpace($GatewayImage)) {
+    $GatewayImage = "lumberjacks-gateway:$modRelease"
+}
+if ($GatewayImage -notmatch '^[A-Za-z0-9._/-]+:[A-Za-z0-9._-]+$') {
+    throw "GatewayImage must be a tagged local image reference: $GatewayImage"
+}
 $scenarioDocument =
     Get-Content -LiteralPath $scenario -Raw -Encoding utf8 |
     ConvertFrom-Json
@@ -199,7 +220,10 @@ $serverPoisonReceipts = @()
 $serverPoisonDisarmError = $null
 $residueCleanupReceipt = $null
 $residueCleanupError = $null
+$vehicleSummaryError = $null
+$mountSummaryError = $null
 $gatewayRestartReceipt = $null
+$gatewayImageReceipt = $null
 $saveIntegrityBefore = $null
 $saveIntegrityAfter = $null
 $i5Queued = $false
@@ -219,6 +243,49 @@ function Write-JsonAtomic([string] $Path, [object] $Value) {
         ($Value | ConvertTo-Json -Depth 12) + [Environment]::NewLine,
         [Text.UTF8Encoding]::new($false))
     Move-Item -LiteralPath $temporary -Destination $Path -Force
+}
+
+function Copy-ServerFailureEvidenceBestEffort {
+    $serverDirectory = Join-Path $runDirectory 'server'
+    New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
+    $remoteRoot =
+        '/home/derek/comfy-valheim-lab/server-state/config/bepinex/' +
+        'comfy-network-sense'
+    foreach ($name in @(
+            'ship-cutover.jsonl',
+            'saddle-cutover.jsonl',
+            'routed-rpc-cutover.jsonl',
+            'logical-peer-cutover.jsonl',
+            'native-network-use.jsonl',
+            'lumberjacks-game-session.jsonl')) {
+        try {
+            & scp -q "am4:$remoteRoot/$name" (Join-Path $serverDirectory $name)
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "Best-effort AM4 evidence copy failed for $name."
+            }
+        } catch {
+            Write-Warning ("Best-effort AM4 evidence copy failed for ${name}: " +
+                $_.Exception.Message)
+        }
+    }
+
+    try {
+        $container = if ($gatewayImageReceipt -and
+            $gatewayImageReceipt.running_container) {
+            [string]$gatewayImageReceipt.running_container
+        } else { 'lumberjacks-local-gateway-1' }
+        $gatewayLines = @(
+            docker logs --since 2h $container 2>&1 |
+                Select-String -SimpleMatch $RunId |
+                ForEach-Object Line)
+        [IO.File]::WriteAllLines(
+            (Join-Path $runDirectory 'gateway-run.log'),
+            $gatewayLines,
+            [Text.UTF8Encoding]::new($false))
+    } catch {
+        Write-Warning ("Best-effort Gateway evidence copy failed: " +
+            $_.Exception.Message)
+    }
 }
 
 function Get-Am4SaveFingerprint {
@@ -462,6 +529,35 @@ try {
             throw 'C10a vehicle release/transfer choreography is incomplete; no remote state was changed.'
         }
         $coverageOutput | Write-Host
+    }
+    if ($scenarioDocument.profile -eq 'c10a-mount') {
+        $coveragePath = Join-Path $runDirectory 'c10a-mount-scenario-coverage.json'
+        $coverageOutput =
+            & (Join-Path $PSScriptRoot 'Test-C10aMountScenarioCoverage.ps1') `
+                -ScenarioPath $scenario `
+                -RunId $RunId `
+                -OutputPath $coveragePath
+        $coverageReceipt =
+            Get-Content -LiteralPath $coveragePath -Raw -Encoding utf8 |
+            ConvertFrom-Json
+        if ($coverageReceipt.result -ne 'passed') {
+            throw 'C10a mount rider/reclaim choreography is incomplete; no remote state was changed.'
+        }
+        $coverageOutput | Write-Host
+    }
+    $gatewayVerifier = Join-Path $repoRoot `
+        'infra\gcp\p7\scripts\Test-GatewayImageRelease.ps1'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $gatewayVerifier `
+        -Image $GatewayImage `
+        -ExpectedRelease $modRelease
+    if ($LASTEXITCODE -ne 0) {
+        throw "Gateway image '$GatewayImage' does not admit the exact mod release '$modRelease'; no remote state was changed."
+    }
+    $gatewayExpectedImageId = [string](
+        & docker image inspect --format '{{.Id}}' $GatewayImage)
+    if ($LASTEXITCODE -ne 0 -or
+        [string]::IsNullOrWhiteSpace($gatewayExpectedImageId)) {
+        throw "Gateway image '$GatewayImage' is unavailable after release verification."
     }
     if ($EnableC8Composition) {
         $retainedScenario = Join-Path $runDirectory 'scenario.json'
@@ -741,19 +837,44 @@ try {
 
     if ($useConcurrentHarness) {
         $gatewayCompose = Join-Path $repoRoot 'Lumberjacks\infra\docker'
+        $previousGatewayImage = $env:LUMBERJACKS_GATEWAY_IMAGE
         Push-Location $gatewayCompose
         try {
-            if ($SkipGatewayBuild) {
-                & docker compose -p lumberjacks-local up -d --no-deps gateway
-            } else {
-                & docker compose -p lumberjacks-local up -d --no-deps --build gateway
-            }
+            $env:LUMBERJACKS_GATEWAY_IMAGE = $GatewayImage
+            & docker compose -p lumberjacks-local up -d --no-deps --no-build gateway
             if ($LASTEXITCODE -ne 0) {
-                throw 'Gateway deployment for the canonical-session slice failed.'
+                throw 'Exact paired Gateway deployment for the canonical-session slice failed.'
             }
         } finally {
+            if ($null -eq $previousGatewayImage) {
+                Remove-Item Env:LUMBERJACKS_GATEWAY_IMAGE -ErrorAction SilentlyContinue
+            } else {
+                $env:LUMBERJACKS_GATEWAY_IMAGE = $previousGatewayImage
+            }
             Pop-Location
         }
+        $gatewayContainerImageId = [string](
+            & docker inspect --format '{{.Image}}' lumberjacks-local-gateway-1)
+        if ($LASTEXITCODE -ne 0 -or
+            $gatewayContainerImageId.Trim() -ne $gatewayExpectedImageId.Trim()) {
+            throw "Running Gateway bytes do not match '$GatewayImage': expected=$gatewayExpectedImageId actual=$gatewayContainerImageId"
+        }
+        $gatewayImageReceipt = [ordered]@{
+            schema_version = 1
+            receipt_type = 'native_cutover_gateway_image_provenance'
+            generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
+            run_id = $RunId
+            mod_release = $modRelease
+            requested_image = $GatewayImage
+            expected_image_id = $gatewayExpectedImageId.Trim()
+            running_container = 'lumberjacks-local-gateway-1'
+            running_image_id = $gatewayContainerImageId.Trim()
+            exact_image_match = $true
+            result = 'passed'
+        }
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'gateway-image-provenance.json') `
+            $gatewayImageReceipt
         if ($EnableWorldZoneCutover) {
             $gatewayReadiness = Wait-GatewayCutoverReady -Seconds 15
             Write-JsonAtomic `
@@ -1067,6 +1188,10 @@ try {
             'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/ship-cutover.jsonl' `
             "$serverDirectory\ship-cutover.jsonl"
         if ($LASTEXITCODE -ne 0) { throw 'Server ship-cutover evidence retrieval failed.' }
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/saddle-cutover.jsonl' `
+            "$serverDirectory\saddle-cutover.jsonl"
+        if ($LASTEXITCODE -ne 0) { throw 'Server saddle-cutover evidence retrieval failed.' }
     }
     if ($EnableZdoJournalCutover) {
         $serverDirectory = Join-Path $runDirectory 'server'
@@ -1122,6 +1247,11 @@ try {
         run_id = $RunId
         server = $Server
         result = 'completed'
+        mod_release = $modRelease
+        gateway_image = $GatewayImage
+        gateway_image_id = if ($gatewayImageReceipt) {
+            $gatewayImageReceipt.running_image_id
+        } else { $null }
         steam_free_cold_join = [bool]$EnableSteamFreeColdJoin
         native_zero_composition =
             [bool]$EnableNativeZeroComposition -or [bool]$EnableC8Composition
@@ -1236,6 +1366,7 @@ try {
             Write-Warning ("i5 failure evidence retrieval failed: " + $_.Exception.Message)
         }
     }
+    Copy-ServerFailureEvidenceBestEffort
     if ($gatewayTunnel -and -not $gatewayTunnel.HasExited) {
         Stop-Process -Id $gatewayTunnel.Id -Force -ErrorAction SilentlyContinue
     }
@@ -1255,6 +1386,16 @@ try {
             $residueCleanupReceipt =
                 (($residueCleanupOutput -join [Environment]::NewLine) |
                     ConvertFrom-Json)
+            if ($completed -and $scenarioDocument.profile -eq 'c10a-mount') {
+                $effect = [string]$residueCleanupReceipt.effect
+                if ($effect -notmatch '(?:^| )matched=1(?: |$)' -or
+                    $effect -notmatch '(?:^| )destroyed=1(?: |$)' -or
+                    $effect -notmatch '(?:^| )skipped_live_owner=0(?: |$)' -or
+                    $effect -notmatch '(?:^| )mount=1(?: |$)') {
+                    $residueCleanupError =
+                        "C10a mount cleanup did not destroy exactly one tagged mount: $effect"
+                }
+            }
         } else {
             $residueCleanupError =
                 "Server residue cleanup exited $LASTEXITCODE."
@@ -1573,6 +1714,52 @@ try {
                 cleanup_error = $residueCleanupError
             })
     }
+    if ($scenarioDocument.profile -eq 'c10a-vehicle') {
+        # The process exit only says every manifest action reached a terminal
+        # state. Correlate both clients with AM4 after cleanup so a stale helm
+        # handoff, missing observer leg, or artifact mismatch cannot inherit a
+        # green composition result.
+        try {
+            $vehicleSummaryOutput =
+                & powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
+                    (Join-Path $PSScriptRoot 'Write-C10aVehicleSummary.ps1') `
+                    -RunDirectory $runDirectory `
+                    -RunId $RunId `
+                    -OutputPath (Join-Path $runDirectory 'c10a-vehicle-summary.json')
+            $vehicleSummaryExitCode = $LASTEXITCODE
+            $vehicleSummaryOutput | Write-Host
+            if ($completed -and $vehicleSummaryExitCode -ne 0) {
+                $vehicleSummaryError =
+                    "C10a vehicle reducer exited $vehicleSummaryExitCode."
+            }
+        } catch {
+            if ($completed) { $vehicleSummaryError = $_.Exception.Message }
+            Write-Warning ("C10a vehicle reducer failed: " + $_.Exception.Message)
+        }
+    }
+    if ($scenarioDocument.profile -eq 'c10a-mount') {
+        # Run the reducer out-of-process so its fail-closed exit code cannot
+        # interrupt this finally block. Failed scenarios need the same
+        # correlated receipt as successful ones, after server logs and exact
+        # residue cleanup have been captured.
+        try {
+            $mountSummaryOutput =
+                & powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
+                    (Join-Path $PSScriptRoot 'Write-C10aMountSummary.ps1') `
+                    -RunDirectory $runDirectory `
+                    -RunId $RunId `
+                    -OutputPath (Join-Path $runDirectory 'c10a-mount-summary.json')
+            $mountSummaryExitCode = $LASTEXITCODE
+            $mountSummaryOutput | Write-Host
+            if ($completed -and $mountSummaryExitCode -ne 0) {
+                $mountSummaryError =
+                    "C10a mount reducer exited $mountSummaryExitCode."
+            }
+        } catch {
+            if ($completed) { $mountSummaryError = $_.Exception.Message }
+            Write-Warning ("C10a mount reducer failed: " + $_.Exception.Message)
+        }
+    }
     if ($completed -and $serverDisarmError) {
         throw "Scenario completed but server direct-control disarm failed: $serverDisarmError"
     }
@@ -1599,6 +1786,12 @@ try {
     }
     if ($completed -and $residueCleanupError) {
         throw "Scenario completed but server residue cleanup failed: $residueCleanupError"
+    }
+    if ($completed -and $vehicleSummaryError) {
+        throw "C10a vehicle physical evidence did not satisfy the reducer: $vehicleSummaryError"
+    }
+    if ($completed -and $mountSummaryError) {
+        throw "C10a mount physical evidence did not satisfy the reducer: $mountSummaryError"
     }
 }
 

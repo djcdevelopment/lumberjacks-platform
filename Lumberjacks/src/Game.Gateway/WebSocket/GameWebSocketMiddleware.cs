@@ -311,6 +311,13 @@ public class GameWebSocketMiddleware
                     _logger.LogInformation(
                         "Reclaimed {HelmCount} Valheim ship helm(s) for detached peer {PeerUid}",
                         reclaimedHelms, detachedPeerUid);
+                var reclaimedSaddles = _services
+                    .GetRequiredService<ValheimSaddleControlService>()
+                    .ReclaimByPeer(detachedPeerUid);
+                if (reclaimedSaddles > 0)
+                    _logger.LogInformation(
+                        "Reclaimed {SaddleCount} Valheim saddle control(s) for detached peer {PeerUid}",
+                        reclaimedSaddles, detachedPeerUid);
             }
 
             // Detach session (preserves identity for resume within 2min window)

@@ -33,6 +33,7 @@ builder.Services.AddSingleton<ValheimZdoJournalService>(sp =>
 builder.Services.AddSingleton<ValheimOwnershipLeaseService>();
 builder.Services.AddSingleton<ValheimWorldZoneService>();
 builder.Services.AddSingleton<ValheimShipControlService>();
+builder.Services.AddSingleton<ValheimSaddleControlService>();
 builder.Services.AddSingleton<ValheimZdoConsumerTelemetryService>();
 builder.Services.AddSingleton<ValheimZdoInjectionService>();
 builder.Services.AddSingleton<ValheimWindowActivityService>();

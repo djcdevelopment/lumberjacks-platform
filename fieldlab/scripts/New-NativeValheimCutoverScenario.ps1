@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'c10a-vehicle', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'c10a-vehicle', 'c10a-mount', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -106,6 +106,47 @@ if ($Profile -eq 'c10a-stamina') {
     $actions += @(
         New-Action 'omen-c10a-stamina-safe-origin' 'omen' 'teleport_to' 15 0 0 0 '' '' 2211 80 -69
         New-Action 'i5-c10a-stamina-safe-origin' 'i5' 'teleport_to' 15 0 0 0 '' '' 2211 80 -69
+    )
+}
+
+if ($Profile -eq 'c10a-mount') {
+    $actions += @(
+        New-Action 'omen-c10a-mount-safe-origin' 'omen' 'teleport_to' 20 0 0 0 '' '' 2211 33 -69
+        New-Action 'i5-c10a-mount-safe-origin' 'i5' 'teleport_to' 20 0 0 0 '' '' 2211 33 -69
+        New-Action 'omen-c10a-mount-origin-settle' 'omen' 'wait' 12 5
+        New-Action 'i5-c10a-mount-origin-settle' 'i5' 'wait' 12 5
+        New-Action 'omen-c10a-mount-spawn' 'omen' 'saddle_spawn' 30
+        New-Action 'omen-c10a-mount-wait' 'omen' 'saddle_wait' 45
+        New-Action 'i5-c10a-mount-wait' 'i5' 'saddle_wait' 45
+        New-Action 'omen-c10a-mount-rendezvous' 'omen' 'saddle_rendezvous' 30
+        New-Action 'i5-c10a-mount-rendezvous' 'i5' 'saddle_rendezvous' 30
+        New-Action 'omen-c10a-mount-ready' 'omen' 'wait' 10 3
+        New-Action 'i5-c10a-mount-ready' 'i5' 'wait' 10 3
+
+        # The mount starts owned by OMEN. i5 must request/grant through the
+        # exact Sadle contract, move it, rotate it, and release natively while
+        # OMEN proves the canonical mount and remote rider-parent presentation.
+        New-Action 'omen-c10a-mount-observe-i5' 'omen' 'saddle_observe' 30 10
+        New-Action 'i5-c10a-mount-drive-omen' 'i5' 'saddle_drive' 30 8
+        New-Action 'omen-c10a-mount-first-release' 'omen' 'saddle_wait_released' 20
+        New-Action 'i5-c10a-mount-first-settle' 'i5' 'wait' 10 3
+
+        # OMEN acquires the now-i5-owned mount and aborts only its Lumberjacks
+        # socket while still attached. The server must reclaim to live i5,
+        # clear the canonical rider edge, and let OMEN reconnect in place.
+        New-Action 'omen-c10a-mount-disconnect-reclaim' 'omen' 'saddle_disconnect_reclaim' 60 5
+        New-Action 'i5-c10a-mount-observe-reclaim' 'i5' 'saddle_observe_reclaim' 60
+        New-Action 'omen-c10a-mount-reclaim-settle' 'omen' 'wait' 15 5
+        New-Action 'i5-c10a-mount-reclaim-settle' 'i5' 'wait' 15 5
+
+        # The reclaimed i5 owner grants OMEN again. This opposite rider leg is
+        # the recovery proof, not merely another observation of the first leg.
+        New-Action 'omen-c10a-mount-drive-i5' 'omen' 'saddle_drive' 30 8
+        New-Action 'i5-c10a-mount-observe-omen' 'i5' 'saddle_observe' 30 10
+        New-Action 'omen-c10a-mount-second-settle' 'omen' 'wait' 10 3
+        New-Action 'i5-c10a-mount-second-release' 'i5' 'saddle_wait_released' 20
+        New-Action 'omen-c10a-mount-proof-hold' 'omen' 'wait' 20 12
+        New-Action 'i5-c10a-mount-proof-hold' 'i5' 'wait' 20 12
     )
 }
 
