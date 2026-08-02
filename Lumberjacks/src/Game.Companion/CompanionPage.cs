@@ -266,7 +266,9 @@ function paint(){
   q('#l-game').className='check manual '+(!v.running&&game.checked?'ok':'wait');
   let ready=v.found&&v.config_found&&p.linked&&!v.running&&game.checked;
   q('#install').disabled=!(ready&&manifest);
-  q('#rollback').disabled=!state.installed||!ready;
+  let rollbackReady=state.installed?.transaction_schema_version===1;
+  q('#rollback').disabled=!rollbackReady||!ready;
+  q('#rollback').title=rollbackReady?'Restore the state before the latest Workbench install.':'No reversible Workbench install is currently active.';
   if(ready){
     q('#headline').textContent='Ready to install the checked release';
     q('#next').textContent=manifest?'Install is enabled.':'Next: check the current alpha release.';

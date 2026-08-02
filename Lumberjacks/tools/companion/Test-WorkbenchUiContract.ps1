@@ -40,6 +40,7 @@ function Get-Page {
 $pages = @{}
 foreach ($path in @('/', '/workbench', '/companion')) { $pages[$path] = Get-Page $path }
 $html = $pages['/']
+$legacyHtml = $pages['/companion']
 Assert-That (-not [string]::IsNullOrWhiteSpace($html)) 'Workbench root returned no HTML'
 Assert-That ($html -notmatch '[\u00C2\u00C3\u00E2\uFFFD]') 'Workbench HTML contains mojibake characters'
 Assert-That ($html -match '<meta[^>]+name="viewport"[^>]+content="width=device-width') 'responsive viewport contract missing'
@@ -63,6 +64,8 @@ Assert-That ($html -match 'Factory reset is intentionally separate') 'first-visi
 Assert-That ($html -match 'applyStorySurface') 'Story/Advanced capability target adapter missing'
 Assert-That ($html -match 'No reversible Workbench install is currently active') 'legacy rollback unavailability guidance missing'
 Assert-That ($html -match 'capabilityReason') 'capability reason presentation adapter missing'
+Assert-That ($legacyHtml -match 'transaction_schema_version===1') 'legacy Companion page does not gate rollback on a reversible transaction'
+Assert-That ($legacyHtml -match 'No reversible Workbench install is currently active') 'legacy Companion rollback guidance missing'
 Assert-That (([regex]::Matches($html, 'function capabilityCard')).Count -eq 1) 'capabilityCard declaration is duplicated or missing'
 Assert-That (([regex]::Matches($html, 'async function startJob')).Count -eq 1) 'startJob declaration is duplicated or missing'
 Assert-That ($html -notmatch '<script[^>]+src=') 'external script dependency found in local shell'
