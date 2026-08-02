@@ -223,7 +223,11 @@ if ($Profile -eq 'c10a-stamina') {
     # Both physical clients first converge on the same safe world slice. The
     # fixed remote-stamina action then invokes the exact vanilla instance RPC
     # against the other real player's non-owned ZNetView and waits for a
-    # receiver-side before/requested/after semantic receipt.
+    # receiver-side before/requested/after semantic receipt. Each client runs
+    # its own action list independently; neither sender may enter the shared
+    # disconnect/resume tail while the other sender is still inside its 20s
+    # proof window. The 25s post-proof holds make that invariant explicit and
+    # cover the full peer proof deadline plus observed startup skew.
     $actions += @(
         New-Action 'omen-c10a-stamina-rendezvous-settle' 'omen' 'wait' 12 5
         New-Action 'i5-c10a-stamina-rendezvous' 'i5' 'motion_rendezvous' 20
@@ -231,6 +235,8 @@ if ($Profile -eq 'c10a-stamina') {
         New-Action 'i5-c10a-stamina-settle' 'i5' 'wait' 10 3
         New-Action 'omen-c10a-remote-stamina' 'omen' 'routed_remote_stamina' 20
         New-Action 'i5-c10a-remote-stamina' 'i5' 'routed_remote_stamina' 20
+        New-Action 'omen-c10a-stamina-peer-proof-hold' 'omen' 'wait' 30 25
+        New-Action 'i5-c10a-stamina-peer-proof-hold' 'i5' 'wait' 30 25
     )
 }
 

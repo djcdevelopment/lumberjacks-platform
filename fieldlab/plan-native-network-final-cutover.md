@@ -36,7 +36,7 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
 | C8 | **Complete and runtime-reconfirmed on AM4 (2026-08-02)** | `native-20260731-c8-full44` + `full45` passed the full 49-action composition twice. `native-20260802-cutover-recovery5` repeated it on fresh GPU-rendered OMEN/i5 processes with the hash-identical candidate, 20/20 coverage, zero client/server native use or poison trips, clean save integrity, ownership contention, Gateway replay, and clean rejoin. The same window runtime-proved the session-scoped epoch across a real AM4 restart and rejected an old-session mutation. |
 | C9 | **Machine/artifact complete; subjective acceptance pending** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. The retained 2560×720 side-by-side clip covers both views; Derek's `smooth`/`rough`/`mixed` verdict remains open. |
-| C10 | **Paired release accepted on AM4; breadth and finalization remain** | `m7-c10a-20260802-r4` from `53260467` passed `native-20260802-c10a-r4`: both physical clients completed all 49 actions and one relaunch, forced zone resume passed, and OMEN/i5/server native totals and poison trips stayed zero. `RPC_SetConnection` is source/runtime-verified as superseded by the server portal cache; `RPC_TeleportPlayer` is source/runtime-verified as deferred admin recall and remains poison-guarded. r1-r3 remain failed falsifiers. Two `[VERIFY]` items, separate vehicle and mount gates, containers/stations, AI/creatures, P7 promotion, fallback deletion, and the post-deletion release remain. |
+| C10 | **Paired release accepted on AM4; breadth and finalization remain** | `m7-c10a-20260802-r4` from `53260467` passed `native-20260802-c10a-r4`: both physical clients completed all 49 actions and one relaunch, forced zone resume passed, and OMEN/i5/server native totals and poison trips stayed zero. `RPC_SetConnection` is source/runtime-verified as superseded by the server portal cache; `RPC_TeleportPlayer` is source/runtime-verified as deferred admin recall and remains poison-guarded. Exact paired r6 then closed `UseStamina [VERIFY]` in both physical directions with `50 - 1.25 = 48.75`, native totals/trips zero, and clean reconnect/cleanup. r1-r3 and the r5/r6 pre-acceptance cells remain falsifiers. One vehicle-control `[VERIFY]` item, separate vehicle and mount gates, containers/stations, AI/creatures, P7 promotion, fallback deletion, and the post-deletion release remain. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -755,9 +755,9 @@ comparison.
   breadth. Per the C8 breadth audit (`C8-BREADTH-AUDIT-2026-07-31.md`): all 33 P1
   methods — 29 instance plus four global — must be admitted and contract-tested before
   native fallback deletion in
-  C10; two remaining `[VERIFY]` items (`UseStamina` and vehicle
-  `RequestControl`/`ReleaseControl`/`RequestRespons`) and the component-family
-  gates remain. Vehicles and mounts are separate runtime gates, followed by
+  C10. `UseStamina` is now physically accepted in both directions; one remaining
+  `[VERIFY]` item (vehicle `RequestControl`/`ReleaseControl`/`RequestRespons`) and
+  the component-family gates remain. Vehicles and mounts are separate runtime gates, followed by
   containers/stations and AI/creatures; vehicle/mount ownership is the largest genuinely
   novel work left. P2/P3 may ship behind the poison
   tripwire with the deferred bucket documented in the C10 gate.
@@ -808,8 +808,8 @@ comparison.
 2. **C10a â€” admissions, aligned runtime, and remaining breadth:** the 33 P1 contracts
    and one paired mod/Gateway release are accepted on AM4. `RPC_SetConnection` is
    verified as replacement-owned, and `RPC_TeleportPlayer` is verified as deferred
-   admin recall. Resolve the two remaining explicit
-   `[VERIFY]` items, then pass separate vehicle, mount, container/station, and
+   admin recall. `UseStamina [VERIFY]` is physically accepted on exact r6. Resolve
+   the remaining vehicle-control `[VERIFY]` item, then pass separate vehicle, mount, container/station, and
    AI/creature physical gates. Wall 11's release alignment/runtime gate and interim
    WAL-discard rule are closed.
 3. **C10b â€” P7 promotion and close:** boot P7 per `RUNBOOK-boot-determinism.md`
@@ -999,7 +999,7 @@ the final post-deletion release remain open.
   extracted payload, preserving poison as the fail-closed signal. Retained receipt:
   `fieldlab/evidence/c10a-rpc-teleportplayer-verification/verification-summary.json`.
 
-#### C10a `UseStamina` r5 falsifier and r6 repair candidate — 2026-08-02
+#### C10a `UseStamina` r5 falsifier and r6 physical acceptance — 2026-08-02
 
 - Extractor-v2 and the matching pinned assembly agree on instance
   `UseStamina(Single)`, registered by an owning `Player`. Ordinary attack and status
@@ -1023,11 +1023,25 @@ the final post-deletion release remain open.
   `fieldlab/evidence/c10a-r5-stamina-falsifier/falsifier-summary.json`.
 - r6 requires the selected player's ZDO user component to equal its current owner and
   chooses the nearest matching live player. The harness now has one named native-zero
-  composition switch rather than a standalone broad-poison shortcut.
-- This verification remains open until the repaired action passes in both directions on the
-  real OMEN+i5 pair with exact r6 artifacts, client/server native-use poison armed,
-  zero native routed use, zero poison trips, and clean reconnect/cleanup. P7 remains
-  stopped and untouched.
+  composition switch rather than a standalone broad-poison shortcut. Exact paired release
+  `m7-c10a-20260802-r6` was cut from `07c4782b`; its mod SHA-256 is
+  `f0eedcb413facf74c2cc4b3d0ec67d821a89c6595d5e4ee00fbfe97ced83a396` and its
+  Gateway image is
+  `sha256:f43178d2cca5b6527a3be0793c5bbbf10bd01100c5e09dad64158f10bb0f6f07`.
+- The first r6 physical attempt retained a harness falsifier: i5 completed its real debit
+  and immediately entered the deliberate disconnect tail 1.37 s before OMEN began the
+  reciprocal proof. A 25 s post-proof hold now prevents either independently advancing
+  client from disconnecting inside the other's 20 s deadline. This changed choreography,
+  not the semantic gate or r6 artifacts.
+- `native-20260802-c10a-stamina-r6-sync1` then passed both physical directions. Each
+  sender selected a live player whose ZDO user equaled its owner; both receivers retained
+  `before=50;requested=1.25;after=48.75`; both correlated sender receipts passed. Both
+  clients completed one fresh-process resume. OMEN, i5, and AM4 native totals and poison
+  trips were zero with poison armed; runtime controls disarmed, configs restored by exact
+  hash, residue matched zero, both games stopped, and the i5 task returned `Ready`.
+  Retained receipt:
+  `fieldlab/evidence/c10a-usestamina-verification/verification-summary.json`. This closes
+  `UseStamina [VERIFY]`; P7 remains stopped and untouched.
 
 **Candidate promotion**
 
@@ -1109,10 +1123,11 @@ at least one native Valheim client; composition slices require both clients.
 
 ## Estimated remaining cost
 
-After r4's physical acceptance and the `RPC_SetConnection` and `RPC_TeleportPlayer`
-classifications, the honest remaining local burn-down is **six named gates**, not one
-blended day estimate: two explicit verification items plus separate
-vehicle, mount, container/station, and AI/creature runtime gates. Some may close from one
+After r4's physical acceptance, the `RPC_SetConnection` and `RPC_TeleportPlayer`
+classifications, and r6's two-direction `UseStamina` acceptance, the honest remaining
+local burn-down is **five named gates**, not one blended day estimate: one explicit
+vehicle-control verification item plus separate vehicle, mount, container/station, and
+AI/creature runtime gates. Some may close from one
 artifact, but none receives credit without its own source classification and physical
 receipt. C10b then has two bounded P7 reloads: paired-candidate promotion/reproof, followed
 by fallback deletion and the final post-deletion artifact/reproof. C9 still needs Derek's
@@ -1120,7 +1135,7 @@ one-word retained-clip verdict.
 
 | Remaining unit | Count |
 | --- | ---: |
-| `UseStamina`, vehicle-control `[VERIFY]` | 2 |
+| Vehicle-control `[VERIFY]` | 1 |
 | Vehicle, mount, container/station, AI/creature physical family gates | 4 |
 | P7 candidate promotion and final no-fallback promotion | 2 reloads |
 | C9 subjective retained-clip verdict | 1 operator verdict |
@@ -1135,16 +1150,14 @@ the landscape, then commit and replan.
 C0-C8 are complete; C9's machine/artifact run is retained with only the one-word
 subjective verdict open. C10a's 33 P1 contracts, release alignment, poison-armed r4
 physical candidate, `RPC_SetConnection` replacement classification, and
-`RPC_TeleportPlayer` deferred-admin classification are also retained. `UseStamina` source
-classification is now closed: legitimate harpoon/fishing cross-owner paths require the
-exact P3 contract. r5 is retained as an asymmetric target-identity falsifier: one direction
-applied the real debit, while the reverse selected an aliased ZDO and failed closed before
-ACK. r6 filters to a live player whose ZDO user equals its owner and packages the focused
-gate inside the proven native-zero composition. The immediate next gate is **physical
-`UseStamina [VERIFY]` on OMEN+i5**: deploy the exact paired r6 candidate,
-require both receiver-side stamina-debit receipts with zero native use/poison trips, and
-retain the reconnect/cleanup receipt. Then close the vehicle-control verification item and the four
-family gates in that order unless a poison trip supplies contradictory priority evidence.
+`RPC_TeleportPlayer` deferred-admin classification are also retained. `UseStamina` is now
+closed on exact paired r6: both real directions applied the exact receiver-side debit,
+both sender receipts passed, native use/trips stayed zero on OMEN/i5/AM4, and reconnect
+plus cleanup passed. r5 remains the target-identity falsifier and the first r6 run remains
+the independent-client disconnect-order falsifier. The immediate next gate is
+**vehicle-control `[VERIFY]`**, followed by the four physical family gates in vehicle,
+mount, container/station, and AI/creature order unless a poison trip supplies contradictory
+priority evidence.
 Do not rebuild the epoch, Gateway replay, C8 composition, or rendered-motion boundaries
 without new contradictory evidence. Workbench/dashboard implementation remains frozen
 until the C10a local breadth gates are complete. C10b then promotes the accepted pair to
