@@ -201,6 +201,12 @@ if ($Profile -eq 'c6') {
         New-Action 'i5-c6-drive-two' 'i5' 'motion_drive' 16 6 4 0 north 'c6-i5-to-omen'
         New-Action 'omen-c6-pair-two-settle' 'omen' 'wait' 10 4
         New-Action 'i5-c6-pair-two-settle' 'i5' 'wait' 10 4
+        # Each client advances its own manifest independently. In the clean
+        # watchdog run the OMEN sender reached its gap action 2.74s before the
+        # i5 observer, so i5 applied the correlated resync before its probe
+        # captured baseline counters. Reuse C8's proven observer-alignment
+        # margin and guard the ordering with Test-C6ScenarioCoverage.ps1.
+        New-Action 'omen-c6-gap-observer-align' 'omen' 'wait' 10 4
         New-Action 'omen-c6-drive-gap' 'omen' 'motion_drive_gap' 16 6 6 0 west 'c6-gap-omen-to-i5'
         New-Action 'i5-c6-observe-gap' 'i5' 'motion_observe_gap' 16 6 0 0 west 'c6-gap-omen-to-i5'
     )

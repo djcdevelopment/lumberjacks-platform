@@ -422,6 +422,21 @@ function Wait-GatewayCutoverReady {
 
 try {
     New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
+    if ($scenarioDocument.profile -eq 'c6') {
+        $coveragePath = Join-Path $runDirectory 'c6-scenario-coverage.json'
+        $coverageOutput =
+            & (Join-Path $PSScriptRoot 'Test-C6ScenarioCoverage.ps1') `
+                -ScenarioPath $scenario `
+                -RunId $RunId `
+                -OutputPath $coveragePath
+        $coverageReceipt =
+            Get-Content -LiteralPath $coveragePath -Raw -Encoding utf8 |
+            ConvertFrom-Json
+        if ($coverageReceipt.result -ne 'passed') {
+            throw 'C6 scenario coverage/alignment is incomplete; no remote state was changed.'
+        }
+        $coverageOutput | Write-Host
+    }
     if ($EnableC8Composition) {
         $retainedScenario = Join-Path $runDirectory 'scenario.json'
         if (-not [IO.Path]::GetFullPath($scenario).Equals(
