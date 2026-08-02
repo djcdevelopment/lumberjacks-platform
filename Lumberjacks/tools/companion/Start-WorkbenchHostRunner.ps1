@@ -115,6 +115,13 @@ function Invoke-WorkbenchApi {
     Invoke-RestMethod @params
 }
 
+function Test-ValheimHostStopped {
+    # Companion runs in Linux Docker and cannot reliably see Windows game
+    # processes. The interactive host runner is the final process boundary for
+    # any operation that can replace Valheim files.
+    return @(Get-Process -Name valheim, valheim_server -ErrorAction SilentlyContinue).Count -eq 0
+}
+
 $script:RemoteProbeIntervalSeconds = 30
 $script:RemoteProbeCache = [ordered]@{
     observed_utc = [DateTimeOffset]::MinValue
@@ -280,6 +287,9 @@ function Invoke-ModOperation {
         if ($CapabilityId -eq 'operate.mod.check') {
             $manifest = Invoke-RestMethod -Uri "$CompanionUrl/api/v0/companion/update/check" -Method Get -TimeoutSec 30
             return @{ verdict = 'passed'; result = @{ capability = $CapabilityId; manifest = $manifest }; reason = 'mod_manifest_read' }
+        }
+        if (-not (Test-ValheimHostStopped)) {
+            return @{ verdict = 'failed'; result = @{ capability = $CapabilityId; host_process_gate = 'valheim_running' }; reason = 'valheim_is_running_host' }
         }
         $confirmation = @{ game_closed_confirmed = $true } | ConvertTo-Json
         if ($CapabilityId -eq 'operate.mod.install') {

@@ -74,6 +74,30 @@ change bytes, and always rejects path escapes, duplicate entries, files outside
   -RequireExactMatch
 ```
 
+The browser remains the normal control surface. For a release-engineering
+install-to-rollback proof, the bounded verifier drives those same Workbench jobs
+and compares the complete installed-state JSON plus every admitted payload byte:
+
+```powershell
+# Read-only preflight; exits 2 with authorization_required when all gates are ready.
+.\tools\modpack\Invoke-LocalWorkbenchModRollbackDrill.ps1 `
+  -PackagePath ..\artifacts\modpacks\<package>.zip `
+  -ExpectedRelease <release>
+
+# Player-impacting execution requires the explicit switch.
+.\tools\modpack\Invoke-LocalWorkbenchModRollbackDrill.ps1 `
+  -PackagePath ..\artifacts\modpacks\<package>.zip `
+  -ExpectedRelease <release> `
+  -ApprovePlayerImpactingDrill
+```
+
+The verifier refuses a dirty Workbench image, a running Windows Valheim process,
+manifest/package drift, non-exact live bytes, or pre-existing updater residue.
+The host runner independently repeats the Windows process check immediately
+before either mutation because the Linux Companion container cannot reliably see
+host game processes. The verifier never launches the game, captures player
+traffic, or contacts GCP.
+
 The legacy Dev MCP host port is `8720`, but that port is not currently a safe
 identity boundary: an enabled `ComfyGatewayBoot` task owns a retired Comfy
 checkout there. Baseline Dev/Lab launchers now default to the explicit project

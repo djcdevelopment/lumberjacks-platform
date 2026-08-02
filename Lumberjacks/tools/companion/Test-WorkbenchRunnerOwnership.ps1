@@ -6,9 +6,10 @@ Reproduce the Workbench stale-runner ownership contract without touching Valheim
 This bounded Dev/Lab fixture queues only the public-safe support-export capability,
 leases it as a named fixture runner, proves that a different runner receives HTTP
 404 for a state update, and completes the fixture through the owning runner. It
-does not execute the support exporter or any game/client operation. Run it against
-a Dev/Lab Companion with the ordinary host runner paused or be prepared for the
-script to fail closed if that runner wins the lease first.
+also proves the host process gate with a harmless short-lived fixture executable
+named valheim.exe. It does not execute the support exporter, game, or any client
+operation. Run it against a Dev/Lab Companion with the ordinary host runner paused
+or be prepared for the script to fail closed if that runner wins the lease first.
 #>
 [CmdletBinding()]
 param(
@@ -58,13 +59,15 @@ $runnerAst = [Management.Automation.Language.Parser]::ParseInput(
     [ref]$tokens,
     [ref]$parseErrors)
 if ($parseErrors.Count -gt 0) { throw 'host runner does not parse for process-wrapper verification.' }
-foreach ($functionName in @('Quote-ProcessArgument', 'Invoke-RunnerChildProcess')) {
+$modOperationSource = $null
+foreach ($functionName in @('Quote-ProcessArgument', 'Invoke-RunnerChildProcess', 'Test-ValheimHostStopped', 'Invoke-ModOperation')) {
     $definition = $runnerAst.Find({
         param($node)
         $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
             $node.Name -eq $functionName
     }, $true)
     if ($null -eq $definition) { throw "host runner is missing $functionName." }
+    if ($functionName -eq 'Invoke-ModOperation') { $modOperationSource = $definition.Extent.Text }
     Invoke-Expression $definition.Extent.Text
 }
 $zeroExit = Invoke-RunnerChildProcess `
@@ -77,6 +80,65 @@ $nonzeroExit = Invoke-RunnerChildProcess `
     -ArgumentList @('-NoProfile', '-Command', (Quote-ProcessArgument 'exit 7'))
 if ($zeroExit -ne 0 -or $nonzeroExit -ne 7) {
     throw "host runner child exit-code contract failed (zero=$zeroExit nonzero=$nonzeroExit)."
+}
+
+if (-not (Test-ValheimHostStopped)) {
+    throw 'host process fixture requires Valheim and valheim_server to be stopped.'
+}
+$processFixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('workbench-valheim-gate-' + [Guid]::NewGuid().ToString('N'))
+$fixtureProcess = $null
+$hostProcessGate = $false
+try {
+    New-Item -ItemType Directory -Force -Path $processFixtureRoot | Out-Null
+    $fixtureExecutable = Join-Path $processFixtureRoot 'valheim.exe'
+    Copy-Item -LiteralPath (Join-Path $env:SystemRoot 'System32\ping.exe') -Destination $fixtureExecutable
+    $fixtureProcess = Start-Process -FilePath $fixtureExecutable `
+        -ArgumentList @('127.0.0.1', '-n', '15') `
+        -WindowStyle Hidden -PassThru
+    for ($index = 0; $index -lt 20; $index++) {
+        if (Get-Process -Id $fixtureProcess.Id -ErrorAction SilentlyContinue) { break }
+        Start-Sleep -Milliseconds 100
+    }
+    $hostProcessGate = -not (Test-ValheimHostStopped)
+    if (-not $hostProcessGate) { throw 'host process gate did not detect the valheim.exe negative control.' }
+}
+finally {
+    if ($null -ne $fixtureProcess -and -not $fixtureProcess.HasExited) {
+        Stop-Process -Id $fixtureProcess.Id -Force -ErrorAction SilentlyContinue
+        Wait-Process -Id $fixtureProcess.Id -Timeout 5 -ErrorAction SilentlyContinue
+    }
+    if (Test-Path -LiteralPath $processFixtureRoot) {
+        $resolvedFixture = [IO.Path]::GetFullPath($processFixtureRoot)
+        $resolvedTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+        if ($resolvedFixture.StartsWith($resolvedTemp, [StringComparison]::OrdinalIgnoreCase) -and
+            (Split-Path -Leaf $resolvedFixture).StartsWith('workbench-valheim-gate-', [StringComparison]::Ordinal)) {
+            Remove-Item -LiteralPath $resolvedFixture -Recurse -Force
+        }
+    }
+}
+if (-not (Test-ValheimHostStopped)) { throw 'host process gate fixture did not clean up.' }
+
+$dispatchGate = & {
+    param([string]$FunctionSource)
+    Invoke-Expression $FunctionSource
+    $script:UnexpectedRestCall = $false
+    function Test-ValheimHostStopped { return $false }
+    function Invoke-RestMethod {
+        $script:UnexpectedRestCall = $true
+        throw 'mod process gate called the Companion despite a running host process'
+    }
+    $result = Invoke-ModOperation -CapabilityId 'operate.mod.install' -Inputs ([pscustomobject]@{ game_closed_confirmed = $true })
+    [pscustomobject]@{
+        passed = $result.verdict -eq 'failed' -and
+            $result.reason -eq 'valheim_is_running_host' -and
+            $result.result.host_process_gate -eq 'valheim_running' -and
+            -not $script:UnexpectedRestCall
+        reason = $result.reason
+        unexpected_rest_call = $script:UnexpectedRestCall
+    }
+} $modOperationSource
+if (-not $dispatchGate.passed) {
+    throw "mod operation did not fail closed at the host process gate (reason=$($dispatchGate.reason), REST=$($dispatchGate.unexpected_rest_call))."
 }
 
 $security = Get-Json -Path '/api/v1/workbench/security'
@@ -125,6 +187,8 @@ $receipt = Get-Json -Path ("/api/v1/workbench/jobs/{0}/receipt" -f [Uri]::Escape
     replace_existing_contract = $true
     active_lease_renewed = $renewedLease -gt $initialLease
     child_exit_code_contract = $zeroExit -eq 0 -and $nonzeroExit -eq 7
+    host_process_gate = $hostProcessGate
+    host_process_dispatch_gate = $dispatchGate.passed
 } | ConvertTo-Json -Depth 10
 
 if ($completed.state -ne 'succeeded' -or $staleStatus -ne 404) { exit 1 }
