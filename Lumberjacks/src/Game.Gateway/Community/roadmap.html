@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-02T07:35:23.303Z</span>
+        <span>Updated 2026-08-02T09:25:38.592Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -380,8 +380,8 @@
           <article class="truth-card not-yet"><h3>Not proved yet</h3><ul><li>Safe public credential transport and authoritative admission.</li><li>A clean no-hand-edit package for a non-developer.</li><li>Per-session and per-recipient retained proof.</li><li>Two simultaneous consumers with isolated pending and ACK state.</li><li>Lumberjacks-owned candidate relevance, simulation, or non-ZDO RPCs.</li></ul></article>
         </div>
         <div class="truth-card" style="margin-top:16px"><h3 style="color:var(--blue)">Where things stand</h3><p class="focus-note">Present state only, each line dated when it was last checked against reality. Finished work lives in the milestones below; what comes next is in each milestone's exit criteria.</p><article class="focus-card active">
-    <div class="focus-head"><span class="pill active">ACTIVE NOW</span><span class="focus-asof">affirmed 2026-08-01</span></div>
-    <p>NETWORKING LANE REOPENED. The 2026-07-28 hard hold is superseded: it existed because every remaining step needed a human driving two Steam clients by hand, and the unattended OMEN+i5 harness removed that dependency. The lane now runs as the native-network final cutover, sequenced in fieldlab/plan-native-network-final-cutover.md; fieldlab/PINNED-networking-lane-2026-07.md is retained only as the historical record of the pause and its task list is not current instruction. Slices C0-C8 are complete and C9 frame-timing evidence is gathered. This remains an unattended-harness lane — no live two-human Steam test is scheduled, which was the point of the original hold and has not changed. The adoption track continues in parallel: A7 Community Workbench, a public catalog of the tools a volunteer can run today, each with an honest status, a cold-start package, one discussion thread, and a named first task.</p>
+    <div class="focus-head"><span class="pill active">ACTIVE NOW</span><span class="focus-asof">affirmed 2026-08-02</span></div>
+    <p>NETWORKING LANE REOPENED. The 2026-07-28 hard hold is superseded: it existed because every remaining step needed a human driving two Steam clients by hand, and the unattended OMEN+i5 harness removed that dependency. The lane now runs as the native-network final cutover, sequenced in fieldlab/plan-native-network-final-cutover.md; fieldlab/PINNED-networking-lane-2026-07.md is retained only as the historical record of the pause and its task list is not current instruction. Slices C0-C8 are complete. C9 frame-timing evidence exists, but the retained side-by-side rendered motion-quality gate remains next and is not a closed verdict. Wall 11&#39;s session-scoped epoch source and Gateway restart/replay contract are implemented; release alignment and a bounded runtime server-restart proof remain in C10a with the P1 admissions and component-family gates. This remains an unattended-harness lane — no live two-human Steam test is scheduled. The adoption track continues in parallel: the repaired local Workbench now leads with live server, player, activity, cutover, motion, and next-action truth, while appliance convergence and unfamiliar-user acceptance remain explicit follow-on work.</p>
     <p class="focus-verify"><span>check this against</span><code>fieldlab/plan-native-network-final-cutover.md</code><code>fieldlab/PINNED-networking-lane-2026-07.md</code><code>git log --oneline -20 -- fieldlab/</code></p>
   </article><article class="focus-card deployed-config">
     <div class="focus-head"><span class="pill deployed-config">LAST DEPLOYED CONFIG</span><span class="dep">M1</span><span class="focus-asof">affirmed 2026-08-01</span></div>
@@ -1014,7 +1014,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260802073523-physically-validate-corrected-c6-gap-ordering">
+        <div class="journal"><article class="journal-entry" id="note-20260802092538-restore-workbench-live-operator-value-and-implem">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-02T09:25:38.592Z">2026-08-02T09:25:38.592Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A7 · M7</span>
+      </div>
+      <h3>Restore Workbench live operator value and implement session-scoped zone-bank epochs</h3>
+      <p><strong>Impact:</strong> Workbench Home now exposes fresh server, player, activity, cutover, motion, and journal-epoch truth with one next action. Gateway banks retain valid state across a Gateway-only restart and invalidate stale ZDO state when the dedicated-server session changes. C9 remains next; C10a paired release and runtime proof plus admissions remain explicit.</p>
+      <details><summary>Verification (1)</summary><ul><li>The image-producing Docker target passed 612 tests; the Valheim-linked mod build passed with zero warnings and errors; Workbench UI, API, and Baseline MCP identity tools passed; restart and replay tests cover stale bank invalidation.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>plans/workbench-v1-verification-matrix.md</code> <code>fieldlab/docs/adr/0016-banked-state-must-carry-session-identity.md</code> <code>plans/workbench-appliance-convergence.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260802073523-physically-validate-corrected-c6-gap-ordering">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

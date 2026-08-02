@@ -217,10 +217,22 @@ public class MessageRouter
             envelope.Payload.GetRawText(), JsonOptions.Default)
             ?? throw new InvalidDataException("world descriptor payload missing");
         ValidateWorldDescriptor(descriptor);
+        var previousWorldEpoch = _worldZones.Current()?.WorldEpoch;
         var key =
             $"world-descriptor:{descriptor.WorldEpoch}:{descriptor.SaveEpoch}:{descriptor.RunId}";
-        if (session.Reliable.TryAcceptClientMessage(envelope.Seq, key))
+        var published = session.Reliable.TryAcceptClientMessage(envelope.Seq, key);
+        if (published)
+        {
+            var epoch = _zdoJournal.ActivateWorldEpoch(descriptor.WorldEpoch);
             _worldZones.Publish(descriptor);
+            if (epoch.Changed)
+                _logger.LogWarning(
+                    "Valheim world session changed epoch={WorldEpoch} removed_objects={RemovedObjects} removed_interests={RemovedInterests} removed_pending={RemovedPending}",
+                    epoch.WorldEpoch,
+                    epoch.RemovedObjects,
+                    epoch.RemovedInterests,
+                    epoch.RemovedPending);
+        }
 
         var receipt = await session.SendReliableAsync(
             MessageType.ValheimWorldDescriptorReceipt,
@@ -234,6 +246,31 @@ public class MessageRouter
             },
             CancellationToken.None);
         if (!receipt.Queued) throw new InvalidOperationException(receipt.Reason);
+
+        if (published && previousWorldEpoch is not null &&
+            !string.Equals(
+                previousWorldEpoch,
+                descriptor.WorldEpoch,
+                StringComparison.Ordinal))
+        {
+            foreach (var client in _sessions.GetAll().Where(candidate =>
+                         string.Equals(
+                             candidate.ValheimRole,
+                             "client",
+                             StringComparison.Ordinal) &&
+                         !string.IsNullOrWhiteSpace(candidate.ValheimLogicalPeerId)))
+            {
+                var refreshed = await client.SendReliableAsync(
+                    MessageType.ValheimWorldDescriptor,
+                    descriptor,
+                    CancellationToken.None);
+                if (!refreshed.Queued)
+                    _logger.LogWarning(
+                        "Valheim session epoch refresh could not queue logical_peer={LogicalPeerId} reason={Reason}",
+                        client.ValheimLogicalPeerId,
+                        refreshed.Reason);
+            }
+        }
     }
 
     async Task HandleValheimWorldDescriptorRequestAsync(
@@ -294,10 +331,17 @@ public class MessageRouter
 
     static void ValidateWorldDescriptor(ValheimWorldDescriptor value)
     {
-        if (value.SchemaVersion != 1 || value.ProtocolVersion != 1)
+        if (value.SchemaVersion != 1 || value.ProtocolVersion != 2)
             throw new InvalidDataException("world_descriptor_protocol_invalid");
         if (!SafeToken(value.ReleaseId, 96) || !SafeToken(value.RunId, 80) ||
-            !SafeToken(value.WorldEpoch, 96))
+            !SafeToken(value.WorldEpoch, 96) ||
+            !SafeToken(value.WorldStableEpoch, 96) ||
+            !SafeToken(value.ServerSessionEpoch, 96) ||
+            !ValheimWorldEpoch.IsConsistent(
+                value.WorldEpoch,
+                value.WorldStableEpoch,
+                value.ServerSessionEpoch,
+                value.WorldUid))
             throw new InvalidDataException("world_descriptor_identity_invalid");
         if (string.IsNullOrWhiteSpace(value.WorldName) || value.WorldName.Length > 80 ||
             string.IsNullOrWhiteSpace(value.SeedName) || value.SeedName.Length > 128 ||
@@ -1126,6 +1170,13 @@ public class MessageRouter
         var validation = ValheimZdoJournalEndpoints.ValidateMutation(mutation);
         if (validation is not null)
             throw new InvalidDataException(validation);
+        var descriptor = _worldZones.Current()
+            ?? throw new InvalidDataException("ZDO mutation world descriptor missing");
+        if (!string.Equals(
+                mutation.WorldEpoch,
+                descriptor.WorldEpoch,
+                StringComparison.Ordinal))
+            throw new InvalidDataException("ZDO mutation world scope mismatch");
         var idempotencyKey =
             $"zdo-mutation:{mutation.WorldEpoch}:{mutation.UidUser}:{mutation.UidId}:{mutation.SourceSequence}";
         if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, idempotencyKey))
@@ -1179,6 +1230,13 @@ public class MessageRouter
         var validation = ValheimZdoJournalEndpoints.ValidateInterest(interest);
         if (validation is not null)
             throw new InvalidDataException(validation);
+        var descriptor = _worldZones.Current()
+            ?? throw new InvalidDataException("ZDO interest world descriptor missing");
+        if (!string.Equals(
+                interest.WorldEpoch,
+                descriptor.WorldEpoch,
+                StringComparison.Ordinal))
+            throw new InvalidDataException("ZDO interest world scope mismatch");
         var idempotencyKey =
             $"zdo-interest:{interest.WorldEpoch}:{interest.RunId}:{interest.ZoneEpoch}:{interest.ZoneX}:{interest.ZoneY}:{interest.RadiusZones}:{interest.Refresh}";
         if (!session.Reliable.TryAcceptClientMessage(envelope.Seq, idempotencyKey))
@@ -1192,12 +1250,16 @@ public class MessageRouter
                 run_id = interest.RunId,
                 world_epoch = interest.WorldEpoch,
                 logical_peer_id = session.ValheimLogicalPeerId,
+                accepted = result.Accepted,
+                result = result.Result,
                 snapshot_count = result.SnapshotCount,
                 pending = result.PendingCount,
             },
             CancellationToken.None);
         if (!receipt.Queued)
             throw new InvalidOperationException(receipt.Reason);
+
+        if (!result.Accepted) return;
 
         await SendPendingZdoDeliveriesAsync(session, interest.WorldEpoch);
         var status = _zdoJournal.RunStatus(interest.RunId, interest.WorldEpoch);

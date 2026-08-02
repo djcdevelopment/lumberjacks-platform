@@ -40,9 +40,16 @@ public static class ValheimZdoJournalEndpoints
             var error = ValidateInterest(interest);
             if (error is not null) return Results.BadRequest(new { error });
             var result = journal.RegisterInterest(scope.Resolved!, interest);
+            if (!result.Accepted)
+                return Results.Conflict(new
+                {
+                    error = result.Result,
+                    active_world_epoch = journal.Status().ActiveWorldEpoch,
+                });
             return Results.Ok(new
             {
                 ok = true,
+                result = result.Result,
                 recipient_id = result.RecipientId,
                 snapshot_count = result.SnapshotCount,
                 pending = result.PendingCount,

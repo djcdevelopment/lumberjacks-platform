@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-08-02T07:35:23.303Z",
+  "updated_at": "2026-08-02T09:25:38.592Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -197,8 +197,8 @@
   "current_focus": [
     {
       "status": "active",
-      "as_of": "2026-08-01",
-      "text": "NETWORKING LANE REOPENED. The 2026-07-28 hard hold is superseded: it existed because every remaining step needed a human driving two Steam clients by hand, and the unattended OMEN+i5 harness removed that dependency. The lane now runs as the native-network final cutover, sequenced in fieldlab/plan-native-network-final-cutover.md; fieldlab/PINNED-networking-lane-2026-07.md is retained only as the historical record of the pause and its task list is not current instruction. Slices C0-C8 are complete and C9 frame-timing evidence is gathered. This remains an unattended-harness lane — no live two-human Steam test is scheduled, which was the point of the original hold and has not changed. The adoption track continues in parallel: A7 Community Workbench, a public catalog of the tools a volunteer can run today, each with an honest status, a cold-start package, one discussion thread, and a named first task.",
+      "as_of": "2026-08-02",
+      "text": "NETWORKING LANE REOPENED. The 2026-07-28 hard hold is superseded: it existed because every remaining step needed a human driving two Steam clients by hand, and the unattended OMEN+i5 harness removed that dependency. The lane now runs as the native-network final cutover, sequenced in fieldlab/plan-native-network-final-cutover.md; fieldlab/PINNED-networking-lane-2026-07.md is retained only as the historical record of the pause and its task list is not current instruction. Slices C0-C8 are complete. C9 frame-timing evidence exists, but the retained side-by-side rendered motion-quality gate remains next and is not a closed verdict. Wall 11's session-scoped epoch source and Gateway restart/replay contract are implemented; release alignment and a bounded runtime server-restart proof remain in C10a with the P1 admissions and component-family gates. This remains an unattended-harness lane — no live two-human Steam test is scheduled. The adoption track continues in parallel: the repaired local Workbench now leads with live server, player, activity, cutover, motion, and next-action truth, while appliance convergence and unfamiliar-user acceptance remain explicit follow-on work.",
       "verify_by": [
         "fieldlab/plan-native-network-final-cutover.md",
         "fieldlab/PINNED-networking-lane-2026-07.md",

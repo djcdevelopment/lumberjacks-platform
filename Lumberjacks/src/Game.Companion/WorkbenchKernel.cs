@@ -455,15 +455,17 @@ sealed class WorkbenchService
     readonly WorkbenchRegistry _registry;
     readonly ValheimLocator _locator;
     readonly CompanionStateStore _companionState;
+    readonly GatewayClient _gateway;
 
     public WorkbenchService(WorkbenchStore store, WorkbenchJobStore jobs, WorkbenchRegistry registry,
-        ValheimLocator locator, CompanionStateStore companionState)
+        ValheimLocator locator, CompanionStateStore companionState, GatewayClient gateway)
     {
         _store = store;
         _jobs = jobs;
         _registry = registry;
         _locator = locator;
         _companionState = companionState;
+        _gateway = gateway;
     }
 
     public WorkbenchInstallation Installation => _store.ReadInstallation();
@@ -483,11 +485,20 @@ sealed class WorkbenchService
         }
     }
 
-    public object Projection()
+    public async Task<object> ProjectionAsync(CancellationToken cancellationToken)
     {
         var installation = Installation;
         var profile = EffectiveProfile;
         var runnerReady = IsRunnerReady();
+        var deploymentTask = _gateway.GetJson("/api/v0/telemetry/deployment", cancellationToken);
+        var valheimTask = _gateway.GetJson("/api/v0/telemetry/valheim", cancellationToken);
+        var cutoverTask = _gateway.GetJson("/api/v0/telemetry/cutover", cancellationToken);
+        var motionTask = _gateway.GetJson("/live/valheim-motion", cancellationToken);
+        var journalTask = _gateway.GetJson("/valheim/zdo-journal/status", cancellationToken);
+        await Task.WhenAll(deploymentTask, valheimTask, cutoverTask, motionTask, journalTask);
+        var jobs = _jobs.List();
+        var active = jobs.FirstOrDefault(job => job.State is
+            "queued" or "leased" or "running" or "waiting_dependency" or "waiting_human" or "cancelling");
         return new
         {
             schema_version = 1,
@@ -509,11 +520,21 @@ sealed class WorkbenchService
             {
                 browser_binding = "loopback_only",
                 public_support = "explicit_redacted_export_only",
+                local_live_display = new[] { "accepted_public_player_names" },
+                exclusion_scope = "support_export_and_remote_bodies",
                 excluded_by_default = new[] { "player_names", "steam_ids", "coordinates", "free_text", "secrets", "raw_remote_bodies" },
             },
             capabilities = _registry.For(profile, runnerReady, RollbackReady()),
-            jobs = _jobs.List(),
+            jobs,
             topology = Topology(profile),
+            live = WorkbenchLiveStatus.Build(
+                await deploymentTask,
+                await valheimTask,
+                await cutoverTask,
+                await motionTask,
+                await journalTask,
+                active,
+                GatewayClient.GatewayUrl),
         };
     }
 
@@ -551,7 +572,20 @@ sealed class WorkbenchService
             new("p7", "P7/GCP", gatewayTarget == "P7" ? heartbeat?.GatewayState ?? "waiting_dependency" : "excluded", "P7", "promotion/release edge", "none", gatewayTarget == "P7" ? heartbeat?.ObservedUtc : DateTimeOffset.UtcNow, gatewayTarget == "P7" ? "configured_gateway" : "profile_boundary"),
         };
         var active = _jobs.List().FirstOrDefault(job => job.State is "queued" or "leased" or "running" or "waiting_dependency" or "waiting_human" or "cancelling");
-        if (active is not null) nodes = nodes.Select(node => node with { ActiveJobPhase = active.State, ActiveJobId = active.JobId }).ToList();
+        if (active is not null)
+        {
+            var targets = (_registry.Find(active.CapabilityId)?.EligibleTargets ?? new[] { active.Target })
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var waitingForHuman = active.State == "waiting_human";
+            nodes = nodes.Select(node =>
+            {
+                var participates = node.Id == "workbench" ||
+                    (!waitingForHuman && (node.Id == "runner" || targets.Contains(node.Id) || targets.Contains(node.Target)));
+                return participates
+                    ? node with { ActiveJobPhase = active.State, ActiveJobId = active.JobId }
+                    : node;
+            }).ToList();
+        }
         return new { schema_version = 1, generated_utc = DateTimeOffset.UtcNow, active_job = active is null ? null : new { active.JobId, active.CapabilityId, active.State, active.Target }, nodes };
     }
 
@@ -730,7 +764,8 @@ static class WorkbenchEndpoints
 {
     public static void Map(WebApplication app)
     {
-        app.MapGet("/api/v1/workbench", (WorkbenchService service) => Results.Json(service.Projection(), Json.Options));
+        app.MapGet("/api/v1/workbench", async (WorkbenchService service, CancellationToken cancellationToken) =>
+            Results.Json(await service.ProjectionAsync(cancellationToken), Json.Options));
         app.MapGet("/api/v1/workbench/installation", (WorkbenchService service) => Results.Json(service.Installation, Json.Options));
         app.MapGet("/api/v1/workbench/security", (WorkbenchService service) => Results.Ok(new { schema_version = 1, browser_token = service.BrowserToken() }));
         app.MapGet("/api/v1/workbench/capabilities", (WorkbenchService service) => Results.Json(service.Capabilities(), Json.Options));

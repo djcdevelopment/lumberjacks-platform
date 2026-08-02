@@ -1,6 +1,8 @@
 # ADR 0016 — Banked state must carry the identity scope of what it banks
 
-- **Status:** Accepted (2026-08-01) — durable fix scheduled as a C10a precondition
+- **Status:** Accepted (2026-08-01); source implementation and restart/replay contract
+  completed 2026-08-02. Release alignment and bounded runtime restart proof remain a
+  C10a precondition before retiring the interim WAL-discard rule.
 - **Rung:** netcode program — canonical session / Gateway zone bank / world epoch contract
 
 ## Context

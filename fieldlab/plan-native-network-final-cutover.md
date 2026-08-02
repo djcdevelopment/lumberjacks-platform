@@ -780,12 +780,15 @@ comparison.
   only inside the `ReleaseNearbyZDOS` prefix, so those five paths pass through untouched.
   Three of them are the vehicles/mounts surface. Whether that is a gap or correct scoping
   is a C10a question with evidence attached, not an assumption to inherit.
-- Wall 11's durable fix is a named admission, not yet built: the world/session epoch
-  must incorporate the server session (or the Gateway must invalidate the zone bank on
-  session change) so ZDOID-carrying banked state cannot survive a server restart. The
-  operational rule until then: discard the journal WAL after any AM4 server restart.
-  C10 must land the durable fix â€” P7 restarts are routine and the operational rule
-  does not survive contact with production.
+- Wall 11's durable source fix is implemented and contract-tested as of 2026-08-02:
+  descriptor protocol 2 publishes the stable world component plus Valheim's server
+  `ZDOMan` session component; every journal/ownership payload uses the accepted combined
+  epoch; the Gateway retains a same-session bank across its own restart and atomically
+  invalidates objects, interests, pending delivery, and WAL rows on a server-session
+  change. Stale-session mutations/interests fail closed. The Valheim-linked mod builds
+  with zero warnings/errors and the restart/replay suite passes. Release alignment and
+  one bounded runtime server-restart receipt remain part of C10a, so the interim AM4 WAL
+  discard rule remains in force until that runtime proof lands.
 - The blast radius of phantom-uid replay is bounded by construction: a full-assembly
   sweep found exactly two load-time non-owned-destroy sites (`TerrainComp.Awake`,
   `SmokeSpawner.Awake`). The epoch fix removes the class.
@@ -798,8 +801,9 @@ comparison.
    objective evidence requires. C9 must not reopen C0â€“C8 architecture without new
    evidence. Derek's optional verdict on the retained clip is one word.
 2. **C10a â€” admissions and epoch:** admit + contract-test the 29 P1 methods, resolve
-   the three [VERIFY] rows and three component-family gates, and land the
-   session-scoped epoch fix (wall 11's durable half).
+   the three [VERIFY] rows and three component-family gates, release-align and
+   runtime-prove the implemented session-scoped epoch fix, then close wall 11's
+   interim WAL-discard rule.
 3. **C10b â€” P7 promotion and close:** boot P7 per `RUNBOOK-boot-determinism.md`
    (step 1 evidence BEFORE applying the boot fix), cut one release from one commit,
    run the pair scenario on P7 poison-armed, delete migration-only fallback branches,
@@ -943,5 +947,6 @@ already-built motion phase capture against the native-zero candidate and produce
 side-by-side observer clip covering both direction/role combinations. C9 must not
 reopen C0-C8 architecture without new evidence. C10's preconditions (the 29 P1
 admissions, the three [VERIFY] rows, the component-family gates, and the
-session-scoped epoch fix from wall 11) are queued behind it — see the mandatory
-post-C8 replan.
+session-epoch release/runtime proof from wall 11) are queued behind it — see the
+mandatory post-C8 replan. The epoch source and restart/replay contract are already
+green; do not rebuild them while executing C9.

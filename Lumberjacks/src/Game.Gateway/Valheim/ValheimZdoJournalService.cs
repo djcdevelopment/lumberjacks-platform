@@ -137,10 +137,19 @@ public sealed record ValheimZdoJournalMutationResult(
     int RecipientCount,
     long DurableObjects);
 
+public sealed record ValheimZdoJournalEpochResult(
+    string WorldEpoch,
+    bool Changed,
+    long RemovedObjects,
+    int RemovedInterests,
+    long RemovedPending);
+
 public sealed record ValheimZdoJournalInterestResult(
     string RecipientId,
     int SnapshotCount,
-    int PendingCount);
+    int PendingCount,
+    bool Accepted,
+    string Result);
 
 public sealed record ValheimZdoJournalAckResult(int Acknowledged, int Unknown);
 
@@ -156,7 +165,9 @@ public sealed record ValheimZdoJournalStatus(
     long Tombstones,
     long Acknowledged,
     long Pending,
-    int Interests);
+    int Interests,
+    string? ActiveWorldEpoch,
+    long EpochInvalidations);
 
 public sealed record ValheimZdoJournalRunStatus(
     string RunId,
@@ -169,7 +180,9 @@ public sealed record ValheimZdoJournalRunStatus(
 /// Lumberjacks-owned semantic ZDO journal. Mutation capture precedes Valheim's recipient-specific
 /// CreateSyncList selection; recipient interest and delivery sequencing live here. Only durable
 /// object state is replayed after restart. Clients re-register their explicit zone interest and
-/// receive a reconstructed snapshot, then continue with deltas.
+/// receive a reconstructed snapshot, then continue with deltas. A Gateway-only restart retains
+/// the active server-session epoch; a new dedicated-server descriptor invalidates every prior
+/// epoch before clients can register interest.
 /// </summary>
 public sealed class ValheimZdoJournalService
 {
@@ -184,6 +197,7 @@ public sealed class ValheimZdoJournalService
         PropertyNameCaseInsensitive = true,
     };
     readonly string? _walPath;
+    string? _activeWorldEpoch;
     bool _persistenceHealthy = true;
     long _mutations;
     long _deliveryOnly;
@@ -191,6 +205,7 @@ public sealed class ValheimZdoJournalService
     long _deltas;
     long _tombstones;
     long _acknowledged;
+    long _epochInvalidations;
 
     public ValheimZdoJournalService(string? walPath = null)
     {
@@ -200,10 +215,27 @@ public sealed class ValheimZdoJournalService
 
     public bool PersistenceEnabled => _walPath is not null;
 
+    public ValheimZdoJournalEpochResult ActivateWorldEpoch(string worldEpoch)
+    {
+        if (string.IsNullOrWhiteSpace(worldEpoch))
+            throw new ArgumentException("world epoch is required", nameof(worldEpoch));
+        lock (_gate) return ActivateWorldEpochLocked(worldEpoch);
+    }
+
     public ValheimZdoJournalMutationResult Record(ValheimZdoJournalObject mutation)
     {
         lock (_gate)
         {
+            if (string.IsNullOrWhiteSpace(mutation.WorldEpoch))
+                return new(false, "world_epoch_invalid", 0, _objects.Count);
+            if (_activeWorldEpoch is null)
+                ActivateWorldEpochLocked(mutation.WorldEpoch);
+            else if (!string.Equals(
+                         _activeWorldEpoch,
+                         mutation.WorldEpoch,
+                         StringComparison.Ordinal))
+                return new(false, "world_epoch_not_active", 0, _objects.Count);
+
             var key = ObjectKey(mutation.WorldEpoch, mutation.UidUser, mutation.UidId);
             var hasCurrent = _objects.TryGetValue(key, out var current);
             var isNewer = !hasCurrent || mutation.ObjectRevision > current!.ObjectRevision;
@@ -212,9 +244,9 @@ public sealed class ValheimZdoJournalService
             {
                 // A sparse topology dependency can legitimately be resent at the same
                 // revision for a new recipient or R&D correlation run. Durable state is
-                // world-scoped, so do not rewrite it; replay its current revision only to
-                // the named recipient. This keeps remote portal endpoints sparse without
-                // widening the recipient's AoI.
+                // server-session-epoch scoped, so do not rewrite it; replay its current
+                // revision only to the named recipient. This keeps remote portal endpoints
+                // sparse without widening the recipient's AoI.
                 if (!string.IsNullOrWhiteSpace(mutation.DeliveryRecipientId) &&
                     hasCurrent &&
                     _interests.TryGetValue(
@@ -294,6 +326,18 @@ public sealed class ValheimZdoJournalService
     {
         lock (_gate)
         {
+            if (_activeWorldEpoch is not null &&
+                !string.Equals(
+                    _activeWorldEpoch,
+                    interest.WorldEpoch,
+                    StringComparison.Ordinal))
+                return new(
+                    recipientId,
+                    0,
+                    0,
+                    false,
+                    "world_epoch_not_active");
+
             var changed = !_interests.TryGetValue(recipientId, out var previous) ||
                 !SameInterest(previous.Interest, interest);
             _interests[recipientId] = new(interest, DateTimeOffset.UtcNow);
@@ -314,7 +358,12 @@ public sealed class ValheimZdoJournalService
                 _snapshots += snapshots;
             }
 
-            return new(recipientId, snapshots, PendingCount(recipientId, interest.WorldEpoch));
+            return new(
+                recipientId,
+                snapshots,
+                PendingCount(recipientId, interest.WorldEpoch),
+                true,
+                "registered");
         }
     }
 
@@ -371,7 +420,9 @@ public sealed class ValheimZdoJournalService
                 _tombstones,
                 _acknowledged,
                 _pending.Values.Sum(queue => (long)queue.Count),
-                _interests.Count);
+                _interests.Count,
+                _activeWorldEpoch,
+                _epochInvalidations);
         }
     }
 
@@ -417,6 +468,7 @@ public sealed class ValheimZdoJournalService
                 _interests.Clear();
                 _pending.Clear();
                 _nextSequence.Clear();
+                _activeWorldEpoch = null;
             }
             else
             {
@@ -446,6 +498,40 @@ public sealed class ValheimZdoJournalService
             RewriteWal();
             return keys.Length;
         }
+    }
+
+    ValheimZdoJournalEpochResult ActivateWorldEpochLocked(string worldEpoch)
+    {
+        if (string.Equals(_activeWorldEpoch, worldEpoch, StringComparison.Ordinal))
+            return new(worldEpoch, false, 0, 0, 0);
+
+        var previousEpoch = _activeWorldEpoch;
+        var objectKeys = _objects
+            .Where(pair => !string.Equals(
+                pair.Value.WorldEpoch,
+                worldEpoch,
+                StringComparison.Ordinal))
+            .Select(pair => pair.Key)
+            .ToArray();
+        foreach (var key in objectKeys) _objects.Remove(key);
+
+        var removedInterests = _interests.Count;
+        var removedPending = _pending.Values.Sum(queue => (long)queue.Count);
+        _interests.Clear();
+        _pending.Clear();
+        _nextSequence.Clear();
+        _activeWorldEpoch = worldEpoch;
+
+        var changed = previousEpoch is not null || objectKeys.Length > 0 ||
+            removedInterests > 0 || removedPending > 0;
+        if (changed) _epochInvalidations++;
+        if (objectKeys.Length > 0) RewriteWal();
+        return new(
+            worldEpoch,
+            changed,
+            objectKeys.LongLength,
+            removedInterests,
+            removedPending);
     }
 
     void Enqueue(string recipientId, string kind, ValheimZdoJournalObject state)
@@ -528,6 +614,12 @@ public sealed class ValheimZdoJournalService
                     state.ObjectRevision > current.ObjectRevision)
                     _objects[key] = state;
             }
+            var epochs = _objects.Values
+                .Select(value => value.WorldEpoch)
+                .Distinct(StringComparer.Ordinal)
+                .Take(2)
+                .ToArray();
+            if (epochs.Length == 1) _activeWorldEpoch = epochs[0];
         }
         catch
         {

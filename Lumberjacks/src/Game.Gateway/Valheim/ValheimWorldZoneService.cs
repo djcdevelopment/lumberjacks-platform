@@ -23,6 +23,12 @@ public sealed class ValheimWorldZoneService
     {
         lock (_gate)
         {
+            if (_descriptor is not null &&
+                !string.Equals(
+                    _descriptor.WorldEpoch,
+                    descriptor.WorldEpoch,
+                    StringComparison.Ordinal))
+                _snapshots.Clear();
             _descriptor = descriptor;
             _publishCount++;
             return descriptor;
@@ -225,6 +231,12 @@ public sealed record ValheimWorldDescriptor
 
     [JsonPropertyName("world_epoch")]
     public string WorldEpoch { get; init; } = "";
+
+    [JsonPropertyName("world_stable_epoch")]
+    public string WorldStableEpoch { get; init; } = "";
+
+    [JsonPropertyName("server_session_epoch")]
+    public string ServerSessionEpoch { get; init; } = "";
 
     [JsonPropertyName("world_name")]
     public string WorldName { get; init; } = "";

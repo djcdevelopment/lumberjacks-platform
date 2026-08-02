@@ -23,6 +23,23 @@ The Workbench is the one-stop local control surface. A fresh launch defaults to 
 build runner are absent. The browser Standard/Advanced toggle changes presentation only and
 cannot grant a profile capability.
 
+### Current appliance boundary (do not infer it from one green page)
+
+The operating experience is intended to be one Workbench, but the current local runtime is
+still launched as three Compose projects: `lumberjacks-companion` for the web surface and
+profile-gated Dev tools, `lumberjacks-local` for Gateway/services/Postgres, and
+`comfy-valheim-lab` for the active Valheim server. Multiple service images are compatible with
+PD-5; multiple competing launch/recovery stories are not. `Start-LocalCompanion.ps1` currently
+converges only the first project and selects a Gateway origin. It does not yet prove or launch
+the complete local appliance.
+
+The finite convergence work is tracked in
+[`plans/workbench-appliance-convergence.md`](../../../plans/workbench-appliance-convergence.md):
+one versioned distribution and launcher, one port/mode manifest, explicit Local/Remote/Hybrid
+Lab selection, shipped runtime tools, preserved state migration, and clean-machine/human
+acceptance. HEARTH remains an independent machine-wide MCP on `8710`; Baseline's Dev/Lab MCP is
+the separate project-owned endpoint on loopback `8721`.
+
 ## Docker on Windows (preferred for OMEN and i5)
 
 This is the verified alpha path. It uses the repository's .NET 9 SDK container, so the host does
