@@ -6,4 +6,7 @@
   <ItemGroup>
     <Content Update="workbench-checklist.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Game.Companion.Tests" />
+  </ItemGroup>
 </Project>

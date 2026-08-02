@@ -938,7 +938,16 @@ static class MotionTestValidation
 
 sealed class ModpackInstaller(CompanionStateStore stateStore, ValheimLocator locator)
 {
+    readonly SemaphoreSlim _operationGate = new(1, 1);
+
     public async Task<InstallResult> InstallAsync(GatewayClient gateway, CancellationToken cancellationToken)
+    {
+        if (!_operationGate.Wait(0)) return InstallResult.Fail("modpack_operation_in_progress");
+        try { return await InstallCoreAsync(gateway, cancellationToken); }
+        finally { _operationGate.Release(); }
+    }
+
+    async Task<InstallResult> InstallCoreAsync(GatewayClient gateway, CancellationToken cancellationToken)
     {
         var valheimPath = locator.Find();
         if (valheimPath is null) return InstallResult.Fail("valheim_not_found");
@@ -960,75 +969,216 @@ sealed class ModpackInstaller(CompanionStateStore stateStore, ValheimLocator loc
             return InstallResult.Fail("package_hash_mismatch", $"expected {manifest.package.sha256}, got {actualHash}");
 
         var releaseId = SafeToken(manifest.release ?? manifest.mod_release ?? "unknown");
-        var backupRoot = Path.Combine(stateStore.DataDirectory, "backups", DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ") + "-" + releaseId);
+        var backupRoot = Path.Combine(stateStore.DataDirectory, "backups",
+            DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ") + "-" + releaseId + "-" + Guid.NewGuid().ToString("N")[..8]);
+        var beforeInstall = stateStore.Read();
+        if (string.Equals(beforeInstall.last_error, "local_state_unreadable", StringComparison.Ordinal))
+            return InstallResult.Fail("local_state_unreadable");
         var changed = new List<string>();
+        var created = new List<string>();
+        var applied = new List<AppliedModpackFile>();
         try
         {
             using var stream = new MemoryStream(package, writable: false);
             using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var plans = new List<PlannedModpackFile>();
             foreach (var entry in archive.Entries)
             {
                 if (string.IsNullOrEmpty(entry.Name)) continue;
-                var relative = ArchiveRelativePath(entry.FullName);
                 // The modpack carries a root README for humans. It is package metadata, not a
-                // Valheim payload; skip it rather than treating a valid package as malformed.
-                // Only Valheim/ entries can ever reach the local game directory.
-                if (relative is null) continue;
-                if (relative.EndsWith("djcdevelopment.valheim.comfynetworksense.cfg", StringComparison.OrdinalIgnoreCase)) continue;
+                // Valheim payload; every other file must live under Valheim/ or the complete
+                // package fails before the first target byte is changed.
+                var normalized = entry.FullName.Replace('\\', '/');
+                if (string.Equals(normalized, "README.txt", StringComparison.OrdinalIgnoreCase)) continue;
+                var relative = ArchiveRelativePath(normalized);
+                if (relative is null) return InstallResult.Fail("package_entry_outside_valheim", entry.FullName);
+                var receiptPath = relative.Replace('\\', '/');
+                if (!seen.Add(receiptPath)) return InstallResult.Fail("package_duplicate_entry", receiptPath);
+                if (relative.EndsWith("djcdevelopment.valheim.comfynetworksense.cfg", StringComparison.OrdinalIgnoreCase))
+                    return InstallResult.Fail("package_personalized_config_forbidden", receiptPath);
                 var target = Path.GetFullPath(Path.Combine(valheimPath, relative));
                 if (!target.StartsWith(Path.GetFullPath(valheimPath) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                     return InstallResult.Fail("package_path_escape", entry.FullName);
-                if (File.Exists(target))
+                if (Directory.Exists(target)) return InstallResult.Fail("package_target_is_directory", receiptPath);
+                var existed = File.Exists(target);
+                var backup = Path.Combine(backupRoot, relative);
+                plans.Add(new PlannedModpackFile(entry, receiptPath, target, backup, existed));
+            }
+
+            if (plans.Count == 0) return InstallResult.Fail("package_payload_empty");
+            Directory.CreateDirectory(backupRoot);
+            foreach (var plan in plans)
+            {
+                if (plan.Existed)
                 {
-                    var backup = Path.Combine(backupRoot, relative);
-                    Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
-                    File.Copy(target, backup, true);
+                    Directory.CreateDirectory(Path.GetDirectoryName(plan.Backup)!);
+                    File.Copy(plan.Target, plan.Backup, true);
                 }
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                await using var source = entry.Open();
-                await using var destination = File.Create(target);
-                await source.CopyToAsync(destination, cancellationToken);
-                changed.Add(relative.Replace('\\', '/'));
+                else
+                {
+                    created.Add(plan.Relative);
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(plan.Target)!);
+                var temporary = plan.Target + ".lumberjacks-" + Guid.NewGuid().ToString("N") + ".tmp";
+                try
+                {
+                    await using var source = plan.Entry.Open();
+                    await using var destination = File.Create(temporary);
+                    await source.CopyToAsync(destination, cancellationToken);
+                    File.Move(temporary, plan.Target, true);
+                }
+                finally
+                {
+                    if (File.Exists(temporary)) File.Delete(temporary);
+                }
+                applied.Add(new AppliedModpackFile(plan.Target, plan.Backup, plan.Existed));
+                changed.Add(plan.Relative);
             }
         }
-        catch (Exception ex) { return InstallResult.Fail("package_install_failed", ex.Message); }
+        catch (Exception ex)
+        {
+            var rollbackError = RestoreApplied(applied);
+            var detail = rollbackError is null ? ex.Message : $"{ex.Message}; automatic_restore_failed={rollbackError}";
+            return InstallResult.Fail("package_install_failed", detail);
+        }
 
-        var current = stateStore.Read();
-        current.installed = new InstalledRelease(manifest.release, manifest.mod_release, actualHash, DateTime.UtcNow, backupRoot, changed);
-        current.last_error = null;
-        stateStore.Write(current);
-        return new InstallResult(true, "installed", null, current.installed);
+        var installed = new InstalledRelease(manifest.release, manifest.mod_release, actualHash,
+            DateTime.UtcNow, backupRoot, changed, created, beforeInstall.installed, 1);
+        var nextState = CopyState(beforeInstall, installed);
+        try { stateStore.Write(nextState); }
+        catch (Exception ex)
+        {
+            var rollbackError = RestoreApplied(applied);
+            var stateError = TryWriteState(beforeInstall);
+            var detail = JoinErrors(ex.Message,
+                rollbackError is null ? null : $"automatic_restore_failed={rollbackError}",
+                stateError is null ? null : $"state_restore_failed={stateError}");
+            return InstallResult.Fail("install_state_write_failed", detail);
+        }
+        return new InstallResult(true, "installed", null, installed);
     }
 
     public InstallResult RollbackLatest()
     {
+        if (!_operationGate.Wait(0)) return InstallResult.Fail("modpack_operation_in_progress");
+        try { return RollbackLatestCore(); }
+        finally { _operationGate.Release(); }
+    }
+
+    InstallResult RollbackLatestCore()
+    {
         var current = stateStore.Read();
+        if (string.Equals(current.last_error, "local_state_unreadable", StringComparison.Ordinal))
+            return InstallResult.Fail("local_state_unreadable");
         if (current.installed is null || !Directory.Exists(current.installed.backup_path)) return InstallResult.Fail("rollback_backup_missing");
         var valheimPath = locator.Find();
         if (valheimPath is null) return InstallResult.Fail("valheim_not_found");
         if (ValheimLocator.IsRunning()) return InstallResult.Fail("valheim_is_running");
-        foreach (var backup in Directory.EnumerateFiles(current.installed.backup_path, "*", SearchOption.AllDirectories))
+        var rollingBack = current.installed;
+        var restores = new List<(string Source, string Target)>();
+        var deletes = new List<string>();
+        try
         {
-            var relative = Path.GetRelativePath(current.installed.backup_path, backup);
-            var target = Path.Combine(valheimPath, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(backup, target, true);
+            var backupRoot = Path.GetFullPath(rollingBack.backup_path);
+            var expectedBackupRoot = Path.GetFullPath(Path.Combine(stateStore.DataDirectory, "backups")) + Path.DirectorySeparatorChar;
+            if (!backupRoot.StartsWith(expectedBackupRoot, StringComparison.OrdinalIgnoreCase))
+                return InstallResult.Fail("rollback_backup_outside_state");
+            foreach (var backup in Directory.EnumerateFiles(backupRoot, "*", SearchOption.AllDirectories))
+            {
+                var relative = Path.GetRelativePath(backupRoot, backup);
+                var target = SafeRollbackTarget(valheimPath, relative);
+                if (target is null) return InstallResult.Fail("rollback_path_escape", relative);
+                restores.Add((backup, target));
+            }
+            if (rollingBack.transaction_schema_version == 1)
+            {
+                foreach (var relative in rollingBack.created_files ?? [])
+                {
+                    var target = SafeRollbackTarget(valheimPath, relative);
+                    if (target is null) return InstallResult.Fail("rollback_path_escape", relative);
+                    if (restores.Any(item => string.Equals(item.Target, target, StringComparison.OrdinalIgnoreCase)))
+                        return InstallResult.Fail("rollback_state_conflict", relative);
+                    deletes.Add(target);
+                }
+            }
         }
-        current.last_error = null;
-        stateStore.Write(current);
-        return new InstallResult(true, "rolled_back", null, current.installed);
+        catch (Exception ex) { return InstallResult.Fail("rollback_preflight_failed", ex.Message); }
+        try
+        {
+            foreach (var restore in restores)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(restore.Target)!);
+                File.Copy(restore.Source, restore.Target, true);
+            }
+            foreach (var target in deletes)
+            {
+                if (File.Exists(target)) File.Delete(target);
+            }
+        }
+        catch (Exception ex) { return InstallResult.Fail("rollback_restore_failed", ex.Message); }
+        var installed = rollingBack.transaction_schema_version == 1 ? rollingBack.previous : rollingBack;
+        var nextState = CopyState(current, installed);
+        try { stateStore.Write(nextState); }
+        catch (Exception ex) { return InstallResult.Fail("rollback_state_write_failed", ex.Message); }
+        return new InstallResult(true, "rolled_back", null, installed);
     }
 
     static string? ArchiveRelativePath(string entryName)
     {
-        var normalized = entryName.Replace('\\', '/').TrimStart('/');
+        var normalized = entryName.Replace('\\', '/');
         const string prefix = "Valheim/";
         if (!normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return null;
         var relative = normalized[prefix.Length..];
-        return string.IsNullOrWhiteSpace(relative) || relative.Contains("../", StringComparison.Ordinal) ? null : relative.Replace('/', Path.DirectorySeparatorChar);
+        var segments = relative.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return string.IsNullOrWhiteSpace(relative) || segments.Length == 0 ||
+            segments.Any(segment => segment is "." or "..")
+            ? null
+            : string.Join(Path.DirectorySeparatorChar, segments);
     }
 
+    static string? SafeRollbackTarget(string valheimPath, string relative)
+    {
+        var root = Path.GetFullPath(valheimPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var target = Path.GetFullPath(Path.Combine(root, relative));
+        return target.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? target : null;
+    }
+
+    static string? RestoreApplied(IEnumerable<AppliedModpackFile> applied)
+    {
+        try
+        {
+            foreach (var file in applied.Reverse())
+            {
+                if (file.Existed) File.Copy(file.Backup, file.Target, true);
+                else if (File.Exists(file.Target)) File.Delete(file.Target);
+            }
+            return null;
+        }
+        catch (Exception ex) { return ex.Message; }
+    }
+
+    static CompanionState CopyState(CompanionState source, InstalledRelease? installed) => new()
+    {
+        schema_version = source.schema_version,
+        profile = source.profile,
+        installed = installed,
+        last_error = null,
+    };
+
+    string? TryWriteState(CompanionState state)
+    {
+        try { stateStore.Write(state); return null; }
+        catch (Exception ex) { return ex.Message; }
+    }
+
+    static string JoinErrors(params string?[] errors) => string.Join("; ", errors.Where(error => !string.IsNullOrWhiteSpace(error)));
+
     static string SafeToken(string value) => string.Concat(value.Select(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_' ? ch : '-'));
+
+    sealed record PlannedModpackFile(ZipArchiveEntry Entry, string Relative, string Target, string Backup, bool Existed);
+    sealed record AppliedModpackFile(string Target, string Backup, bool Existed);
 }
 
 sealed class TransportTruthCaptureService(HttpClient client, CompanionStateStore stateStore, ValheimLocator locator)
@@ -1626,7 +1776,16 @@ sealed record TransportCaptureInterpretation(string level, string headline, stri
 sealed record TransportLocalMotionSnapshot(bool? apply_enabled, int received, int applied, int unknown_zdos, int direct_lookup_hits, int zdo_object_lookup_hits, int player_index_lookup_hits, int player_index_rebuilds, int player_index_size, double? server_ping_age_ms, double? server_ping_age_jitter_ms);
 sealed record TransportCaptureSummary(int schema_version, string run_id, string label, string base_url, DateTime started_utc, DateTime finished_utc, double duration_seconds, int interval_seconds, int sample_count, int bad_sample_count, int max_peers, int? first_motion_received, int? last_motion_received, int? motion_received_delta, string verdict, TransportCurrentRead? final_current_read, string samples_path, string summary_path, List<string>? observed_players = null, TransportCaptureCounterRanges? counter_ranges = null, TransportCaptureIdentity? capture_identity = null, TransportCaptureInterpretation? interpretation = null, string? first_motion_state = null, string? last_motion_state = null, List<string>? observed_motion_states = null, bool? final_motion_websocket_connected = null, bool? final_motion_udp_ready = null, string? final_motion_last_error = null, TransportLocalMotionSnapshot? final_local_motion = null);
 sealed record CompanionProfile(string enrollment_id, DateTime? linked_utc);
-sealed record InstalledRelease(string? release, string? mod_release, string package_sha256, DateTime installed_utc, string backup_path, List<string> changed_files);
+sealed record InstalledRelease(
+    string? release,
+    string? mod_release,
+    string package_sha256,
+    DateTime installed_utc,
+    string backup_path,
+    List<string> changed_files,
+    List<string>? created_files = null,
+    InstalledRelease? previous = null,
+    int transaction_schema_version = 0);
 
 sealed class CompanionState
 {
