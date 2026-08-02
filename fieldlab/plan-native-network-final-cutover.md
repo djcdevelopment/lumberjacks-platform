@@ -36,7 +36,7 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
 | C8 | **Complete and runtime-reconfirmed on AM4 (2026-08-02)** | `native-20260731-c8-full44` + `full45` passed the full 49-action composition twice. `native-20260802-cutover-recovery5` repeated it on fresh GPU-rendered OMEN/i5 processes with the hash-identical candidate, 20/20 coverage, zero client/server native use or poison trips, clean save integrity, ownership contention, Gateway replay, and clean rejoin. The same window runtime-proved the session-scoped epoch across a real AM4 restart and rejected an old-session mutation. |
 | C9 | **Machine/artifact complete; subjective acceptance pending** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. The retained 2560×720 side-by-side clip covers both views; Derek's `smooth`/`rough`/`mixed` verdict remains open. |
-| C10 | **Paired release accepted on AM4; breadth and finalization remain** | `m7-c10a-20260802-r4` from `53260467` passed `native-20260802-c10a-r4`: both physical clients completed all 49 actions and one relaunch, forced zone resume passed, and OMEN/i5/server native totals and poison trips stayed zero. `RPC_SetConnection` is source/runtime-verified as superseded by the server portal cache; `RPC_TeleportPlayer` is source/runtime-verified as deferred admin recall and remains poison-guarded. Exact paired r6 then closed `UseStamina [VERIFY]` in both physical directions with `50 - 1.25 = 48.75`, native totals/trips zero, and clean reconnect/cleanup. Vehicle-control source verification rejects the former one-row lease assumption: the same three hashes have incompatible ship and saddle ownership/identity semantics and must remain split. r1-r3 and the r5/r6 pre-acceptance cells remain falsifiers. Separate vehicle and mount gates, containers/stations, AI/creatures, P7 promotion, fallback deletion, and the post-deletion release remain. |
+| C10 | **Ship/vehicle gate accepted on AM4; breadth and finalization remain** | `m7-c10a-20260802-r4` from `53260467` passed the 49-action aligned-release reducer. Exact paired r6 closed `UseStamina [VERIFY]` in both physical directions. Vehicle-control source verification then rejected the former one-row lease assumption and required separate ship and saddle contracts. Exact paired r15 closed the ship/vehicle gate on a real Karve: both clients boarded; each drove while the other peer owned physics; both observers saw movement, rudder, and speed changes; authenticated owner handoff and server-signed snapshot fan-out reached both replicas; helm release, reconnect, cleanup, native-zero, and poison-zero checks passed. r1-r3, r5/r6 pre-acceptance, and ship r7-r14 remain falsifiers. Mount, containers/stations, AI/creatures, P7 promotion, fallback deletion, and the post-deletion release remain. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -755,12 +755,12 @@ comparison.
   breadth. Per the C8 breadth audit (`C8-BREADTH-AUDIT-2026-07-31.md`): all 33 P1
   methods — 29 instance plus four global — must be admitted and contract-tested before
   native fallback deletion in
-  C10. `UseStamina` is now physically accepted in both directions. Vehicle
-  `RequestControl`/`ReleaseControl`/`RequestRespons` source verification is also closed:
+  C10. `UseStamina` is physically accepted in both directions. Vehicle
+  `RequestControl`/`ReleaseControl`/`RequestRespons` source verification is closed:
   the shared hashes require separate typed ship and saddle contracts and stay outside the
-  generic lane. The component-family gates remain. Vehicles and mounts are separate runtime gates, followed by
-  containers/stations and AI/creatures; vehicle/mount ownership is the largest genuinely
-  novel work left. P2/P3 may ship behind the poison
+  generic lane. The typed ship contract and physical Karve gate are now accepted on r15.
+  The remaining component-family gates are mount, containers/stations, and AI/creatures;
+  saddle ownership is the largest genuinely novel work left. P2/P3 may ship behind the poison
   tripwire with the deferred bucket documented in the C10 gate.
 - **"vehicles/mounts" is two gates, not one** (pre-C10a research, 2026-08-01 —
   [RESEARCH-vehicles-mounts-ownership](docs/RESEARCH-vehicles-mounts-ownership-2026-08-01.md)).
@@ -770,11 +770,11 @@ comparison.
   rudder input round-trips through a third machine. A mount fuses the two: `Sadle.cs:349`
   sets `s_user` and `SetOwner` in the same handler. The audit's single family therefore
   costs and gates as two with opposite shapes; do not plan one slice for both.
-- **The lab cannot currently run the vehicle/mount experiments.** The harness cannot spawn
-  a boat or a cart and cannot tame a Lox (`spawn` and `tame` are cheat-gated and the
-  dedicated server refuses them), and no scenario verb boards a vehicle. Any C10a
-  vehicles/mounts cell therefore needs new mod code *and* a world-seeding step before it
-  can run at all — cost that belongs in the slice estimate, not discovered inside it.
+- **The lab now runs the ship experiment directly.** The mod can select a safe water site,
+  create a non-persistent Karve on AM4, board both real clients, operate the actual
+  `ShipControlls`, transfer simulation ownership, observe the non-owner replica, and remove
+  run residue. The mount gate still needs its own controlled tame/world-seeding path because
+  the dedicated server refuses the cheat-gated `spawn`/`tame` route.
 - **C4's ownership interception is scoped to one funnel, and the other five are open.**
   Vanilla mutates ZDO ownership from client-side RPC handlers in at least five verified
   places (`Ship.cs:696`, `Sadle.cs:349`, `Vagon.cs:141`, `ArmorStand.cs:347`,
@@ -783,8 +783,10 @@ comparison.
   narrower proximity-release claim still holds). `OwnershipLeaseCutoverRunner`'s prefix on
   `ZDO.SetOwner(long)` is attached globally but gated on `ReleaseScopeDepth > 0`, raised
   only inside the `ReleaseNearbyZDOS` prefix, so those five paths pass through untouched.
-  Three of them are the vehicles/mounts surface. Whether that is a gap or correct scoping
-  is a C10a question with evidence attached, not an assumption to inherit.
+  Three of them are the vehicles/mounts surface. The ship path is now deliberately outside
+  that narrow scope and crosses its own typed, authenticated contract. Saddle, cart, and
+  display/storage ownership paths remain explicit C10a questions rather than inherited
+  assumptions.
 - Wall 11's durable source fix is implemented, contract-tested, and runtime-proved as of 2026-08-02:
   descriptor protocol 2 publishes the stable world component plus Valheim's server
   `ZDOMan` session component; every journal/ownership payload uses the accepted combined
@@ -811,8 +813,8 @@ comparison.
    verified as replacement-owned, and `RPC_TeleportPlayer` is verified as deferred
    admin recall. `UseStamina [VERIFY]` is physically accepted on exact r6. The
    vehicle-control `[VERIFY]` item is source-closed as a required ship/saddle contract
-   split. Pass separate vehicle, mount, container/station, and
-   AI/creature physical gates. Wall 11's release alignment/runtime gate and interim
+   split, and the separate physical ship/vehicle gate is accepted on r15. Pass mount,
+   container/station, and AI/creature physical gates. Wall 11's release alignment/runtime gate and interim
    WAL-discard rule are closed.
 3. **C10b â€” P7 promotion and close:** boot P7 per `RUNBOOK-boot-determinism.md`
    (step 1 evidence BEFORE applying the boot fix), cut one release from one commit,
@@ -1068,6 +1070,39 @@ the final post-deletion release remain open.
   typed saddle-control/ownership contract. Retained receipt:
   `fieldlab/evidence/c10a-vehicle-control-verification/verification-summary.json`.
 
+#### C10a ship/vehicle r7-r14 falsifiers and r15 physical acceptance — 2026-08-02
+
+- The typed ship lane discriminates the shared vanilla method hashes with an explicit
+  ship target kind. Gateway state authenticates the current logical sender, held helm,
+  profile control identity, and owner handoff. Owner snapshots return through AM4, enter
+  the canonical ZDO journal, and fan out as server-originated replica frames instead of
+  using Valheim's native routed delivery.
+- The harness now finds a safe water site, asks AM4 to create one non-persistent Karve,
+  physically boards both clients, invokes the real `ShipControlls`, proves release before
+  ownership transfer, observes remote transform/rudder/speed, and cleans run-tagged ships.
+  `tools/am4/Deploy-NetworkSense.ps1` stages by SHA-256, backs up, restarts only the AM4
+  Valheim container, and does not report success until the exact plugin loads and the
+  server is ready.
+- r7-r14 were retained as distinct falsifiers: JSON quoting, transfer-before-release,
+  missing mode policy, deck-vs-helm attachment, observer ordering, replica owner apply,
+  server snapshot fan-out, and server-local broadcast echo. No prior boundary was rerun
+  to manufacture progress; each failed cell named and repaired one new ship defect.
+- Exact paired r15 (`m7-c10a-20260802-r15`, mod `0.5.54`, DLL SHA-256
+  `53f6aa18cc97d1d70080136f3ded3d7b77313e39fdd2f168652440e7a2e0ea1d`) passed
+  `native-20260802-c10a-vehicle-r15-1`. i5 drove 15.589 m while OMEN owned and OMEN
+  observed 16.407 m; after authenticated owner handoff, OMEN drove 15.768 m while i5
+  owned and i5 observed 15.443 m. Both legs changed rudder and speed, both releases
+  passed, and both owner/non-owner replicas applied numbered server-signed snapshots.
+- The 34-action composition and all 12 choreography checks passed. Both real clients
+  completed one fresh-process resume and stopped; OMEN/i5/AM4 native totals, poison
+  trips, writer drops, and writer faults were zero; configs restored by exact hash;
+  runtime controls disarmed; residue matched/destroyed zero. P7, Workbench, and the
+  separate companion MCP were untouched. Retained receipt:
+  `fieldlab/evidence/c10a-ship-physical-acceptance/verification-summary.json`.
+
+This closes the physical ship/vehicle gate, not the saddle/mount gate or unrelated
+vehicle prefabs. Mount, container/station, and AI/creature remain local C10a gates.
+
 **Candidate promotion**
 
 - Cut one mod/Gateway release and manifest from the same commit.
@@ -1149,9 +1184,10 @@ at least one native Valheim client; composition slices require both clients.
 ## Estimated remaining cost
 
 After r4's physical acceptance, the `RPC_SetConnection` and `RPC_TeleportPlayer`
-classifications, r6's two-direction `UseStamina` acceptance, and the vehicle-control
-ship/saddle source split, the honest remaining local burn-down is **four named physical
-gates**, not one blended day estimate: vehicle, mount, container/station, and AI/creature.
+classifications, r6's two-direction `UseStamina` acceptance, the vehicle-control
+ship/saddle source split, and r15's physical ship acceptance, the honest remaining local
+burn-down is **three named physical gates**, not one blended day estimate: mount,
+container/station, and AI/creature.
 Some may close from one
 artifact, but none receives credit without its own source classification and physical
 receipt. C10b then has two bounded P7 reloads: paired-candidate promotion/reproof, followed
@@ -1160,7 +1196,7 @@ one-word retained-clip verdict.
 
 | Remaining unit | Count |
 | --- | ---: |
-| Vehicle, mount, container/station, AI/creature physical family gates | 4 |
+| Mount, container/station, AI/creature physical family gates | 3 |
 | P7 candidate promotion and final no-fallback promotion | 2 reloads |
 | C9 subjective retained-clip verdict | 1 operator verdict |
 
@@ -1179,12 +1215,13 @@ closed on exact paired r6: both real directions applied the exact receiver-side 
 both sender receipts passed, native use/trips stayed zero on OMEN/i5/AM4, and reconnect
 plus cleanup passed. The vehicle-control source gate is closed too: the extractor and
 source require separate typed ship and saddle contracts and prohibit one generic
-admission. r5 remains the target-identity falsifier and the first r6 run remains the
-independent-client disconnect-order falsifier. The immediate next gate is the
-**physical vehicle family**, followed by mount, container/station, and AI/creature unless
-a poison trip supplies contradictory priority evidence.
+admission. Exact r15 then closed the physical ship gate in both helm/physics-owner
+directions with authenticated owner handoff and canonical non-owner snapshot apply.
+r5, the first r6 run, and ship r7-r14 remain falsifiers. The immediate next gate is the
+**physical mount family**, followed by container/station and AI/creature unless a poison
+trip supplies contradictory priority evidence.
 Do not rebuild the epoch, Gateway replay, C8 composition, or rendered-motion boundaries
 without new contradictory evidence. Workbench/dashboard implementation remains frozen
-until the four C10a local physical breadth gates are complete. C10b then promotes the accepted pair to
+until the three remaining C10a local physical breadth gates are complete. C10b then promotes the accepted pair to
 P7, re-proves the named boundaries, removes migration-only fallback, cuts the final paired
 artifact, and closes the cutover.

@@ -23,6 +23,7 @@ public class MessageRouter
     private readonly ValheimZdoJournalService _zdoJournal;
     private readonly ValheimOwnershipLeaseService _ownershipLeases;
     private readonly ValheimWorldZoneService _worldZones;
+    private readonly ValheimShipControlService _shipControls;
     private readonly ILogger<MessageRouter> _logger;
     private readonly ValheimPlayerLifecycle? _valheimPlayers;
 
@@ -37,7 +38,8 @@ public class MessageRouter
         ValheimOwnershipLeaseService ownershipLeases,
         ValheimWorldZoneService worldZones,
         ILogger<MessageRouter> logger,
-        ValheimPlayerLifecycle? valheimPlayers = null)
+        ValheimPlayerLifecycle? valheimPlayers = null,
+        ValheimShipControlService? shipControls = null)
     {
         _sessions = sessions;
         _inputQueue = inputQueue;
@@ -48,6 +50,7 @@ public class MessageRouter
         _zdoJournal = zdoJournal;
         _ownershipLeases = ownershipLeases;
         _worldZones = worldZones;
+        _shipControls = shipControls ?? new ValheimShipControlService();
         _logger = logger;
         _valheimPlayers = valheimPlayers;
     }
@@ -1055,6 +1058,7 @@ public class MessageRouter
         var actionId = ReadString(payload, "action_id");
         var routeId = ReadString(payload, "route_id");
         var methodName = ReadString(payload, "method_name");
+        var targetKind = ReadString(payload, "target_kind");
         var parameters = ReadString(payload, "parameters_base64");
         var mode = ReadString(payload, "delivery_mode");
         if (!payload.TryGetProperty("message_id", out var messageElement) ||
@@ -1071,6 +1075,7 @@ public class MessageRouter
             !methodElement.TryGetInt32(out var methodHash) ||
             !SafeToken(runId, 80) || !SafeToken(actionId, 80) ||
             !SafeToken(routeId, 192) ||
+            (targetKind.Length > 0 && !SafeToken(targetKind, 32)) ||
             mode is not ("deliver" or "withhold") ||
             session.ValheimPeerUid != senderPeerId ||
             messageId == 0 ||
@@ -1091,6 +1096,7 @@ public class MessageRouter
                 methodHash,
                 targetZdoUserId,
                 targetZdoId,
+                targetKind,
                 parameterBytes))
             throw new InvalidDataException(
                 "Valheim routed RPC admission contract rejected envelope");
@@ -1102,6 +1108,23 @@ public class MessageRouter
                 "Valheim routed duplicate ignored connection={ConnectionId} route={RouteId}",
                 session.ConnectionId, routeId);
             return;
+        }
+
+        if (string.Equals(
+                targetKind,
+                ValheimRoutedRpcAdmissions.ShipTargetKind,
+                StringComparison.Ordinal))
+        {
+            var validation = _shipControls.Validate(
+                methodName,
+                senderPeerId,
+                targetPeerId,
+                targetZdoUserId,
+                targetZdoId,
+                parameterBytes,
+                DateTimeOffset.UtcNow);
+            if (!validation.Accepted)
+                throw new InvalidDataException(validation.Reason);
         }
 
         IReadOnlyCollection<GameSession> targets;
@@ -1148,6 +1171,7 @@ public class MessageRouter
                     target_peer_id = targetPeerId,
                     target_zdo_user_id = targetZdoUserId,
                     target_zdo_id = targetZdoId,
+                    target_kind = targetKind,
                     method_name = methodName,
                     method_hash = methodHash,
                     parameters_base64 = parameters,

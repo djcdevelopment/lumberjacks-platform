@@ -302,6 +302,17 @@ public class GameWebSocketMiddleware
                     "Reclaimed {LeaseCount} Valheim ownership lease(s) for detached logical peer {LogicalPeer}",
                     reclaimed, session.ValheimLogicalPeerId);
 
+            if (session.ValheimPeerUid is { } detachedPeerUid)
+            {
+                var reclaimedHelms = _services
+                    .GetRequiredService<ValheimShipControlService>()
+                    .ReclaimByPeer(detachedPeerUid);
+                if (reclaimedHelms > 0)
+                    _logger.LogInformation(
+                        "Reclaimed {HelmCount} Valheim ship helm(s) for detached peer {PeerUid}",
+                        reclaimedHelms, detachedPeerUid);
+            }
+
             // Detach session (preserves identity for resume within 2min window)
             _sessions.Detach(session);
             _logger.LogInformation(

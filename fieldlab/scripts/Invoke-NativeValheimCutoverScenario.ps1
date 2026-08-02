@@ -448,6 +448,21 @@ try {
         }
         $coverageOutput | Write-Host
     }
+    if ($scenarioDocument.profile -eq 'c10a-vehicle') {
+        $coveragePath = Join-Path $runDirectory 'c10a-vehicle-scenario-coverage.json'
+        $coverageOutput =
+            & (Join-Path $PSScriptRoot 'Test-C10aVehicleScenarioCoverage.ps1') `
+                -ScenarioPath $scenario `
+                -RunId $RunId `
+                -OutputPath $coveragePath
+        $coverageReceipt =
+            Get-Content -LiteralPath $coveragePath -Raw -Encoding utf8 |
+            ConvertFrom-Json
+        if ($coverageReceipt.result -ne 'passed') {
+            throw 'C10a vehicle release/transfer choreography is incomplete; no remote state was changed.'
+        }
+        $coverageOutput | Write-Host
+    }
     if ($EnableC8Composition) {
         $retainedScenario = Join-Path $runDirectory 'scenario.json'
         if (-not [IO.Path]::GetFullPath($scenario).Equals(
@@ -1048,6 +1063,10 @@ try {
             'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/routed-rpc-cutover.jsonl' `
             "$serverDirectory\routed-rpc-cutover.jsonl"
         if ($LASTEXITCODE -ne 0) { throw 'Server routed-RPC evidence retrieval failed.' }
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/ship-cutover.jsonl' `
+            "$serverDirectory\ship-cutover.jsonl"
+        if ($LASTEXITCODE -ne 0) { throw 'Server ship-cutover evidence retrieval failed.' }
     }
     if ($EnableZdoJournalCutover) {
         $serverDirectory = Join-Path $runDirectory 'server'

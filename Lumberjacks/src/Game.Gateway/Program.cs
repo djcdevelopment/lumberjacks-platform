@@ -32,6 +32,7 @@ builder.Services.AddSingleton<ValheimZdoJournalService>(sp =>
         sp.GetRequiredService<IConfiguration>()["VALHEIM_ZDO_JOURNAL_PATH"]));
 builder.Services.AddSingleton<ValheimOwnershipLeaseService>();
 builder.Services.AddSingleton<ValheimWorldZoneService>();
+builder.Services.AddSingleton<ValheimShipControlService>();
 builder.Services.AddSingleton<ValheimZdoConsumerTelemetryService>();
 builder.Services.AddSingleton<ValheimZdoInjectionService>();
 builder.Services.AddSingleton<ValheimWindowActivityService>();

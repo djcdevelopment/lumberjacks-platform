@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'c10a-vehicle', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -106,6 +106,37 @@ if ($Profile -eq 'c10a-stamina') {
     $actions += @(
         New-Action 'omen-c10a-stamina-safe-origin' 'omen' 'teleport_to' 15 0 0 0 '' '' 2211 80 -69
         New-Action 'i5-c10a-stamina-safe-origin' 'i5' 'teleport_to' 15 0 0 0 '' '' 2211 80 -69
+    )
+}
+
+if ($Profile -eq 'c10a-vehicle') {
+    $actions += @(
+        New-Action 'omen-c10a-ship-water' 'omen' 'ship_water_rendezvous' 45
+        New-Action 'i5-c10a-ship-water' 'i5' 'ship_water_rendezvous' 45
+        New-Action 'omen-c10a-ship-water-settle' 'omen' 'wait' 10 3
+        New-Action 'i5-c10a-ship-water-settle' 'i5' 'wait' 10 3
+        New-Action 'omen-c10a-ship-spawn' 'omen' 'ship_spawn' 30
+        New-Action 'i5-c10a-ship-wait' 'i5' 'ship_wait' 45
+        New-Action 'omen-c10a-ship-board' 'omen' 'ship_board' 45
+        New-Action 'i5-c10a-ship-board' 'i5' 'ship_board' 45
+        New-Action 'omen-c10a-ship-board-settle' 'omen' 'wait' 12 5
+        New-Action 'i5-c10a-ship-board-settle' 'i5' 'wait' 12 5
+        New-Action 'omen-c10a-ship-observe-i5' 'omen' 'ship_observe' 25 10
+        New-Action 'i5-c10a-ship-drive-omen' 'i5' 'ship_drive' 25 8
+        New-Action 'omen-c10a-ship-release-i5' 'omen' 'ship_wait_released' 20
+        New-Action 'i5-c10a-ship-drive-settle' 'i5' 'wait' 10 3
+        New-Action 'omen-c10a-ship-first-leg-settle' 'omen' 'wait' 10 3
+        New-Action 'i5-c10a-ship-first-leg-settle' 'i5' 'wait' 10 3
+        New-Action 'omen-c10a-ship-transfer-i5' 'omen' 'ship_transfer' 30
+        New-Action 'i5-c10a-ship-owner' 'i5' 'ship_wait_owner' 30
+        New-Action 'omen-c10a-ship-transfer-settle' 'omen' 'wait' 10 3
+        New-Action 'i5-c10a-ship-transfer-settle' 'i5' 'wait' 10 3
+        New-Action 'omen-c10a-ship-drive-i5' 'omen' 'ship_drive' 25 8
+        New-Action 'i5-c10a-ship-observe-omen' 'i5' 'ship_observe' 25 10
+        New-Action 'omen-c10a-ship-second-leg-settle' 'omen' 'wait' 10 3
+        New-Action 'i5-c10a-ship-release-omen' 'i5' 'ship_wait_released' 20
+        New-Action 'omen-c10a-ship-proof-hold' 'omen' 'wait' 20 12
+        New-Action 'i5-c10a-ship-proof-hold' 'i5' 'wait' 20 12
     )
 }
 

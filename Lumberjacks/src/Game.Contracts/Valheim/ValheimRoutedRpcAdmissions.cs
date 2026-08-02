@@ -54,6 +54,7 @@ public sealed class ValheimRoutedRpcAdmission
         ValheimRoutedRpcDisposition disposition,
         ValheimRoutedRpcPriority priority,
         string replacementLane,
+        string requiredTargetKind,
         params string[] payloadSignatures)
     {
         if (disposition == ValheimRoutedRpcDisposition.Supersede
@@ -72,6 +73,7 @@ public sealed class ValheimRoutedRpcAdmission
         Disposition = disposition;
         Priority = priority;
         ReplacementLane = replacementLane;
+        RequiredTargetKind = requiredTargetKind ?? string.Empty;
         PayloadSignatures = Array.AsReadOnly(
             payloadSignatures ?? Array.Empty<string>());
         _payloadTypes = new string[PayloadSignatures.Count][];
@@ -90,15 +92,25 @@ public sealed class ValheimRoutedRpcAdmission
     public ValheimRoutedRpcDisposition Disposition { get; }
     public ValheimRoutedRpcPriority Priority { get; }
     public string ReplacementLane { get; }
+    public string RequiredTargetKind { get; }
     public ReadOnlyCollection<string> PayloadSignatures { get; }
 
-    public bool AcceptsTarget(long targetZdoUserId, uint targetZdoId)
+    public bool AcceptsTarget(
+        long targetZdoUserId,
+        uint targetZdoId,
+        string targetKind = "")
     {
         var hasCompleteTarget = targetZdoUserId != 0 && targetZdoId != 0;
         var hasNoTarget = targetZdoUserId == 0 && targetZdoId == 0;
-        return Scope == ValheimRoutedRpcScope.Instance
+        var scopeAccepted = Scope == ValheimRoutedRpcScope.Instance
             ? hasCompleteTarget
             : hasNoTarget;
+        return scopeAccepted &&
+            (RequiredTargetKind.Length == 0 ||
+             string.Equals(
+                 RequiredTargetKind,
+                 targetKind,
+                 StringComparison.Ordinal));
     }
 
     public bool AcceptsPayload(byte[] parameters) =>
@@ -129,6 +141,17 @@ public static class ValheimRoutedRpcAdmissions
     public const string ModAutoPort = "ComfyNetworkSense_AutoPort";
     public const string ModGameplayEvent = "ComfyNetworkSense_GameplayEvent";
     public const string ModServerPulse = "ComfyNetworkSense_ServerPulse";
+    public const string ModShipSnapshot =
+        "ComfyNetworkSense_ShipSnapshot";
+    public const string CutoverShipSpawnRequest =
+        "ComfyNetworkSense_CutoverShipSpawnRequest";
+    public const string CutoverShipSpawnResponse =
+        "ComfyNetworkSense_CutoverShipSpawnResponse";
+    public const string CutoverShipTransferRequest =
+        "ComfyNetworkSense_CutoverShipTransferRequest";
+    public const string CutoverShipTransferResponse =
+        "ComfyNetworkSense_CutoverShipTransferResponse";
+    public const string ShipTargetKind = "ship";
 
     static readonly ValheimRoutedRpcAdmission[] EntryArray = BuildEntries();
     static readonly ReadOnlyCollection<ValheimRoutedRpcAdmission> EntryView =
@@ -164,10 +187,30 @@ public static class ValheimRoutedRpcAdmissions
         uint targetZdoId,
         byte[] parameters)
     {
+        return AllowsEnvelope(
+            methodName,
+            methodHash,
+            targetZdoUserId,
+            targetZdoId,
+            string.Empty,
+            parameters);
+    }
+
+    public static bool AllowsEnvelope(
+        string methodName,
+        int methodHash,
+        long targetZdoUserId,
+        uint targetZdoId,
+        string targetKind,
+        byte[] parameters)
+    {
         return parameters != null
             && parameters.Length <= MaximumParameterBytes
             && TryGet(methodName, methodHash, out var admission)
-            && admission.AcceptsTarget(targetZdoUserId, targetZdoId)
+            && admission.AcceptsTarget(
+                targetZdoUserId,
+                targetZdoId,
+                targetKind ?? string.Empty)
             && admission.AcceptsPayload(parameters);
     }
 
@@ -183,11 +226,29 @@ public static class ValheimRoutedRpcAdmissions
         uint targetZdoId,
         byte[] parameters)
     {
+        return AllowsRoutedEnvelope(
+            methodName,
+            methodHash,
+            targetZdoUserId,
+            targetZdoId,
+            string.Empty,
+            parameters);
+    }
+
+    public static bool AllowsRoutedEnvelope(
+        string methodName,
+        int methodHash,
+        long targetZdoUserId,
+        uint targetZdoId,
+        string targetKind,
+        byte[] parameters)
+    {
         return AllowsEnvelope(
                 methodName,
                 methodHash,
                 targetZdoUserId,
                 targetZdoId,
+                targetKind,
                 parameters)
             && TryGet(methodName, methodHash, out var admission)
             && admission.Disposition == ValheimRoutedRpcDisposition.Route;
@@ -246,10 +307,15 @@ public static class ValheimRoutedRpcAdmissions
             Harness(CutoverTargetReceipt, ValheimRoutedRpcScope.Global, "ZPackage"),
             Harness(CutoverResetCloth, ValheimRoutedRpcScope.Instance, ""),
             Harness(CutoverZdoJournalRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverShipSpawnRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverShipSpawnResponse, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverShipTransferRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverShipTransferResponse, ValheimRoutedRpcScope.Global, "ZPackage"),
 
             Runtime(ModAutoPort, ValheimRoutedRpcScope.Global, "ZPackage"),
             Runtime(ModGameplayEvent, ValheimRoutedRpcScope.Global, "ZPackage"),
             Runtime(ModServerPulse, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Runtime(ModShipSnapshot, ValheimRoutedRpcScope.Global, "ZPackage"),
 
             // These native calls still occur during normal Valheim bookkeeping,
             // but their semantics are already owned by the named replacement lane.
@@ -288,6 +354,27 @@ public static class ValheimRoutedRpcAdmissions
             // peer. Keep the exact one-float contract instead of allowing those
             // features to fall back to native transport.
             P3("UseStamina", ValheimRoutedRpcScope.Instance, "Single"),
+
+            // Ship control shares three native method hashes with Sadle, whose
+            // grant changes ZDO ownership and uses a different identity. These
+            // entries are therefore invalid unless the sender classifies the
+            // target as a Ship and the receiver independently resolves that
+            // component before dispatch. An untyped generic envelope remains
+            // rejected even though the payload itself has the right shape.
+            TypedP2("RequestControl", ValheimRoutedRpcScope.Instance,
+                ShipTargetKind, "Int64"),
+            TypedP2("ReleaseControl", ValheimRoutedRpcScope.Instance,
+                ShipTargetKind, "Int64"),
+            TypedP2("RequestRespons", ValheimRoutedRpcScope.Instance,
+                ShipTargetKind, "Boolean"),
+            TypedP2("Stop", ValheimRoutedRpcScope.Instance,
+                ShipTargetKind, ""),
+            TypedP2("Forward", ValheimRoutedRpcScope.Instance,
+                ShipTargetKind, ""),
+            TypedP2("Backward", ValheimRoutedRpcScope.Instance,
+                ShipTargetKind, ""),
+            TypedP2("Rudder", ValheimRoutedRpcScope.Instance,
+                ShipTargetKind, "Single"),
 
             P1("ChatMessage", ValheimRoutedRpcScope.Global,
                 "Vector3,Int32,UserInfo,String"),
@@ -342,6 +429,7 @@ public static class ValheimRoutedRpcAdmissions
             ValheimRoutedRpcDisposition.Route,
             ValheimRoutedRpcPriority.Harness,
             string.Empty,
+            string.Empty,
             payloadSignatures);
 
     static ValheimRoutedRpcAdmission Runtime(
@@ -353,6 +441,7 @@ public static class ValheimRoutedRpcAdmissions
             scope,
             ValheimRoutedRpcDisposition.Route,
             ValheimRoutedRpcPriority.Runtime,
+            string.Empty,
             string.Empty,
             payloadSignatures);
 
@@ -366,6 +455,7 @@ public static class ValheimRoutedRpcAdmissions
             ValheimRoutedRpcDisposition.Route,
             ValheimRoutedRpcPriority.P1,
             string.Empty,
+            string.Empty,
             payloadSignatures);
 
     static ValheimRoutedRpcAdmission P2(
@@ -378,6 +468,21 @@ public static class ValheimRoutedRpcAdmissions
             ValheimRoutedRpcDisposition.Route,
             ValheimRoutedRpcPriority.P2,
             string.Empty,
+            string.Empty,
+            payloadSignatures);
+
+    static ValheimRoutedRpcAdmission TypedP2(
+        string name,
+        ValheimRoutedRpcScope scope,
+        string requiredTargetKind,
+        params string[] payloadSignatures) =>
+        new(
+            name,
+            scope,
+            ValheimRoutedRpcDisposition.Route,
+            ValheimRoutedRpcPriority.P2,
+            string.Empty,
+            requiredTargetKind,
             payloadSignatures);
 
     static ValheimRoutedRpcAdmission P3(
@@ -389,6 +494,7 @@ public static class ValheimRoutedRpcAdmissions
             scope,
             ValheimRoutedRpcDisposition.Route,
             ValheimRoutedRpcPriority.P3,
+            string.Empty,
             string.Empty,
             payloadSignatures);
 
@@ -403,6 +509,7 @@ public static class ValheimRoutedRpcAdmissions
             ValheimRoutedRpcDisposition.Supersede,
             ValheimRoutedRpcPriority.Superseded,
             replacementLane,
+            string.Empty,
             payloadSignatures);
 }
 
