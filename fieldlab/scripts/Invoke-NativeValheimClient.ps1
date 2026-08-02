@@ -49,10 +49,6 @@ param(
 
     [switch] $EnableRoutedRpcCutover,
 
-    # Focused physical gates can arm the existing fail-closed native-use poison
-    # without opting into the much wider Steam-free C8 composition.
-    [switch] $EnableNativeNetworkPoison,
-
     [switch] $EnableZdoJournalCutover,
 
     [switch] $EnableZdoJournalCanonicalSession,
@@ -660,9 +656,7 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         lab_session_config_changed = [bool]$script:LabConfigChanged
         lab_session_config_backup = $script:LabConfigBackup
         native_network_poison_requested =
-            $Action -eq 'poison-smoke' -or
-            [bool]$EnableNativeNetworkPoison -or
-            [bool]$EnableSteamFreeColdJoin
+            $Action -eq 'poison-smoke' -or [bool]$EnableSteamFreeColdJoin
         routed_rpc_cutover_requested = [bool]$EnableRoutedRpcCutover
         zdo_journal_cutover_requested = [bool]$EnableZdoJournalCutover
         zdo_journal_canonical_session_requested =
@@ -724,9 +718,7 @@ function Write-NativeAutotestRequest([bool] $ExpectPoisonTrip) {
     # C7 is a zero-use proof, so poison must stay armed without requiring a
     # trip. poison-smoke remains the separate negative test that expects one.
     $requestPoison =
-        $ExpectPoisonTrip -or
-        [bool]$EnableNativeNetworkPoison -or
-        [bool]$EnableSteamFreeColdJoin
+        $ExpectPoisonTrip -or [bool]$EnableSteamFreeColdJoin
     $request = [ordered]@{
         schema_version = 1
         run_id = $RunId
@@ -901,8 +893,6 @@ function Invoke-PendingRun() {
         WaitSeconds = [int]$pending.wait_seconds
         HoldSeconds = [int]$pending.hold_seconds
         EnableRoutedRpcCutover = [bool]$pending.enable_routed_rpc_cutover
-        EnableNativeNetworkPoison =
-            [bool]$pending.enable_native_network_poison
         EnableZdoJournalCutover = [bool]$pending.enable_zdo_journal_cutover
         EnableZdoJournalCanonicalSession =
             [bool]$pending.enable_zdo_journal_canonical_session
@@ -988,7 +978,6 @@ function Queue-InteractiveSmoke() {
         wait_seconds = $WaitSeconds
         hold_seconds = $HoldSeconds
         enable_routed_rpc_cutover = [bool]$EnableRoutedRpcCutover
-        enable_native_network_poison = [bool]$EnableNativeNetworkPoison
         enable_zdo_journal_cutover = [bool]$EnableZdoJournalCutover
         enable_zdo_journal_canonical_session =
             [bool]$EnableZdoJournalCanonicalSession

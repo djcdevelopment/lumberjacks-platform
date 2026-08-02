@@ -999,7 +999,7 @@ the final post-deletion release remain open.
   extracted payload, preserving poison as the fail-closed signal. Retained receipt:
   `fieldlab/evidence/c10a-rpc-teleportplayer-verification/verification-summary.json`.
 
-#### C10a `UseStamina` candidate — 2026-08-02
+#### C10a `UseStamina` r5 falsifier and r6 repair candidate — 2026-08-02
 
 - Extractor-v2 and the matching pinned assembly agree on instance
   `UseStamina(Single)`, registered by an owning `Player`. Ordinary attack and status
@@ -1008,14 +1008,24 @@ the final post-deletion release remain open.
   authoritative `FishingFloat` can debit a rod owner held by another peer.
 - The exact one-float method is therefore a P3 routed contract, not a dead/admin method
   and not a native-fallback exception. The shared mod/Gateway admission uses stable hash
-  `505680894`; focused mod tests pass 119/119 and the canonical .NET 9 suite passes
+  `505680894`; focused mod tests pass 122/122 and the canonical .NET 9 suite passes
   616/616.
-- Candidate `m7-c10a-20260802-r5` adds a bounded two-client action that invokes the
+- Candidate r5 added a bounded two-client action that invokes the
   vanilla non-owner `Player.UseStamina` path. The receiving owner must retain an exact
   `before/requested/after` gameplay debit receipt before the reliable ACK and correlated
   sender receipt are allowed.
-- This verification remains open until that action passes in both directions on the
-  real OMEN+i5 pair with exact r5 artifacts, client/server native-use poison armed,
+- r5 is a retained physical falsifier. A non-Steam-free attempt proved broad poison
+  correctly blocks the still-native bootstrap and is therefore the wrong focused harness
+  shape. The full native-zero attempt then passed OMEN→i5 (`50 - 1.25 = 48.75`) but
+  rejected i5→OMEN: rendezvous resolved live player `1059480882:1`, while the probe's
+  unfiltered player scan selected aliased ZDO `1:2860948` owned by that peer. The receiver
+  refused to ACK a debit on the wrong object. Receipt:
+  `fieldlab/evidence/c10a-r5-stamina-falsifier/falsifier-summary.json`.
+- r6 requires the selected player's ZDO user component to equal its current owner and
+  chooses the nearest matching live player. The harness now has one named native-zero
+  composition switch rather than a standalone broad-poison shortcut.
+- This verification remains open until the repaired action passes in both directions on the
+  real OMEN+i5 pair with exact r6 artifacts, client/server native-use poison armed,
   zero native routed use, zero poison trips, and clean reconnect/cleanup. P7 remains
   stopped and untouched.
 
@@ -1127,8 +1137,11 @@ subjective verdict open. C10a's 33 P1 contracts, release alignment, poison-armed
 physical candidate, `RPC_SetConnection` replacement classification, and
 `RPC_TeleportPlayer` deferred-admin classification are also retained. `UseStamina` source
 classification is now closed: legitimate harpoon/fishing cross-owner paths require the
-exact P3 contract, and r5 carries the focused two-owner gameplay probe. The immediate next
-gate is **physical `UseStamina [VERIFY]` on OMEN+i5**: deploy the exact paired r5 candidate,
+exact P3 contract. r5 is retained as an asymmetric target-identity falsifier: one direction
+applied the real debit, while the reverse selected an aliased ZDO and failed closed before
+ACK. r6 filters to a live player whose ZDO user equals its owner and packages the focused
+gate inside the proven native-zero composition. The immediate next gate is **physical
+`UseStamina [VERIFY]` on OMEN+i5**: deploy the exact paired r6 candidate,
 require both receiver-side stamina-debit receipts with zero native use/poison trips, and
 retain the reconnect/cleanup receipt. Then close the vehicle-control verification item and the four
 family gates in that order unless a poison trip supplies contradictory priority evidence.
