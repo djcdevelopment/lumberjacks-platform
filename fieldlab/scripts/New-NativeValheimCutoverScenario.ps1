@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -99,6 +99,13 @@ if ($Profile -eq 'c8') {
     $actions += @(
         New-Action 'omen-c8-safe-origin' 'omen' 'teleport_to' 15 0 0 0 '' '' 2211 80 -69
         New-Action 'i5-c8-safe-origin' 'i5' 'teleport_to' 15 0 0 0 '' '' 2211 80 -69
+    )
+}
+
+if ($Profile -eq 'c10a-stamina') {
+    $actions += @(
+        New-Action 'omen-c10a-stamina-safe-origin' 'omen' 'teleport_to' 15 0 0 0 '' '' 2211 80 -69
+        New-Action 'i5-c10a-stamina-safe-origin' 'i5' 'teleport_to' 15 0 0 0 '' '' 2211 80 -69
     )
 }
 
@@ -209,6 +216,21 @@ if ($Profile -eq 'c6') {
         New-Action 'omen-c6-gap-observer-align' 'omen' 'wait' 10 4
         New-Action 'omen-c6-drive-gap' 'omen' 'motion_drive_gap' $motionDeadline $MotionDurationSeconds $MotionGapDistanceMeters 0 west 'c6-gap-omen-to-i5'
         New-Action 'i5-c6-observe-gap' 'i5' 'motion_observe_gap' $motionDeadline $MotionDurationSeconds $MotionGapDistanceMeters 0 west 'c6-gap-omen-to-i5'
+    )
+}
+
+if ($Profile -eq 'c10a-stamina') {
+    # Both physical clients first converge on the same safe world slice. The
+    # fixed remote-stamina action then invokes the exact vanilla instance RPC
+    # against the other real player's non-owned ZNetView and waits for a
+    # receiver-side before/requested/after semantic receipt.
+    $actions += @(
+        New-Action 'omen-c10a-stamina-rendezvous-settle' 'omen' 'wait' 12 5
+        New-Action 'i5-c10a-stamina-rendezvous' 'i5' 'motion_rendezvous' 20
+        New-Action 'omen-c10a-stamina-ready' 'omen' 'wait' 10 3
+        New-Action 'i5-c10a-stamina-settle' 'i5' 'wait' 10 3
+        New-Action 'omen-c10a-remote-stamina' 'omen' 'routed_remote_stamina' 20
+        New-Action 'i5-c10a-remote-stamina' 'i5' 'routed_remote_stamina' 20
     )
 }
 

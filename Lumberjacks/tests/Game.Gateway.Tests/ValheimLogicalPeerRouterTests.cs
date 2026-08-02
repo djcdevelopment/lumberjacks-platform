@@ -228,6 +228,54 @@ public sealed class ValheimLogicalPeerRouterTests
     }
 
     [Fact]
+    public async Task P3RemoteStaminaRpc_UsesExactSharedPayloadContract()
+    {
+        var fixture = new LogicalPeerFixture();
+        var sender = fixture.Create("sender", "sender-logical", "Tugcorp");
+        var owner = fixture.Create("owner", "owner-logical", "Durracktu");
+        await fixture.Bind(sender.Session, 101);
+        await fixture.Bind(owner.Session, 202);
+        sender.Socket.Envelopes.Clear();
+        owner.Socket.Envelopes.Clear();
+        var admission = Assert.Single(
+            ValheimRoutedRpcAdmissions.Entries,
+            entry => entry.Name == "UseStamina");
+        Assert.Equal(ValheimRoutedRpcPriority.P3, admission.Priority);
+
+        await fixture.Router.RouteAsync(
+            sender.Session,
+            EnvelopeFactory.Create(
+                MessageType.ValheimRoutedRpcSend,
+                new
+                {
+                    run_id = "c10-stamina-test",
+                    action_id = "omen-c10a-remote-stamina",
+                    route_id = "route-p3-stamina",
+                    message_id = 1003L,
+                    sender_peer_id = 101L,
+                    target_peer_id = 202L,
+                    target_zdo_user_id = 202L,
+                    target_zdo_id = 44U,
+                    method_name = admission.Name,
+                    method_hash = admission.MethodHash,
+                    parameters_base64 = Convert.ToBase64String(
+                        BitConverter.GetBytes(1.25f)),
+                    delivery_mode = "deliver",
+                }));
+
+        var forwarded = Assert.Single(owner.Socket.Envelopes);
+        Assert.Equal(MessageType.ValheimRoutedRpc, forwarded.Type);
+        Assert.Equal("UseStamina",
+            forwarded.Payload.GetProperty("method_name").GetString());
+        Assert.Equal(44U,
+            forwarded.Payload.GetProperty("target_zdo_id").GetUInt32());
+        Assert.Equal(
+            Convert.ToBase64String(BitConverter.GetBytes(1.25f)),
+            forwarded.Payload.GetProperty("parameters_base64").GetString());
+        Assert.Empty(sender.Socket.Envelopes);
+    }
+
+    [Fact]
     public async Task RoutedRpc_RejectsUnadmittedSupersededAndMissingInstanceTarget()
     {
         var fixture = new LogicalPeerFixture();

@@ -35,6 +35,7 @@ public enum ValheimRoutedRpcPriority
     Runtime,
     P1,
     P2,
+    P3,
     Superseded,
 }
 
@@ -281,6 +282,13 @@ public static class ValheimRoutedRpcAdmissions
                 "String,Single,Vector3"),
             P2("Step", ValheimRoutedRpcScope.Instance, "Int32,Vector3"),
 
+            // Optional gameplay can legitimately invoke this on a remotely owned
+            // player. Harpoon status processing debits the remote attacker, and an
+            // authoritative fishing float can debit a rod owner held by another
+            // peer. Keep the exact one-float contract instead of allowing those
+            // features to fall back to native transport.
+            P3("UseStamina", ValheimRoutedRpcScope.Instance, "Single"),
+
             P1("ChatMessage", ValheimRoutedRpcScope.Global,
                 "Vector3,Int32,UserInfo,String"),
             P1("ShowMessage", ValheimRoutedRpcScope.Global, "Int32,String"),
@@ -369,6 +377,18 @@ public static class ValheimRoutedRpcAdmissions
             scope,
             ValheimRoutedRpcDisposition.Route,
             ValheimRoutedRpcPriority.P2,
+            string.Empty,
+            payloadSignatures);
+
+    static ValheimRoutedRpcAdmission P3(
+        string name,
+        ValheimRoutedRpcScope scope,
+        params string[] payloadSignatures) =>
+        new(
+            name,
+            scope,
+            ValheimRoutedRpcDisposition.Route,
+            ValheimRoutedRpcPriority.P3,
             string.Empty,
             payloadSignatures);
 
