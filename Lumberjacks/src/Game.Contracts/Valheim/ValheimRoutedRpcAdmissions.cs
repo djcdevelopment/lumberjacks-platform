@@ -275,6 +275,8 @@ public static class ValheimRoutedRpcAdmissions
             // ordinary C8 movement/combat/event window. Per the breadth audit, a
             // normal-play trip reopens the row instead of leaving it behind fallback.
             P2("RPC_DamageText", ValheimRoutedRpcScope.Global, "ZPackage"),
+            P2("RPC_HealthChanged", ValheimRoutedRpcScope.Instance, "Single"),
+            P2("RPC_UpdateMaterial", ValheimRoutedRpcScope.Instance, "Int32"),
             P2("SetEvent", ValheimRoutedRpcScope.Global,
                 "String,Single,Vector3"),
             P2("Step", ValheimRoutedRpcScope.Instance, "Int32,Vector3"),

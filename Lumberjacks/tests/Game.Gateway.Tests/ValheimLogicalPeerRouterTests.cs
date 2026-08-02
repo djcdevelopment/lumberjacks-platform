@@ -185,6 +185,49 @@ public sealed class ValheimLogicalPeerRouterTests
     }
 
     [Fact]
+    public async Task ObservedP2InstanceRoutedRpc_UsesExactSharedPayloadContract()
+    {
+        var fixture = new LogicalPeerFixture();
+        var client = fixture.Create("client", "client-logical", "Tugcorp");
+        var server = fixture.Create("server", "server-logical", "");
+        await fixture.Bind(client.Session, 101);
+        await fixture.Bind(server.Session, 202);
+        client.Socket.Envelopes.Clear();
+        server.Socket.Envelopes.Clear();
+        var admission = Assert.Single(
+            ValheimRoutedRpcAdmissions.Entries,
+            entry => entry.Name == "RPC_HealthChanged");
+
+        await fixture.Router.RouteAsync(
+            client.Session,
+            EnvelopeFactory.Create(
+                MessageType.ValheimRoutedRpcSend,
+                new
+                {
+                    run_id = "c10-contract-test",
+                    action_id = "p2-instance",
+                    route_id = "route-p2-health",
+                    message_id = 1002L,
+                    sender_peer_id = 101L,
+                    target_peer_id = 202L,
+                    target_zdo_user_id = 202L,
+                    target_zdo_id = 43U,
+                    method_name = admission.Name,
+                    method_hash = admission.MethodHash,
+                    parameters_base64 = Convert.ToBase64String([0, 0, 128, 63]),
+                    delivery_mode = "deliver",
+                }));
+
+        var forwarded = Assert.Single(server.Socket.Envelopes);
+        Assert.Equal(MessageType.ValheimRoutedRpc, forwarded.Type);
+        Assert.Equal("RPC_HealthChanged",
+            forwarded.Payload.GetProperty("method_name").GetString());
+        Assert.Equal(43U,
+            forwarded.Payload.GetProperty("target_zdo_id").GetUInt32());
+        Assert.Empty(client.Socket.Envelopes);
+    }
+
+    [Fact]
     public async Task RoutedRpc_RejectsUnadmittedSupersededAndMissingInstanceTarget()
     {
         var fixture = new LogicalPeerFixture();
