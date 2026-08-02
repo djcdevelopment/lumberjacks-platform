@@ -36,7 +36,7 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
 | C8 | **Complete and runtime-reconfirmed on AM4 (2026-08-02)** | `native-20260731-c8-full44` + `full45` passed the full 49-action composition twice. `native-20260802-cutover-recovery5` repeated it on fresh GPU-rendered OMEN/i5 processes with the hash-identical candidate, 20/20 coverage, zero client/server native use or poison trips, clean save integrity, ownership contention, Gateway replay, and clean rejoin. The same window runtime-proved the session-scoped epoch across a real AM4 restart and rejected an old-session mutation. |
 | C9 | **Machine/artifact complete; subjective acceptance pending** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. The retained 2560×720 side-by-side clip covers both views; Derek's `smooth`/`rough`/`mixed` verdict remains open. |
-| C10 | **Paired release accepted on AM4; breadth and finalization remain** | `m7-c10a-20260802-r4` from `53260467` passed `native-20260802-c10a-r4`: both physical clients completed all 49 actions and one relaunch, forced zone resume passed, and OMEN/i5/server native totals and poison trips stayed zero. r1-r3 remain failed falsifiers. Four `[VERIFY]` items, separate vehicle and mount gates, containers/stations, AI/creatures, P7 promotion, fallback deletion, and the post-deletion release remain. |
+| C10 | **Paired release accepted on AM4; breadth and finalization remain** | `m7-c10a-20260802-r4` from `53260467` passed `native-20260802-c10a-r4`: both physical clients completed all 49 actions and one relaunch, forced zone resume passed, and OMEN/i5/server native totals and poison trips stayed zero. `RPC_SetConnection` is source/runtime-verified as superseded by the server portal cache. r1-r3 remain failed falsifiers. Three `[VERIFY]` items, separate vehicle and mount gates, containers/stations, AI/creatures, P7 promotion, fallback deletion, and the post-deletion release remain. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -755,8 +755,8 @@ comparison.
   breadth. Per the C8 breadth audit (`C8-BREADTH-AUDIT-2026-07-31.md`): all 33 P1
   methods — 29 instance plus four global — must be admitted and contract-tested before
   native fallback deletion in
-  C10; four `[VERIFY]` items (`RPC_SetConnection`, `RPC_TeleportPlayer`, `UseStamina`,
-  and vehicle `RequestControl`/`ReleaseControl`/`RequestRespons`) and the component-family
+  C10; three remaining `[VERIFY]` items (`RPC_TeleportPlayer`, `UseStamina`, and vehicle
+  `RequestControl`/`ReleaseControl`/`RequestRespons`) and the component-family
   gates remain. Vehicles and mounts are separate runtime gates, followed by
   containers/stations and AI/creatures; vehicle/mount ownership is the largest genuinely
   novel work left. P2/P3 may ship behind the poison
@@ -806,7 +806,8 @@ comparison.
    objective evidence requires. C9 must not reopen C0â€“C8 architecture without new
    evidence. Derek's remaining verdict on the retained clip is one word.
 2. **C10a â€” admissions, aligned runtime, and remaining breadth:** the 33 P1 contracts
-   and one paired mod/Gateway release are accepted on AM4. Resolve the four explicit
+   and one paired mod/Gateway release are accepted on AM4. `RPC_SetConnection` is
+   verified as replacement-owned. Resolve the three remaining explicit
    `[VERIFY]` items, then pass separate vehicle, mount, container/station, and
    AI/creature physical gates. Wall 11's release alignment/runtime gate and interim
    WAL-discard rule are closed.
@@ -957,9 +958,27 @@ CRE-E0x material.
 This closes the **P1 source admission, contract parity, paired-release alignment, and
 selected physical runtime candidate** portions of C10a. The first three paired releases
 remain retained falsifiers; r4 is the first accepted AM4 candidate. It does not close
-the remaining breadth: four `[VERIFY]` items, separate vehicle and mount gates,
+the remaining breadth: three `[VERIFY]` items, separate vehicle and mount gates,
 container/station and AI/creature runtime gates, P7 promotion, fallback deletion, and
 the final post-deletion release remain open.
+
+#### C10a `RPC_SetConnection` verification — 2026-08-02
+
+- Extractor-v2 and the matching assembly decompile agree on global
+  `RPC_SetConnection(ZDOID,ZDOID)`. Its only outbound invocation is the live-peer-owner
+  branch of vanilla `Game.SetConnection`, reached from vanilla portal pairing.
+- The enabled server portal cache suppresses `Game.ConnectPortals`, replaces the
+  load-time `ZDOMan.ConnectPortals` join, assigns both portal ZDOs to the authoritative
+  server session, and writes the typed links directly. The generic routed lane must not
+  duplicate that state.
+- Exact r4 receipts prove the replacement was live: AM4 hash-joined 4,472 saved pairs,
+  indexed 15,133 portals, and both physical clients completed the same 4.1 km pair in
+  both directions under poison. OMEN, i5, and AM4 recorded zero `RPC_SetConnection`
+  routed rows and zero native use.
+- The method remains deliberately unadmitted. A focused test requires `TryGet`, generic
+  envelope admission, and routed-envelope admission to reject it, preserving poison as
+  the fail-closed regression signal. Retained receipt:
+  `fieldlab/evidence/c10a-rpc-setconnection-verification/verification-summary.json`.
 
 **Candidate promotion**
 
@@ -1041,8 +1060,9 @@ at least one native Valheim client; composition slices require both clients.
 
 ## Estimated remaining cost
 
-After r4's physical acceptance, the honest remaining local burn-down is **eight named
-gates**, not one blended day estimate: four explicit verification items plus separate
+After r4's physical acceptance and the `RPC_SetConnection` classification, the honest
+remaining local burn-down is **seven named gates**, not one blended day estimate: three
+explicit verification items plus separate
 vehicle, mount, container/station, and AI/creature runtime gates. Some may close from one
 artifact, but none receives credit without its own source classification and physical
 receipt. C10b then has two bounded P7 reloads: paired-candidate promotion/reproof, followed
@@ -1051,7 +1071,7 @@ one-word retained-clip verdict.
 
 | Remaining unit | Count |
 | --- | ---: |
-| `RPC_SetConnection`, `RPC_TeleportPlayer`, `UseStamina`, vehicle-control `[VERIFY]` | 4 |
+| `RPC_TeleportPlayer`, `UseStamina`, vehicle-control `[VERIFY]` | 3 |
 | Vehicle, mount, container/station, AI/creature physical family gates | 4 |
 | P7 candidate promotion and final no-fallback promotion | 2 reloads |
 | C9 subjective retained-clip verdict | 1 operator verdict |
@@ -1064,12 +1084,13 @@ the landscape, then commit and replan.
 ## Immediate next build
 
 C0-C8 are complete; C9's machine/artifact run is retained with only the one-word
-subjective verdict open. C10a's 33 P1 contracts, release alignment, and poison-armed r4
-physical candidate are also retained. The immediate next build is the smallest independent
-remaining item: close **`RPC_SetConnection [VERIFY]`** using the existing portal/linking
-fixture, its exact extracted signature and ownership classification, shared contract tests,
-and one native-poisoned physical receipt. It requires no vehicle world seeding. Then close
-`RPC_TeleportPlayer`, `UseStamina`, the vehicle-control verification item, and the four
+subjective verdict open. C10a's 33 P1 contracts, release alignment, poison-armed r4
+physical candidate, and `RPC_SetConnection` replacement classification are also retained.
+The immediate next build is **`RPC_TeleportPlayer [VERIFY]`**: prove from the pinned
+registration/call sites that this global chat/admin teleport is correctly deferred, retain
+the negative poison behavior, and exercise its allowed/fail-closed boundary without
+confusing it with instance `RPC_TeleportTo`, which already carries portal travel. Then close
+`UseStamina`, the vehicle-control verification item, and the four
 family gates in that order unless a poison trip supplies contradictory priority evidence.
 Do not rebuild the epoch, Gateway replay, C8 composition, or rendered-motion boundaries
 without new contradictory evidence. Workbench/dashboard implementation remains frozen
