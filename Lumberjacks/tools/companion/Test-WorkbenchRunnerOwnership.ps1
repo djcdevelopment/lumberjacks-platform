@@ -51,6 +51,34 @@ if ($launcherSource -notmatch "'\-ReplaceExisting'") {
     throw 'local launcher does not request runner convergence.'
 }
 
+$tokens = $null
+$parseErrors = $null
+$runnerAst = [Management.Automation.Language.Parser]::ParseInput(
+    $runnerSource,
+    [ref]$tokens,
+    [ref]$parseErrors)
+if ($parseErrors.Count -gt 0) { throw 'host runner does not parse for process-wrapper verification.' }
+foreach ($functionName in @('Quote-ProcessArgument', 'Invoke-RunnerChildProcess')) {
+    $definition = $runnerAst.Find({
+        param($node)
+        $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
+            $node.Name -eq $functionName
+    }, $true)
+    if ($null -eq $definition) { throw "host runner is missing $functionName." }
+    Invoke-Expression $definition.Extent.Text
+}
+$zeroExit = Invoke-RunnerChildProcess `
+    -JobId 'process-wrapper-fixture' `
+    -FilePath 'powershell.exe' `
+    -ArgumentList @('-NoProfile', '-Command', (Quote-ProcessArgument 'exit 0'))
+$nonzeroExit = Invoke-RunnerChildProcess `
+    -JobId 'process-wrapper-fixture' `
+    -FilePath 'powershell.exe' `
+    -ArgumentList @('-NoProfile', '-Command', (Quote-ProcessArgument 'exit 7'))
+if ($zeroExit -ne 0 -or $nonzeroExit -ne 7) {
+    throw "host runner child exit-code contract failed (zero=$zeroExit nonzero=$nonzeroExit)."
+}
+
 $security = Get-Json -Path '/api/v1/workbench/security'
 $browserHeaders = @{ 'X-Workbench-Token' = $security.browser_token }
 $runnerToken = (& docker exec $ContainerName sh -lc 'cat /run/workbench/runner-token 2>/dev/null || cat /data/workbench/runner-token' 2>$null | Out-String).Trim()
@@ -96,6 +124,7 @@ $receipt = Get-Json -Path ("/api/v1/workbench/jobs/{0}/receipt" -f [Uri]::Escape
     executed_external_operation = $false
     replace_existing_contract = $true
     active_lease_renewed = $renewedLease -gt $initialLease
+    child_exit_code_contract = $zeroExit -eq 0 -and $nonzeroExit -eq 7
 } | ConvertTo-Json -Depth 10
 
 if ($completed.state -ne 'succeeded' -or $staleStatus -ne 404) { exit 1 }

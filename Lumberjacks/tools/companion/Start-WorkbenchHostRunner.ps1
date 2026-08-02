@@ -202,17 +202,31 @@ function Invoke-RunnerChildProcess {
         [Parameter(Mandatory)][string[]]$ArgumentList
     )
 
-    $process = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -NoNewWindow -PassThru
+    # Start-Process returns a Process object reopened by PID on Windows
+    # PowerShell 5.1. That object has no originating process handle, so ExitCode
+    # remains null even after WaitForExit. Start the Process object directly.
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $FilePath
+    $startInfo.Arguments = $ArgumentList -join ' '
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    if (-not $process.Start()) { throw "failed to start child process '$FilePath'." }
+    $exitCode = $null
     try {
         while (-not $process.WaitForExit(20000)) {
             Send-Heartbeat
             Send-Event $JobId 'running' 'runner_dispatch_active'
         }
         $process.WaitForExit()
-        return $process.ExitCode
+        # Capture before Dispose(): Process.ExitCode becomes unavailable after
+        # disposal, and a return expression inside try is evaluated after finally.
+        $exitCode = $process.ExitCode
     } finally {
         $process.Dispose()
     }
+    return $exitCode
 }
 
 function Invoke-DockerModBuild {
