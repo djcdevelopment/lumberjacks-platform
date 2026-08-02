@@ -29,6 +29,7 @@ function New-Check {
 
 $capture = Read-Text 'tools\i5\Start-TwoClientCapture.ps1'
 $startCompanion = Read-Text 'tools\i5\Start-I5Companion.ps1'
+$syncCompanion = Read-Text 'tools\i5\Sync-I5Companion.ps1'
 $installI5 = Read-Text 'tools\i5\Install-I5LatestModpack.ps1'
 $motion = Read-Text 'tools\i5\Start-TwoClientMotionTest.ps1'
 $roles = Read-Text 'tools\i5\Set-TwoClientApplyRoles.ps1'
@@ -100,6 +101,16 @@ $checks += New-Check `
     -Name 'i5_companion_start_http_calls_have_timeout' `
     -Ok (([regex]::Matches($startCompanion, 'Invoke-RestMethod[\s\S]*?-TimeoutSec').Count -ge 2)) `
     -Detail 'Start-I5Companion.ps1 must bound local health/status reads after container startup.'
+$checks += New-Check `
+    -Name 'i5_lab_companion_gateway_is_explicit' `
+    -Ok ($startCompanion -match "Profile -eq 'Lab'" -and
+        $startCompanion -match 'http://100\.124\.12\.37:4000' -and
+        $startCompanion -match 'LUMBERJACKS_COMPANION_GATEWAY_URL=.*gatewayUrl') `
+    -Detail 'Start-I5Companion.ps1 must persist the canonical OMEN Lab Gateway into the remote Compose environment.'
+$checks += New-Check `
+    -Name 'i5_companion_sync_forwards_profile_and_gateway' `
+    -Ok ($syncCompanion -match '& \$StartScript -RemoteRoot \$RemoteRoot -Profile \$Profile -McpPort \$McpPort -GatewayUrl \$GatewayUrl') `
+    -Detail 'Sync-I5Companion.ps1 must preserve explicit profile and Gateway selection when it restarts Companion.'
 $checks += New-Check `
     -Name 'i5_modpack_install_http_call_has_timeout' `
     -Ok ($installI5 -match 'Invoke-RestMethod[\s\S]*-TimeoutSec\s+60') `
