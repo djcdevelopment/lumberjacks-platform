@@ -912,12 +912,32 @@ CRE-E0x material.
   every cumulative ACK above it until sequence 2842 is replayed. The same window identified
   exact P2 instance calls `RPC_HealthChanged(Single)` and `RPC_UpdateMaterial(Int32)`; both
   are now shared-contract admissions. The broader component families remain open.
-- The r3 pre-cut source passes 112/112 focused mod tests, 615/615 containerized repository
-  tests (including exact P2 Gateway forwarding), and a zero-warning Release mod build. This
-  is source proof only; the physical reducer remains the acceptance boundary.
+- The r3 source passed 112/112 focused mod tests, 615/615 containerized repository tests
+  (including exact P2 Gateway forwarding), and a zero-warning Release mod build. Paired
+  release `m7-c10a-20260802-r3` was cut from
+  `025b3b02504714a1a112058e316594c69c82208f` and deployed hash-exactly to AM4,
+  OMEN, and i5. OMEN completed all 49 actions. i5 now proved the ACK barrier itself:
+  sequence 2249 was applied, deliberately left unacknowledged, replayed once, and released
+  cumulatively through 2262. It still failed before semantic completion because its
+  outbound WebSocket queue stopped draining.
+- The r3 trace proves a receive-only half-open session rather than another replay loss.
+  Gateway received no further i5 message after `2026-08-02T14:38:34.0007213Z`, while i5
+  continued receiving reliable sequences 2477, 2483, and 2495; their handlers reported
+  `ack_queued=false`, and the shutdown disconnect queue was full. The client sender task
+  had no timeout, fault supervision, or causal event, so the OS-level stall-vs-fault detail
+  is not recoverable from r3. The retained falsifier is
+  `fieldlab/evidence/c10a-r3-outbound-stall/`.
+- The r4 source wraps every WebSocket send in a five-second guard. Completion leaves the
+  socket alone; a fault or stall records type, sequence, and queue depth, aborts the socket,
+  and forces the existing reliable-resume path instead of leaving a half-open receive loop.
+  Five deterministic tests cover completion, synchronous/asynchronous failure, an operation
+  that ignores cancellation, and caller cancellation. The focused suite passes 117/117 and
+  the canonical .NET 9 repository suites pass 615/615; the Release mod build remains
+  zero-warning/zero-error.
 
 This closes the original **P1 source admission and contract-parity implementation**, not
-C10a. Both paired releases are retained as falsifiers; r3 still has to be cut and pass the
+C10a. The first three paired releases are retained as falsifiers; r4 still has to be cut
+from the committed repair and pass the
 complete AM4/OMEN/i5 reducer. The three
 `[VERIFY]` rows, vehicle/mount, container/station, and AI/creature runtime gates, P7
 promotion, and fallback deletion remain open.

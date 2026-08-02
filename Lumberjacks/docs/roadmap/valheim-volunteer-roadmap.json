@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-08-02T14:25:20.053Z",
+  "updated_at": "2026-08-02T14:55:03.954Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -198,7 +198,7 @@
     {
       "status": "active",
       "as_of": "2026-08-02",
-      "text": "NETWORKING LANE REOPENED. The 2026-07-28 hard hold is superseded: the unattended OMEN+i5 harness removed the dependency on a human driving two Steam clients by hand. The lane runs as the native-network final cutover in fieldlab/plan-native-network-final-cutover.md; the pinned July note is historical only. C0-C8's accepted boundaries and Wall 11's session-scoped epoch remain retained, while C9's rendered side-by-side verdict is still open. C10a code-admits all 33 P1 methods with one mod/Gateway payload contract. r1 is failed evidence because it exposed previously invisible outbound routed sends. r2 closed that observation hole and OMEN completed all 49 actions, but i5 exposed a cumulative-ACK race in the forced zone-replay gate plus exact P2 instance methods RPC_HealthChanged and RPC_UpdateMaterial. The r3 source makes the replay loss deterministic by holding the chunk sequence before it reaches the Unity queue and adds those exact payload contracts. It is not accepted until the complete poison-armed physical reducer passes. The three VERIFY rows and remaining component-family gates remain before P7 promotion and fallback deletion; P7 is untouched. Workbench appliance work is frozen behind the cutover runtime result rather than treated as cutover progress.",
+      "text": "NETWORKING LANE REOPENED. The 2026-07-28 hard hold is superseded: the unattended OMEN+i5 harness removed the dependency on a human driving two Steam clients by hand. The lane runs as the native-network final cutover in fieldlab/plan-native-network-final-cutover.md; the pinned July note is historical only. C0-C8's accepted boundaries and Wall 11's session-scoped epoch remain retained, while C9's rendered side-by-side verdict is still open. C10a code-admits all 33 P1 methods with one mod/Gateway payload contract. r1 exposed previously invisible outbound routed sends. r2 closed that observation hole but i5 exposed a cumulative-ACK race plus exact P2 methods RPC_HealthChanged and RPC_UpdateMaterial. r3 proved its receive-worker ACK barrier by replaying the held zone chunk, then exposed a second transport defect: i5 kept receiving reliable frames while its unsupervised outbound WebSocket worker stopped draining, so the semantic chunk ACK never reached the server. The r4 source gives every WebSocket send a five-second guard that records the frame context, aborts a faulted or stalled socket, and forces reliable resume; deterministic tests cover the exact half-open failure class. No release is accepted until the complete poison-armed physical reducer passes. The three VERIFY rows and remaining component-family gates remain before P7 promotion and fallback deletion; P7 is untouched. Workbench appliance work is frozen behind the cutover runtime result rather than treated as cutover progress.",
       "verify_by": [
         "fieldlab/plan-native-network-final-cutover.md",
         "fieldlab/evidence/c8-native-zero-composition/recovery5-session-epoch-gate.json",
