@@ -494,6 +494,7 @@ sealed class WorkbenchService
                 source_branch = CompanionVersion.SourceBranch,
                 source_dirty = CompanionVersion.SourceDirty,
                 image = CompanionVersion.Image,
+                gateway_url = GatewayClient.GatewayUrl,
             },
             privacy = new
             {
@@ -520,6 +521,13 @@ sealed class WorkbenchService
         var install = _locator.Find();
         var heartbeat = _store.ReadHeartbeat();
         var heartbeatReady = heartbeat is not null && heartbeat.ObservedUtc > DateTimeOffset.UtcNow.AddSeconds(-45);
+        var gatewayTarget = ConfiguredGatewayTarget();
+        var gatewayTitle = gatewayTarget switch
+        {
+            "local" => "Local Gateway",
+            "P7" => "P7 Gateway",
+            _ => "Remote Gateway",
+        };
         var nodes = new List<WorkbenchNode>
         {
             new("workbench", "Workbench", "ready", "local", "human cockpit", "none", DateTimeOffset.UtcNow, "companion"),
@@ -527,15 +535,23 @@ sealed class WorkbenchService
             new("runner", "Host runner", heartbeatReady ? "ready" : "offline", "local", "allow-listed Windows execution", "none", heartbeat?.ObservedUtc, "runner_heartbeat"),
             new("valheim", "Valheim", install is null ? "not_configured" : ValheimLocator.IsRunning() ? "working" : "ready", "local", install is null ? "Valheim not found" : "local install", "none", DateTimeOffset.UtcNow, "valheim_locator"),
             new("dev-mcp", "Baseline Dev MCP", profile is "Dev" or "Lab" ? "ready" : "excluded", "local", profile is "Dev" or "Lab" ? "development/lab control plane" : "absent from this profile", "none", DateTimeOffset.UtcNow, "launch_profile"),
-            new("gateway", "Gateway", heartbeat?.GatewayState ?? "waiting_dependency", "P7", "release, telemetry, and control edge", "none", heartbeat?.ObservedUtc, "runner_heartbeat"),
+            new("gateway", gatewayTitle, heartbeat?.GatewayState ?? "waiting_dependency", gatewayTarget, "release, telemetry, and control edge", "none", heartbeat?.ObservedUtc, "configured_gateway"),
             new("am4", "AM4 server", heartbeat?.Am4State ?? "waiting_dependency", "AM4", "dedicated Valheim server", "watch", heartbeat?.ObservedUtc, "runner_heartbeat"),
             new("omen", "OMEN client", heartbeat?.OmenState ?? "waiting_dependency", "OMEN", "primary rendered client", "watch", heartbeat?.ObservedUtc, "runner_heartbeat"),
             new("i5", "i5 client", heartbeat?.I5State ?? "waiting_dependency", "i5", "second rendered client", "watch", heartbeat?.ObservedUtc, "runner_heartbeat"),
-            new("p7", "P7/GCP", "excluded", "P7", "promotion/release edge", "none", DateTimeOffset.UtcNow, "profile_boundary"),
+            new("p7", "P7/GCP", gatewayTarget == "P7" ? heartbeat?.GatewayState ?? "waiting_dependency" : "excluded", "P7", "promotion/release edge", "none", gatewayTarget == "P7" ? heartbeat?.ObservedUtc : DateTimeOffset.UtcNow, gatewayTarget == "P7" ? "configured_gateway" : "profile_boundary"),
         };
         var active = _jobs.List().FirstOrDefault(job => job.State is "queued" or "leased" or "running" or "waiting_dependency" or "waiting_human" or "cancelling");
         if (active is not null) nodes = nodes.Select(node => node with { ActiveJobPhase = active.State, ActiveJobId = active.JobId }).ToList();
         return new { schema_version = 1, generated_utc = DateTimeOffset.UtcNow, active_job = active is null ? null : new { active.JobId, active.CapabilityId, active.State, active.Target }, nodes };
+    }
+
+    static string ConfiguredGatewayTarget()
+    {
+        if (!Uri.TryCreate(GatewayClient.GatewayUrl, UriKind.Absolute, out var uri)) return "remote";
+        if (uri.IsLoopback || uri.Host.Equals("host.docker.internal", StringComparison.OrdinalIgnoreCase) ||
+            uri.Host.Equals("gateway", StringComparison.OrdinalIgnoreCase)) return "local";
+        return uri.Host.Equals("comfy-p7.duckdns.org", StringComparison.OrdinalIgnoreCase) ? "P7" : "remote";
     }
 
     public (bool Ok, string? Error, WorkbenchInstallation? Value) Claim(string? label)

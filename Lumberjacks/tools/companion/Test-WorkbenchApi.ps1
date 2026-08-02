@@ -64,6 +64,18 @@ Assert-That ($projection.capabilities.Count -eq 11) 'capability registry count c
 Assert-That ($projection.privacy.browser_binding -eq 'loopback_only') 'privacy projection missing loopback binding'
 Assert-That ($projection.topology.nodes.Count -ge 8) 'topology is missing declared nodes'
 Assert-That (@($projection.topology.nodes | Where-Object id -eq 'gateway').Count -eq 1) 'topology is missing Gateway node'
+$gatewayNode = $projection.topology.nodes | Where-Object id -eq 'gateway' | Select-Object -First 1
+$p7Node = $projection.topology.nodes | Where-Object id -eq 'p7' | Select-Object -First 1
+$gatewayUri = [Uri]$projection.source.gateway_url
+$expectedGatewayTarget = if ($gatewayUri.IsLoopback -or $gatewayUri.Host -in @('host.docker.internal','gateway')) {
+    'local'
+} elseif ($gatewayUri.Host -eq 'comfy-p7.duckdns.org') {
+    'P7'
+} else {
+    'remote'
+}
+Assert-That ($gatewayNode.target -eq $expectedGatewayTarget) 'Gateway topology target does not match the configured origin'
+Assert-That ($expectedGatewayTarget -eq 'P7' -or $p7Node.state -eq 'excluded') 'P7 topology is active when the configured Gateway is not P7'
 
 Expect-HttpStatus { Post-Json '/api/v1/workbench/capabilities/explore.system.inspect/jobs' @{ target = 'local'; inputs = @{ arbitrary_command = 'whoami' } } $browserHeaders } 400
 Expect-HttpStatus { Post-Json '/api/v1/workbench/capabilities/recover.recreate.verify/jobs' @{ target = 'local'; inputs = @{} } $browserHeaders } 400
