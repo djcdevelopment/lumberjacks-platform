@@ -278,9 +278,14 @@ sealed class WorkbenchJobStore
             var job = Read(jobId);
             if (job is null) return null;
             if (state is not ("leased" or "running" or "waiting_dependency" or "waiting_human" or "cancelling")) return null;
+            var now = DateTimeOffset.UtcNow;
             job.State = state;
             job.ReasonCode = reason;
-            job.UpdatedUtc = DateTimeOffset.UtcNow;
+            job.UpdatedUtc = now;
+            // A runner event is also proof that the owning runner is alive. Long,
+            // bounded jobs (notably the rendered multi-machine lane) renew their
+            // short crash-detection lease while the child process is active.
+            if (state is "leased" or "running") job.LeaseExpiresUtc = now.AddSeconds(90);
             Write(job);
             AppendEvent(job.JobId, state, reason);
             return job;

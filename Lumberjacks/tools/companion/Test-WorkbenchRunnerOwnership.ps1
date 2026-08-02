@@ -77,7 +77,11 @@ try {
 }
 if ($staleStatus -ne 404) { throw "expected stale runner event HTTP 404, got HTTP $staleStatus." }
 
-Post-Json -Path ("/api/v1/workbench/runner/jobs/{0}/events" -f [Uri]::EscapeDataString($script:FixtureJobId)) -Headers $ownerHeaders -Body @{ state = 'running'; reason_code = 'ownership_fixture_running' } | Out-Null
+$initialLease = [DateTimeOffset]$next.job.lease_expires_utc
+Start-Sleep -Milliseconds 100
+$renewed = Post-Json -Path ("/api/v1/workbench/runner/jobs/{0}/events" -f [Uri]::EscapeDataString($script:FixtureJobId)) -Headers $ownerHeaders -Body @{ state = 'running'; reason_code = 'ownership_fixture_running' }
+$renewedLease = [DateTimeOffset]$renewed.lease_expires_utc
+if ($renewedLease -le $initialLease) { throw 'owning runner event did not renew the active job lease.' }
 $completed = Post-Json -Path ("/api/v1/workbench/runner/jobs/{0}/complete" -f [Uri]::EscapeDataString($script:FixtureJobId)) -Headers $ownerHeaders -Body @{ verdict = 'passed'; result = @{ fixture = 'runner_ownership'; executed = $false }; reason_code = 'ownership_fixture_complete' }
 $receipt = Get-Json -Path ("/api/v1/workbench/jobs/{0}/receipt" -f [Uri]::EscapeDataString($script:FixtureJobId))
 
@@ -91,6 +95,7 @@ $receipt = Get-Json -Path ("/api/v1/workbench/jobs/{0}/receipt" -f [Uri]::Escape
     receipt_reason = $receipt.reason_code
     executed_external_operation = $false
     replace_existing_contract = $true
+    active_lease_renewed = $renewedLease -gt $initialLease
 } | ConvertTo-Json -Depth 10
 
 if ($completed.state -ne 'succeeded' -or $staleStatus -ne 404) { exit 1 }

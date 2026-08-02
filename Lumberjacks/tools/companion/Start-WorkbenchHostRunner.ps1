@@ -190,6 +190,31 @@ function Wait-ForHuman {
     Invoke-WorkbenchApi -Method Post -Path ("/api/v1/workbench/runner/jobs/{0}/waiting-human" -f [Uri]::EscapeDataString($JobId)) -Body @{ reason_code = $Reason; result = $Result } -TimeoutSec 30 | Out-Null
 }
 
+function Quote-ProcessArgument {
+    param([Parameter(Mandatory)][string]$Value)
+    return '"' + $Value.Replace('"', '\"') + '"'
+}
+
+function Invoke-RunnerChildProcess {
+    param(
+        [Parameter(Mandatory)][string]$JobId,
+        [Parameter(Mandatory)][string]$FilePath,
+        [Parameter(Mandatory)][string[]]$ArgumentList
+    )
+
+    $process = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -NoNewWindow -PassThru
+    try {
+        while (-not $process.WaitForExit(20000)) {
+            Send-Heartbeat
+            Send-Event $JobId 'running' 'runner_dispatch_active'
+        }
+        $process.WaitForExit()
+        return $process.ExitCode
+    } finally {
+        $process.Dispose()
+    }
+}
+
 function Invoke-DockerModBuild {
     param([string]$JobId)
     if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot 'network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj'))) {
@@ -379,8 +404,14 @@ function Invoke-RenderedC6 {
     }
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $generator -RunId $runId -OutputPath $scenario -Profile c6 -MotionDurationSeconds 6
     if ($LASTEXITCODE -ne 0) { return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; run_id = $runId }; reason = 'scenario_generation_failed' } }
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $orchestrator -RunId $runId -ScenarioPath $scenario -EvidenceRoot $evidence -EnableMotionAuthorityCutover -WaitSeconds 900
-    if ($LASTEXITCODE -ne 0) { return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; run_id = $runId; evidence_root = $evidence }; reason = 'rendered_role_reversal_failed' } }
+    $orchestratorExit = Invoke-RunnerChildProcess -JobId $JobId -FilePath 'powershell.exe' -ArgumentList @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Quote-ProcessArgument $orchestrator),
+        '-RunId', (Quote-ProcessArgument $runId),
+        '-ScenarioPath', (Quote-ProcessArgument $scenario),
+        '-EvidenceRoot', (Quote-ProcessArgument $evidence),
+        '-EnableMotionAuthorityCutover', '-WaitSeconds', '900'
+    )
+    if ($orchestratorExit -ne 0) { return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; run_id = $runId; evidence_root = $evidence }; reason = 'rendered_role_reversal_failed' } }
     return @{ state = 'waiting_human'; result = @{ capability = 'build.rendered.c6-role-reversal'; run_id = $runId; evidence_root_name = Split-Path -Leaf $evidence; dll_sha256 = $dllHash; prelive = @{ required_nodes = $requiredNodes; i5 = 'passed'; source_revision = $source.source_revision; image = $source.image; image_id = ([string]$imageId).Trim() }; human_observation = 'required_after_machine_run' }; reason = 'rendered_role_reversal_complete' }
 }
 
