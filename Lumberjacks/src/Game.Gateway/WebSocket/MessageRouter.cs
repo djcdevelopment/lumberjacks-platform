@@ -1086,7 +1086,7 @@ public class MessageRouter
         {
             throw new InvalidDataException("Valheim routed RPC parameters are not base64");
         }
-        if (!ValheimRoutedRpcAdmissions.AllowsEnvelope(
+        if (!ValheimRoutedRpcAdmissions.AllowsRoutedEnvelope(
                 methodName,
                 methodHash,
                 targetZdoUserId,

@@ -185,7 +185,7 @@ public sealed class ValheimLogicalPeerRouterTests
     }
 
     [Fact]
-    public async Task RoutedRpc_RejectsUnadmittedMethodAndMissingInstanceTarget()
+    public async Task RoutedRpc_RejectsUnadmittedSupersededAndMissingInstanceTarget()
     {
         var fixture = new LogicalPeerFixture();
         var client = fixture.Create("client", "client-logical", "Tugcorp");
@@ -197,6 +197,9 @@ public sealed class ValheimLogicalPeerRouterTests
         var admitted = Assert.Single(
             ValheimRoutedRpcAdmissions.Entries,
             entry => entry.Name == "UseDoor");
+        var superseded = Assert.Single(
+            ValheimRoutedRpcAdmissions.Entries,
+            entry => entry.Name == "DestroyZDO");
 
         await Assert.ThrowsAsync<InvalidDataException>(() =>
             fixture.Router.RouteAsync(
@@ -238,6 +241,27 @@ public sealed class ValheimLogicalPeerRouterTests
                         method_name = admitted.Name,
                         method_hash = admitted.MethodHash,
                         parameters_base64 = Convert.ToBase64String([1]),
+                        delivery_mode = "deliver",
+                    })));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            fixture.Router.RouteAsync(
+                client.Session,
+                EnvelopeFactory.Create(
+                    MessageType.ValheimRoutedRpcSend,
+                    new
+                    {
+                        run_id = "c10-contract-test",
+                        action_id = "superseded-method",
+                        route_id = "route-superseded-method",
+                        message_id = 1004L,
+                        sender_peer_id = 101L,
+                        target_peer_id = 202L,
+                        target_zdo_user_id = 0L,
+                        target_zdo_id = 0U,
+                        method_name = superseded.Name,
+                        method_hash = superseded.MethodHash,
+                        parameters_base64 = Convert.ToBase64String([0, 0, 0, 0]),
                         delivery_mode = "deliver",
                     })));
 

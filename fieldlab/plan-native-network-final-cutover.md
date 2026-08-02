@@ -35,7 +35,7 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
 | C8 | **Complete and runtime-reconfirmed on AM4 (2026-08-02)** | `native-20260731-c8-full44` + `full45` passed the full 49-action composition twice. `native-20260802-cutover-recovery5` repeated it on fresh GPU-rendered OMEN/i5 processes with the hash-identical candidate, 20/20 coverage, zero client/server native use or poison trips, clean save integrity, ownership contention, Gateway replay, and clean rejoin. The same window runtime-proved the session-scoped epoch across a real AM4 restart and rejected an old-session mutation. |
 | C9 | **Machine/artifact complete; subjective acceptance pending** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. The retained 2560×720 side-by-side clip covers both views; Derek's `smooth`/`rough`/`mixed` verdict remains open. |
-| C10 | Pending | Release alignment, the 33 P1 admissions (29 instance plus four global), three `[VERIFY]` rows, component-family gates, P7 promotion, and fallback deletion remain. The session-epoch runtime gate is complete and must not be rebuilt. |
+| C10 | In progress; first aligned candidate falsified | The 33 P1 admissions are source- and contract-complete, but `m7-c10a-20260802-r1` exposed a previously invisible outbound routed-RPC fallback during the real AM4/OMEN/i5 gate. The r2 repair, three `[VERIFY]` rows, component-family gates, P7 promotion, and fallback deletion remain. The session-epoch runtime gate is complete and must not be rebuilt. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -880,8 +880,34 @@ CRE-E0x material.
   and the .NET 9 Gateway suite passes 221/221 including exact forwarding and fail-closed
   rejection at the shared contract boundary.
 
-This closes the **source admission and contract-parity implementation**, not C10a. A
-paired release still has to be cut and the P1 families exercised on AM4; the three
+#### C10a first paired-release falsifier and repair — 2026-08-02
+
+- Paired release `m7-c10a-20260802-r1` was built from commit
+  `f9c413b0a8a524d7eb074f499b4bc8548c67ca0f`, then deployed hash-exactly to the
+  real AM4 server and local Gateway. Both physical clients received the exact DLL and
+  completed all 49 C8 actions, including the clean disconnect/relaunch.
+- The run is **failed evidence**, not acceptance. Reducer
+  `native-20260802-c10a-r1/c7-logical-peer-summary.json` found ten native poison trips
+  on each client. The newly instrumented outbound seam resolved them to `Step`,
+  `RPC_DamageText`, and `DestroyZDO`. AM4 also exposed `SetEvent`, `GlobalKeys`,
+  `LocationIcons`, and the mod's `ComfyNetworkSense_AutoPort` and
+  `ComfyNetworkSense_ServerPulse`. This proves the older native-zero claim did not see
+  this outbound method-level hole; it does not justify another synthetic pass.
+- Per the breadth audit's poison rule, normal-play trips reopen their owning rows. The
+  r2 source therefore distinguishes methods that must cross the reliable routed lane
+  from methods already owned by a replacement lane. `Step`, damage text, event state,
+  and all three mod-owned routed RPCs have exact route contracts. `DestroyZDO`, world
+  keys/icons, ping/pong, and ZDO requests are exact, payload-validated suppressions with
+  their owning journal, descriptor, or logical-session lane named in the shared contract.
+  Gateway injection and client inbound dispatch reject those superseded methods.
+- The repaired source passes the mod suite 107/107, the canonical repository suites
+  614/614, and a zero-warning Release mod build. That is still only source proof: r2 must
+  be cut, deployed, and pass the same poison-armed physical reducer before this repair is
+  accepted.
+
+This closes the original **P1 source admission and contract-parity implementation**, not
+C10a. The first paired release was falsified, and its repaired successor still has to be
+cut and exercised on AM4; the three
 `[VERIFY]` rows, vehicle/mount, container/station, and AI/creature runtime gates, P7
 promotion, and fallback deletion remain open.
 

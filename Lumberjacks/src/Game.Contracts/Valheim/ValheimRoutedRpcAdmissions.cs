@@ -16,12 +16,26 @@ public enum ValheimRoutedRpcScope
 }
 
 /// <summary>
+/// What the cutover does when Valheim attempts to send the method.
+/// <c>Route</c> methods cross the Lumberjacks reliable lane; <c>Supersede</c>
+/// methods are consumed because another admitted lane owns their semantics.
+/// </summary>
+public enum ValheimRoutedRpcDisposition
+{
+    Route,
+    Supersede,
+}
+
+/// <summary>
 /// Why an RPC is present in the cutover admission set.
 /// </summary>
 public enum ValheimRoutedRpcPriority
 {
     Harness,
+    Runtime,
     P1,
+    P2,
+    Superseded,
 }
 
 /// <summary>
@@ -36,13 +50,27 @@ public sealed class ValheimRoutedRpcAdmission
     internal ValheimRoutedRpcAdmission(
         string name,
         ValheimRoutedRpcScope scope,
+        ValheimRoutedRpcDisposition disposition,
         ValheimRoutedRpcPriority priority,
+        string replacementLane,
         params string[] payloadSignatures)
     {
+        if (disposition == ValheimRoutedRpcDisposition.Supersede
+            && string.IsNullOrWhiteSpace(replacementLane))
+            throw new ArgumentException(
+                "superseded routed RPC requires a replacement lane",
+                nameof(replacementLane));
+        if (disposition == ValheimRoutedRpcDisposition.Route
+            && !string.IsNullOrEmpty(replacementLane))
+            throw new ArgumentException(
+                "routed RPC cannot declare a replacement lane",
+                nameof(replacementLane));
         Name = name;
         MethodHash = ValheimRoutedRpcAdmissions.StableHash(name);
         Scope = scope;
+        Disposition = disposition;
         Priority = priority;
+        ReplacementLane = replacementLane;
         PayloadSignatures = Array.AsReadOnly(
             payloadSignatures ?? Array.Empty<string>());
         _payloadTypes = new string[PayloadSignatures.Count][];
@@ -58,7 +86,9 @@ public sealed class ValheimRoutedRpcAdmission
     public string Name { get; }
     public int MethodHash { get; }
     public ValheimRoutedRpcScope Scope { get; }
+    public ValheimRoutedRpcDisposition Disposition { get; }
     public ValheimRoutedRpcPriority Priority { get; }
+    public string ReplacementLane { get; }
     public ReadOnlyCollection<string> PayloadSignatures { get; }
 
     public bool AcceptsTarget(long targetZdoUserId, uint targetZdoId)
@@ -95,6 +125,9 @@ public static class ValheimRoutedRpcAdmissions
     public const string CutoverResetCloth = "RPC_ResetCloth";
     public const string CutoverZdoJournalRequest =
         "ComfyNetworkSense_CutoverZdoJournalRequest";
+    public const string ModAutoPort = "ComfyNetworkSense_AutoPort";
+    public const string ModGameplayEvent = "ComfyNetworkSense_GameplayEvent";
+    public const string ModServerPulse = "ComfyNetworkSense_ServerPulse";
 
     static readonly ValheimRoutedRpcAdmission[] EntryArray = BuildEntries();
     static readonly ReadOnlyCollection<ValheimRoutedRpcAdmission> EntryView =
@@ -135,6 +168,28 @@ public static class ValheimRoutedRpcAdmissions
             && TryGet(methodName, methodHash, out var admission)
             && admission.AcceptsTarget(targetZdoUserId, targetZdoId)
             && admission.AcceptsPayload(parameters);
+    }
+
+    /// <summary>
+    /// Validates an envelope that is allowed to cross the generic routed lane.
+    /// Replacement-owned methods remain recognizable and shape-checked, but can
+    /// never be injected through the Gateway or client inbound queue.
+    /// </summary>
+    public static bool AllowsRoutedEnvelope(
+        string methodName,
+        int methodHash,
+        long targetZdoUserId,
+        uint targetZdoId,
+        byte[] parameters)
+    {
+        return AllowsEnvelope(
+                methodName,
+                methodHash,
+                targetZdoUserId,
+                targetZdoId,
+                parameters)
+            && TryGet(methodName, methodHash, out var admission)
+            && admission.Disposition == ValheimRoutedRpcDisposition.Route;
     }
 
     /// <summary>
@@ -191,6 +246,39 @@ public static class ValheimRoutedRpcAdmissions
             Harness(CutoverResetCloth, ValheimRoutedRpcScope.Instance, ""),
             Harness(CutoverZdoJournalRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
 
+            Runtime(ModAutoPort, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Runtime(ModGameplayEvent, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Runtime(ModServerPulse, ValheimRoutedRpcScope.Global, "ZPackage"),
+
+            // These native calls still occur during normal Valheim bookkeeping,
+            // but their semantics are already owned by the named replacement lane.
+            // Recognizing and consuming them closes the former outbound fallback
+            // without reintroducing duplicate delivery through the generic router.
+            Superseded("DestroyZDO", ValheimRoutedRpcScope.Global,
+                "zdo_journal", "ZPackage"),
+            Superseded("GlobalKeys", ValheimRoutedRpcScope.Global,
+                "world_zone_descriptor", "List`1"),
+            Superseded("LocationIcons", ValheimRoutedRpcScope.Global,
+                "world_zone_descriptor", "ZPackage"),
+            Superseded("Ping", ValheimRoutedRpcScope.Global,
+                "logical_peer_session", "Single"),
+            Superseded("Pong", ValheimRoutedRpcScope.Global,
+                "logical_peer_session", "Single"),
+            Superseded("RemoveGlobalKey", ValheimRoutedRpcScope.Global,
+                "world_zone_descriptor", "String"),
+            Superseded("RequestZDO", ValheimRoutedRpcScope.Global,
+                "zdo_journal", "ZDOID"),
+            Superseded("SetGlobalKey", ValheimRoutedRpcScope.Global,
+                "world_zone_descriptor", "String"),
+
+            // The first poison-armed C10 candidate run observed these during the
+            // ordinary C8 movement/combat/event window. Per the breadth audit, a
+            // normal-play trip reopens the row instead of leaving it behind fallback.
+            P2("RPC_DamageText", ValheimRoutedRpcScope.Global, "ZPackage"),
+            P2("SetEvent", ValheimRoutedRpcScope.Global,
+                "String,Single,Vector3"),
+            P2("Step", ValheimRoutedRpcScope.Instance, "Int32,Vector3"),
+
             P1("ChatMessage", ValheimRoutedRpcScope.Global,
                 "Vector3,Int32,UserInfo,String"),
             P1("ShowMessage", ValheimRoutedRpcScope.Global, "Int32,String"),
@@ -238,13 +326,62 @@ public static class ValheimRoutedRpcAdmissions
         string name,
         ValheimRoutedRpcScope scope,
         params string[] payloadSignatures) =>
-        new(name, scope, ValheimRoutedRpcPriority.Harness, payloadSignatures);
+        new(
+            name,
+            scope,
+            ValheimRoutedRpcDisposition.Route,
+            ValheimRoutedRpcPriority.Harness,
+            string.Empty,
+            payloadSignatures);
+
+    static ValheimRoutedRpcAdmission Runtime(
+        string name,
+        ValheimRoutedRpcScope scope,
+        params string[] payloadSignatures) =>
+        new(
+            name,
+            scope,
+            ValheimRoutedRpcDisposition.Route,
+            ValheimRoutedRpcPriority.Runtime,
+            string.Empty,
+            payloadSignatures);
 
     static ValheimRoutedRpcAdmission P1(
         string name,
         ValheimRoutedRpcScope scope,
         params string[] payloadSignatures) =>
-        new(name, scope, ValheimRoutedRpcPriority.P1, payloadSignatures);
+        new(
+            name,
+            scope,
+            ValheimRoutedRpcDisposition.Route,
+            ValheimRoutedRpcPriority.P1,
+            string.Empty,
+            payloadSignatures);
+
+    static ValheimRoutedRpcAdmission P2(
+        string name,
+        ValheimRoutedRpcScope scope,
+        params string[] payloadSignatures) =>
+        new(
+            name,
+            scope,
+            ValheimRoutedRpcDisposition.Route,
+            ValheimRoutedRpcPriority.P2,
+            string.Empty,
+            payloadSignatures);
+
+    static ValheimRoutedRpcAdmission Superseded(
+        string name,
+        ValheimRoutedRpcScope scope,
+        string replacementLane,
+        params string[] payloadSignatures) =>
+        new(
+            name,
+            scope,
+            ValheimRoutedRpcDisposition.Supersede,
+            ValheimRoutedRpcPriority.Superseded,
+            replacementLane,
+            payloadSignatures);
 }
 
 /// <summary>
@@ -299,8 +436,12 @@ static class ValheimRoutedRpcPayloadValidator
                 return ConsumeFixed(data, ref offset, 16);
             case "String":
                 return ConsumeString(data, ref offset);
+            case "List`1":
+                return ConsumeStringList(data, ref offset);
             case "ZPackage":
                 return ConsumePackage(data, ref offset);
+            case "ZDOID":
+                return ConsumeFixed(data, ref offset, 12);
             case "UserInfo":
                 return ConsumeString(data, ref offset)
                     && ConsumeString(data, ref offset);
@@ -360,6 +501,20 @@ static class ValheimRoutedRpcPayloadValidator
         if (!TryReadInt32(data, ref offset, out var length) || length < 0)
             return false;
         return ConsumeFixed(data, ref offset, length);
+    }
+
+    static bool ConsumeStringList(byte[] data, ref int offset)
+    {
+        if (!TryReadInt32(data, ref offset, out var count)
+            || count < 0
+            // Every serialized string consumes at least its one-byte length.
+            // This also bounds CPU for a malicious count before the loop begins.
+            || count > data.Length - offset)
+            return false;
+        for (var index = 0; index < count; index++)
+            if (!ConsumeString(data, ref offset))
+                return false;
+        return true;
     }
 
     static bool ConsumeString(byte[] data, ref int offset)
