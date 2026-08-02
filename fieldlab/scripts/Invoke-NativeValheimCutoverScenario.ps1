@@ -949,10 +949,17 @@ try {
             if ($LASTEXITCODE -ne 0) {
                 throw 'Server motion-authority evidence retrieval failed.'
             }
-        } elseif ($LASTEXITCODE -eq 1 -and $EnableSteamFreeColdJoin) {
-            # C7 deliberately uses wait-only actions. Motion authority is armed as
-            # an accepted prerequisite, but a freshly restarted server has no
-            # reason to emit a motion event during this proof.
+        } elseif ($LASTEXITCODE -eq 1) {
+            # LumberjacksMotionRunner is a client-only adapter and explicitly
+            # refuses to run on a dedicated server. A clean AM4 therefore has no
+            # server-side motion event file for either active C6 probes or C7's
+            # wait-only prerequisite. Preserve that absence as an explicit
+            # boundary receipt; the two rendered client files are the C6 proof.
+            $quietReason = if ($EnableSteamFreeColdJoin) {
+                'c7_cold_join_has_no_motion_actions'
+            } else {
+                'dedicated_server_has_no_client_motion_adapter'
+            }
             Write-JsonAtomic `
                 (Join-Path $serverDirectory 'motion-authority-evidence-status.json') `
                 ([ordered]@{
@@ -961,9 +968,13 @@ try {
                     generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
                     run_id = $RunId
                     result = 'not_emitted'
-                    reason = 'c7_cold_join_has_no_motion_actions'
+                    reason = $quietReason
                     prerequisite_arming_receipt =
                         'server-runtime-motion-authority.json'
+                    authoritative_evidence = @(
+                        'omen/motion-authority-cutover.jsonl'
+                        'i5/motion-authority-cutover.jsonl'
+                    )
                 })
         } else {
             throw 'Server motion-authority evidence preflight failed.'
