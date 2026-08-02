@@ -1,0 +1,466 @@
+namespace Lumberjacks.Contracts.Valheim;
+
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Text;
+
+/// <summary>
+/// The dispatch shape Valheim expects after a routed RPC reaches
+/// <c>ZRoutedRpc.HandleRoutedRPC</c>.
+/// </summary>
+public enum ValheimRoutedRpcScope
+{
+    Global,
+    Instance,
+}
+
+/// <summary>
+/// Why an RPC is present in the cutover admission set.
+/// </summary>
+public enum ValheimRoutedRpcPriority
+{
+    Harness,
+    P1,
+}
+
+/// <summary>
+/// One exact routed-RPC admission shared by the Valheim mod and Gateway.
+/// Payload signatures use the names emitted by synthetic-baseline-extractor v2;
+/// an empty string means a zero-argument RPC.
+/// </summary>
+public sealed class ValheimRoutedRpcAdmission
+{
+    readonly string[][] _payloadTypes;
+
+    internal ValheimRoutedRpcAdmission(
+        string name,
+        ValheimRoutedRpcScope scope,
+        ValheimRoutedRpcPriority priority,
+        params string[] payloadSignatures)
+    {
+        Name = name;
+        MethodHash = ValheimRoutedRpcAdmissions.StableHash(name);
+        Scope = scope;
+        Priority = priority;
+        PayloadSignatures = Array.AsReadOnly(
+            payloadSignatures ?? Array.Empty<string>());
+        _payloadTypes = new string[PayloadSignatures.Count][];
+        for (var index = 0; index < PayloadSignatures.Count; index++)
+        {
+            var signature = PayloadSignatures[index];
+            _payloadTypes[index] = signature.Length == 0
+                ? Array.Empty<string>()
+                : signature.Split(new[] { ',' }, StringSplitOptions.None);
+        }
+    }
+
+    public string Name { get; }
+    public int MethodHash { get; }
+    public ValheimRoutedRpcScope Scope { get; }
+    public ValheimRoutedRpcPriority Priority { get; }
+    public ReadOnlyCollection<string> PayloadSignatures { get; }
+
+    public bool AcceptsTarget(long targetZdoUserId, uint targetZdoId)
+    {
+        var hasCompleteTarget = targetZdoUserId != 0 && targetZdoId != 0;
+        var hasNoTarget = targetZdoUserId == 0 && targetZdoId == 0;
+        return Scope == ValheimRoutedRpcScope.Instance
+            ? hasCompleteTarget
+            : hasNoTarget;
+    }
+
+    public bool AcceptsPayload(byte[] parameters) =>
+        ValheimRoutedRpcPayloadValidator.Matches(_payloadTypes, parameters);
+}
+
+/// <summary>
+/// The release-aligned admission contract. This source file is compiled into both
+/// ComfyNetworkSense and Game.Contracts; neither side owns a private allow-list.
+/// </summary>
+public static class ValheimRoutedRpcAdmissions
+{
+    public const int MaximumParameterBytes = 32_768;
+
+    public const string CutoverRequest =
+        "ComfyNetworkSense_CutoverRoutedRequest";
+    public const string CutoverResponse =
+        "ComfyNetworkSense_CutoverRoutedResponse";
+    public const string CutoverBroadcastRequest =
+        "ComfyNetworkSense_CutoverRoutedBroadcastRequest";
+    public const string CutoverBroadcast =
+        "ComfyNetworkSense_CutoverRoutedBroadcast";
+    public const string CutoverTargetReceipt =
+        "ComfyNetworkSense_CutoverRoutedTargetReceipt";
+    public const string CutoverResetCloth = "RPC_ResetCloth";
+    public const string CutoverZdoJournalRequest =
+        "ComfyNetworkSense_CutoverZdoJournalRequest";
+
+    static readonly ValheimRoutedRpcAdmission[] EntryArray = BuildEntries();
+    static readonly ReadOnlyCollection<ValheimRoutedRpcAdmission> EntryView =
+        Array.AsReadOnly(EntryArray);
+    static readonly Dictionary<int, ValheimRoutedRpcAdmission> ByHash =
+        BuildHashIndex(EntryArray);
+
+    public static ReadOnlyCollection<ValheimRoutedRpcAdmission> Entries =>
+        EntryView;
+
+    public static bool TryGetByHash(
+        int methodHash,
+        out ValheimRoutedRpcAdmission admission) =>
+        ByHash.TryGetValue(methodHash, out admission!);
+
+    public static bool TryGet(
+        string methodName,
+        int methodHash,
+        out ValheimRoutedRpcAdmission admission)
+    {
+        if (!TryGetByHash(methodHash, out admission))
+            return false;
+        return string.Equals(
+            admission.Name,
+            methodName,
+            StringComparison.Ordinal);
+    }
+
+    public static bool AllowsEnvelope(
+        string methodName,
+        int methodHash,
+        long targetZdoUserId,
+        uint targetZdoId,
+        byte[] parameters)
+    {
+        return parameters != null
+            && parameters.Length <= MaximumParameterBytes
+            && TryGet(methodName, methodHash, out var admission)
+            && admission.AcceptsTarget(targetZdoUserId, targetZdoId)
+            && admission.AcceptsPayload(parameters);
+    }
+
+    /// <summary>
+    /// Valheim's stable string hash, copied from the game implementation. This is
+    /// intentionally part of the shared wire contract rather than a Gateway helper.
+    /// </summary>
+    public static int StableHash(string value)
+    {
+        if (value == null) throw new ArgumentNullException(nameof(value));
+
+        unchecked
+        {
+            var first = 5381;
+            var second = first;
+            for (var index = 0;
+                 index < value.Length && value[index] != 0;
+                 index += 2)
+            {
+                first = ((first << 5) + first) ^ value[index];
+                if (index == value.Length - 1 || value[index + 1] == 0)
+                    break;
+                second = ((second << 5) + second) ^ value[index + 1];
+            }
+            return first + second * 1566083941;
+        }
+    }
+
+    static Dictionary<int, ValheimRoutedRpcAdmission> BuildHashIndex(
+        ValheimRoutedRpcAdmission[] entries)
+    {
+        var result = new Dictionary<int, ValheimRoutedRpcAdmission>();
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var entry in entries)
+        {
+            if (!names.Add(entry.Name))
+                throw new InvalidOperationException(
+                    "duplicate routed RPC admission name: " + entry.Name);
+            if (result.ContainsKey(entry.MethodHash))
+                throw new InvalidOperationException(
+                    "routed RPC admission hash collision: " + entry.Name);
+            result.Add(entry.MethodHash, entry);
+        }
+        return result;
+    }
+
+    static ValheimRoutedRpcAdmission[] BuildEntries() =>
+        new[]
+        {
+            Harness(CutoverRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverResponse, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverBroadcastRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverBroadcast, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverTargetReceipt, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverResetCloth, ValheimRoutedRpcScope.Instance, ""),
+            Harness(CutoverZdoJournalRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
+
+            P1("ChatMessage", ValheimRoutedRpcScope.Global,
+                "Vector3,Int32,UserInfo,String"),
+            P1("ShowMessage", ValheimRoutedRpcScope.Global, "Int32,String"),
+            P1("SleepStart", ValheimRoutedRpcScope.Global, ""),
+            P1("SleepStop", ValheimRoutedRpcScope.Global, ""),
+
+            P1("RPC_Damage", ValheimRoutedRpcScope.Instance,
+                "HitData", "HitData,Int32"),
+            P1("Hit", ValheimRoutedRpcScope.Instance, "HitData,Int32"),
+            P1("ApplyOperation", ValheimRoutedRpcScope.Instance, "ZPackage"),
+            P1("UseDoor", ValheimRoutedRpcScope.Instance, "Boolean"),
+            P1("RequestOpen", ValheimRoutedRpcScope.Instance, "Int64"),
+            P1("OpenRespons", ValheimRoutedRpcScope.Instance, "Boolean"),
+            P1("RequestTakeAll", ValheimRoutedRpcScope.Instance, "Int64"),
+            P1("TakeAllRespons", ValheimRoutedRpcScope.Instance, "Boolean"),
+            P1("RPC_RequestStack", ValheimRoutedRpcScope.Instance, "Int64"),
+            P1("RPC_StackResponse", ValheimRoutedRpcScope.Instance, "Boolean"),
+            P1("RPC_MakePiece", ValheimRoutedRpcScope.Instance, ""),
+            P1("Pick", ValheimRoutedRpcScope.Instance, ""),
+            P1("RPC_Pick", ValheimRoutedRpcScope.Instance, "Int32"),
+            P1("RPC_SetPicked", ValheimRoutedRpcScope.Instance, "Boolean"),
+            P1("RPC_AddFuel", ValheimRoutedRpcScope.Instance, ""),
+            P1("RPC_AddFuelAmount", ValheimRoutedRpcScope.Instance, "Single"),
+            P1("RPC_AddItem", ValheimRoutedRpcScope.Instance, "String"),
+            P1("RPC_AddOre", ValheimRoutedRpcScope.Instance, "String"),
+            P1("RPC_AddStatusEffect", ValheimRoutedRpcScope.Instance,
+                "Int32,Boolean,Int32,Single"),
+            P1("RPC_EmptyProcessed", ValheimRoutedRpcScope.Instance, ""),
+            P1("RPC_Extract", ValheimRoutedRpcScope.Instance, ""),
+            P1("RPC_Heal", ValheimRoutedRpcScope.Instance, "Single,Boolean"),
+            P1("RPC_RemoveDoneItem", ValheimRoutedRpcScope.Instance,
+                "Vector3,Int32"),
+            P1("RPC_Remove", ValheimRoutedRpcScope.Instance, "Boolean"),
+            P1("RPC_Repair", ValheimRoutedRpcScope.Instance, ""),
+            P1("RPC_Stagger", ValheimRoutedRpcScope.Instance, "Vector3"),
+            P1("RPC_TeleportTo", ValheimRoutedRpcScope.Instance,
+                "Vector3,Quaternion,Boolean"),
+            P1("Message", ValheimRoutedRpcScope.Instance,
+                "Int32,String,Int32"),
+            P1("Say", ValheimRoutedRpcScope.Instance,
+                "Int32,UserInfo,String"),
+        };
+
+    static ValheimRoutedRpcAdmission Harness(
+        string name,
+        ValheimRoutedRpcScope scope,
+        params string[] payloadSignatures) =>
+        new(name, scope, ValheimRoutedRpcPriority.Harness, payloadSignatures);
+
+    static ValheimRoutedRpcAdmission P1(
+        string name,
+        ValheimRoutedRpcScope scope,
+        params string[] payloadSignatures) =>
+        new(name, scope, ValheimRoutedRpcPriority.P1, payloadSignatures);
+}
+
+/// <summary>
+/// Allocation-free reader for the subset of Valheim's ZRpc/ZPackage binary format used
+/// by the admitted surface. A payload must match one extracted signature exactly; short,
+/// malformed, or trailing bytes fail closed before reflection dispatch.
+/// </summary>
+static class ValheimRoutedRpcPayloadValidator
+{
+    static readonly UTF8Encoding StrictUtf8 = new(false, true);
+
+    public static bool Matches(string[][] signatures, byte[] parameters)
+    {
+        if (signatures == null || parameters == null)
+            return false;
+
+        foreach (var signature in signatures)
+        {
+            var offset = 0;
+            var valid = true;
+            foreach (var type in signature)
+            {
+                if (!TryConsume(type, parameters, ref offset))
+                {
+                    valid = false;
+                    break;
+                }
+            }
+            if (valid && offset == parameters.Length)
+                return true;
+        }
+        return false;
+    }
+
+    static bool TryConsume(string type, byte[] data, ref int offset)
+    {
+        switch (type)
+        {
+            case "Boolean":
+                if (!CanConsume(data, offset, 1) || data[offset] > 1)
+                    return false;
+                offset++;
+                return true;
+            case "Int32":
+            case "Single":
+                return ConsumeFixed(data, ref offset, 4);
+            case "Int64":
+                return ConsumeFixed(data, ref offset, 8);
+            case "Vector3":
+                return ConsumeFixed(data, ref offset, 12);
+            case "Quaternion":
+                return ConsumeFixed(data, ref offset, 16);
+            case "String":
+                return ConsumeString(data, ref offset);
+            case "ZPackage":
+                return ConsumePackage(data, ref offset);
+            case "UserInfo":
+                return ConsumeString(data, ref offset)
+                    && ConsumeString(data, ref offset);
+            case "HitData":
+                return ConsumeHitData(data, ref offset);
+            default:
+                return false;
+        }
+    }
+
+    static bool ConsumeHitData(byte[] data, ref int offset)
+    {
+        if (!TryReadUInt16(data, ref offset, out var flags))
+            return false;
+
+        for (var bit = 0; bit <= 10; bit++)
+            if ((flags & (1 << bit)) != 0
+                && !ConsumeFixed(data, ref offset, 4))
+                return false;
+
+        if (!ConsumeFixed(data, ref offset, 2))
+            return false;
+        for (var bit = 11; bit <= 13; bit++)
+            if ((flags & (1 << bit)) != 0
+                && !ConsumeFixed(data, ref offset, 4))
+                return false;
+
+        if (!CanConsume(data, offset, 1) || (data[offset] & 0xf0) != 0)
+            return false;
+        offset++;
+
+        if (!ConsumeFixed(data, ref offset, 12)
+            || !ConsumeFixed(data, ref offset, 12)
+            || !ConsumeFixed(data, ref offset, 4))
+            return false;
+
+        if ((flags & (1 << 14)) != 0
+            && !ConsumeFixed(data, ref offset, 12))
+            return false;
+        if (!ConsumeFixed(data, ref offset, 2))
+            return false;
+        if ((flags & (1 << 15)) != 0
+            && !ConsumeFixed(data, ref offset, 4))
+            return false;
+
+        return ConsumeChar(data, ref offset)
+            && ConsumeFixed(data, ref offset, 4)
+            && ConsumeFixed(data, ref offset, 2)
+            && ConsumeFixed(data, ref offset, 1)
+            && ConsumeFixed(data, ref offset, 1)
+            && ConsumeFixed(data, ref offset, 4)
+            && ConsumeFixed(data, ref offset, 4);
+    }
+
+    static bool ConsumePackage(byte[] data, ref int offset)
+    {
+        if (!TryReadInt32(data, ref offset, out var length) || length < 0)
+            return false;
+        return ConsumeFixed(data, ref offset, length);
+    }
+
+    static bool ConsumeString(byte[] data, ref int offset)
+    {
+        if (!TryRead7BitEncodedInt(data, ref offset, out var byteCount)
+            || byteCount < 0
+            || !CanConsume(data, offset, byteCount))
+            return false;
+        try
+        {
+            StrictUtf8.GetCharCount(data, offset, byteCount);
+        }
+        catch (DecoderFallbackException)
+        {
+            return false;
+        }
+        offset += byteCount;
+        return true;
+    }
+
+    static bool ConsumeChar(byte[] data, ref int offset)
+    {
+        if (!CanConsume(data, offset, 1))
+            return false;
+        var first = data[offset];
+        var byteCount = first < 0x80
+            ? 1
+            : first >= 0xc2 && first <= 0xdf
+                ? 2
+                : first >= 0xe0 && first <= 0xef
+                    ? 3
+                    : 0;
+        if (byteCount == 0 || !CanConsume(data, offset, byteCount))
+            return false;
+        try
+        {
+            if (StrictUtf8.GetCharCount(data, offset, byteCount) != 1)
+                return false;
+        }
+        catch (DecoderFallbackException)
+        {
+            return false;
+        }
+        offset += byteCount;
+        return true;
+    }
+
+    static bool TryRead7BitEncodedInt(
+        byte[] data,
+        ref int offset,
+        out int value)
+    {
+        value = 0;
+        for (var index = 0; index < 5; index++)
+        {
+            if (!CanConsume(data, offset, 1))
+                return false;
+            var current = data[offset++];
+            if (index == 4 && (current & 0xf0) != 0)
+                return false;
+            value |= (current & 0x7f) << (index * 7);
+            if ((current & 0x80) == 0)
+                return true;
+        }
+        return false;
+    }
+
+    static bool TryReadUInt16(
+        byte[] data,
+        ref int offset,
+        out ushort value)
+    {
+        value = 0;
+        if (!CanConsume(data, offset, 2))
+            return false;
+        value = (ushort)(data[offset] | (data[offset + 1] << 8));
+        offset += 2;
+        return true;
+    }
+
+    static bool TryReadInt32(byte[] data, ref int offset, out int value)
+    {
+        value = 0;
+        if (!CanConsume(data, offset, 4))
+            return false;
+        value = data[offset]
+            | (data[offset + 1] << 8)
+            | (data[offset + 2] << 16)
+            | (data[offset + 3] << 24);
+        offset += 4;
+        return true;
+    }
+
+    static bool ConsumeFixed(byte[] data, ref int offset, int count)
+    {
+        if (!CanConsume(data, offset, count))
+            return false;
+        offset += count;
+        return true;
+    }
+
+    static bool CanConsume(byte[] data, int offset, int count) =>
+        offset >= 0 && count >= 0 && offset <= data.Length - count;
+}

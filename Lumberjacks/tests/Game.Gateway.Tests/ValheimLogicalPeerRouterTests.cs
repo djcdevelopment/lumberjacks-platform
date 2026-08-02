@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text.Json;
 using Game.Contracts.Protocol;
 using Game.Gateway.WebSocket;
+using Lumberjacks.Contracts.Valheim;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -136,6 +137,112 @@ public sealed class ValheimLogicalPeerRouterTests
                         character_zdo_user_id = 999L,
                         character_zdo_id = 42U,
                     })));
+    }
+
+    [Fact]
+    public async Task P1InstanceRoutedRpc_UsesSharedAdmissionAndReachesTargetPeer()
+    {
+        var fixture = new LogicalPeerFixture();
+        var client = fixture.Create("client", "client-logical", "Tugcorp");
+        var server = fixture.Create("server", "server-logical", "");
+        await fixture.Bind(client.Session, 101);
+        await fixture.Bind(server.Session, 202);
+        client.Socket.Envelopes.Clear();
+        server.Socket.Envelopes.Clear();
+        var admission = Assert.Single(
+            ValheimRoutedRpcAdmissions.Entries,
+            entry => entry.Name == "UseDoor");
+
+        await fixture.Router.RouteAsync(
+            client.Session,
+            EnvelopeFactory.Create(
+                MessageType.ValheimRoutedRpcSend,
+                new
+                {
+                    run_id = "c10-contract-test",
+                    action_id = "p1-instance",
+                    route_id = "route-p1-instance",
+                    message_id = 1001L,
+                    sender_peer_id = 101L,
+                    target_peer_id = 202L,
+                    target_zdo_user_id = 202L,
+                    target_zdo_id = 42U,
+                    method_name = admission.Name,
+                    method_hash = admission.MethodHash,
+                    parameters_base64 = Convert.ToBase64String([1]),
+                    delivery_mode = "deliver",
+                }));
+
+        var forwarded = Assert.Single(server.Socket.Envelopes);
+        Assert.Equal(MessageType.ValheimRoutedRpc, forwarded.Type);
+        Assert.Equal("UseDoor",
+            forwarded.Payload.GetProperty("method_name").GetString());
+        Assert.Equal(admission.MethodHash,
+            forwarded.Payload.GetProperty("method_hash").GetInt32());
+        Assert.Equal(202L,
+            forwarded.Payload.GetProperty("target_zdo_user_id").GetInt64());
+        Assert.Empty(client.Socket.Envelopes);
+    }
+
+    [Fact]
+    public async Task RoutedRpc_RejectsUnadmittedMethodAndMissingInstanceTarget()
+    {
+        var fixture = new LogicalPeerFixture();
+        var client = fixture.Create("client", "client-logical", "Tugcorp");
+        var server = fixture.Create("server", "server-logical", "");
+        await fixture.Bind(client.Session, 101);
+        await fixture.Bind(server.Session, 202);
+        client.Socket.Envelopes.Clear();
+        server.Socket.Envelopes.Clear();
+        var admitted = Assert.Single(
+            ValheimRoutedRpcAdmissions.Entries,
+            entry => entry.Name == "UseDoor");
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            fixture.Router.RouteAsync(
+                client.Session,
+                EnvelopeFactory.Create(
+                    MessageType.ValheimRoutedRpcSend,
+                    new
+                    {
+                        run_id = "c10-contract-test",
+                        action_id = "unknown-method",
+                        route_id = "route-unknown-method",
+                        message_id = 1002L,
+                        sender_peer_id = 101L,
+                        target_peer_id = 202L,
+                        target_zdo_user_id = 202L,
+                        target_zdo_id = 42U,
+                        method_name = "RPC_NotAdmitted",
+                        method_hash = ValheimRoutedRpcAdmissions.StableHash(
+                            "RPC_NotAdmitted"),
+                        parameters_base64 = Convert.ToBase64String([1]),
+                        delivery_mode = "deliver",
+                    })));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            fixture.Router.RouteAsync(
+                client.Session,
+                EnvelopeFactory.Create(
+                    MessageType.ValheimRoutedRpcSend,
+                    new
+                    {
+                        run_id = "c10-contract-test",
+                        action_id = "missing-target",
+                        route_id = "route-missing-target",
+                        message_id = 1003L,
+                        sender_peer_id = 101L,
+                        target_peer_id = 202L,
+                        target_zdo_user_id = 0L,
+                        target_zdo_id = 0U,
+                        method_name = admitted.Name,
+                        method_hash = admitted.MethodHash,
+                        parameters_base64 = Convert.ToBase64String([1]),
+                        delivery_mode = "deliver",
+                    })));
+
+        Assert.Empty(client.Socket.Envelopes);
+        Assert.Empty(server.Socket.Envelopes);
     }
 
     sealed class LogicalPeerFixture

@@ -8,6 +8,7 @@ using Game.ServiceDefaults;
 using Game.Simulation.Handlers;
 using Game.Simulation.Tick;
 using Game.Simulation.World;
+using Lumberjacks.Contracts.Valheim;
 
 namespace Game.Gateway.WebSocket;
 
@@ -1073,19 +1074,26 @@ public class MessageRouter
             mode is not ("deliver" or "withhold") ||
             session.ValheimPeerUid != senderPeerId ||
             messageId == 0 ||
-            !AllowedRoutedMethod(methodName, methodHash) ||
             parameters.Length > 48_000)
             throw new InvalidDataException("invalid Valheim routed RPC envelope");
 
+        byte[] parameterBytes;
         try
         {
-            if (Convert.FromBase64String(parameters).Length > 32_768)
-                throw new InvalidDataException("Valheim routed RPC parameters exceed limit");
+            parameterBytes = Convert.FromBase64String(parameters);
         }
         catch (FormatException)
         {
             throw new InvalidDataException("Valheim routed RPC parameters are not base64");
         }
+        if (!ValheimRoutedRpcAdmissions.AllowsEnvelope(
+                methodName,
+                methodHash,
+                targetZdoUserId,
+                targetZdoId,
+                parameterBytes))
+            throw new InvalidDataException(
+                "Valheim routed RPC admission contract rejected envelope");
 
         if (!session.Reliable.TryAcceptClientMessage(
                 envelope.Seq, $"routed:{routeId}"))
@@ -1703,36 +1711,6 @@ public class MessageRouter
 
     static bool FiniteAndBounded(double value, double absoluteMaximum) =>
         double.IsFinite(value) && Math.Abs(value) <= absoluteMaximum;
-
-    static bool AllowedRoutedMethod(string methodName, int methodHash)
-    {
-        if (methodName is not (
-                "ComfyNetworkSense_CutoverRoutedRequest" or
-                "ComfyNetworkSense_CutoverRoutedResponse" or
-                "ComfyNetworkSense_CutoverRoutedBroadcastRequest" or
-                "ComfyNetworkSense_CutoverRoutedBroadcast" or
-                "ComfyNetworkSense_CutoverRoutedTargetReceipt" or
-                "ComfyNetworkSense_CutoverZdoJournalRequest" or
-                "RPC_ResetCloth"))
-            return false;
-        return StableHash(methodName) == methodHash;
-    }
-
-    static int StableHash(string value)
-    {
-        unchecked
-        {
-            var first = 5381;
-            var second = first;
-            for (var index = 0; index < value.Length && value[index] != 0; index += 2)
-            {
-                first = ((first << 5) + first) ^ value[index];
-                if (index == value.Length - 1 || value[index + 1] == 0) break;
-                second = ((second << 5) + second) ^ value[index + 1];
-            }
-            return first + second * 1566083941;
-        }
-    }
 
     static bool SafeToken(string value, int maximumLength) =>
         !string.IsNullOrWhiteSpace(value) && value.Length <= maximumLength &&

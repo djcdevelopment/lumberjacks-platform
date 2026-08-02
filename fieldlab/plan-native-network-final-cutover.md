@@ -34,8 +34,8 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C6 | **Complete on AM4 (2026-07-30)** | `native-20260730-c6-eighth`: both physical clients applied numbered Lumberjacks motion to the real remote player in both directions while the selected native transform writer and position writes were suppressed. OMEN withheld sequences 600–619; i5 held without native fallback, applied the reliable resync, and queued its ACK. Both clients completed a fresh-process resume; i5 also proved binary-WebSocket fallback when its advertised UDP path was unreachable. |
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
 | C8 | **Complete and runtime-reconfirmed on AM4 (2026-08-02)** | `native-20260731-c8-full44` + `full45` passed the full 49-action composition twice. `native-20260802-cutover-recovery5` repeated it on fresh GPU-rendered OMEN/i5 processes with the hash-identical candidate, 20/20 coverage, zero client/server native use or poison trips, clean save integrity, ownership contention, Gateway replay, and clean rejoin. The same window runtime-proved the session-scoped epoch across a real AM4 restart and rejected an old-session mutation. |
-| C9 | **Complete on AM4 (2026-08-02)** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. The retained 2560×720 side-by-side clip covers both views. |
-| C10 | Pending | Release alignment, the 29 P1 admissions, three `[VERIFY]` rows, component-family gates, P7 promotion, and fallback deletion remain. The session-epoch runtime gate is complete and must not be rebuilt. |
+| C9 | **Machine/artifact complete; subjective acceptance pending** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. The retained 2560×720 side-by-side clip covers both views; Derek's `smooth`/`rough`/`mixed` verdict remains open. |
+| C10 | Pending | Release alignment, the 33 P1 admissions (29 instance plus four global), three `[VERIFY]` rows, component-family gates, P7 promotion, and fallback deletion remain. The session-epoch runtime gate is complete and must not be rebuilt. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -751,8 +751,9 @@ comparison.
 **Limits that remain explicit**
 
 - C8 proves the selected/registered method and prefab surface, not complete gameplay
-  breadth. Per the C8 breadth audit (`C8-BREADTH-AUDIT-2026-07-31.md`): the 29 P1
-  methods must be admitted and contract-tested before native fallback deletion in
+  breadth. Per the C8 breadth audit (`C8-BREADTH-AUDIT-2026-07-31.md`): all 33 P1
+  methods — 29 instance plus four global — must be admitted and contract-tested before
+  native fallback deletion in
   C10; three [VERIFY] rows (`RPC_TeleportPlayer`, `UseStamina`, vehicle
   `RequestControl`/`ReleaseControl`) and three component-family gates
   (vehicles/mounts, containers/stations, AI/creatures) remain, vehicles/mounts being
@@ -801,9 +802,10 @@ comparison.
    against the native-zero candidate; produce one side-by-side observer clip covering
    both direction/role combinations; tune only the Lumberjacks presentation path if
    objective evidence requires. C9 must not reopen C0â€“C8 architecture without new
-   evidence. Derek's optional verdict on the retained clip is one word.
-2. **C10a â€” admissions and release alignment:** admit + contract-test the 29 P1
-   methods, resolve the three [VERIFY] rows and three component-family gates, and
+   evidence. Derek's remaining verdict on the retained clip is one word.
+2. **C10a â€” admissions and release alignment:** admit + contract-test all 33 P1
+   methods (29 instance plus four global), resolve the three [VERIFY] rows and three
+   component-family gates, and
    release-align the runtime-proved session-scoped epoch fix. Wall 11's runtime gate
    and interim WAL-discard rule are closed.
 3. **C10b â€” P7 promotion and close:** boot P7 per `RUNBOOK-boot-determinism.md`
@@ -833,19 +835,19 @@ CRE-E0x material.
 
 - No unexplained hard correction, no persistent target divergence, bounded recovery from
   the injected loss, and no new wall-clock hitch attributable to apply.
-- Produce one side-by-side clip rather than asking Derek to drive two clients. If a
-  subjective verdict is desired, Derek reviews that retained clip once and answers
-  `smooth`, `rough`, or `mixed`; this is not a live KVM gate.
+- Produce one side-by-side clip rather than asking Derek to drive two clients. Derek
+  reviews that retained clip once and answers `smooth`, `rough`, or `mixed`; this is
+  not a live KVM gate and does not require a rerun.
 
 **Exit**
 
-- Movement correctness is verified by machine evidence and visible presentation has a
-  retained, reviewable artifact. Any subjective statement is labeled with its actual
-  reviewer.
+- Movement correctness is verified by machine evidence, visible presentation has a
+  retained reviewable artifact, and Derek's one-word subjective verdict is recorded
+  with its actual reviewer.
 
 **Cost:** 1–3 focused days.
 
-#### C9 completion checkpoint — 2026-08-02
+#### C9 machine/artifact checkpoint — 2026-08-02
 
 - Physical run `native-20260802-c9-motion6` passed on rendered OMEN and i5 clients
   against AM4 with poison armed, zero native use, one clean resume per client, and
@@ -856,10 +858,32 @@ CRE-E0x material.
 - The foreground-verified, 20.067 s side-by-side artifact is retained under
   `fieldlab/runs/motion-clips/native-20260802-c9-motion6/`; machine findings and artifact
   SHA-256 are recorded in `fieldlab/evidence/c9-motion-quality/README.md`.
-- C9 is closed without asserting Derek's optional `smooth`/`rough`/`mixed` verdict.
-  The next executable work is C10a; no Workbench/dashboard work is on this cutover path.
+- The machine and artifact portions are closed; C9 itself remains open until Derek's
+  `smooth`/`rough`/`mixed` verdict is recorded. C10a engineering can proceed in parallel;
+  no Workbench/dashboard work is on this cutover path.
 
 ### C10 — P7 promotion, fallback deletion, and final close
+
+#### C10a admission-contract checkpoint — 2026-08-02
+
+- One source file in `Game.Contracts` now defines the exact method name, Valheim stable
+  hash, global-vs-instance target shape, maximum payload size, priority, and extracted
+  payload signatures used by both the Gateway and ComfyNetworkSense build.
+- The admitted P1 surface is 33 methods: the previously named 29 instance RPCs plus the
+  four P1 global routed registrations `ChatMessage`, `ShowMessage`, `SleepStart`, and
+  `SleepStop`. Tests compare every P1 signature to the pinned extractor-v2 inventory and
+  reject hash collisions, name/hash mismatch, incomplete target ZDOs, and oversize payloads.
+- An outbound method outside the admission contract no longer bypasses evidence. With
+  cutover armed it records `routed_rpc_unadmitted_send`; poison blocks it, while an
+  explicitly non-poisoned migration window may still use the observed native route.
+- The mod Release build is zero-warning/zero-error, its focused suite passes 107/107,
+  and the .NET 9 Gateway suite passes 221/221 including exact forwarding and fail-closed
+  rejection at the shared contract boundary.
+
+This closes the **source admission and contract-parity implementation**, not C10a. A
+paired release still has to be cut and the P1 families exercised on AM4; the three
+`[VERIFY]` rows, vehicle/mount, container/station, and AI/creature runtime gates, P7
+promotion, and fallback deletion remain open.
 
 **Candidate promotion**
 
@@ -941,10 +965,11 @@ at least one native Valheim client; composition slices require both clients.
 
 ## Estimated remaining cost
 
-After C9, the remaining cutover estimate is **1–3 focused engineering days for C10**,
-plus its two bounded P7 world reloads. This is the admissions/release-alignment,
-component-family, promotion, and fallback-deletion work already defined below; C8 and
-C9 are retained boundaries, not work to rerun by default.
+After C9's machine/artifact gate, the remaining cutover estimate is **1–3 focused
+engineering days for C10**, plus its two bounded P7 world reloads and one retained-clip
+review for C9. This is the admissions/release-alignment, component-family, promotion,
+and fallback-deletion work already defined below; C8 and C9's physical run are retained
+boundaries, not work to rerun by default.
 
 | Cost class | Slices |
 | --- | --- |
@@ -957,9 +982,10 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0-C9 are complete. The C8 acceptance pair, runtime repeat `recovery5`, and C9
-physical motion run `native-20260802-c9-motion6` are retained. Begin **C10a — admissions
-and release alignment**: admit and contract-test the 29 P1 methods, resolve the three
+C0-C8 are complete. The C8 acceptance pair, runtime repeat `recovery5`, and C9
+physical motion run `native-20260802-c9-motion6` are retained; C9's one-word subjective
+verdict remains pending. In parallel, begin **C10a — admissions and release alignment**:
+admit and contract-test all 33 P1 methods (29 instance plus four global), resolve the three
 `[VERIFY]` rows and component-family gates, and cut one aligned mod/Gateway release.
 The epoch source, Gateway restart/replay contract, dedicated-server transition,
 stale-session rejection, and rendered motion boundary are green; do not rebuild them
