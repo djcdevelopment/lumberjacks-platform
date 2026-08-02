@@ -24,16 +24,16 @@ param(
     [string] $I5OwnershipTargetTag = '',
 
     # C9 needs a long enough continuous motion window to judge rendered quality;
-    # C8's accepted 6s/4m pair is too short to see anything in a clip. The
-    # defaults reproduce the accepted C8 composition exactly, so raising these
-    # widens the motion windows without changing any other boundary.
-    [ValidateRange(4, 120)]
+    # C8's accepted 6s/4m pair is too short to see anything in a clip. These
+    # bounds intentionally match NativeCutoverScenarioController so this
+    # generator cannot emit a manifest that the deployed mod must reject.
+    [ValidateRange(4, 20)]
     [int] $MotionDurationSeconds = 6,
 
-    [ValidateRange(2, 200)]
+    [ValidateRange(2, 24)]
     [int] $MotionDistanceMeters = 4,
 
-    [ValidateRange(2, 200)]
+    [ValidateRange(2, 24)]
     [int] $MotionGapDistanceMeters = 6
 )
 

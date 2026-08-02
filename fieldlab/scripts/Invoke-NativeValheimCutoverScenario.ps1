@@ -218,7 +218,7 @@ function Write-JsonAtomic([string] $Path, [object] $Value) {
 function Get-Am4SaveFingerprint {
     $logCommand =
         "docker logs --since 48h '$ServerContainer' 2>&1 | " +
-        "grep -E 'ZDOS:|ConnectPortals =>|spawned=|Loaded [0-9]+ locations'"
+        "grep -E 'ZDOS:|ConnectPortals =>|Portal saved-connection hash join|spawned=|Loaded [0-9]+ locations'"
     $logLines = & ssh -o BatchMode=yes -o ConnectTimeout=10 am4 $logCommand
     if ($LASTEXITCODE -notin @(0, 1)) {
         throw "AM4 save fingerprint log query failed with exit $LASTEXITCODE."
@@ -255,7 +255,12 @@ function Get-Am4SaveFingerprint {
         captured_utc = [DateTimeOffset]::UtcNow.ToString('o')
         container = $ServerContainer
         zdos = Last-Integer $logText 'ZDOS:(\d+)'
-        portals = Last-Integer $logText 'ConnectPortals => Connected (\d+) portals'
+        # Newer server builds replace Valheim's quadratic ConnectPortals scan with the
+        # mod's saved-connection hash join. Both lines report the number of established
+        # portal pairs; accept either spelling so a successful optimization does not make
+        # the safety fingerprint unreadable.
+        portals = Last-Integer $logText `
+            '(?:ConnectPortals => Connected |Portal saved-connection hash join connected=)(\d+)'
         spawned = Last-Integer $logText 'spawned=(\d+)'
         targets = Last-Integer $logText 'targets=(\d+)'
         locations = Last-Integer $logText 'Loaded (\d+) locations'
@@ -1139,40 +1144,46 @@ try {
         # Restore from the durable pre-Lab-session backup after the game is
         # stopped so a failed rendered run cannot leave the canonical lane
         # enabled at rest.
-        try {
-            & $clientHarness `
-                -Action restore-lab-session `
-                -Client omen `
-                -RunId $RunId `
-                -EvidenceRoot $EvidenceRoot | Out-Null
-        } catch {
-            Write-Warning ("OMEN Lab-session restore failed: " + $_.Exception.Message)
+        $omenLabBackup =
+            Join-Path $runDirectory 'omen\config-before-lab-session.cfg'
+        if (Test-Path -LiteralPath $omenLabBackup -PathType Leaf) {
+            try {
+                & $clientHarness `
+                    -Action restore-lab-session `
+                    -Client omen `
+                    -RunId $RunId `
+                    -EvidenceRoot $EvidenceRoot | Out-Null
+            } catch {
+                Write-Warning ("OMEN Lab-session restore failed: " + $_.Exception.Message)
+            }
         }
-        try {
-            [void](Invoke-I5Harness @('-Action', 'stop', '-Client', 'i5'))
-        } catch { }
-        # Drain the i5 scheduled task before exiting: stop kills the client
-        # and the pending request, but the harness wait loop takes time to
-        # notice, and a successor run's queue-smoke correctly refuses while
-        # the task still reports Running (full33 collided with full32's tail).
-        try {
-            $i5DrainDeadline = (Get-Date).AddSeconds(90)
-            do {
-                $i5Drain =
-                    (Invoke-I5Harness @('-Action', 'task-status', '-Client', 'i5') `
-                        -join [Environment]::NewLine) | ConvertFrom-Json
-                if ($i5Drain.state -ne 'Running') { break }
-                Start-Sleep -Seconds 5
-            } while ((Get-Date) -lt $i5DrainDeadline)
-        } catch { }
-        try {
-            [void](Invoke-I5Harness @(
-                '-Action', 'restore-lab-session',
-                '-Client', 'i5',
-                '-RunId', $RunId,
-                '-EvidenceRoot', $remoteEvidenceRoot))
-        } catch {
-            Write-Warning ("i5 Lab-session restore failed: " + $_.Exception.Message)
+        if ($i5Queued) {
+            try {
+                [void](Invoke-I5Harness @('-Action', 'stop', '-Client', 'i5'))
+            } catch { }
+            # Drain the i5 scheduled task before exiting: stop kills the client
+            # and the pending request, but the harness wait loop takes time to
+            # notice, and a successor run's queue-smoke correctly refuses while
+            # the task still reports Running (full33 collided with full32's tail).
+            try {
+                $i5DrainDeadline = (Get-Date).AddSeconds(90)
+                do {
+                    $i5Drain =
+                        (Invoke-I5Harness @('-Action', 'task-status', '-Client', 'i5') `
+                            -join [Environment]::NewLine) | ConvertFrom-Json
+                    if ($i5Drain.state -ne 'Running') { break }
+                    Start-Sleep -Seconds 5
+                } while ((Get-Date) -lt $i5DrainDeadline)
+            } catch { }
+            try {
+                [void](Invoke-I5Harness @(
+                    '-Action', 'restore-lab-session',
+                    '-Client', 'i5',
+                    '-RunId', $RunId,
+                    '-EvidenceRoot', $remoteEvidenceRoot))
+            } catch {
+                Write-Warning ("i5 Lab-session restore failed: " + $_.Exception.Message)
+            }
         }
         for ($sweep = 0; $sweep -lt 3; $sweep++) {
             Start-Sleep -Seconds 4

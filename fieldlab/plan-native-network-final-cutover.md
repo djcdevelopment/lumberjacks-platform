@@ -33,8 +33,8 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C5 | **Complete on AM4 (2026-07-30)** | `native-20260730-c5-final`: both physical clients entered from a validated Lumberjacks world descriptor while native `PeerInfo` world fields were blank. Each resumed the same first snapshot chunk after a forced socket drop, applied three typed objects, completed once, unloaded to zero stale objects, and spawned nothing when membership was withheld. AM4 suppressed every selected native membership candidate. Wrong protocol/world-generation cells stopped before scene entry. |
 | C6 | **Complete on AM4 (2026-07-30)** | `native-20260730-c6-eighth`: both physical clients applied numbered Lumberjacks motion to the real remote player in both directions while the selected native transform writer and position writes were suppressed. OMEN withheld sequences 600–619; i5 held without native fallback, applied the reliable resync, and queued its ACK. Both clients completed a fresh-process resume; i5 also proved binary-WebSocket fallback when its advertised UDP path was unreachable. |
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
-| C8 | **Complete on AM4 (2026-08-01)** | `native-20260731-c8-full44` + `native-20260731-c8-full45`: the full 49-action composition twice from clean launches on one frozen build, unconditional client AND server poison, composition/save-integrity/coverage all passed with zero failed checks both runs. The road there receipted and closed six wall classes (restart-staled zone bank, observe-verdict blindness, never-sent drive delivery, QuickEdit console freeze, outbound priority inversion, unannounced teleport) plus one deadline calibration — none of them gameplay-boundary defects. |
-| C9-C10 | Pending in dependency order | Motion-quality evidence next (see the mandatory post-C8 replan); P7 promotion, the P1 admission backlog, the session-scoped epoch fix, and fallback deletion remain last. |
+| C8 | **Complete and runtime-reconfirmed on AM4 (2026-08-02)** | `native-20260731-c8-full44` + `full45` passed the full 49-action composition twice. `native-20260802-cutover-recovery5` repeated it on fresh GPU-rendered OMEN/i5 processes with the hash-identical candidate, 20/20 coverage, zero client/server native use or poison trips, clean save integrity, ownership contention, Gateway replay, and clean rejoin. The same window runtime-proved the session-scoped epoch across a real AM4 restart and rejected an old-session mutation. |
+| C9-C10 | Pending in dependency order | The retained side-by-side subjective motion verdict is next. C10 still owns release alignment, the P1 admission backlog, component-family gates, P7 promotion, and fallback deletion; the session-epoch runtime gate is complete. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -780,15 +780,16 @@ comparison.
   only inside the `ReleaseNearbyZDOS` prefix, so those five paths pass through untouched.
   Three of them are the vehicles/mounts surface. Whether that is a gap or correct scoping
   is a C10a question with evidence attached, not an assumption to inherit.
-- Wall 11's durable source fix is implemented and contract-tested as of 2026-08-02:
+- Wall 11's durable source fix is implemented, contract-tested, and runtime-proved as of 2026-08-02:
   descriptor protocol 2 publishes the stable world component plus Valheim's server
   `ZDOMan` session component; every journal/ownership payload uses the accepted combined
   epoch; the Gateway retains a same-session bank across its own restart and atomically
   invalidates objects, interests, pending delivery, and WAL rows on a server-session
-  change. Stale-session mutations/interests fail closed. The Valheim-linked mod builds
-  with zero warnings/errors and the restart/replay suite passes. Release alignment and
-  one bounded runtime server-restart receipt remain part of C10a, so the interim AM4 WAL
-  discard rule remains in force until that runtime proof lands.
+  change. Stale-session mutations/interests fail closed. Physical run
+  `native-20260802-cutover-recovery5` followed one real AM4 restart, changed the epoch,
+  passed all 49 actions on both rendered clients, and a valid old-epoch mutation returned
+  HTTP 409 without changing the new bank. The interim AM4 WAL-discard rule is retired;
+  only release alignment remains for this item in C10a.
 - The blast radius of phantom-uid replay is bounded by construction: a full-assembly
   sweep found exactly two load-time non-owned-destroy sites (`TerrainComp.Awake`,
   `SmokeSpawner.Awake`). The epoch fix removes the class.
@@ -800,10 +801,10 @@ comparison.
    both direction/role combinations; tune only the Lumberjacks presentation path if
    objective evidence requires. C9 must not reopen C0â€“C8 architecture without new
    evidence. Derek's optional verdict on the retained clip is one word.
-2. **C10a â€” admissions and epoch:** admit + contract-test the 29 P1 methods, resolve
-   the three [VERIFY] rows and three component-family gates, release-align and
-   runtime-prove the implemented session-scoped epoch fix, then close wall 11's
-   interim WAL-discard rule.
+2. **C10a â€” admissions and release alignment:** admit + contract-test the 29 P1
+   methods, resolve the three [VERIFY] rows and three component-family gates, and
+   release-align the runtime-proved session-scoped epoch fix. Wall 11's runtime gate
+   and interim WAL-discard rule are closed.
 3. **C10b â€” P7 promotion and close:** boot P7 per `RUNBOOK-boot-determinism.md`
    (step 1 evidence BEFORE applying the boot fix), cut one release from one commit,
    run the pair scenario on P7 poison-armed, delete migration-only fallback branches,
@@ -942,11 +943,11 @@ the landscape, then commit and replan.
 ## Immediate next build
 
 C0-C8 and every mandatory replan through C8 are complete; the acceptance pair
-full44+full45 is retained. Begin **C9 — rendered motion quality**: run the
+full44+full45 and physical runtime repeat recovery5 are retained. Begin **C9 — rendered motion quality**: run the
 already-built motion phase capture against the native-zero candidate and produce one
 side-by-side observer clip covering both direction/role combinations. C9 must not
-reopen C0-C8 architecture without new evidence. C10's preconditions (the 29 P1
-admissions, the three [VERIFY] rows, the component-family gates, and the
-session-epoch release/runtime proof from wall 11) are queued behind it — see the
-mandatory post-C8 replan. The epoch source and restart/replay contract are already
-green; do not rebuild them while executing C9.
+reopen C0-C8 architecture without new evidence. C10's remaining preconditions (the
+29 P1 admissions, the three [VERIFY] rows, the component-family gates, and release
+alignment) are queued behind it — see the mandatory post-C8 replan. The epoch source,
+Gateway restart/replay contract, dedicated-server transition, and stale-session
+rejection are green; do not rebuild them while executing C9.

@@ -1,8 +1,8 @@
 # ADR 0016 — Banked state must carry the identity scope of what it banks
 
-- **Status:** Accepted (2026-08-01); source implementation and restart/replay contract
-  completed 2026-08-02. Release alignment and bounded runtime restart proof remain a
-  C10a precondition before retiring the interim WAL-discard rule.
+- **Status:** Accepted and runtime-proved (2026-08-02). Source implementation,
+  same-session Gateway restart/replay, dedicated-server epoch transition, and stale
+  old-session rejection are complete. Release alignment remains in C10a.
 - **Rung:** netcode program — canonical session / Gateway zone bank / world epoch contract
 
 ## Context
@@ -42,12 +42,15 @@ an operational wipe rule does not survive production):
    session-epoch change as a fresh world.
 3. The world-stable component remains available for identities that genuinely survive restarts.
 
-## Interim rule (in force now)
+## Interim rule (retired 2026-08-02)
 
-Until the durable fix lands: **discard the Gateway journal WAL after any AM4 server restart**
-(`rm /data/valheim-zdo-journal.jsonl` in the gateway container, then restart the gateway). The
-rule is recorded in memory (`server-restart-stales-gateway-zone-bank`) and the scenario runbook.
-The bank is a cache of live server state and rebuilds on demand; nothing durable is lost.
+The former rule required discarding the Gateway journal WAL after every AM4 server restart.
+It is retired: physical run `native-20260802-cutover-recovery5` followed an actual AM4
+restart, observed the session component change from `000000004f34febc` to
+`000000008ef610a2`, and passed the complete 49-action native-zero composition. Gateway-only
+restart replay retained 1,632 objects inside the new session; a valid mutation carrying the
+old epoch returned HTTP 409 `world_epoch_not_active` without changing the new bank. The
+tracked receipt is `fieldlab/evidence/c8-native-zero-composition/recovery5-session-epoch-gate.json`.
 
 ## Consequences
 
