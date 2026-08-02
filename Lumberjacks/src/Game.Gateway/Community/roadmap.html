@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-02T05:59:12.401Z</span>
+        <span>Updated 2026-08-02T06:36:25.560Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260802055912-harden-lab-provenance-and-bounded-stall-forensic">
+        <div class="journal"><article class="journal-entry" id="note-20260802063625-migrate-the-local-lab-state-into-baseline-owners">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-02T06:36:25.560Z">2026-08-02T06:36:25.560Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7 · A7</span>
+      </div>
+      <h3>Migrate the local Lab state into Baseline ownership</h3>
+      <p><strong>Impact:</strong> A fail-closed migration command now requires fresh zero-peer Gateway telemetry and an idle world backup, preserves the retained source as rollback, verifies the stopped server inventory and critical world hashes, and recreates the active server with only Baseline Compose and state mounts. The strict rendered provenance gate now reports baseline_migrated. HEARTH remains independent from the Workbench Dev MCP.</p>
+      <details><summary>Verification (2)</summary><ul><li>The stopped source and target matched at 2,561 files and 57,551,976,393 bytes plus four critical world hashes.</li><li>Strict Lab provenance and post-start zero-peer readiness passed after recreation.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>docs/decisions/pd-7-lab-runtime-provenance-and-session-boundary.md</code> <code>docs/audit/2026-08-02-workbench-lab-runtime-provenance.md</code> <code>plans/workbench-v1-verification-matrix.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260802055912-harden-lab-provenance-and-bounded-stall-forensic">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
