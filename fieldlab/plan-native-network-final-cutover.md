@@ -34,7 +34,8 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C6 | **Complete on AM4 (2026-07-30)** | `native-20260730-c6-eighth`: both physical clients applied numbered Lumberjacks motion to the real remote player in both directions while the selected native transform writer and position writes were suppressed. OMEN withheld sequences 600–619; i5 held without native fallback, applied the reliable resync, and queued its ACK. Both clients completed a fresh-process resume; i5 also proved binary-WebSocket fallback when its advertised UDP path was unreachable. |
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
 | C8 | **Complete and runtime-reconfirmed on AM4 (2026-08-02)** | `native-20260731-c8-full44` + `full45` passed the full 49-action composition twice. `native-20260802-cutover-recovery5` repeated it on fresh GPU-rendered OMEN/i5 processes with the hash-identical candidate, 20/20 coverage, zero client/server native use or poison trips, clean save integrity, ownership contention, Gateway replay, and clean rejoin. The same window runtime-proved the session-scoped epoch across a real AM4 restart and rejected an old-session mutation. |
-| C9-C10 | Pending in dependency order | The retained side-by-side subjective motion verdict is next. C10 still owns release alignment, the P1 admission backlog, component-family gates, P7 promotion, and fallback deletion; the session-epoch runtime gate is complete. |
+| C9 | **Complete on AM4 (2026-08-02)** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. The retained 2560×720 side-by-side clip covers both views. |
+| C10 | Pending | Release alignment, the 29 P1 admissions, three `[VERIFY]` rows, component-family gates, P7 promotion, and fallback deletion remain. The session-epoch runtime gate is complete and must not be rebuilt. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -844,6 +845,20 @@ CRE-E0x material.
 
 **Cost:** 1–3 focused days.
 
+#### C9 completion checkpoint — 2026-08-02
+
+- Physical run `native-20260802-c9-motion6` passed on rendered OMEN and i5 clients
+  against AM4 with poison armed, zero native use, one clean resume per client, and
+  zero probe failures.
+- The ordinary observer windows applied numbered Lumberjacks motion in both directions
+  with zero holds or resyncs. The deliberate 20-frame loss held fail-closed and recovered
+  through the reliable lane in 0.895 s.
+- The foreground-verified, 20.067 s side-by-side artifact is retained under
+  `fieldlab/runs/motion-clips/native-20260802-c9-motion6/`; machine findings and artifact
+  SHA-256 are recorded in `fieldlab/evidence/c9-motion-quality/README.md`.
+- C9 is closed without asserting Derek's optional `smooth`/`rough`/`mixed` verdict.
+  The next executable work is C10a; no Workbench/dashboard work is on this cutover path.
+
 ### C10 — P7 promotion, fallback deletion, and final close
 
 **Candidate promotion**
@@ -926,15 +941,15 @@ at least one native Valheim client; composition slices require both clients.
 
 ## Estimated remaining cost
 
-After C7, the current evidence supports **5–11 focused engineering days** for C8
-through C10, plus the two bounded P7 world reloads already budgeted in C10. The range
-includes the remaining direct/routed/ownership/zone breadth audit and any closure
-work exposed by C8. Steam-free cold join no longer dominates architectural risk.
+After C9, the remaining cutover estimate is **1–3 focused engineering days for C10**,
+plus its two bounded P7 world reloads. This is the admissions/release-alignment,
+component-family, promotion, and fallback-deletion work already defined below; C8 and
+C9 are retained boundaries, not work to rerun by default.
 
 | Cost class | Slices |
 | --- | --- |
-| Moderate, composition/breadth | C8 |
-| Lower, existing substrate | C9, C10 |
+| Moderate, admissions/component breadth | C10a |
+| Lower, release/promotion close | C10b |
 
 This is a burn-down estimate, not a promise to execute all slices without reassessment.
 The intended rhythm is: build one boundary, run it for real, retain the receipt, update
@@ -942,12 +957,11 @@ the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0-C8 and every mandatory replan through C8 are complete; the acceptance pair
-full44+full45 and physical runtime repeat recovery5 are retained. Begin **C9 — rendered motion quality**: run the
-already-built motion phase capture against the native-zero candidate and produce one
-side-by-side observer clip covering both direction/role combinations. C9 must not
-reopen C0-C8 architecture without new evidence. C10's remaining preconditions (the
-29 P1 admissions, the three [VERIFY] rows, the component-family gates, and release
-alignment) are queued behind it — see the mandatory post-C8 replan. The epoch source,
-Gateway restart/replay contract, dedicated-server transition, and stale-session
-rejection are green; do not rebuild them while executing C9.
+C0-C9 are complete. The C8 acceptance pair, runtime repeat `recovery5`, and C9
+physical motion run `native-20260802-c9-motion6` are retained. Begin **C10a — admissions
+and release alignment**: admit and contract-test the 29 P1 methods, resolve the three
+`[VERIFY]` rows and component-family gates, and cut one aligned mod/Gateway release.
+The epoch source, Gateway restart/replay contract, dedicated-server transition,
+stale-session rejection, and rendered motion boundary are green; do not rebuild them
+without new contradictory evidence. C10b then promotes that paired release to P7,
+re-proves the named boundaries, removes migration-only fallback, and closes the cutover.

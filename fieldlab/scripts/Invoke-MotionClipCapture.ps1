@@ -52,6 +52,12 @@ param(
     # 'desktop' or a gdigrab window selector such as 'title=Valheim'.
     [string] $Source = 'desktop',
 
+    # C9 is rendered evidence, not merely proof that Unity's background loop
+    # advanced. Bring the actual Valheim window to the foreground, maximize it,
+    # and fail closed unless Windows confirms that exact process window owns
+    # the foreground before ffmpeg starts.
+    [switch] $ForegroundValheim,
+
     # A software encoder competes with the game for CPU and would perturb the
     # very frame timing C9 measures. Prefer the GPU encoder per machine
     # (h264_nvenc on OMEN's RTX, h264_qsv on the i5's Iris Xe); falls back to
@@ -104,7 +110,69 @@ function Test-SafeToken([string] $Value) {
     return ($Value -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$')
 }
 
+function Set-ValheimCaptureForeground {
+    $process = Get-Process valheim -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowHandle -ne 0 } |
+        Sort-Object StartTime -Descending |
+        Select-Object -First 1
+    if (-not $process) {
+        throw 'A rendered Valheim process window is required before capture.'
+    }
+
+    if (-not ('MotionClipWindowNative' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class MotionClipWindowNative {
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")]
+    public static extern bool BringWindowToTop(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")]
+    public static extern void SwitchToThisWindow(IntPtr hWnd, bool altTab);
+}
+'@
+    }
+
+    $handle = [IntPtr] $process.MainWindowHandle
+    # SW_MAXIMIZE keeps the game reviewable in a desktop capture. AppActivate
+    # and the native calls cover both an ordinary interactive shell (OMEN) and
+    # the logged-on interactive scheduled-task session (i5).
+    [void] [MotionClipWindowNative]::ShowWindowAsync($handle, 3)
+    $shell = New-Object -ComObject WScript.Shell
+    $appActivated = [bool] $shell.AppActivate($process.Id)
+    [void] [MotionClipWindowNative]::BringWindowToTop($handle)
+    [void] [MotionClipWindowNative]::SetForegroundWindow($handle)
+    Start-Sleep -Milliseconds 750
+    if ([MotionClipWindowNative]::GetForegroundWindow() -ne $handle) {
+        [MotionClipWindowNative]::SwitchToThisWindow($handle, $true)
+        Start-Sleep -Milliseconds 750
+    }
+    $foreground = [MotionClipWindowNative]::GetForegroundWindow()
+    if ($foreground -ne $handle) {
+        throw "Valheim foreground verification failed: expected=$handle observed=$foreground"
+    }
+
+    return [ordered] @{
+        process_id        = $process.Id
+        window_title      = $process.MainWindowTitle
+        window_handle     = [long] $handle
+        app_activate      = $appActivated
+        foreground_handle = [long] $foreground
+        maximized         = $true
+        verified          = $true
+    }
+}
+
 function Invoke-Capture($Request) {
+    $foregroundReceipt = $null
+    if ([bool] $Request.foreground_valheim) {
+        $foregroundReceipt = Set-ValheimCaptureForeground
+    }
     $ffmpeg = Resolve-Ffmpeg $Request.ffmpeg_path
     $outDir = $Request.output_directory
     if (-not (Test-Path -LiteralPath $outDir)) {
@@ -190,6 +258,8 @@ function Invoke-Capture($Request) {
         clip_path                   = $clipPath
         clip_bytes                  = $clipBytes
         source                      = $Request.source
+        foreground_valheim          = [bool] $Request.foreground_valheim
+        foreground                  = $foregroundReceipt
         encoder                     = $encoder
         encoder_fallback_used       = $encoderFallback
         fps                         = $Request.fps
@@ -259,6 +329,7 @@ switch ($Action) {
             fps              = $Fps
             width            = $Width
             source           = $Source
+            foreground_valheim = [bool] $ForegroundValheim
             encoder          = $Encoder
             ffmpeg_path      = $FfmpegPath
         }
@@ -294,6 +365,7 @@ switch ($Action) {
             fps              = $Fps
             width            = $Width
             source           = $Source
+            foreground_valheim = [bool] $ForegroundValheim
             encoder          = $Encoder
             ffmpeg_path      = $FfmpegPath
         }

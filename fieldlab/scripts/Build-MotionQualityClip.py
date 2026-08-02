@@ -27,9 +27,9 @@ import sys
 from pathlib import Path
 
 # Which action makes each client the observer of the other's motion.
-OBSERVER_ACTION = {
-    "omen": "omen-c8-motion-observe-two",   # i5 drives north, OMEN watches
-    "i5": "i5-c8-motion-observe-one",       # OMEN drives east, i5 watches
+OBSERVER_ACTIONS = {
+    "omen": ("omen-c8-motion-observe-two", "omen-c6-observe-two"),
+    "i5": ("i5-c8-motion-observe-one", "i5-c6-observe-one"),
 }
 DRIVER_LABEL = {
     "omen": "OMEN observing  -  i5 drives north",
@@ -57,7 +57,10 @@ def read_jsonl(path: Path, run_id: str | None = None) -> list[dict]:
     rows: list[dict] = []
     if not path.exists():
         return rows
-    with path.open(encoding="utf-8", errors="replace") as fh:
+    # Windows PowerShell 5.1 writes UTF-8 JSON with a BOM. Accept that at the
+    # evidence boundary instead of requiring operators to rewrite a retained
+    # capture receipt before it can be composed.
+    with path.open(encoding="utf-8-sig", errors="replace") as fh:
         for line in fh:
             line = line.strip()
             if not line:
@@ -75,20 +78,21 @@ def observer_window(run_dir: Path, client: str, run_id: str):
     """(start, end) UTC of this client's observer action, from its receipts."""
     receipts = read_jsonl(
         run_dir / client / "native-cutover-scenario-receipts.jsonl", run_id)
-    action_id = OBSERVER_ACTION[client]
-    start = end = None
-    for row in sorted(receipts, key=lambda r: r["timestamp_utc"]):
-        if row.get("action_id") != action_id:
-            continue
-        if row.get("state") == "action_started":
-            start = parse_ts(row["timestamp_utc"])
-        elif row.get("state") in ("completed", "failed") and start is not None:
-            end = parse_ts(row["timestamp_utc"])
-            break
-    if start is None or end is None:
-        raise SystemExit(
-            f"{client}: could not bound observer action {action_id} in {run_dir}")
-    return start, end
+    for action_id in OBSERVER_ACTIONS[client]:
+        start = end = None
+        for row in sorted(receipts, key=lambda r: r["timestamp_utc"]):
+            if row.get("action_id") != action_id:
+                continue
+            if row.get("state") == "action_started":
+                start = parse_ts(row["timestamp_utc"])
+            elif row.get("state") in ("completed", "failed") and start is not None:
+                end = parse_ts(row["timestamp_utc"])
+                break
+        if start is not None and end is not None:
+            return start, end
+    raise SystemExit(
+        f"{client}: could not bound any observer action "
+        f"{OBSERVER_ACTIONS[client]} in {run_dir}")
 
 
 def ass_time(seconds: float) -> str:
@@ -208,7 +212,7 @@ def main() -> int:
         ("omen", args.omen_clip, args.omen_receipt),
         ("i5", args.i5_clip, args.i5_receipt),
     ):
-        receipt = json.loads(Path(receipt_path).read_text(encoding="utf-8"))
+        receipt = json.loads(Path(receipt_path).read_text(encoding="utf-8-sig"))
         capture_start = parse_ts(receipt["capture_started_utc"])
         win_start, win_end = observer_window(run_dir, client, run_id)
         seek = (win_start - capture_start).total_seconds()

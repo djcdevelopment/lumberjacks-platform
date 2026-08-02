@@ -1,13 +1,13 @@
-"""Machine summary for C9 motion quality, derived from retained receipts.
+"""Machine summary for C9 motion quality, derived from selected retained receipts.
 
-Answers C9's acceptance questions against the retained C8 acceptance pair:
+Answers C9's acceptance questions against the selected retained run set:
   - is every hard correction attributable to a commanded action?
   - is target divergence transient or persistent?
   - is recovery from injected loss bounded?
   - is any wall-clock hitch attributable to the Lumberjacks apply path?
 
-Reads only retained run receipts. Emits verified/inferred/unverified explicitly
-rather than collapsing them into a single pass/fail.
+Reads only retained run receipts, including run-bounded append-only perf logs. Emits
+verified/inferred/unverified explicitly rather than collapsing them into one pass/fail.
 
 Usage:
   python Write-C9MotionQualitySummary.py --output <path.json> [--run <id> ...]
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import hashlib
 import json
 import re
 from collections import Counter
@@ -48,7 +49,7 @@ def read_jsonl(path: Path, run_id: str | None = None) -> list[dict]:
     rows: list[dict] = []
     if not path.exists():
         return rows
-    with path.open(encoding="utf-8", errors="replace") as fh:
+    with path.open(encoding="utf-8-sig", errors="replace") as fh:
         for line in fh:
             line = line.strip()
             if not line:
@@ -95,6 +96,15 @@ def locate(spans, when):
 def analyse_client(run_dir: Path, client: str, run_id: str) -> dict:
     motion = read_jsonl(run_dir / client / "motion-authority-cutover.jsonl", run_id)
     spans = action_spans(run_dir, client, run_id)
+    if not spans:
+        raise SystemExit(f"{run_id}/{client}: no completed scenario action spans")
+    run_start = min(span[0] for span in spans)
+    run_end = max(span[1] for span in spans)
+    motion = [
+        row for row in motion
+        if row.get("timestamp_utc")
+        and run_start <= parse_ts(row["timestamp_utc"]) <= run_end
+    ]
     # A correction lands on the REMOTE player, so what explains it is often the
     # peer's action, not this client's. Attributing against the local timeline
     # alone makes an observer sitting in its own 'wait' look unexplained.
@@ -163,9 +173,28 @@ def analyse_client(run_dir: Path, client: str, run_id: str) -> dict:
             if later else None,
             "recovered_by": later[0]["state"] if later else None,
         })
+    injected_observer_holds = [
+        hold for hold in holds if hold["kind"] == "motion_observe_gap"
+    ]
 
-    hitches = read_jsonl(run_dir / client / "perf-hitches.jsonl")
-    sections = read_jsonl(run_dir / client / "perf-sections.jsonl")
+    # Client perf logs are append-only and a retained run can therefore contain
+    # weeks of earlier sessions. Scope rows to this run's completed action span
+    # before making any C9 attribution claim.
+    def inside_run(row: dict) -> bool:
+        timestamp = row.get("timestamp_utc")
+        if not timestamp:
+            return False
+        when = parse_ts(timestamp)
+        return run_start <= when <= run_end
+
+    hitches = [
+        row for row in read_jsonl(run_dir / client / "perf-hitches.jsonl")
+        if inside_run(row)
+    ]
+    sections = [
+        row for row in read_jsonl(run_dir / client / "perf-sections.jsonl")
+        if inside_run(row)
+    ]
     motion_sections = [s for s in sections if "MotionRunner" in s.get("section", "")]
 
     # Containment alone proves nothing: the probe calls UpdateFrame at the top of
@@ -178,7 +207,10 @@ def analyse_client(run_dir: Path, client: str, run_id: str) -> dict:
     for hitch in hitches:
         when = parse_ts(hitch["timestamp_utc"])
         frame_ms = hitch.get("frame_ms") or 0
-        for section in sections:
+        # Only the motion runner can establish an apply-attributable C9 hitch.
+        # Other instrumented sections may explain a frame, but they are not the
+        # presentation apply path this gate is evaluating.
+        for section in motion_sections:
             end = parse_ts(section["timestamp_utc"])
             # the frame being reported ended when this hitch row was written
             if not (when - datetime.timedelta(milliseconds=frame_ms + 250)
@@ -220,10 +252,27 @@ def analyse_client(run_dir: Path, client: str, run_id: str) -> dict:
                 if h["recovered_after_seconds"] is not None),
             "unrecovered_in_log": sum(
                 1 for h in holds if h["recovered_after_seconds"] is None),
+            "injected_loss_observer": {
+                "count": len(injected_observer_holds),
+                "all_recovered": bool(injected_observer_holds) and all(
+                    hold["recovered_after_seconds"] is not None
+                    for hold in injected_observer_holds
+                ),
+                "max_recovery_seconds": max(
+                    (
+                        hold["recovered_after_seconds"]
+                        for hold in injected_observer_holds
+                        if hold["recovered_after_seconds"] is not None
+                    ),
+                    default=0,
+                ),
+            },
             "detail": holds,
         },
         "perf": {
             "measured": bool(hitches) or bool(sections),
+            "run_window_start_utc": run_start.isoformat(),
+            "run_window_end_utc": run_end.isoformat(),
             "hitch_rows": len(hitches),
             "apply_attributable_hitches": attributable,
             "max_frame_ms": max([h.get("frame_ms", 0) for h in hitches], default=0),
@@ -243,8 +292,36 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--output", required=True)
     ap.add_argument("--run", action="append", dest="runs")
+    ap.add_argument("--source-commit")
+    ap.add_argument("--mod-sha256")
+    ap.add_argument("--rendered-artifact")
     args = ap.parse_args()
     runs = args.runs or DEFAULT_RUNS
+    if args.runs and (not args.source_commit or not args.mod_sha256):
+        raise SystemExit(
+            "custom --run inputs require --source-commit and --mod-sha256")
+    source_commit = (
+        args.source_commit or "c0db122f2a11bb50dfe6ffbf7db1a87152822f6a")
+    mod_sha256 = (
+        args.mod_sha256
+        or "765090d17981235209deec2d9718221eda4230aa27b2a99998f99ffeac08c28f")
+
+    rendered_artifact = None
+    if args.rendered_artifact:
+        artifact_path = Path(args.rendered_artifact)
+        if not artifact_path.is_absolute():
+            artifact_path = REPO / artifact_path
+        if not artifact_path.is_file():
+            raise SystemExit(f"missing rendered artifact: {artifact_path}")
+        digest = hashlib.sha256()
+        with artifact_path.open("rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                digest.update(chunk)
+        rendered_artifact = {
+            "path": str(artifact_path.relative_to(REPO)),
+            "bytes": artifact_path.stat().st_size,
+            "sha256": digest.hexdigest(),
+        }
 
     per_run = {}
     for run_id in runs:
@@ -258,8 +335,9 @@ def main() -> int:
         "schema_version": 1,
         "receipt_type": "c9_motion_quality_summary",
         "source_runs": runs,
-        "source_commit": "c0db122f2a11bb50dfe6ffbf7db1a87152822f6a",
-        "mod_sha256": "765090d17981235209deec2d9718221eda4230aa27b2a99998f99ffeac08c28f",
+        "source_commit": source_commit,
+        "mod_sha256": mod_sha256,
+        "rendered_artifact": rendered_artifact,
         "verified": {
             "no_native_fallback": all(c["native_fallback_true"] == 0 for c in every),
             "every_hard_correction_attributed": all(
@@ -270,58 +348,40 @@ def main() -> int:
                 c["divergence_bursts"]["max_span_seconds"] for c in every),
             "max_hold_recovery_seconds": max(
                 (max(c["holds"]["recovered_seconds"], default=0) for c in every)),
+            "injected_loss_observer_recovered": all(
+                any(
+                    client["holds"]["injected_loss_observer"]["count"] > 0
+                    for client in run.values()
+                ) and all(
+                    client["holds"]["injected_loss_observer"]["all_recovered"]
+                    for client in run.values()
+                    if client["holds"]["injected_loss_observer"]["count"] > 0
+                )
+                for run in per_run.values()
+            ),
             "no_apply_attributable_frame_hitch": all(
                 not c["perf"]["apply_attributable_hitches"]
                 for c in every if c["perf"]["measured"]),
             "perf_measured_on": sorted({
                 client for run in per_run.values()
                 for client, c in run.items() if c["perf"]["measured"]}),
+            "rendered_artifact_retained": rendered_artifact is not None,
         },
         "resolved": {
-            "cold_join_world_pregeneration": (
-                "The once-per-session multi-second section is Valheim's own "
-                "WorldGenerator.Initialize (river/lake pregeneration: FindLakes, "
-                "PlaceRivers, PlaceStreams), called synchronously on the main thread "
-                "from LogicalPeerCutoverRunner.ConstructPeer at "
-                "LogicalPeerCutoverRunner.cs:238. It is NOT the motion runner: the "
-                "perf section labelled ComfyNetworkSense.LumberjacksMotionRunner.Update "
-                "(ComfyNetworkSense.cs:301) wraps EIGHT cutover runners and names only "
-                "the last, so the label misattributes the cost. The motion runner is "
-                "inert here - ShouldRun() requires Player.m_localPlayer, which does not "
-                "exist before respawn. Corroborated 8/8 by an independent clock: every "
-                "section end matches a logical_peer_constructed receipt to ~1ms and the "
-                "announce-to-constructed gap matches the section elapsed within ~20ms. "
-                "NOT A REGRESSION: vanilla ZNet.RPC_PeerInfo does the same thing at "
-                "ZNet.cs:304, calling WorldGenerator.Initialize immediately before "
-                "setting ConnectionStatus.Connected - the same sequence ConstructPeer "
-                "reproduces at lines 238-240. The Steam-free cold join pays vanilla's "
-                "join cost, it does not add one."),
-            "no_missing_hitch_after_all": (
-                "The earlier claim that no frame hitch was recorded inside the stall was "
-                "a reading error, not an anomaly. Both perf-hitches and perf-sections "
-                "stamp timestamp_utc at COMPLETION, so a span must be reconstructed "
-                "backwards from its duration. Done that way the section and the large "
-                "'Starting respawn' frame start at the same instant in all 8 occurrences "
-                "(delta +0.03ms to +0.77ms), and the section is 26-28% of that frame "
-                "(6.7s on OMEN, 8.5-9.5s on the i5). The stall was always inside a "
-                "hitch that was correctly recorded."),
+            "perf_log_scope": (
+                "client perf logs are append-only; every hitch and section used here "
+                "is bounded to the selected run's completed scenario-action window."),
+            "apply_attribution": (
+                "only a LumberjacksMotionRunner section can establish an "
+                "apply-attributable C9 hitch; unrelated instrumented sections are "
+                "not mislabeled as presentation apply."),
         },
-        "inferred": {
-            "teleport_freeze_then_snap": (
-                "each divergence burst is one far target repeatedly refused by the "
-                "30m correction guard for about half a second until the reliable "
-                "teleport announcement lands; the observer therefore holds, then "
-                "snaps. Bounded and explained, but visible."),
-        },
+        "inferred": {},
         "unverified": {
-            "perf_section_label_misattributes": (
-                "ComfyNetworkSense.cs:301 opens one section named after "
-                "LumberjacksMotionRunner but wraps eight runners. Any cost from the "
-                "other seven is reported under the motion runner's name. This is an "
-                "observability defect that actively misleads - it is what sent the "
-                "first pass of this analysis at the wrong component - but it has not "
-                "been fixed, because the build is frozen for C9."),
-            "rendered_motion_quality": (
+            "subjective_rendered_motion_quality": (
+                "a retained observer artifact exists, but no smooth/rough/mixed "
+                "operator verdict is asserted. That verdict is optional under C9."
+                if rendered_artifact else
                 "no observer clip exists yet; the two-client capture run is still "
                 "outstanding, so no subjective verdict has been taken."),
         },

@@ -38,6 +38,10 @@ function Get-ActionIndex([object[]] $Actions, [string] $Id) {
 }
 
 $align = Get-Action $omenActions 'omen-c6-gap-observer-align'
+$driveOne = Get-Action $omenActions 'omen-c6-drive-one'
+$observeOne = Get-Action $i5Actions 'i5-c6-observe-one'
+$observeTwo = Get-Action $omenActions 'omen-c6-observe-two'
+$driveTwo = Get-Action $i5Actions 'i5-c6-drive-two'
 $driveGap = Get-Action $omenActions 'omen-c6-drive-gap'
 $observeGap = Get-Action $i5Actions 'i5-c6-observe-gap'
 $alignIndex = Get-ActionIndex $omenActions 'omen-c6-gap-observer-align'
@@ -58,6 +62,13 @@ $checks = [ordered]@{
         [double]$align.deadline_seconds -ge [double]$align.duration_seconds
     gap_observer_alignment_immediately_precedes_drive =
         $alignIndex -ge 0 -and $driveGapIndex -eq ($alignIndex + 1)
+    rendered_pair_distances_match =
+        $null -ne $driveOne -and $null -ne $observeOne -and
+        [double]$driveOne.distance_meters -gt 0 -and
+        [double]$driveOne.distance_meters -eq [double]$observeOne.distance_meters -and
+        $null -ne $driveTwo -and $null -ne $observeTwo -and
+        [double]$driveTwo.distance_meters -gt 0 -and
+        [double]$driveTwo.distance_meters -eq [double]$observeTwo.distance_meters
     gap_pair_present =
         $null -ne $driveGap -and
         [string]$driveGap.kind -eq 'motion_drive_gap' -and
@@ -68,6 +79,10 @@ $checks = [ordered]@{
         $null -ne $observeGap -and
         -not [string]::IsNullOrWhiteSpace([string]$driveGap.target_tag) -and
         [string]$driveGap.target_tag -eq [string]$observeGap.target_tag
+    gap_pair_distances_match =
+        $null -ne $driveGap -and $null -ne $observeGap -and
+        [double]$driveGap.distance_meters -gt 0 -and
+        [double]$driveGap.distance_meters -eq [double]$observeGap.distance_meters
 }
 
 $failed = @($checks.GetEnumerator() | Where-Object { -not [bool]$_.Value })
