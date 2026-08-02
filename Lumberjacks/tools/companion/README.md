@@ -63,6 +63,17 @@ then exercise the real Gateway/Companion manifest path. Publishing changes only 
 local release feed; install and rollback remain separate, explicitly confirmed
 player-impacting actions.
 
+Before authorizing an install/rollback drill, compare the package with the current
+Valheim payload. `-RequireExactMatch` fails if any archive entry is missing or would
+change bytes, and always rejects path escapes, duplicate entries, files outside
+`Valheim/`, and the personalized credential config:
+
+```powershell
+.\tools\modpack\Test-ModpackPayload.ps1 `
+  -PackagePath ..\artifacts\modpacks\<package>.zip `
+  -RequireExactMatch
+```
+
 The legacy Dev MCP host port is `8720`, but that port is not currently a safe
 identity boundary: an enabled `ComfyGatewayBoot` task owns a retired Comfy
 checkout there. Baseline Dev/Lab launchers now default to the explicit project
