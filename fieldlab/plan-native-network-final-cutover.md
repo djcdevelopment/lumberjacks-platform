@@ -1015,8 +1015,9 @@ the final post-deletion release remain open.
   `before/requested/after` gameplay debit receipt before the reliable ACK and correlated
   sender receipt are allowed.
 - This verification remains open until that action passes in both directions on the
-  real OMEN+i5 pair with exact r5 artifacts, zero native routed use, zero poison trips,
-  and clean reconnect/cleanup. P7 remains stopped and untouched.
+  real OMEN+i5 pair with exact r5 artifacts, client/server native-use poison armed,
+  zero native routed use, zero poison trips, and clean reconnect/cleanup. P7 remains
+  stopped and untouched.
 
 **Candidate promotion**
 

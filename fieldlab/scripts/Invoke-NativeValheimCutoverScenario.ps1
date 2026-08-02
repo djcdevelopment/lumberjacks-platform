@@ -43,6 +43,11 @@ param(
 
     [switch] $EnableRoutedRpcCutover,
 
+    # Arms the same bounded native-use poison on both physical Windows clients.
+    # Keep it separate from the server runtime-control switch so receipts name
+    # exactly which side was protected.
+    [switch] $EnableClientNativePoison,
+
     [switch] $EnableZdoJournalCutover,
 
     [switch] $EnableZdoJournalCanonicalSession,
@@ -695,6 +700,9 @@ try {
     if ($useRoutedRpc) {
         $i5Arguments += '-EnableRoutedRpcCutover'
     }
+    if ($EnableClientNativePoison) {
+        $i5Arguments += '-EnableNativeNetworkPoison'
+    }
     if ($EnableZdoJournalCutover) {
         $i5Arguments += '-EnableZdoJournalCutover'
         if ($EnableZdoJournalCanonicalSession) {
@@ -759,6 +767,9 @@ try {
             '-WaitSeconds', [string]$WaitSeconds)
         if ($useRoutedRpc) {
             $omenHarnessArguments += '-EnableRoutedRpcCutover'
+        }
+        if ($EnableClientNativePoison) {
+            $omenHarnessArguments += '-EnableNativeNetworkPoison'
         }
         if ($EnableZdoJournalCutover) {
             $omenHarnessArguments += '-EnableZdoJournalCutover'
@@ -905,6 +916,7 @@ try {
             -EvidenceRoot $EvidenceRoot `
             -HoldSeconds $HoldSeconds `
             -EnableRoutedRpcCutover:$useRoutedRpc `
+            -EnableNativeNetworkPoison:$EnableClientNativePoison `
             -EnableZdoJournalCutover:$EnableZdoJournalCutover `
             -EnableZdoJournalCanonicalSession:$EnableZdoJournalCanonicalSession `
             -EnableOwnershipLeaseCutover:$EnableOwnershipLeaseCutover `
@@ -1098,6 +1110,7 @@ try {
         server = $Server
         result = 'completed'
         steam_free_cold_join = [bool]$EnableSteamFreeColdJoin
+        client_native_poison = [bool]$EnableClientNativePoison
         scenario_sha256 =
             (Get-FileHash -LiteralPath $scenario -Algorithm SHA256).Hash.ToLowerInvariant()
         clients = @(
