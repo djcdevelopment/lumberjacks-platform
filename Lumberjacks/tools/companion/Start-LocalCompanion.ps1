@@ -26,6 +26,11 @@ Do not stop the known legacy `companion` compose project before starting.
 Loopback host port for the Dev MCP in Dev/Lab profiles. The launcher refuses a
 collision instead of silently starting an unreachable container.
 
+.PARAMETER GatewayUrl
+Gateway origin used by Companion. Lab defaults to the local Docker Gateway through
+host.docker.internal; other profiles retain the public release Gateway default. An
+explicit value (or LUMBERJACKS_COMPANION_GATEWAY_URL) overrides that profile default.
+
 .EXAMPLE
 .\Start-LocalCompanion.ps1
 #>
@@ -36,6 +41,7 @@ param(
     [string]$Profile = 'Explore',
     [ValidateRange(1024,65535)]
     [int]$McpPort = 8721,
+    [string]$GatewayUrl = '',
     [switch]$ReadOnly,
     [switch]$NoLegacyCleanup
 )
@@ -64,6 +70,32 @@ function Set-WorkbenchSourceMetadata {
     $env:LUMBERJACKS_COMPANION_IMAGE = "$ProjectName-companion:local"
     $env:LUMBERJACKS_WORKBENCH_PROFILE = $Profile
     $env:LUMBERJACKS_WORKBENCH_REPO_ROOT = $RepoRoot.Path
+}
+
+function Set-WorkbenchGatewayUrl {
+    $selected = $GatewayUrl
+    if ([string]::IsNullOrWhiteSpace($selected)) {
+        $selected = $env:LUMBERJACKS_COMPANION_GATEWAY_URL
+    }
+    if ([string]::IsNullOrWhiteSpace($selected)) {
+        $selected = if ($Profile -eq 'Lab') {
+            'http://host.docker.internal:4000'
+        } else {
+            'https://comfy-p7.duckdns.org'
+        }
+    }
+
+    $parsed = $null
+    if (-not [Uri]::TryCreate($selected, [UriKind]::Absolute, [ref]$parsed) -or
+        $parsed.Scheme -notin @('http','https') -or
+        -not [string]::IsNullOrWhiteSpace($parsed.UserInfo) -or
+        -not [string]::IsNullOrWhiteSpace($parsed.Query) -or
+        -not [string]::IsNullOrWhiteSpace($parsed.Fragment)) {
+        throw "GatewayUrl must be an absolute http(s) origin without credentials, query, or fragment: $selected"
+    }
+
+    $env:LUMBERJACKS_COMPANION_GATEWAY_URL = $selected.TrimEnd('/')
+    Write-Host "Workbench Gateway: $($env:LUMBERJACKS_COMPANION_GATEWAY_URL) ($Profile profile)"
 }
 
 function Initialize-WorkbenchRunnerKey {
@@ -177,6 +209,7 @@ Assert-PortAvailableOrOwnedByProject
 
 Set-Location $RepoRoot
 Set-WorkbenchSourceMetadata
+Set-WorkbenchGatewayUrl
 Initialize-WorkbenchRunnerKey
 $env:COMFY_WORKBENCH_MCP_PORT = [string]$McpPort
 $composeArgs = @('compose', '-p', $ProjectName, '-f', $ComposeFile.Path)

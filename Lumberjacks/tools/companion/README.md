@@ -40,6 +40,29 @@ Developer/lab launch (explicitly opt in):
 .\tools\companion\Start-LocalCompanion.ps1 -Profile Dev
 ```
 
+`Lab` favors the local engineering loop: it selects
+`http://host.docker.internal:4000` when no Gateway URL is explicitly supplied.
+Explore, Admin, Dev, and Production retain the public release Gateway default.
+Use `-GatewayUrl <origin>` (or `LUMBERJACKS_COMPANION_GATEWAY_URL`) when a different
+verified Gateway is intentional; the selected origin is printed during launch and
+projected in Workbench topology.
+
+To admit an already-built package to the local Gateway without contacting GCP or
+writing into Valheim, publish it into the persistent local Gateway volume:
+
+```powershell
+.\tools\modpack\Publish-LocalModpack.ps1 `
+  -ReleaseId m30-rolecontrol-20260723-r1 `
+  -ModRelease m30-rolecontrol-20260723-r1 `
+  -PackagePath ..\artifacts\modpacks\Comfy-P7-Alpha-Mods-m30-rolecontrol-20260723-r1.zip
+```
+
+The script verifies the package SHA-256 inside the Gateway container and atomically
+replaces `/data/modpack/current.json`. A Lab **Check admitted mod update** job can
+then exercise the real Gateway/Companion manifest path. Publishing changes only the
+local release feed; install and rollback remain separate, explicitly confirmed
+player-impacting actions.
+
 The legacy Dev MCP host port is `8720`, but that port is not currently a safe
 identity boundary: an enabled `ComfyGatewayBoot` task owns a retired Comfy
 checkout there. Baseline Dev/Lab launchers now default to the explicit project

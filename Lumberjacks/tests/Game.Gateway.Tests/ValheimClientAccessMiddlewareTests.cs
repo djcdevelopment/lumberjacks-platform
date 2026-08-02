@@ -26,6 +26,7 @@ public sealed class ValheimClientAccessMiddlewareTests : IDisposable
     [InlineData("POST", "/valheim/telemetry/heartbeat")]
     [InlineData("GET", "/valheim/zdo-injection/next/p7-primary-v1")]
     [InlineData("POST", "/valheim/zdo-injection/ack")]
+    [InlineData("GET", "/api/v0/valheim/modpack/package")]
     public async Task EnrolledPublicCaller_ReachesConsumerSurfaces(string method, string path)
     {
         var (service, issued) = CreateEnrolledService();
@@ -75,11 +76,13 @@ public sealed class ValheimClientAccessMiddlewareTests : IDisposable
         Assert.Equal(StatusCodes.Status403Forbidden, admin.Response.StatusCode);
     }
 
-    [Fact]
-    public async Task AnonymousPublicCaller_IsRejectedWithReason()
+    [Theory]
+    [InlineData("GET", "/valheim/zdo-redirect/pending/p7-primary-v1")]
+    [InlineData("GET", "/api/v0/valheim/modpack/package")]
+    public async Task AnonymousPublicCaller_IsRejectedWithReason(string method, string path)
     {
         var (service, _) = CreateEnrolledService();
-        var context = Request("GET", "/valheim/zdo-redirect/pending/p7-primary-v1", PublicAddress);
+        var context = Request(method, path, PublicAddress);
 
         Assert.False(await Invoke(context, service));
         Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
