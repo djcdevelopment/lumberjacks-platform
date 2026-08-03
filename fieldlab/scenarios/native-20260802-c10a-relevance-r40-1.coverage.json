@@ -1,0 +1,29 @@
+{
+    "schema_version":  1,
+    "receipt_type":  "c10a_mount_scenario_coverage",
+    "generated_utc":  "2026-08-03T03:27:32.8277395+00:00",
+    "run_id":  "native-20260802-c10a-relevance-r40-1",
+    "scenario_sha256":  "099e73e9b5190adc337eb6671686fa50f58bc6809fbd533e0d2c3e415f8410d0",
+    "action_count":  41,
+    "checks":  {
+                   "profile_is_c10a_mount_family":  true,
+                   "run_id_matches":  true,
+                   "action_ids_unique_per_client":  true,
+                   "deterministic_spawn_and_two_replica_waits":  true,
+                   "first_leg_pair_present":  true,
+                   "first_leg_observer_covers_driver":  true,
+                   "first_release_gate_present":  true,
+                   "forced_disconnect_reclaim_is_paired":  true,
+                   "reclaim_follows_first_release":  true,
+                   "recovery_settle_precedes_reverse_leg":  true,
+                   "reverse_rider_leg_present":  true,
+                   "reverse_leg_observer_covers_driver":  true,
+                   "second_release_gate_present":  true,
+                   "proof_holds_cover_disconnect_skew":  true,
+                   "relevance_profile_has_bounded_leave_and_reenter":  true
+               },
+    "result":  "passed",
+    "failed_checks":  [
+
+                      ]
+}

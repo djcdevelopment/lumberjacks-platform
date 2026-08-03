@@ -360,6 +360,16 @@ $checks = [ordered]@{
                 (Detail-Long $_ 'epoch') -eq 6 -and
                 (Detail-Long $_ 'owner') -eq $serverPeer
             }).Count -gt 0)
+    dedicated_server_owner_fences_native_release_sweep =
+        (-not $isRelevance) -or @($server | Where-Object {
+            [string]$_.state -eq
+                'saddle_native_owner_reassignment_suppressed' -and
+            (Detail-String $_ 'uid') -eq $spawnUid -and
+            (Detail-Long $_ 'held_owner') -eq $serverPeer -and
+            (Detail-Long $_ 'canonical_owner') -eq $serverPeer -and
+            [string]$_.detail -match
+                '(?:^| )source=ZDOMan.ReleaseNearbyZDOS(?: |$)'
+        }).Count -gt 0
     producer_direct_fanout_is_observed =
         (-not $isRelevance) -or @($server | Where-Object {
             [string]$_.state -eq 'snapshot_relevance_fanout' -and
