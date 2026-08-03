@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-08-03T02:50:04.077Z",
+  "updated_at": "2026-08-03T03:11:56.274Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -198,7 +198,7 @@
     {
       "status": "active",
       "as_of": "2026-08-02",
-      "text": "NETWORKING LANE ACTIVE. The unattended OMEN+i5 harness owns the native-network final cutover in fieldlab/plan-native-network-final-cutover.md. C0-C8 and Wall 11's session-scoped epoch remain retained; C9's rendered side-by-side verdict is still open. The AM4 lane physically accepts both legitimate cross-owner UseStamina directions, the selected saddle and repaired Karve handoffs, the selected actual-container transaction, and exact r36 autonomous Lox authority across transfer, disconnect, and reclaim. The bounded station review now admits the complete extractor-pinned 19-method surface across eight registrants and found no distinct authority shape requiring another physical station gate. r39 implements ordinary untagged mount discovery, direct per-observer relevance with hysteresis, and dedicated-server-owned snapshots; repeatable M7-E04 receipts prove the exact three-recipient policy. r37's mixed-release black screens were a stopped pre-scene falsifier, and the harness now deploys and hash-verifies AM4 in the same transaction and exits immediately on descriptor or cold-join rejection. The only remaining local functional gate is one exact r39 AM4/OMEN/i5 physical run when the roaming i5 is online. P7 is untouched. Workbench/dashboard implementation remains frozen behind that functional cutover gate. HEARTH remains a separate machine-wide MCP and was untouched.",
+      "text": "NETWORKING LANE ACTIVE. The unattended OMEN+i5 harness owns the native-network final cutover in fieldlab/plan-native-network-final-cutover.md. C0-C8 and Wall 11's session-scoped epoch remain retained; C9's rendered side-by-side verdict is still open. The AM4 lane physically accepts both legitimate cross-owner UseStamina directions, the selected saddle and repaired Karve handoffs, the selected actual-container transaction, and exact r36 autonomous Lox authority across transfer, disconnect, and reclaim. The bounded station review admits the complete extractor-pinned 19-method surface across eight registrants. r39's exact physical relevance run hash-aligned AM4, OMEN, and i5 and joined both rendered clients, then falsified a wait-request spawn race and the absence of a ZDO-only dedicated-server publisher. r40 makes wait-only discovery non-creating, derives authority discovery from the actual ZDO, publishes canonical server-owner snapshots without a scene instance, and retains complete failure evidence. Repeatable M7-E04 receipts prove the exact three-recipient relevance policy. The only remaining local functional gate is one exact r40 AM4/OMEN/i5 physical run. P7 is untouched. Workbench/dashboard implementation remains frozen behind that functional cutover gate. HEARTH remains a separate machine-wide MCP and was untouched.",
       "verify_by": [
         "fieldlab/plan-native-network-final-cutover.md",
         "fieldlab/evidence/c10a-r4-physical-acceptance/acceptance-summary.json",

@@ -36,7 +36,7 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
 | C8 | **Complete and runtime-reconfirmed on AM4 (2026-08-02)** | `native-20260731-c8-full44` + `full45` passed the full 49-action composition twice. `native-20260802-cutover-recovery5` repeated it on fresh GPU-rendered OMEN/i5 processes with the hash-identical candidate, 20/20 coverage, zero client/server native use or poison trips, clean save integrity, ownership contention, Gateway replay, and clean rejoin. The same window runtime-proved the session-scoped epoch across a real AM4 restart and rejected an old-session mutation. |
 | C9 | **Machine/artifact complete; subjective acceptance pending** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. The retained 2560×720 side-by-side clip covers both views; Derek's `smooth`/`rough`/`mixed` verdict remains open. |
-| C10 | **Selected ship, saddle, container, and autonomous-creature gates accepted on AM4; station breadth accepted; vehicle relevance and finalization remain** | `m7-c10a-20260802-r4` passed the 49-action aligned-release reducer and exact r6 closed `UseStamina` in both physical directions. r27 accepted a run-tagged tamed Lox saddle boundary, r28 reconfirmed both Karve directions after repairing atomic helm release/owner transfer, and exact r34 accepted a real two-client wood-chest transaction. Exact r36 accepted the actual tamed Lox `MonsterAI` boundary across owner transfer, loss, and reclaim. The r39 bounded station review now admits all 19 extractor-pinned station RPC names and found no new authority shape requiring a separate physical gate. Other creature species remain explicit source breadth. Arbitrary untagged mount/vehicle generalization plus AoI relevance is implemented but still needs one hash-identical AM4/OMEN/i5 physical run; P7 promotion, fallback deletion, and the post-deletion release remain. Earlier runs remain named falsifiers rather than claimed progress. |
+| C10 | **Selected ship, saddle, container, and autonomous-creature gates accepted on AM4; station breadth accepted; vehicle relevance and finalization remain** | `m7-c10a-20260802-r4` passed the 49-action aligned-release reducer and exact r6 closed `UseStamina` in both physical directions. r27 accepted a run-tagged tamed Lox saddle boundary, r28 reconfirmed both Karve directions after repairing atomic helm release/owner transfer, and exact r34 accepted a real two-client wood-chest transaction. Exact r36 accepted the actual tamed Lox `MonsterAI` boundary across transfer, loss, and reclaim. The r39 bounded station review admits all 19 extractor-pinned station RPC names. r39's exact physical relevance run joined both real clients and then falsified waiter creation and ZDO-only server publishing; r40 repairs those two observed defects and still requires the hash-identical AM4/OMEN/i5 gate. Other creature species remain explicit source breadth. P7 promotion, fallback deletion, and the post-deletion release remain. Earlier runs remain named falsifiers rather than claimed progress. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -1252,7 +1252,7 @@ only if the bounded review or poison ledger contradicts the selected canary.
 This closes station **source/admission breadth**, not a claim that a player manually
 clicked every station prefab. Any future poison trip reopens only its exact row.
 
-#### C10a vehicle/mount relevance r37 falsifier and r39 candidate — 2026-08-02
+#### C10a vehicle/mount relevance r37/r39 falsifiers and r40 candidate — 2026-08-02
 
 - M7-E04 runs the exact Unity-free relevance state machine with three independent
   recipients. The settled run and repeat each emitted 15 events, passed all four
@@ -1270,7 +1270,19 @@ clicked every station prefab. Any future poison trip reopens only its exact row.
   it was superseded rather than accepted. r39 clears `s_user` when ownership moves to
   AM4, publishes canonical epoch-6 snapshots from the dedicated server, and requires
   both real clients to advance on those snapshots before the i5 leave/re-entry cell.
-- The r39 physical reducer is correlated to the exact untagged Lox UID. It requires
+- `native-20260802-c10a-relevance-r39-1` deployed and hash-verified the same r39
+  DLL on AM4, OMEN, and i5; both rendered clients joined and exercised the authority
+  choreography. It is a functional falsifier: i5's wait-only discovery request raced
+  the designated OMEN spawn and created a tagged, i5-owned target, then epoch-5
+  transfer to the dedicated server stopped snapshot advancement because that raw ZDO
+  had no live server `Character`. Both observers failed on zero server-owner snapshot
+  advance, cleanup destroyed the one canary, native ledgers remained clean, and no
+  exception or black-screen inference was used.
+- r40 makes wait-only discovery non-creating, derives preseed state from the actual
+  ZDO, and publishes a valid server-owned idle saddle directly from canonical ZDO
+  fields when no scene instance exists. The failure path also lets the OMEN wrapper
+  refresh its terminal evidence before force-stop.
+- The r40 physical reducer is correlated to the exact untagged Lox UID. It requires
   independent server/owner/observer authority discovery, direct per-peer fan-out,
   exact epochs 1 through 6, i5 leave and re-entry, identical AM4/OMEN/i5 DLL hashes,
   native-zero ledgers, and destruction of exactly that in-memory-tracked untagged
@@ -1278,8 +1290,8 @@ clicked every station prefab. Any future poison trip reopens only its exact row.
   independence claim remains the repeatable pure M7-E04 result, not a claim that a
   third physical Valheim client was present.
 
-The r39 source and machine gates are complete. Physical acceptance remains open until
-the roaming i5 is online; no result is inferred from the stopped black-screen run.
+The r40 source and machine gates are complete. Physical acceptance remains open; no
+result is inferred from either stopped black-screen r37 or the functional r39 falsifier.
 
 **Candidate promotion**
 
@@ -1371,7 +1383,7 @@ source-classified breadth rather than a universal pass. Station source/admission
 is closed without claiming manual physical invocation of every prefab. The selected
 vehicle/mount implementation now handles an ordinary untagged target, direct
 per-observer relevance, and dedicated-server ownership; it still needs the one exact
-AM4/OMEN/i5 r39 physical run. M7-E04 provides the repeatable three-recipient policy
+AM4/OMEN/i5 r40 physical run. M7-E04 provides the repeatable three-recipient policy
 proof while the physical cell proves native peer enumeration and delivery to both real
 clients without pretending a third physical game client exists.
 C10b then has two bounded P7 reloads:
@@ -1405,7 +1417,7 @@ disconnect reclaim while every replica executed zero owner ticks, native use sta
 and exact cleanup passed. r35 remains the stale released-rider-edge falsifier. Earlier
 stamina, ship, saddle, container, and creature runs remain named falsifiers.
 
-The immediate next functional gate is the **exact r39 AM4/OMEN/i5 acceptance of the
+The immediate next functional gate is the **exact r40 AM4/OMEN/i5 acceptance of the
 implemented untagged vehicle/mount and AoI/relevance path**. The station-family source/admission review is closed by
 the extractor-derived 19-method catalog and exact shared contracts; it does not inherit a
 manual physical-pass claim from the chest. Do not rebuild the epoch, Gateway replay, C8 composition, selected

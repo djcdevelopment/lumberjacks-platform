@@ -1360,6 +1360,17 @@ try {
     $completed = $true
     $receipt | ConvertTo-Json -Depth 12
 } finally {
+    if (-not $completed -and $omenHarnessProcess -and
+        -not $omenHarnessProcess.HasExited) {
+        # Stop the rendered client first so its wrapper observes the exit,
+        # refreshes the final lifecycle receipt and recopies the complete log
+        # set. Force-killing the wrapper first preserved only its early
+        # `joined` receipt and made a useful physical falsifier look one-sided.
+        & $clientHarness -Action stop -Client omen | Out-Null
+        if (-not $omenHarnessProcess.WaitForExit(20000)) {
+            Stop-Process -Id $omenHarnessProcess.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
     if ($omenHarnessProcess -and -not $omenHarnessProcess.HasExited) {
         Stop-Process -Id $omenHarnessProcess.Id -Force -ErrorAction SilentlyContinue
     }
