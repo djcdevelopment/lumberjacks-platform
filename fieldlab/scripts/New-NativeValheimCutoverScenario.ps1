@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'c10a-vehicle', 'c10a-mount', 'c10a-container', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'c10a-vehicle', 'c10a-mount', 'c10a-creature', 'c10a-container', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -147,6 +147,52 @@ if ($Profile -eq 'c10a-mount') {
         New-Action 'i5-c10a-mount-second-release' 'i5' 'saddle_wait_released' 20
         New-Action 'omen-c10a-mount-proof-hold' 'omen' 'wait' 20 12
         New-Action 'i5-c10a-mount-proof-hold' 'i5' 'wait' 20 12
+    )
+}
+
+if ($Profile -eq 'c10a-creature') {
+    $actions += @(
+        New-Action 'omen-c10a-creature-safe-origin' 'omen' 'teleport_to' 20 0 0 0 '' '' 2211 33 -69
+        New-Action 'i5-c10a-creature-safe-origin' 'i5' 'teleport_to' 20 0 0 0 '' '' 2211 33 -69
+        New-Action 'omen-c10a-creature-origin-settle' 'omen' 'wait' 12 5
+        New-Action 'i5-c10a-creature-origin-settle' 'i5' 'wait' 12 5
+        New-Action 'omen-c10a-creature-spawn' 'omen' 'saddle_spawn' 30
+        New-Action 'omen-c10a-creature-wait' 'omen' 'saddle_wait' 45
+        New-Action 'i5-c10a-creature-wait' 'i5' 'saddle_wait' 45
+        New-Action 'omen-c10a-creature-rendezvous' 'omen' 'saddle_rendezvous' 30
+        New-Action 'i5-c10a-creature-rendezvous' 'i5' 'saddle_rendezvous' 30
+
+        # Epoch one: the actual, unridden Lox must execute autonomous
+        # MonsterAI only on OMEN while i5 is owner-gated but presents the same
+        # canonical snapshot movement.
+        New-Action 'omen-c10a-creature-ai-initial' 'omen' 'creature_ai_drive' 35 8
+        New-Action 'i5-c10a-creature-ai-initial-observe' 'i5' 'creature_ai_observe' 35 8
+        New-Action 'omen-c10a-creature-initial-settle' 'omen' 'wait' 10 4
+        New-Action 'i5-c10a-creature-initial-settle' 'i5' 'wait' 10 4
+
+        # Use the already accepted native Sadle grant/release contract to move
+        # authority to i5. The following AI leg is unridden; saddle movement is
+        # the transition mechanism, not the acceptance claim.
+        New-Action 'omen-c10a-creature-observe-transfer' 'omen' 'saddle_observe' 30 10
+        New-Action 'i5-c10a-creature-transfer' 'i5' 'saddle_drive' 30 8
+        New-Action 'omen-c10a-creature-transfer-released' 'omen' 'saddle_wait_released' 20
+        New-Action 'i5-c10a-creature-transfer-settle' 'i5' 'wait' 10 3
+        New-Action 'omen-c10a-creature-ai-i5-observe' 'omen' 'creature_ai_observe' 35 8
+        New-Action 'i5-c10a-creature-ai-i5' 'i5' 'creature_ai_drive' 35 8
+        New-Action 'omen-c10a-creature-i5-settle' 'omen' 'wait' 10 4
+        New-Action 'i5-c10a-creature-i5-settle' 'i5' 'wait' 10 4
+
+        # OMEN temporarily acquires the Lox and aborts its Lumberjacks socket.
+        # AM4 must reclaim epoch four to the still-live i5 owner, after which
+        # autonomous AI must resume inside the bounded recovery window.
+        New-Action 'omen-c10a-creature-disconnect-reclaim' 'omen' 'saddle_disconnect_reclaim' 60 5
+        New-Action 'i5-c10a-creature-observe-reclaim' 'i5' 'saddle_observe_reclaim' 60
+        New-Action 'omen-c10a-creature-reclaim-settle' 'omen' 'wait' 15 5
+        New-Action 'i5-c10a-creature-reclaim-settle' 'i5' 'wait' 15 5
+        New-Action 'omen-c10a-creature-ai-reclaim-observe' 'omen' 'creature_ai_observe' 35 8
+        New-Action 'i5-c10a-creature-ai-reclaim' 'i5' 'creature_ai_drive' 35 8
+        New-Action 'omen-c10a-creature-proof-hold' 'omen' 'wait' 20 12
+        New-Action 'i5-c10a-creature-proof-hold' 'i5' 'wait' 20 12
     )
 }
 

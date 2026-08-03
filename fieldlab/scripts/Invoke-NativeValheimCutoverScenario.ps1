@@ -222,6 +222,7 @@ $residueCleanupReceipt = $null
 $residueCleanupError = $null
 $vehicleSummaryError = $null
 $mountSummaryError = $null
+$creatureSummaryError = $null
 $containerSummaryError = $null
 $gatewayRestartReceipt = $null
 $gatewayImageReceipt = $null
@@ -545,6 +546,21 @@ try {
             ConvertFrom-Json
         if ($coverageReceipt.result -ne 'passed') {
             throw 'C10a mount rider/reclaim choreography is incomplete; no remote state was changed.'
+        }
+        $coverageOutput | Write-Host
+    }
+    if ($scenarioDocument.profile -eq 'c10a-creature') {
+        $coveragePath = Join-Path $runDirectory 'c10a-creature-scenario-coverage.json'
+        $coverageOutput =
+            & (Join-Path $PSScriptRoot 'Test-C10aCreatureScenarioCoverage.ps1') `
+                -ScenarioPath $scenario `
+                -RunId $RunId `
+                -OutputPath $coveragePath
+        $coverageReceipt =
+            Get-Content -LiteralPath $coveragePath -Raw -Encoding utf8 |
+            ConvertFrom-Json
+        if ($coverageReceipt.result -ne 'passed') {
+            throw 'C10a autonomous-creature transfer/reclaim choreography is incomplete; no remote state was changed.'
         }
         $coverageOutput | Write-Host
     }
@@ -1408,14 +1424,14 @@ try {
             $residueCleanupReceipt =
                 (($residueCleanupOutput -join [Environment]::NewLine) |
                     ConvertFrom-Json)
-            if ($completed -and $scenarioDocument.profile -eq 'c10a-mount') {
+            if ($completed -and $scenarioDocument.profile -in @('c10a-mount', 'c10a-creature')) {
                 $effect = [string]$residueCleanupReceipt.effect
                 if ($effect -notmatch '(?:^| )matched=1(?: |$)' -or
                     $effect -notmatch '(?:^| )destroyed=1(?: |$)' -or
                     $effect -notmatch '(?:^| )skipped_live_owner=0(?: |$)' -or
                     $effect -notmatch '(?:^| )mount=1(?: |$)') {
                     $residueCleanupError =
-                        "C10a mount cleanup did not destroy exactly one tagged mount: $effect"
+                        "C10a mount/creature cleanup did not destroy exactly one tagged mount: $effect"
                 }
             }
             if ($completed -and $scenarioDocument.profile -eq 'c10a-container') {
@@ -1792,6 +1808,27 @@ try {
             Write-Warning ("C10a mount reducer failed: " + $_.Exception.Message)
         }
     }
+    if ($scenarioDocument.profile -eq 'c10a-creature') {
+        # A green process lifecycle is insufficient: correlate both BaseAI
+        # streams with the canonical AM4 authority/snapshot chronology.
+        try {
+            $creatureSummaryOutput =
+                & powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
+                    (Join-Path $PSScriptRoot 'Write-C10aCreatureSummary.ps1') `
+                    -RunDirectory $runDirectory `
+                    -RunId $RunId `
+                    -OutputPath (Join-Path $runDirectory 'c10a-creature-summary.json')
+            $creatureSummaryExitCode = $LASTEXITCODE
+            $creatureSummaryOutput | Write-Host
+            if ($completed -and $creatureSummaryExitCode -ne 0) {
+                $creatureSummaryError =
+                    "C10a creature reducer exited $creatureSummaryExitCode."
+            }
+        } catch {
+            if ($completed) { $creatureSummaryError = $_.Exception.Message }
+            Write-Warning ("C10a creature reducer failed: " + $_.Exception.Message)
+        }
+    }
     if ($scenarioDocument.profile -eq 'c10a-container') {
         try {
             $containerSummaryOutput =
@@ -1843,6 +1880,9 @@ try {
     }
     if ($completed -and $mountSummaryError) {
         throw "C10a mount physical evidence did not satisfy the reducer: $mountSummaryError"
+    }
+    if ($completed -and $creatureSummaryError) {
+        throw "C10a autonomous-creature physical evidence did not satisfy the reducer: $creatureSummaryError"
     }
     if ($completed -and $containerSummaryError) {
         throw "C10a container physical evidence did not satisfy the reducer: $containerSummaryError"

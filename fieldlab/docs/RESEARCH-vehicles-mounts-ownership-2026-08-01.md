@@ -6,6 +6,25 @@ implemented, no slice started. C10a remains queued behind C9.
 Machine-readable companion, carrying every correction, hazard and open question:
 [`RESEARCH-vehicles-mounts-ownership-2026-08-01.json`](RESEARCH-vehicles-mounts-ownership-2026-08-01.json).
 
+## Post-research physical closure — 2026-08-02
+
+This file remains the pre-C10a research record; the implementation status has moved.
+Pinned source confirms that `BaseAI.UpdateAI` returns false for a non-owner and that the
+concrete `MonsterAI` and `AnimalAI` update paths delegate to that gate. Exact paired r36
+physically accepted the selected `MonsterAI` boundary on an actual tamed Lox across OMEN
+ownership, transfer to i5, disconnect loss, and AM4 reclaim. Owners executed 160–161 real
+AI ticks, replicas executed zero owner ticks and 160 non-owner blocks, autonomous recovery
+stayed under 0.035 s, native use stayed zero, and exact cleanup passed.
+
+r35 remains the useful falsifier: a delayed durable player snapshot restored a released
+rider parent edge and stalled the next owner. r36 repairs that stale edge whenever the
+canonical rider token is empty; the physical run recorded one repair without weakening
+the one-metre motion or two-second recovery bounds. Compact evidence is in
+[`../evidence/c10a-creature-physical-acceptance/`](../evidence/c10a-creature-physical-acceptance/).
+This closes the selected Lox/`MonsterAI` canary, not every creature species. Arbitrary
+untagged vehicle/mount targeting and third-recipient AoI/relevance remain the next named
+physical gate.
+
 ## What this is, and how much to trust it
 
 Output of a multi-agent research pass: seven independent lenses over the
