@@ -363,7 +363,12 @@ sudo docker stop --time 10 '$valheimContainer' >/dev/null 2>&1 || true
 sudo systemctl stop --no-block '$service' >/dev/null 2>&1 || true
 sleep 2
 guard_state="`$(systemctl is-enabled '$service' 2>/dev/null || true)"
-printf 'guard_applied=%s\n' "`$(case "`$guard_state" in masked|masked-runtime) printf true;; *) printf false;; esac)"
+guard_link=false
+if test -L "/run/systemd/system/$service" &&
+   test "`$(readlink "/run/systemd/system/$service")" = '/dev/null'; then
+  guard_link=true
+fi
+printf 'guard_applied=%s\n' "`$guard_link"
 "@
     Write-Host '[p7-boot] capturing and guarding the frozen pre-fix state...'
     $guardText = Invoke-Remote $guardScript 'immediate pre-fix capture guard' 120
