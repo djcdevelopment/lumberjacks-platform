@@ -512,7 +512,9 @@ function Get-ServerSaveFingerprint {
         ssh_target = $ServerSshTarget
         captured_utc = [DateTimeOffset]::UtcNow.ToString('o')
         container = $ServerContainer
-        zdos = Last-Integer $logText 'ZDOS:(\d+)'
+        # Current dedicated-server builds expose the world count in the load line
+        # (`Loading <n> zdos`); older builds emitted a `ZDOS:<n>` heartbeat.
+        zdos = Last-Integer $logText '(?:ZDOS:|Loading )(\d+)(?: zdos)?'
         # Newer server builds replace Valheim's quadratic ConnectPortals scan with the
         # mod's saved-connection hash join. Both lines report the number of established
         # portal pairs; accept either spelling so a successful optimization does not make
