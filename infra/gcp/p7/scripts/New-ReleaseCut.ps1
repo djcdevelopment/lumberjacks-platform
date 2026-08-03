@@ -23,16 +23,39 @@
 
 .PARAMETER WhatIf
   Print what would change; touch nothing.
+
+.PARAMETER ArtifactStage
+  Semantic artifact boundary to enforce after the mod rebuild. The default is
+  final because the next and all post-cutover coupled releases must contain no
+  migration fallback controls. Use candidate only when deliberately reproducing
+  the retained pre-deletion C10b candidate.
+
+.PARAMETER ArtifactBoundaryReceiptPath
+  Optional JSON receipt path for the source-plus-DLL boundary result.
 #>
 [CmdletBinding()]
 param(
   [Parameter(Mandatory)][string] $ReleaseId,
-  [string] $ComfyRoot       = "$PSScriptRoot\..\..\..\..",
-  [string] $LumberjacksRoot = "$PSScriptRoot\..\..\..\..\Lumberjacks",
+  [string] $ComfyRoot = '',
+  [string] $LumberjacksRoot = '',
+  [ValidateSet('candidate', 'final')]
+  [string] $ArtifactStage = 'final',
+  [string] $ArtifactBoundaryReceiptPath = '',
   [switch] $WhatIf
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($ComfyRoot)) {
+  $ComfyRoot = [IO.Path]::GetFullPath(
+      (Join-Path $PSScriptRoot '..\..\..\..'))
+} else {
+  $ComfyRoot = [IO.Path]::GetFullPath($ComfyRoot)
+}
+if ([string]::IsNullOrWhiteSpace($LumberjacksRoot)) {
+  $LumberjacksRoot = Join-Path $ComfyRoot 'Lumberjacks'
+} else {
+  $LumberjacksRoot = [IO.Path]::GetFullPath($LumberjacksRoot)
+}
 
 # <milestone>-clean-<date>-r<n>. Enforced because this string becomes an artifact's identity: it
 # lands in the manifest, in two DLLs, and in the gate that decides admission. A typo here is a
@@ -57,6 +80,7 @@ $pattern = '(public const string ReleaseId = ")([^"]*)(";)'
 if ($src -notmatch $pattern) { throw "could not find the ReleaseId const in $modSource" }
 $current = [regex]::Match($src, $pattern).Groups[2].Value
 Write-Host "mod ReleaseId : $current -> $ReleaseId"
+Write-Host "artifact stage: $ArtifactStage"
 
 if (-not $WhatIf) {
   # -NoNewline + the file's own bytes: this repo pins network/mod/**/*.cs to LF (see
@@ -69,14 +93,15 @@ if (-not $WhatIf) {
 
 # --- 2. build both, each from the same $ReleaseId ------------------------------------------------
 if (-not $WhatIf) {
-  Write-Host "`nbuilding mod (net48, Release)..."
-  # A cut must not ship anything until the identity check has passed, and this build is no
-  # exception: the csproj's CopyAssembly target auto-copies every build into the live Steam
-  # client's plugins folder (that is the OMEN client-deploy convenience, keep it elsewhere).
-  # Here it would land a release-id DLL on the client BEFORE the check below has run - a failed
-  # cut would already have shipped locally. Point the copy at a path that does not exist so the
-  # target's Exists() gate stays shut.
-  & dotnet build $modProject -c Release -v quiet --nologo -p:PluginOutputPath=C:\__comfy_cut_no_plugin_copy__
+  Write-Host "`nbuilding mod (net48, forced Release rebuild)..."
+  # A cut must not ship anything until the identity check has passed. The project now requires
+  # ComfyCopyToPlugins=true for its optional local copy; this script never sets it and also points
+  # PluginOutputPath at a nonexistent location so both copy guards remain shut.
+  # A normal incremental build has previously returned green while leaving an
+  # older DLL in bin/Release. Release identity alone cannot catch that when the
+  # stale DLL already carries the new id, so coupled cuts always force Rebuild.
+  & dotnet build $modProject -c Release -t:Rebuild -v quiet --nologo `
+      -p:PluginOutputPath=C:\__comfy_cut_no_plugin_copy__
   if ($LASTEXITCODE -ne 0) { throw 'mod build failed' }
 
   # The Gateway bin/Release output is advisory only and never ships. The canonical Docker build
@@ -117,6 +142,38 @@ if (-not $WhatIf) {
     throw 'release identity check failed; nothing from this cut should ship'
   }
   Write-Host "  OK: mod artifact carries '$ReleaseId'" -ForegroundColor Green
+
+  # Release identity proves which cut the DLL claims. The artifact-boundary
+  # gate proves what semantic escape hatches it still contains. It compares
+  # production source with the compiled bytes, which also catches a stale
+  # incremental artifact before the expensive Gateway image build begins.
+  $artifactBoundaryVerifier = Join-Path $ComfyRoot `
+      'tools\p7\Test-C10bArtifactFallbackBoundary.ps1'
+  if (!(Test-Path -LiteralPath $artifactBoundaryVerifier)) {
+    throw "missing artifact boundary verifier: $artifactBoundaryVerifier"
+  }
+  $artifactBoundaryArguments = @(
+    '-NoProfile',
+    '-ExecutionPolicy', 'Bypass',
+    '-File', $artifactBoundaryVerifier,
+    '-Stage', $ArtifactStage,
+    '-SourceRoot', (Split-Path -Parent $modProject),
+    '-DllPath', $modDll,
+    '-ExpectedReleaseId', $ReleaseId)
+  if (-not [string]::IsNullOrWhiteSpace($ArtifactBoundaryReceiptPath)) {
+    $artifactBoundaryArguments += @(
+      '-OutputPath', [IO.Path]::GetFullPath($ArtifactBoundaryReceiptPath))
+  }
+  $artifactBoundaryOutput = @(
+    & powershell.exe @artifactBoundaryArguments
+  )
+  $artifactBoundaryExit = $LASTEXITCODE
+  $artifactBoundaryOutput | Write-Host
+  if ($artifactBoundaryExit -ne 0) {
+    throw "mod artifact failed the '$ArtifactStage' fallback boundary; no image was built"
+  }
+  Write-Host "  OK: mod artifact passed the '$ArtifactStage' fallback boundary" `
+      -ForegroundColor Green
 
   # --- 3b. the gateway's bin/Release DLL: ADVISORY ONLY, NOT A GATE ------------------------------
   # This read used to be the Gateway's release check, and it was checking the wrong object. The
@@ -200,7 +257,8 @@ if (-not $WhatIf) {
 Write-Host @"
 
 Next, and NOT done by this script:
-  1. Commit the mod ReleaseId change (it is a source edit and belongs in the release commit).
+  1. Retain the '$ArtifactStage' artifact-boundary receipt and commit the mod ReleaseId change
+     (it is a source edit and belongs in the release commit).
   2. build-release-bundle.ps1 / capture-release-manifest.ps1 -> record '$ReleaseId' + artifact hashes.
      Record the gateway IMAGE (lumberjacks-gateway:$ReleaseId) as the gateway artifact. bin/Release
      is not an artifact; it is a local build output that never ships. Also record

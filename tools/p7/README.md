@@ -7,6 +7,11 @@ markers to be absent from production source and the compiled DLL, while requirin
 the native-use ledger and all mapped funnel patch families to remain. Pass the new
 final release id explicitly when the post-deletion pair is cut.
 
+The canonical coupled cutter at
+`infra/gcp/p7/scripts/New-ReleaseCut.ps1` force-rebuilds the mod and runs this
+gate before building any Gateway image. It defaults to `final`; reproducing the
+retained pre-deletion candidate requires an explicit `-ArtifactStage candidate`.
+
 `Invoke-C10bCandidateProof.ps1` is the fail-closed wrapper for the retained C8
 two-client scenario against P7. It does not start the VM or promote artifacts.
 Those are separate, rollback-aware operations:
