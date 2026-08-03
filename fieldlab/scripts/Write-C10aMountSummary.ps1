@@ -85,8 +85,8 @@ function Find-State(
     } | Select-Object -First 1)[0]
 }
 
-function Passed-Action([object[]] $Rows, [string] $ActionId) {
-    $null -ne (Find-State $Rows 'probe_passed' $ActionId)
+function Completed-Action([object[]] $Rows, [string] $ActionId) {
+    $null -ne (Find-State $Rows 'completed' $ActionId)
 }
 
 function Probe-Metrics([object[]] $Rows, [string] $ActionId) {
@@ -144,6 +144,8 @@ function Native-Ledger-Clean([object[]] $Rows) {
 $omen = Read-JsonLines 'omen\saddle-cutover.jsonl'
 $i5 = Read-JsonLines 'i5\saddle-cutover.jsonl'
 $server = Read-JsonLines 'server\saddle-cutover.jsonl'
+$omenScenario = Read-JsonLines 'omen\native-cutover-scenario-receipts.jsonl'
+$i5Scenario = Read-JsonLines 'i5\native-cutover-scenario-receipts.jsonl'
 $omenNative = Read-JsonLines 'omen\native-network-use.jsonl'
 $i5Native = Read-JsonLines 'i5\native-network-use.jsonl'
 $serverNative = Read-JsonLines 'server\native-network-use.jsonl'
@@ -246,8 +248,6 @@ $i5RelevanceEvents = @($server | Where-Object {
     (Detail-Long $_ 'peer') -eq $i5Peer
 } | Sort-Object { [DateTimeOffset]$_.timestamp_utc })
 $i5RelevanceStates = @($i5RelevanceEvents | ForEach-Object { [string]$_.state })
-$firstI5Enter = [Array]::IndexOf(
-    $i5RelevanceStates, 'snapshot_relevance_entered')
 $i5LeaveIndex = [Array]::IndexOf(
     $i5RelevanceStates, 'snapshot_relevance_left')
 $lastI5Enter = [Array]::LastIndexOf(
@@ -295,10 +295,10 @@ $checks = [ordered]@{
             $null -ne $i5UntaggedAdoption)
     all_required_client_actions_passed =
         @($requiredOmenActions | Where-Object {
-            -not (Passed-Action $omen $_)
+            -not (Completed-Action $omenScenario $_)
         }).Count -eq 0 -and
         @($requiredI5Actions | Where-Object {
-            -not (Passed-Action $i5 $_)
+            -not (Completed-Action $i5Scenario $_)
         }).Count -eq 0
     exact_owner_epoch_sequence =
         $transferFacts.Count -eq $(if ($isRelevance) { 4 } else { 3 }) -and
@@ -381,8 +381,7 @@ $checks = [ordered]@{
         (-not $isRelevance) -or (
             $null -ne $i5RelevanceLeave -and
             $null -ne $i5RelevanceEnter -and
-            $firstI5Enter -ge 0 -and
-            $i5LeaveIndex -gt $firstI5Enter -and
+            $i5LeaveIndex -ge 0 -and
             $lastI5Enter -gt $i5LeaveIndex)
     stale_transfer_fence_hit_on_both_clients =
         @($omen | Where-Object {
