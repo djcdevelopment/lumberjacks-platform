@@ -124,6 +124,10 @@ services:
       ServiceUrls__EventLog: "http://eventlog:4002"
       ServiceUrls__Progression: "http://progression:4003"
       VALHEIM_ZDO_QUEUE_PATH: "/var/lib/lumberjacks/zdo-queue/redirect.wal"
+      # The durable C3 journal is distinct from the redirect queue WAL. Keeping a
+      # separate file prevents gateway restart replay from treating redirect receipts
+      # as journal state (and makes the persistence contract explicit in P7).
+      VALHEIM_ZDO_JOURNAL_PATH: "/var/lib/lumberjacks/zdo-queue/journal.jsonl"
       # The recipient cutover. /etc/comfy-p7/environment is read by the compose PROCESS, not the
       # container, so without this reference the env file alone reaches nothing and the flag looks
       # set while the Gateway never sees it. Defaults false: flipping it before the mod that stamps
