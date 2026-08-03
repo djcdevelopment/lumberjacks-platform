@@ -6,12 +6,16 @@ Promote the exact C10b Gateway/mod pair to P7 as one rollback unit.
 .DESCRIPTION
 Default mode is local-only dry run. -Execute requires an accepted P7 boot
 receipt, snapshots the live environment plus both mod copies, invokes the
-existing exact-image and frozen-DLL deployers, and verifies the pair. Any
-failure restores the pre-promotion environment and both mod copies before the
-error is returned.
+existing exact-image and frozen-DLL deployers, and verifies the pair.
+ArtifactStage makes the retained pre-deletion candidate and post-deletion final
+promotions distinct. Any failure restores the pre-promotion environment and both
+mod copies before the error is returned.
 #>
 [CmdletBinding()]
 param(
+    [ValidateSet('candidate', 'final')]
+    [string] $ArtifactStage = 'candidate',
+
     [string] $ReleaseId = 'm7-c10a-20260802-r41',
 
     [string] $GatewayImage = 'lumberjacks-gateway:m7-c10a-20260802-r41',
@@ -58,6 +62,28 @@ if ($artifactRelease -ne $ReleaseId) {
 }
 if ($artifactHash -ne $expectedHash) {
     throw "Mod hash mismatch: expected=$expectedHash actual=$artifactHash"
+}
+
+$artifactBoundaryVerifier = Join-Path $repoRoot `
+    'tools\p7\Test-C10bArtifactFallbackBoundary.ps1'
+$artifactBoundaryOutput = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File $artifactBoundaryVerifier `
+    -Stage $ArtifactStage `
+    -DllPath $dll `
+    -ExpectedReleaseId $ReleaseId)
+$artifactBoundaryVerified = $LASTEXITCODE -eq 0
+if (-not $artifactBoundaryVerified) {
+    $artifactBoundaryOutput | Write-Host
+    throw "The '$ArtifactStage' artifact boundary failed before pair promotion."
+}
+$artifactBoundary =
+    ($artifactBoundaryOutput -join [Environment]::NewLine) | ConvertFrom-Json
+$artifactBoundarySummary = [ordered]@{
+    receipt_type = [string]$artifactBoundary.receipt_type
+    stage = [string]$artifactBoundary.stage
+    result = [string]$artifactBoundary.result
+    dll_sha256 = [string]$artifactBoundary.dll_sha256
+    checks = $artifactBoundary.checks
 }
 
 $gatewayVerifier = Join-Path $repoRoot `
@@ -160,10 +186,12 @@ $dryRunReceipt = [ordered]@{
     generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
     result = 'dry_run'
     execute = [bool]$Execute
+    artifact_stage = $ArtifactStage
     release_id = $ReleaseId
     gateway_image = $GatewayImage
     gateway_image_id = $candidateGatewayId
     mod_sha256 = $artifactHash
+    artifact_boundary = $artifactBoundarySummary
     target = $SshTarget
     actions = @(
         'snapshot environment and both live mod copies',
@@ -294,7 +322,10 @@ printf 'gateway_id=%s\n' "`$gateway_id"
 printf 'host_sha256=%s\n' "`$host_hash"
 printf 'runtime_sha256=%s\n' "`$runtime_hash"
 "@
-    $verifyText = Invoke-Remote $verifyScript 'candidate pair verification' 300
+    $verifyText = Invoke-Remote `
+        $verifyScript `
+        "$ArtifactStage pair verification" `
+        300
     $verified = Read-KeyValues $verifyText
     $receipt = [ordered]@{
         schema_version = 1
@@ -302,10 +333,12 @@ printf 'runtime_sha256=%s\n' "`$runtime_hash"
         generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
         result = 'promoted'
         execute = $true
+        artifact_stage = $ArtifactStage
         release_id = $ReleaseId
         gateway_image = $GatewayImage
         gateway_image_id = $verified.gateway_id
         mod_sha256 = $expectedHash
+        artifact_boundary = $artifactBoundarySummary
         target = $SshTarget
         instance_id = [string]$vm.id
         verified_boot_id = $currentBootId
@@ -376,7 +409,9 @@ printf 'fallback_sha256=%s\n' "`$fallback_hash"
             'failed_rollback_failed'
         }
         execute = $true
+        artifact_stage = $ArtifactStage
         release_id = $ReleaseId
+        artifact_boundary = $artifactBoundarySummary
         target = $SshTarget
         backup_root = $backupRoot
         failure = $failure
@@ -390,7 +425,7 @@ printf 'fallback_sha256=%s\n' "`$fallback_hash"
     }
     Write-Receipt $receipt
     if (-not $rollbackPassed) {
-        throw "Candidate pair promotion failed and complete rollback also failed: $failure; rollback: $rollbackError"
+        throw "The '$ArtifactStage' pair promotion failed and complete rollback also failed: $failure; rollback: $rollbackError"
     }
-    throw "Candidate pair promotion failed; the complete prior pair was restored: $failure"
+    throw "The '$ArtifactStage' pair promotion failed; the complete prior pair was restored: $failure"
 }

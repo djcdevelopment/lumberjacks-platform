@@ -112,6 +112,9 @@ function Get-Client([string] $Client) {
 
     return [ordered]@{
         client = $Client
+        artifact_stage = [string]$lifecycle.artifact_stage
+        migration_request_fields_emitted =
+            [bool]$lifecycle.migration_request_fields_emitted
         lifecycle_result = [string]$lifecycle.result
         steam_free_requested = [bool]$lifecycle.steam_free_cold_join_requested
         resume_count = [int]$lifecycle.resume_count
@@ -138,6 +141,15 @@ function Get-Client([string] $Client) {
         logical_failure_count = $failures.Count
         logical_failure_states = @($failures | ForEach-Object { $_.state })
         checks = [ordered]@{
+            request_stage_contract = if ($artifactStage -eq 'legacy') {
+                $true
+            } elseif ($artifactStage -eq 'candidate') {
+                [string]$lifecycle.artifact_stage -eq 'candidate' -and
+                [bool]$lifecycle.migration_request_fields_emitted
+            } elseif ($artifactStage -eq 'final') {
+                [string]$lifecycle.artifact_stage -eq 'final' -and
+                -not [bool]$lifecycle.migration_request_fields_emitted
+            } else { $false }
             lifecycle_complete =
                 $lifecycle.result -eq 'joined_held_and_stopped' -and
                 [bool]$lifecycle.steam_free_cold_join_requested -and
@@ -233,6 +245,10 @@ function Get-Server {
 $composition =
     Get-Content -LiteralPath (Join-Path $absoluteRun 'composition.json') -Raw |
     ConvertFrom-Json
+$artifactStage = if ([string]::IsNullOrWhiteSpace(
+        [string]$composition.artifact_stage)) {
+    'legacy'
+} else { [string]$composition.artifact_stage }
 $clients = @(
     Get-Client 'omen'
     Get-Client 'i5'

@@ -15,11 +15,14 @@ interactive scheduled task on a remote Windows client.
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('preflight', 'start', 'smoke', 'poison-smoke', 'descriptor-smoke', 'cold-join-failure-smoke', 'status', 'stop', 'restore-lab-session', 'install-task', 'queue-smoke', 'task-status', 'run-pending')]
+    [ValidateSet('preflight', 'request-preview', 'start', 'smoke', 'poison-smoke', 'descriptor-smoke', 'cold-join-failure-smoke', 'status', 'stop', 'restore-lab-session', 'install-task', 'queue-smoke', 'task-status', 'run-pending')]
     [string] $Action = 'preflight',
 
     [ValidateSet('omen', 'i5')]
     [string] $Client = 'omen',
+
+    [ValidateSet('candidate', 'final')]
+    [string] $ArtifactStage = 'candidate',
 
     [string] $Character = '',
 
@@ -140,6 +143,9 @@ if ($EnableSteamFreeColdJoin -and
      -not $EnableMotionAuthorityCutover -or
      $EnableSocketQuarantineCutover)) {
     throw '-EnableSteamFreeColdJoin requires a coherent C2b-C6 request and forbids socket quarantine.'
+}
+if ($ArtifactStage -eq 'final' -and $EnableSocketQuarantineCutover) {
+    throw 'The final artifact cannot request the retired socket-quarantine migration falsifier.'
 }
 if (-not [string]::IsNullOrWhiteSpace($ColdJoinFailureMode) -and
     (-not $EnableSteamFreeColdJoin -or
@@ -360,6 +366,7 @@ function Restore-LabSessionConfigFromRun() {
         generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
         run_id = $RunId
         client = $Client
+        artifact_stage = $ArtifactStage
         backup = $backupPath
         config = $configPath
         restored = $true
@@ -685,6 +692,7 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         run_id = $RunId
         client = $Client
         action = $Action
+        artifact_stage = $ArtifactStage
         result = $Result
         error = $Error
         server = $Server
@@ -700,18 +708,27 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
         lab_session_requested = [bool]$EnableLabSession
         lab_session_config_changed = [bool]$script:LabConfigChanged
         lab_session_config_backup = $script:LabConfigBackup
+        migration_request_fields_emitted = $ArtifactStage -eq 'candidate'
         native_network_poison_requested =
-            $Action -eq 'poison-smoke' -or [bool]$EnableSteamFreeColdJoin
-        routed_rpc_cutover_requested = [bool]$EnableRoutedRpcCutover
-        zdo_journal_cutover_requested = [bool]$EnableZdoJournalCutover
+            $ArtifactStage -eq 'candidate' -and
+            ($Action -eq 'poison-smoke' -or [bool]$EnableSteamFreeColdJoin)
+        routed_rpc_cutover_requested =
+            $ArtifactStage -eq 'candidate' -and [bool]$EnableRoutedRpcCutover
+        zdo_journal_cutover_requested =
+            $ArtifactStage -eq 'candidate' -and [bool]$EnableZdoJournalCutover
         zdo_journal_canonical_session_requested =
+            $ArtifactStage -eq 'candidate' -and
             [bool]$EnableZdoJournalCanonicalSession
         ownership_lease_cutover_requested =
+            $ArtifactStage -eq 'candidate' -and
             [bool]$EnableOwnershipLeaseCutover
-        world_zone_cutover_requested = [bool]$EnableWorldZoneCutover
+        world_zone_cutover_requested =
+            $ArtifactStage -eq 'candidate' -and [bool]$EnableWorldZoneCutover
         motion_authority_cutover_requested =
+            $ArtifactStage -eq 'candidate' -and
             [bool]$EnableMotionAuthorityCutover
         socket_quarantine_cutover_requested =
+            $ArtifactStage -eq 'candidate' -and
             [bool]$EnableSocketQuarantineCutover
         steam_free_cold_join_requested = [bool]$EnableSteamFreeColdJoin
         world_descriptor_fault = $WorldDescriptorFault
@@ -766,34 +783,45 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
     $script:LastReceipt = $receipt
 }
 
-function Write-NativeAutotestRequest([bool] $ExpectPoisonTrip) {
-    $now = [DateTimeOffset]::UtcNow
+function New-NativeAutotestRequest(
+    [bool] $ExpectPoisonTrip,
+    [DateTimeOffset] $Now) {
     # C7 is a zero-use proof, so poison must stay armed without requiring a
     # trip. poison-smoke remains the separate negative test that expects one.
     $requestPoison =
         $ExpectPoisonTrip -or [bool]$EnableSteamFreeColdJoin
     $request = [ordered]@{
         schema_version = 1
+        artifact_stage = $ArtifactStage
         run_id = $RunId
         client = $Client
         character = $Character
         server = $Server
         lumberjacks_gateway_url = $GatewayUrl
-        created_utc = $now.ToString('o')
-        expires_utc = $now.AddMinutes(15).ToString('o')
-        native_network_poison = $requestPoison
-        routed_rpc_cutover = [bool]$EnableRoutedRpcCutover
-        zdo_journal_cutover = [bool]$EnableZdoJournalCutover
-        zdo_journal_canonical_session =
-            [bool]$EnableZdoJournalCanonicalSession
-        ownership_lease_cutover = [bool]$EnableOwnershipLeaseCutover
-        world_zone_cutover = [bool]$EnableWorldZoneCutover
-        motion_authority_cutover = [bool]$EnableMotionAuthorityCutover
-        socket_quarantine_cutover = [bool]$EnableSocketQuarantineCutover
+        created_utc = $Now.ToString('o')
+        expires_utc = $Now.AddMinutes(15).ToString('o')
         steam_free_cold_join = [bool]$EnableSteamFreeColdJoin
         world_descriptor_fault = $WorldDescriptorFault
         cold_join_fault = $ColdJoinFailureMode
     }
+    if ($ArtifactStage -eq 'candidate') {
+        $request.native_network_poison = $requestPoison
+        $request.routed_rpc_cutover = [bool]$EnableRoutedRpcCutover
+        $request.zdo_journal_cutover = [bool]$EnableZdoJournalCutover
+        $request.zdo_journal_canonical_session =
+            [bool]$EnableZdoJournalCanonicalSession
+        $request.ownership_lease_cutover = [bool]$EnableOwnershipLeaseCutover
+        $request.world_zone_cutover = [bool]$EnableWorldZoneCutover
+        $request.motion_authority_cutover = [bool]$EnableMotionAuthorityCutover
+        $request.socket_quarantine_cutover =
+            [bool]$EnableSocketQuarantineCutover
+    }
+    return $request
+}
+
+function Write-NativeAutotestRequest([bool] $ExpectPoisonTrip) {
+    $now = [DateTimeOffset]::UtcNow
+    $request = New-NativeAutotestRequest $ExpectPoisonTrip $now
     Write-JsonAtomic $autotestRequestPath $request
     return $now
 }
@@ -934,6 +962,10 @@ function Invoke-PendingRun() {
     $invoke = @{
         Action = [string]$pending.action
         Client = [string]$pending.client
+        ArtifactStage = if ([string]::IsNullOrWhiteSpace(
+                [string]$pending.artifact_stage)) {
+            'candidate'
+        } else { [string]$pending.artifact_stage }
         Character = [string]$pending.character
         Server = [string]$pending.server
         GatewayUrl = [string]$pending.gateway_url
@@ -1017,6 +1049,7 @@ function Queue-InteractiveSmoke() {
     }
     $pending = [ordered]@{
         schema_version = 1
+        artifact_stage = $ArtifactStage
         action = 'smoke'
         client = $Client
         character = $Character
@@ -1055,6 +1088,7 @@ function Queue-InteractiveSmoke() {
         schema_version = 1
         receipt_type = 'native_valheim_task_queue'
         generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
+        artifact_stage = $ArtifactStage
         task_name = $TaskName
         task_state = [string]$task.State
         run_id = $RunId
@@ -1071,11 +1105,15 @@ if ($Action -eq 'run-pending') {
     exit 0
 }
 
-if ([string]::IsNullOrWhiteSpace($RunId) -and $Action -in @('start', 'smoke', 'poison-smoke', 'descriptor-smoke', 'cold-join-failure-smoke', 'queue-smoke')) {
+if ([string]::IsNullOrWhiteSpace($RunId) -and $Action -in @('request-preview', 'start', 'smoke', 'poison-smoke', 'descriptor-smoke', 'cold-join-failure-smoke', 'queue-smoke')) {
     $RunId = New-RunId
 }
 
 switch ($Action) {
+    'request-preview' {
+        New-NativeAutotestRequest $false ([DateTimeOffset]::UtcNow) |
+            ConvertTo-Json -Depth 8
+    }
     'preflight' {
         $result = Get-Preflight
         $result | ConvertTo-Json -Depth 12

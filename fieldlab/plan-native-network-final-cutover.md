@@ -1360,6 +1360,27 @@ falsifiers.
   runbook (preserving pre-fix evidence), followed by paired candidate promotion and this
   exact proof wrapper. This checkpoint is tooling readiness, not C10b acceptance.
 
+#### C10b candidate/final boundary checkpoint — 2026-08-02
+
+- The release cutter, pair promoter, P7 proof wrapper, and physical two-client harness
+  now require an explicit `candidate` or `final` artifact stage. The candidate gate
+  freezes the exact temporary fallback inventory; the final gate rejects any remaining
+  fallback source or compiled-DLL marker while retaining the native-use ledger and patch
+  guards. A final release cut defaults to a clean rebuild and cannot package an r41-style
+  candidate by accident.
+- Candidate runs may arm the nine named migration controls and emit the eight client
+  migration request fields. Final runs must plan and emit zero of them. They retain only
+  the evidence run id, Gateway URL, portal traversal, residue cleanup, and Steam-free
+  cold-join request needed to re-prove the post-deletion artifact. Both stage contracts
+  are reducer-enforced; a final lifecycle that claims it emitted a migration request is
+  rejected.
+- The i5 lane returned online and hash-verified the updated client harness. A remote
+  non-launching preview proved the candidate/final request split; Steam was available,
+  no Valheim process or pending request existed, and no game was reported as passing.
+  The read-only P7 preflight now has a green local pair, artifact boundary, and i5 lane,
+  but still returns `not_ready` because P7 is `TERMINATED` and has no accepted boot
+  receipt. P7 was not started or changed.
+
 **Finalization**
 
 - Delete migration-only native fallback branches and flags. Keep the native-use telemetry

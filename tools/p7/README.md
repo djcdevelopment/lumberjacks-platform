@@ -25,11 +25,16 @@ Those are separate, rollback-aware operations:
    JSON receipt. Promotion and proof reject the receipt after another boot.
 3. Rehearse `tools/p7/Invoke-C10bPairPromotion.ps1` without `-Execute`, then
    execute it with the boot receipt. It snapshots and promotes the exact Gateway
-   and frozen mod as one rollback unit; either-side failure restores both.
+   and frozen mod as one rollback unit; either-side failure restores both. Its
+   default `candidate` stage must be changed explicitly to `final` for the
+   post-deletion pair.
 4. Run `tools/p7/Invoke-C10bCandidateProof.ps1 -Action preflight
    -BootReceiptPath <receipt>`; only a fully green receipt admits `-Action run`.
 
-The wrapper first passes the local candidate artifact through the fallback
-inventory gate, then verifies the local release pair, P7's loaded image and both
-visible DLL copies, the server/unit/Gateway state, and the i5 lane before it
-generates a fresh single-use C8 manifest or launches either game client.
+Despite its historical filename, `Invoke-C10bCandidateProof.ps1` now accepts an
+explicit `-ArtifactStage candidate|final`. It first passes the local artifact
+through the matching fallback inventory gate, then verifies the local release
+pair, P7's loaded image and both visible DLL copies, the server/unit/Gateway
+state, and the i5 lane before it generates a fresh single-use C8 manifest or
+launches either game client. Final promotion and final proof must both name
+`-ArtifactStage final`; their receipts record that stage.

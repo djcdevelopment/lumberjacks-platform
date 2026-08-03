@@ -1,18 +1,23 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-Preflight or run the exact C10b poison-armed P7 candidate proof.
+Preflight or run an exact C10b poison-armed P7 candidate/final proof.
 
 .DESCRIPTION
 This is the one-command P7 wrapper around the native Valheim cutover harness. It
-never starts P7 and never promotes artifacts. The rollback-aware P7 promotion
-scripts must first install the exact Gateway image and frozen mod DLL; this tool
-then verifies their identities before either rendered client is launched.
+never starts P7 and never promotes artifacts. ArtifactStage makes the retained
+pre-deletion candidate and post-deletion final proofs distinct. The rollback-aware
+P7 promotion scripts must first install the exact Gateway image and frozen mod
+DLL; this tool then verifies their identities and semantic boundary before either
+rendered client is launched.
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('preflight', 'run')]
     [string] $Action = 'preflight',
+
+    [ValidateSet('candidate', 'final')]
+    [string] $ArtifactStage = 'candidate',
 
     [string] $RunId = '',
 
@@ -37,7 +42,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if ($Action -eq 'run' -and [string]::IsNullOrWhiteSpace($RunId)) {
     $RunId = 'native-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss') +
-        '-c10b-p7-candidate'
+        "-c10b-p7-$ArtifactStage"
 }
 if (-not [string]::IsNullOrWhiteSpace($RunId) -and
     ($RunId.Length -gt 80 -or $RunId -notmatch '^[A-Za-z0-9._-]+$')) {
@@ -61,20 +66,20 @@ $artifactRelease = Get-AssemblyMetadataValue `
     -Key 'LumberjacksModReleaseId'
 $actualHash =
     (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
-$fallbackBoundaryVerifier = Join-Path $repoRoot `
+$artifactBoundaryVerifier = Join-Path $repoRoot `
     'tools\p7\Test-C10bArtifactFallbackBoundary.ps1'
-$fallbackBoundaryOutput = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass `
-    -File $fallbackBoundaryVerifier `
-    -Stage candidate `
+$artifactBoundaryOutput = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File $artifactBoundaryVerifier `
+    -Stage $ArtifactStage `
     -DllPath $dll `
     -ExpectedReleaseId $ReleaseId)
-$fallbackBoundaryVerified = $LASTEXITCODE -eq 0
-if (-not $fallbackBoundaryVerified) {
-    $fallbackBoundaryOutput | Write-Host
-    throw 'Candidate fallback inventory failed before any external P7 preflight.'
+$artifactBoundaryVerified = $LASTEXITCODE -eq 0
+if (-not $artifactBoundaryVerified) {
+    $artifactBoundaryOutput | Write-Host
+    throw "The '$ArtifactStage' artifact boundary failed before any external P7 preflight."
 }
-$fallbackBoundary =
-    ($fallbackBoundaryOutput -join [Environment]::NewLine) | ConvertFrom-Json
+$artifactBoundary =
+    ($artifactBoundaryOutput -join [Environment]::NewLine) | ConvertFrom-Json
 $gatewayVerifier = Join-Path $repoRoot `
     'infra\gcp\p7\scripts\Test-GatewayImageRelease.ps1'
 
@@ -210,7 +215,7 @@ $bootReceiptValid =
 $checks = [ordered]@{
     release_id_matches_dll = $artifactRelease -eq $ReleaseId
     local_mod_hash_exact = $actualHash -eq $expectedHash
-    candidate_fallback_inventory_exact = $fallbackBoundaryVerified
+    artifact_fallback_boundary_exact = $artifactBoundaryVerified
     local_gateway_release_verified = $gatewayVerified
     local_gateway_image_present =
         $localGatewayImageId -match '^sha256:[0-9a-f]{64}$'
@@ -227,20 +232,21 @@ $checks = [ordered]@{
 $failed = @($checks.GetEnumerator() | Where-Object { -not [bool]$_.Value })
 $receipt = [ordered]@{
     schema_version = 1
-    receipt_type = 'c10b_p7_candidate_preflight'
+    receipt_type = "c10b_p7_${ArtifactStage}_preflight"
     generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
     action = $Action
+    artifact_stage = $ArtifactStage
     run_id = $RunId
     release_id = $ReleaseId
     gateway_image = $GatewayImage
     gateway_image_id = $localGatewayImageId
     mod_sha256 = $actualHash
-    fallback_boundary = [ordered]@{
-        receipt_type = [string]$fallbackBoundary.receipt_type
-        stage = [string]$fallbackBoundary.stage
-        result = [string]$fallbackBoundary.result
-        dll_sha256 = [string]$fallbackBoundary.dll_sha256
-        checks = $fallbackBoundary.checks
+    artifact_boundary = [ordered]@{
+        receipt_type = [string]$artifactBoundary.receipt_type
+        stage = [string]$artifactBoundary.stage
+        result = [string]$artifactBoundary.result
+        dll_sha256 = [string]$artifactBoundary.dll_sha256
+        checks = $artifactBoundary.checks
     }
     p7_status = [string]$vm.status
     p7_gateway_url = $p7GatewayUrl
@@ -277,7 +283,7 @@ if ($Action -eq 'preflight') {
     return
 }
 if ($failed.Count -gt 0) {
-    throw 'C10b P7 candidate proof refused because the fail-closed preflight is not green.'
+    throw "C10b P7 '$ArtifactStage' proof refused because the fail-closed preflight is not green."
 }
 $runRoot = Join-Path $repoRoot 'fieldlab\runs\native-valheim'
 $scenarioPath = Join-Path (Join-Path $runRoot $RunId) 'scenario-input.json'
@@ -289,6 +295,7 @@ $scenarioPath = Join-Path (Join-Path $runRoot $RunId) 'scenario-input.json'
 & (Join-Path $repoRoot 'fieldlab\scripts\Invoke-NativeValheimCutoverScenario.ps1') `
     -RunId $RunId `
     -ScenarioPath $scenarioPath `
+    -ArtifactStage $ArtifactStage `
     -Server 'comfy-p7.duckdns.org:2456' `
     -ServerSshTarget 'comfy-p7' `
     -ServerBepInExConfigRoot '/mnt/comfy-p7/valheim/config/bepinex' `
@@ -309,5 +316,5 @@ $scenarioPath = Join-Path (Join-Path $runRoot $RunId) 'scenario-input.json'
     -ServerWorldDb '/mnt/comfy-p7/valheim/config/worlds_local/ComfyEra16.db' `
     -ServerWorldFwl '/mnt/comfy-p7/valheim/config/worlds_local/ComfyEra16.fwl'
 if ($LASTEXITCODE -ne 0) {
-    throw "C10b P7 candidate proof failed with exit $LASTEXITCODE."
+    throw "C10b P7 '$ArtifactStage' proof failed with exit $LASTEXITCODE."
 }

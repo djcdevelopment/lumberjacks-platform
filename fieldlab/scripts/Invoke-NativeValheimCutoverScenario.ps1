@@ -16,6 +16,9 @@ param(
     [Parameter(Mandatory)]
     [string] $ScenarioPath,
 
+    [ValidateSet('candidate', 'final')]
+    [string] $ArtifactStage = 'candidate',
+
     [string] $Server = '100.116.82.60:2456',
 
     [string] $ServerSshTarget = 'am4',
@@ -56,6 +59,10 @@ param(
 
     [ValidateRange(0, 120)]
     [int] $HoldSeconds = 5,
+
+    # Emit the stage-specific runtime-control contract and stop before any
+    # filesystem, Docker, SSH, i5, P7, or game mutation.
+    [switch] $PlanOnly,
 
     [switch] $EnableDirectControlCutover,
 
@@ -109,6 +116,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $clientHarness = Join-Path $PSScriptRoot 'Invoke-NativeValheimClient.ps1'
 $i5Tools = Join-Path $repoRoot 'tools\i5'
+$usesMigrationControls = $ArtifactStage -eq 'candidate'
 
 if ($EnableNativeZeroComposition -or $EnableC8Composition) {
     $EnableDirectControlCutover = $true
@@ -195,6 +203,9 @@ if ($EnableSteamFreeColdJoin -and
 }
 if ($EnableSteamFreeColdJoin -and $EnableSocketQuarantineCutover) {
     throw 'Steam-free cold join and the earlier native-socket quarantine falsifier are mutually exclusive.'
+}
+if (-not $usesMigrationControls -and $EnableSocketQuarantineCutover) {
+    throw 'The final artifact cannot run the retired socket-quarantine migration falsifier.'
 }
 
 $scenario = (Resolve-Path -LiteralPath $ScenarioPath -ErrorAction Stop).Path
@@ -284,6 +295,7 @@ $creatureSummaryError = $null
 $containerSummaryError = $null
 $gatewayRestartReceipt = $null
 $gatewayImageReceipt = $null
+$artifactBoundaryReceipt = $null
 $saveIntegrityBefore = $null
 $saveIntegrityAfter = $null
 $i5Queued = $false
@@ -295,6 +307,68 @@ $useConcurrentHarness =
     [bool]$EnableMotionAuthorityCutover -or
     [bool]$EnableSocketQuarantineCutover -or
     [bool]$EnableSteamFreeColdJoin
+
+$migrationRuntimeSettings = @()
+if ($usesMigrationControls) {
+    if ($EnableDirectControlCutover) {
+        $migrationRuntimeSettings += 'directControlCutoverEnabled'
+    }
+    if ($useRoutedRpc) {
+        $migrationRuntimeSettings += 'routedRpcCutoverEnabled'
+    }
+    if ($EnableZdoJournalCutover) {
+        $migrationRuntimeSettings += 'zdoJournalCutoverEnabled'
+    }
+    if ($EnableZdoJournalCanonicalSession) {
+        $migrationRuntimeSettings += 'zdoJournalCanonicalSessionEnabled'
+    }
+    if ($EnableOwnershipLeaseCutover) {
+        $migrationRuntimeSettings += 'ownershipLeaseCutoverEnabled'
+    }
+    if ($EnableWorldZoneCutover) {
+        $migrationRuntimeSettings += 'worldZoneCutoverEnabled'
+    }
+    if ($EnableMotionAuthorityCutover) {
+        $migrationRuntimeSettings += 'motionAuthorityCutoverEnabled'
+    }
+    if ($EnableSteamFreeColdJoin) {
+        $migrationRuntimeSettings += 'logicalPeerCutoverEnabled'
+    }
+    if ($EnableServerNativePoison) {
+        $migrationRuntimeSettings += 'nativeNetworkPoisonEnabled'
+    }
+}
+$retainedRuntimeSettings = @()
+if (-not $usesMigrationControls -or
+    $EnableDirectControlCutover -or $useRoutedRpc) {
+    $retainedRuntimeSettings += 'nativeNetworkEvidenceRunId'
+}
+if (-not $usesMigrationControls -or $useRoutedRpc) {
+    $retainedRuntimeSettings += 'lumberjacksGatewayUrl'
+}
+if ($EnablePortalTraversal) {
+    $retainedRuntimeSettings += 'portalTraversalEnabled'
+}
+$retainedRuntimeSettings += 'cutoverResidueCleanup'
+$runtimeControlPlan = [ordered]@{
+    schema_version = 1
+    receipt_type = 'native_cutover_runtime_control_plan'
+    generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
+    run_id = $RunId
+    artifact_stage = $ArtifactStage
+    migration_settings = @($migrationRuntimeSettings)
+    retained_settings = @($retainedRuntimeSettings)
+    migration_settings_count = $migrationRuntimeSettings.Count
+    mutates_migration_controls = $migrationRuntimeSettings.Count -gt 0
+    plan_only = [bool]$PlanOnly
+    result = if ($ArtifactStage -eq 'final' -and
+        $migrationRuntimeSettings.Count -ne 0) { 'failed' } else { 'passed' }
+}
+if ($PlanOnly) {
+    $runtimeControlPlan | ConvertTo-Json -Depth 8
+    if ($runtimeControlPlan.result -ne 'passed') { exit 2 }
+    return
+}
 
 function Write-JsonAtomic([string] $Path, [object] $Value) {
     $temporary = "$Path.tmp"
@@ -611,6 +685,10 @@ function Wait-GatewayCutoverReady {
 
 try {
     New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
+    $runtimeControlPlan.plan_only = $false
+    Write-JsonAtomic `
+        (Join-Path $runDirectory 'runtime-control-plan.json') `
+        $runtimeControlPlan
     # Every reducer must inspect the exact manifest that drove the clients.  Keeping
     # this only for the C8 profile let later profile-specific reducers silently
     # treat a missing scenario as a different profile and bypass conditional gates.
@@ -698,6 +776,25 @@ try {
         }
         $coverageOutput | Write-Host
     }
+    $artifactBoundaryPath = Join-Path $runDirectory 'artifact-boundary.json'
+    $artifactBoundaryVerifier = Join-Path $repoRoot `
+        'tools\p7\Test-C10bArtifactFallbackBoundary.ps1'
+    $artifactBoundaryOutput = @(
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass `
+            -File $artifactBoundaryVerifier `
+            -Stage $ArtifactStage `
+            -DllPath $dll `
+            -ExpectedReleaseId $modRelease `
+            -OutputPath $artifactBoundaryPath
+    )
+    if ($LASTEXITCODE -ne 0) {
+        $artifactBoundaryOutput | Write-Host
+        throw "The '$ArtifactStage' artifact boundary failed; no remote state was changed."
+    }
+    $artifactBoundaryReceipt =
+        Get-Content -LiteralPath $artifactBoundaryPath -Raw -Encoding utf8 |
+        ConvertFrom-Json
+
     $gatewayVerifier = Join-Path $repoRoot `
         'infra\gcp\p7\scripts\Test-GatewayImageRelease.ps1'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $gatewayVerifier `
@@ -872,7 +969,30 @@ try {
         }
     }
 
-    if ($EnableDirectControlCutover) {
+    if (-not $usesMigrationControls) {
+        $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+        $runOutput = & $serverControl @serverControlTarget `
+            -Setting nativeNetworkEvidenceRunId `
+            -Value $RunId `
+            -RequestId "$RunId-final-run"
+        if ($LASTEXITCODE -ne 0) { throw 'Final server run-id control failed.' }
+        $serverRoutedReceipts +=
+            (($runOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+        $serverRunContextEstablished = $true
+
+        $gatewayOutput = & $serverControl @serverControlTarget `
+            -Setting lumberjacksGatewayUrl `
+            -Value $ServerGatewayUrl `
+            -RequestId "$RunId-final-gateway"
+        if ($LASTEXITCODE -ne 0) { throw 'Final server Gateway URL control failed.' }
+        $gatewayReceipt =
+            (($gatewayOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+        $serverRoutedReceipts += $gatewayReceipt
+        $oldServerGatewayUrl = [string]$gatewayReceipt.old_value
+        $serverGatewayChanged = $true
+    }
+
+    if ($migrationRuntimeSettings -contains 'directControlCutoverEnabled') {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
         $runOutput = & $serverControl @serverControlTarget `
             -Setting nativeNetworkEvidenceRunId `
@@ -891,7 +1011,7 @@ try {
         $serverDirectArmed = $true
     }
 
-    if ($useRoutedRpc) {
+    if ($migrationRuntimeSettings -contains 'routedRpcCutoverEnabled') {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
         $runOutput = & $serverControl @serverControlTarget `
             -Setting nativeNetworkEvidenceRunId `
@@ -924,7 +1044,7 @@ try {
         Start-Sleep -Seconds 3
     }
 
-    if ($EnableZdoJournalCutover) {
+    if ($migrationRuntimeSettings -contains 'zdoJournalCutoverEnabled') {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
         $journalArmOutput = & $serverControl @serverControlTarget `
             -Setting zdoJournalCutoverEnabled `
@@ -934,7 +1054,8 @@ try {
         $serverJournalReceipts +=
             (($journalArmOutput -join [Environment]::NewLine) | ConvertFrom-Json)
         $serverJournalArmed = $true
-        if ($EnableZdoJournalCanonicalSession) {
+        if ($migrationRuntimeSettings -contains `
+                'zdoJournalCanonicalSessionEnabled') {
             $canonicalArmOutput = & $serverControl @serverControlTarget `
                 -Setting zdoJournalCanonicalSessionEnabled `
                 -Value true `
@@ -948,7 +1069,7 @@ try {
         }
     }
 
-    if ($EnableOwnershipLeaseCutover) {
+    if ($migrationRuntimeSettings -contains 'ownershipLeaseCutoverEnabled') {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
         $ownershipArmOutput = & $serverControl @serverControlTarget `
             -Setting ownershipLeaseCutoverEnabled `
@@ -960,7 +1081,7 @@ try {
         $serverOwnershipArmed = $true
     }
 
-    if ($EnableWorldZoneCutover) {
+    if ($migrationRuntimeSettings -contains 'worldZoneCutoverEnabled') {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
         $worldZoneArmOutput = & $serverControl @serverControlTarget `
             -Setting worldZoneCutoverEnabled `
@@ -991,7 +1112,7 @@ try {
             -not $serverPortalTraversalPrevious
     }
 
-    if ($EnableMotionAuthorityCutover) {
+    if ($migrationRuntimeSettings -contains 'motionAuthorityCutoverEnabled') {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
         $motionArmOutput = & $serverControl @serverControlTarget `
             -Setting motionAuthorityCutoverEnabled `
@@ -1006,7 +1127,7 @@ try {
         $serverMotionArmed = $true
     }
 
-    if ($EnableSteamFreeColdJoin) {
+    if ($migrationRuntimeSettings -contains 'logicalPeerCutoverEnabled') {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
         $logicalPeerArmOutput = & $serverControl @serverControlTarget `
             -Setting logicalPeerCutoverEnabled `
@@ -1021,7 +1142,7 @@ try {
         $serverLogicalPeerArmed = $true
     }
 
-    if ($EnableServerNativePoison) {
+    if ($migrationRuntimeSettings -contains 'nativeNetworkPoisonEnabled') {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
         $poisonArmOutput = & $serverControl @serverControlTarget `
             -Setting nativeNetworkPoisonEnabled `
@@ -1050,6 +1171,7 @@ try {
     $i5Arguments = @(
         '-Action', 'queue-smoke',
         '-Client', 'i5',
+        '-ArtifactStage', $ArtifactStage,
         '-Character', $I5Character,
         '-Server', $Server,
         '-GatewayUrl', $I5GatewayUrl,
@@ -1129,6 +1251,7 @@ try {
             receipt_type = 'native_cutover_gateway_image_provenance'
             generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
             run_id = $RunId
+            artifact_stage = $ArtifactStage
             mod_release = $modRelease
             requested_image = $GatewayImage
             expected_image_id = $gatewayExpectedImageId.Trim()
@@ -1157,6 +1280,7 @@ try {
             '-File', $clientHarness,
             '-Action', 'smoke',
             '-Client', 'omen',
+            '-ArtifactStage', $ArtifactStage,
             '-Character', $OmenCharacter,
             '-Server', $Server,
             '-GatewayUrl', $OmenGatewayUrl,
@@ -1511,6 +1635,13 @@ try {
             'local_compose_exact_image'
         }
         result = 'completed'
+        artifact_stage = $ArtifactStage
+        migration_controls_mutated = $usesMigrationControls
+        artifact_boundary = [ordered]@{
+            stage = [string]$artifactBoundaryReceipt.stage
+            result = [string]$artifactBoundaryReceipt.result
+            dll_sha256 = [string]$artifactBoundaryReceipt.dll_sha256
+        }
         mod_release = $modRelease
         gateway_image = $GatewayImage
         gateway_image_id = if ($gatewayImageReceipt) {
@@ -2155,6 +2286,7 @@ if ($completed -and $EnableC8Composition) {
         & (Join-Path $PSScriptRoot 'Write-C8CompositionSummary.ps1') `
             -RunDirectory $runDirectory `
             -RunId $RunId `
+            -ArtifactStage $ArtifactStage `
             -OutputPath $c8SummaryPath
     $c8Summary =
         Get-Content -LiteralPath $c8SummaryPath -Raw -Encoding utf8 |

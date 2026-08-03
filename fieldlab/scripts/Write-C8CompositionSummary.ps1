@@ -11,6 +11,9 @@ param(
     [Parameter(Mandatory)]
     [string] $RunId,
 
+    [ValidateSet('legacy', 'candidate', 'final')]
+    [string] $ArtifactStage = 'legacy',
+
     [string] $OutputPath = ''
 )
 
@@ -65,7 +68,48 @@ $composition = Read-Json 'composition.json'
 $logical = Read-Json 'c7-logical-peer-summary.json'
 $restart = Read-Json 'gateway-journal-restart.json'
 $integrity = Read-Json 'c8-save-integrity.json'
-$runtimePoison = Read-Json 'server-runtime-native-poison.json'
+$artifactBoundary = if ($ArtifactStage -eq 'legacy') {
+    $null
+} else {
+    Read-Json 'artifact-boundary.json'
+}
+$runtimeControlPlan = if ($ArtifactStage -eq 'legacy') {
+    $null
+} else {
+    Read-Json 'runtime-control-plan.json'
+}
+$expectedMigrationSettings = if ($ArtifactStage -eq 'candidate') {
+    @(
+        'directControlCutoverEnabled'
+        'logicalPeerCutoverEnabled'
+        'motionAuthorityCutoverEnabled'
+        'nativeNetworkPoisonEnabled'
+        'ownershipLeaseCutoverEnabled'
+        'routedRpcCutoverEnabled'
+        'worldZoneCutoverEnabled'
+        'zdoJournalCanonicalSessionEnabled'
+        'zdoJournalCutoverEnabled'
+    )
+} else { @() }
+$expectedRetainedSettings = @(
+    'cutoverResidueCleanup'
+    'lumberjacksGatewayUrl'
+    'nativeNetworkEvidenceRunId'
+    'portalTraversalEnabled'
+)
+$observedMigrationSettings = @(
+    $runtimeControlPlan.migration_settings | Sort-Object -Unique
+)
+$observedRetainedSettings = @(
+    $runtimeControlPlan.retained_settings | Sort-Object -Unique
+)
+$runtimePoisonPath = Join-Path $root 'server-runtime-native-poison.json'
+$runtimePoisonExists = Test-Path -LiteralPath $runtimePoisonPath -PathType Leaf
+$runtimePoison = if ($ArtifactStage -eq 'final') {
+    $null
+} else {
+    Read-Json 'server-runtime-native-poison.json'
+}
 
 $clientResults = @()
 foreach ($client in @('omen', 'i5')) {
@@ -151,26 +195,48 @@ $disarm = @($runtimePoison.receipts | Where-Object {
     $_.setting -eq 'nativeNetworkPoisonEnabled' -and
     $_.effective_value -eq 'false'
 })
-$serverChecks = [ordered]@{
-    runtime_poison_armed = $arm.Count -eq 1
-    runtime_poison_disarmed = $disarm.Count -eq 1 -and
+$serverChecks = [ordered]@{}
+if ($ArtifactStage -eq 'final') {
+    $serverChecks.final_runtime_poison_toggle_absent = -not $runtimePoisonExists
+} else {
+    $serverChecks.runtime_poison_armed = $arm.Count -eq 1
+    $serverChecks.runtime_poison_disarmed = $disarm.Count -eq 1 -and
         [string]::IsNullOrWhiteSpace([string]$runtimePoison.disarm_error)
-    native_summary_present = $serverFinal.Count -eq 1
-    native_poison_armed =
-        $serverFinal.Count -eq 1 -and $serverFinal[0].poison_enabled -eq $true
-    native_total_zero =
-        $serverFinal.Count -eq 1 -and [long]$serverFinal[0].native_total -eq 0
-    native_poison_trips_zero =
-        $serverFinal.Count -eq 1 -and [long]$serverFinal[0].poison_trips -eq 0
-    ledger_lossless =
-        $serverFinal.Count -eq 1 -and
-        [long]$serverFinal[0].writer_dropped_rows -eq 0 -and
-        [long]$serverFinal[0].writer_faults -eq 0
 }
+$serverChecks.native_summary_present = $serverFinal.Count -eq 1
+$serverChecks.native_poison_armed =
+    $serverFinal.Count -eq 1 -and $serverFinal[0].poison_enabled -eq $true
+$serverChecks.native_total_zero =
+    $serverFinal.Count -eq 1 -and [long]$serverFinal[0].native_total -eq 0
+$serverChecks.native_poison_trips_zero =
+    $serverFinal.Count -eq 1 -and [long]$serverFinal[0].poison_trips -eq 0
+$serverChecks.ledger_lossless =
+    $serverFinal.Count -eq 1 -and
+    [long]$serverFinal[0].writer_dropped_rows -eq 0 -and
+    [long]$serverFinal[0].writer_faults -eq 0
 $serverFailed =
     @($serverChecks.GetEnumerator() | Where-Object { -not [bool]$_.Value })
 
 $checks = [ordered]@{
+    artifact_boundary_contract = if ($ArtifactStage -eq 'legacy') {
+        $true
+    } else {
+        [string]$artifactBoundary.stage -eq $ArtifactStage -and
+        [string]$artifactBoundary.result -eq 'passed' -and
+        [string]$composition.artifact_stage -eq $ArtifactStage -and
+        [bool]$composition.migration_controls_mutated -eq
+            ($ArtifactStage -eq 'candidate')
+    }
+    runtime_control_plan_contract = if ($ArtifactStage -eq 'legacy') {
+        $true
+    } else {
+        [string]$runtimeControlPlan.artifact_stage -eq $ArtifactStage -and
+        [string]$runtimeControlPlan.result -eq 'passed' -and
+        (@($observedMigrationSettings) -join '|') -ceq
+            (@($expectedMigrationSettings | Sort-Object -Unique) -join '|') -and
+        (@($observedRetainedSettings) -join '|') -ceq
+            (@($expectedRetainedSettings | Sort-Object -Unique) -join '|')
+    }
     coverage_passed = $coverage.result -eq 'passed'
     composition_completed =
         $composition.result -eq 'completed' -and
@@ -192,6 +258,24 @@ $summary = [ordered]@{
     receipt_type = 'c8_native_zero_composition_summary'
     generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
     run_id = $RunId
+    artifact_stage = if ($ArtifactStage -eq 'legacy') {
+        'legacy_candidate'
+    } else { $ArtifactStage }
+    artifact_boundary = if ($artifactBoundary) {
+        [ordered]@{
+            stage = [string]$artifactBoundary.stage
+            result = [string]$artifactBoundary.result
+            dll_sha256 = [string]$artifactBoundary.dll_sha256
+        }
+    } else { $null }
+    runtime_control_plan = if ($runtimeControlPlan) {
+        [ordered]@{
+            artifact_stage = [string]$runtimeControlPlan.artifact_stage
+            migration_settings = @($runtimeControlPlan.migration_settings)
+            retained_settings = @($runtimeControlPlan.retained_settings)
+            result = [string]$runtimeControlPlan.result
+        }
+    } else { $null }
     result = if ($failed.Count -eq 0) { 'passed' } else { 'failed' }
     scenario_sha256 = $scenarioHash
     clients = $clientResults
