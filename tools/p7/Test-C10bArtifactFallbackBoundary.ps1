@@ -7,8 +7,11 @@ Prove the C10b migration-candidate or final no-fallback mod boundary.
 The candidate gate freezes the exact native-cutover escape-hatch inventory so
 it cannot drift before the first P7 proof. The final gate reverses the
 polarity: every migration control and restoration branch marker must be absent
-from both production source and the compiled DLL, while the native-use ledger
-and its mapped funnel patches must remain present.
+from both production source and the compiled DLL, while the native-use ledger,
+mapped funnel patches, and replacement runner families must remain present.
+Final source must also make each replacement selection seam and poison/ledger
+policy explicitly permanent; deleting names while disabling the implementation
+is a failed artifact.
 
 This tool is read-only unless OutputPath is supplied. It never contacts P7,
 starts a game, deploys an artifact, or changes a runtime configuration.
@@ -219,9 +222,175 @@ $retainedGuardMarkers = @(
     'NativeHandshakeLedgerPatches'
     'NativeZdoLedgerPatches'
     'NativeRoutedRpcLedgerPatches'
+    'DirectControlCutoverRunner'
+    'RoutedRpcCutoverRunner'
+    'ShipCutoverRunner'
+    'SaddleCutoverRunner'
+    'CreatureAiCutoverRunner'
+    'ContainerCutoverRunner'
+    'ZdoJournalCutoverRunner'
+    'OwnershipLeaseCutoverRunner'
+    'WorldZoneCutoverRunner'
+    'LumberjacksMotionRunner'
+    'LogicalPeerCutoverRunner'
+    'LumberjacksGameSessionRunner'
+    'NativeAutotestRequest'
     'native-network-use.jsonl'
     'native_total'
     'poison_trips'
+    'steam_free_cold_join'
+    'lumberjacks_gateway_url'
+    'nativeNetworkEvidenceRunId'
+    'lumberjacksGatewayUrl'
+    'portalTraversalEnabled'
+    'cutoverResidueCleanup'
+)
+
+# Marker absence alone is not enough for the final artifact. A mechanical
+# deletion could remove every flag while also deleting or disabling the
+# replacement path. These requirements bind finalization to the existing
+# runner seams: their selection methods become literal permanent policy, the
+# cold-join session no longer waits for a migration flag or local Player, and
+# the logical-peer ZRpc virtualization survives removal of socket quarantine.
+$finalSemanticRequirements = @(
+    [ordered]@{
+        name = 'native_ledger_permanent'
+        relative_path = 'Core\Services\NativeNetworkLedger.cs'
+        required_pattern = 'static\s+bool\s+LedgerEnabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'native_poison_permanent'
+        relative_path = 'Core\Services\NativeNetworkLedger.cs'
+        required_pattern = 'static\s+bool\s+PoisonEnabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'direct_control_permanent_policy'
+        relative_path = 'Core\Services\DirectControlCutoverRunner.cs'
+        required_pattern = 'static\s+bool\s+Enabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'direct_control_update_uses_permanent_policy'
+        relative_path = 'Core\Services\DirectControlCutoverRunner.cs'
+        required_pattern = 'if\s*\(\s*_disposed\s*\|\|\s*!Enabled\s*\(\s*\)'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'direct_control_suppression_uses_permanent_policy'
+        relative_path = 'Core\Services\DirectControlCutoverRunner.cs'
+        required_pattern = '\|\|\s*!Enabled\s*\(\s*\)\s*\|\|\s*ZNet\.instance\s*==\s*null'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'direct_control_snapshot_uses_permanent_policy'
+        relative_path = 'Core\Services\DirectControlCutoverRunner.cs'
+        required_pattern = '\["enabled"\]\s*=\s*Enabled\s*\(\s*\)'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'routed_rpc_permanent'
+        relative_path = 'Core\Services\RoutedRpcCutoverRunner.cs'
+        required_pattern = 'static\s+bool\s+CutoverEnabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'ship_permanent'
+        relative_path = 'Core\Services\ShipCutoverRunner.cs'
+        required_pattern = 'static\s+bool\s+Enabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'saddle_permanent'
+        relative_path = 'Core\Services\SaddleCutoverRunner.cs'
+        required_pattern = 'static\s+bool\s+Enabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'creature_ai_permanent'
+        relative_path = 'Core\Services\CreatureAiCutoverRunner.cs'
+        required_pattern = 'static\s+bool\s+Enabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'container_permanent'
+        relative_path = 'Core\Services\ContainerCutoverRunner.cs'
+        required_pattern = 'static\s+bool\s+Enabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'zdo_journal_permanent'
+        relative_path = 'Core\Services\ZdoJournalCutoverRunner.cs'
+        required_pattern = 'static\s+bool\s+Enabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'zdo_canonical_session_permanent'
+        relative_path = 'Core\Services\ZdoJournalCutoverRunner.cs'
+        required_pattern = 'static\s+bool\s+CanonicalEnabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'ownership_lease_permanent'
+        relative_path = 'Core\Services\OwnershipLeaseCutoverRunner.cs'
+        required_pattern = 'static\s+bool\s+Enabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'world_zone_permanent'
+        relative_path = 'Core\Services\WorldZoneCutoverRunner.cs'
+        required_pattern = 'public\s+static\s+bool\s+Selected\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'motion_authority_permanent'
+        relative_path = 'Core\Services\LumberjacksMotionRunner.cs'
+        required_pattern = 'static\s+bool\s+AuthorityEnabled\s*\(\s*\)\s*=>\s*true\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'logical_peer_server_permanent'
+        relative_path = 'Core\Services\LogicalPeerCutoverRunner.cs'
+        required_pattern = 'return\s+ZNet\.instance\s*!=\s*null\s*&&\s*ZNet\.instance\.IsServer\s*\(\s*\)\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'canonical_server_session_permanent'
+        relative_path = 'Core\Services\LumberjacksGameSessionRunner.cs'
+        required_pattern = 'if\s*\(\s*ZNet\.instance\.IsServer\s*\(\s*\)\s*\)\s*return\s+ZNet\.GetUID\s*\(\s*\)\s*!=\s*0\s*;'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'cold_join_does_not_require_local_player'
+        relative_path = 'Core\Services\LumberjacksGameSessionRunner.cs'
+        required_pattern = 'return\s+!string\.IsNullOrWhiteSpace\s*\(\s*PluginConfig\.LumberjacksEnrollmentId\.Value\s*\)'
+        forbidden_pattern = 'Player\.m_localPlayer\s*==\s*null'
+    }
+    [ordered]@{
+        name = 'motion_region_binding_permanent'
+        relative_path = 'Core\Services\LumberjacksGameSessionRunner.cs'
+        required_pattern = 'if\s*\(\s*_localRole\s*==\s*"client"\s*\)\s*\{\s*if\s*\(\s*!TryQueueEnvelope\s*\(\s*"join_region"'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'logical_rpc_update_virtualization_retained'
+        relative_path = 'Patches\NativeNetworkPatches.cs'
+        required_pattern = 'LogicalPeerCutoverRunner\.TryVirtualizeRpcUpdate'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'logical_connection_status_virtualization_retained'
+        relative_path = 'Patches\NativeNetworkPatches.cs'
+        required_pattern = 'LogicalPeerCutoverRunner\.VirtualizeConnectionStatus'
+        forbidden_pattern = ''
+    }
+    [ordered]@{
+        name = 'direct_control_suppression_patch_retained'
+        relative_path = 'Patches\NativeNetworkPatches.cs'
+        required_pattern = 'DirectControlCutoverRunner\.SuppressNativeInvoke'
+        forbidden_pattern = ''
+    }
 )
 
 $dllBytes = [IO.File]::ReadAllBytes($dll)
@@ -294,6 +463,34 @@ $retainedEvidence = @(
         }
     }
 )
+$finalSemanticEvidence = @(
+    foreach ($requirement in $finalSemanticRequirements) {
+        $semanticPath = Join-Path $sourceDirectory $requirement.relative_path
+        $semanticText = if (Test-Path -LiteralPath $semanticPath -PathType Leaf) {
+            Get-Content -LiteralPath $semanticPath -Raw -Encoding utf8
+        } else { '' }
+        $requiredFound = [regex]::IsMatch(
+            $semanticText,
+            [string]$requirement.required_pattern,
+            [Text.RegularExpressions.RegexOptions]::Singleline)
+        $forbiddenFound =
+            -not [string]::IsNullOrWhiteSpace(
+                [string]$requirement.forbidden_pattern) -and
+            [regex]::IsMatch(
+                $semanticText,
+                [string]$requirement.forbidden_pattern,
+                [Text.RegularExpressions.RegexOptions]::Singleline)
+        [ordered]@{
+            name = [string]$requirement.name
+            relative_path = [string]$requirement.relative_path
+            required_found = $requiredFound
+            forbidden_found = $forbiddenFound
+            applies = $Stage -eq 'final'
+            passed = $Stage -ne 'final' -or
+                ($requiredFound -and -not $forbiddenFound)
+        }
+    }
+)
 
 $checks = [ordered]@{
     required_source_files_present = $requiredSourceFilesPresent
@@ -312,6 +509,8 @@ $checks = [ordered]@{
         @($migrationEvidence | Where-Object { -not $_.passed }).Count -eq 0
     retained_native_guard_complete =
         @($retainedEvidence | Where-Object { -not $_.passed }).Count -eq 0
+    final_permanent_semantics_exact =
+        @($finalSemanticEvidence | Where-Object { -not $_.passed }).Count -eq 0
 }
 $failed = @($checks.GetEnumerator() | Where-Object { -not [bool]$_.Value })
 $receipt = [ordered]@{
@@ -338,6 +537,7 @@ $receipt = [ordered]@{
     }
     migration_markers = $migrationEvidence
     retained_native_guard_markers = $retainedEvidence
+    final_semantic_requirements = $finalSemanticEvidence
 }
 
 Write-Receipt $receipt

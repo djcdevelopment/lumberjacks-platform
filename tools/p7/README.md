@@ -38,3 +38,10 @@ pair, P7's loaded image and both visible DLL copies, the server/unit/Gateway
 state, and the i5 lane before it generates a fresh single-use C8 manifest or
 launches either game client. Final promotion and final proof must both name
 `-ArtifactStage final`; their receipts record that stage.
+
+The final artifact boundary is not a name-deletion check. It also retains every
+replacement runner family in source and the compiled DLL and requires the final
+source to make ledger, poison, direct control, routed RPC, journal, ownership,
+world/zone, motion, logical-peer, ship, saddle, creature, and container selection
+explicitly permanent. A marker-free artifact with a disabled or deleted
+replacement path is refused before promotion.

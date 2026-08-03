@@ -1365,9 +1365,11 @@ falsifiers.
 - The release cutter, pair promoter, P7 proof wrapper, and physical two-client harness
   now require an explicit `candidate` or `final` artifact stage. The candidate gate
   freezes the exact temporary fallback inventory; the final gate rejects any remaining
-  fallback source or compiled-DLL marker while retaining the native-use ledger and patch
-  guards. A final release cut defaults to a clean rebuild and cannot package an r41-style
-  candidate by accident.
+  fallback source or compiled-DLL marker while retaining the native-use ledger, patch
+  guards, and every replacement runner family. It also requires the final source to make
+  each replacement selector plus ledger and poison explicitly permanent, so deleting or
+  renaming controls while disabling an implementation cannot pass. A final release cut
+  defaults to a clean rebuild and cannot package an r41-style candidate by accident.
 - Candidate runs may arm the nine named migration controls and emit the eight client
   migration request fields. Final runs must plan and emit zero of them. They retain only
   the evidence run id, Gateway URL, portal traversal, residue cleanup, and Steam-free
