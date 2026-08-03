@@ -1,5 +1,12 @@
 # P7 C10b tools
 
+`Test-C10bArtifactFallbackBoundary.ps1` is the read-only artifact gate. In
+`candidate` stage it freezes the exact remaining migration controls before the
+first P7 proof. In `final` stage it requires those controls and native-restoration
+markers to be absent from production source and the compiled DLL, while requiring
+the native-use ledger and all mapped funnel patch families to remain. Pass the new
+final release id explicitly when the post-deletion pair is cut.
+
 `Invoke-C10bCandidateProof.ps1` is the fail-closed wrapper for the retained C8
 two-client scenario against P7. It does not start the VM or promote artifacts.
 Those are separate, rollback-aware operations:
@@ -17,6 +24,7 @@ Those are separate, rollback-aware operations:
 4. Run `tools/p7/Invoke-C10bCandidateProof.ps1 -Action preflight
    -BootReceiptPath <receipt>`; only a fully green receipt admits `-Action run`.
 
-The wrapper verifies the local release pair, P7's loaded image and both visible
-DLL copies, the server/unit/Gateway state, and the i5 lane before it generates a
-fresh single-use C8 manifest or launches either game client.
+The wrapper first passes the local candidate artifact through the fallback
+inventory gate, then verifies the local release pair, P7's loaded image and both
+visible DLL copies, the server/unit/Gateway state, and the i5 lane before it
+generates a fresh single-use C8 manifest or launches either game client.

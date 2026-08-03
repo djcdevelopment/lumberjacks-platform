@@ -61,6 +61,20 @@ $artifactRelease = Get-AssemblyMetadataValue `
     -Key 'LumberjacksModReleaseId'
 $actualHash =
     (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
+$fallbackBoundaryVerifier = Join-Path $repoRoot `
+    'tools\p7\Test-C10bArtifactFallbackBoundary.ps1'
+$fallbackBoundaryOutput = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File $fallbackBoundaryVerifier `
+    -Stage candidate `
+    -DllPath $dll `
+    -ExpectedReleaseId $ReleaseId)
+$fallbackBoundaryVerified = $LASTEXITCODE -eq 0
+if (-not $fallbackBoundaryVerified) {
+    $fallbackBoundaryOutput | Write-Host
+    throw 'Candidate fallback inventory failed before any external P7 preflight.'
+}
+$fallbackBoundary =
+    ($fallbackBoundaryOutput -join [Environment]::NewLine) | ConvertFrom-Json
 $gatewayVerifier = Join-Path $repoRoot `
     'infra\gcp\p7\scripts\Test-GatewayImageRelease.ps1'
 
@@ -196,6 +210,7 @@ $bootReceiptValid =
 $checks = [ordered]@{
     release_id_matches_dll = $artifactRelease -eq $ReleaseId
     local_mod_hash_exact = $actualHash -eq $expectedHash
+    candidate_fallback_inventory_exact = $fallbackBoundaryVerified
     local_gateway_release_verified = $gatewayVerified
     local_gateway_image_present =
         $localGatewayImageId -match '^sha256:[0-9a-f]{64}$'
@@ -220,6 +235,13 @@ $receipt = [ordered]@{
     gateway_image = $GatewayImage
     gateway_image_id = $localGatewayImageId
     mod_sha256 = $actualHash
+    fallback_boundary = [ordered]@{
+        receipt_type = [string]$fallbackBoundary.receipt_type
+        stage = [string]$fallbackBoundary.stage
+        result = [string]$fallbackBoundary.result
+        dll_sha256 = [string]$fallbackBoundary.dll_sha256
+        checks = $fallbackBoundary.checks
+    }
     p7_status = [string]$vm.status
     p7_gateway_url = $p7GatewayUrl
     checks = $checks
