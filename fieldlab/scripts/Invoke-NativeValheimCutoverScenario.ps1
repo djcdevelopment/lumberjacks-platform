@@ -253,6 +253,26 @@ $serverControlTarget = @{
     RemoteBepInExConfigRoot = $ServerBepInExConfigRoot
     UseSudo = [bool]$ServerDockerRequiresSudo
 }
+
+function Invoke-RemoteGatewayJson([string] $Method, [string] $Path) {
+    if (-not $UseRemoteGateway) {
+        return Invoke-RestMethod -Method $Method -Uri "$OmenGatewayUrl$Path"
+    }
+    if ($Path -notmatch '^/valheim/[A-Za-z0-9._/-]+$') {
+        throw "Unsafe remote Gateway path: $Path"
+    }
+    $command = "curl --fail --silent --show-error -X $Method 'http://127.0.0.1:4000$Path'"
+    $oldAction = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $output = @(& ssh -o BatchMode=yes $ServerSshTarget $command 2>$null)
+    $exit = $LASTEXITCODE
+    $ErrorActionPreference = $oldAction
+    if ($exit -ne 0) { throw "Remote Gateway $Method $Path failed with exit $exit." }
+    $json = ($output -join [Environment]::NewLine)
+    $start = $json.IndexOf('{')
+    if ($start -lt 0) { throw "Remote Gateway $Method $Path returned no JSON." }
+    return $json.Substring($start) | ConvertFrom-Json
+}
 $completed = $false
 $gatewayTunnel = $null
 $serverDirectArmed = $false
@@ -1377,8 +1397,8 @@ try {
                 throw 'The correlated durable C3 drive was not observed before the deadline.'
             }
 
-            $beforeRestart =
-                Invoke-RestMethod -Method Get -Uri "$OmenGatewayUrl/valheim/zdo-journal/status"
+            $beforeRestart = Invoke-RemoteGatewayJson `
+                -Method Get -Path '/valheim/zdo-journal/status'
             if ([long]$beforeRestart.durable_objects -lt 1) {
                 throw 'The correlated C3 drive completed with zero durable Gateway objects.'
             }
@@ -1403,8 +1423,8 @@ try {
             $healthDeadline = (Get-Date).AddSeconds(90)
             do {
                 try {
-                    $afterRestart =
-                        Invoke-RestMethod -Method Get -Uri "$OmenGatewayUrl/valheim/zdo-journal/status"
+                    $afterRestart = Invoke-RemoteGatewayJson `
+                        -Method Get -Path '/valheim/zdo-journal/status'
                 } catch {
                     $afterRestart = $null
                 }
@@ -1593,15 +1613,12 @@ try {
 
     if ($EnableGatewayJournalRestartProof) {
         $worldEpoch = [string]$gatewayRestartReceipt.mutation.world_epoch
-        $finalRunStatus =
-            Invoke-RestMethod -Method Get -Uri (
-                "$OmenGatewayUrl/valheim/zdo-journal/status/$RunId/$worldEpoch")
-        $finalGlobalStatus =
-            Invoke-RestMethod -Method Get -Uri (
-                "$OmenGatewayUrl/valheim/zdo-journal/status")
-        $resetReceipt =
-            Invoke-RestMethod -Method Post -Uri (
-                "$OmenGatewayUrl/valheim/zdo-journal/reset/$worldEpoch")
+        $finalRunStatus = Invoke-RemoteGatewayJson `
+            -Method Get -Path "/valheim/zdo-journal/status/$RunId/$worldEpoch"
+        $finalGlobalStatus = Invoke-RemoteGatewayJson `
+            -Method Get -Path '/valheim/zdo-journal/status'
+        $resetReceipt = Invoke-RemoteGatewayJson `
+            -Method Post -Path "/valheim/zdo-journal/reset/$worldEpoch"
         Write-JsonAtomic `
             (Join-Path $runDirectory 'gateway-journal-final.json') `
             ([ordered]@{
