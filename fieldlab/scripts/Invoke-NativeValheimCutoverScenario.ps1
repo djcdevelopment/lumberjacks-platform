@@ -851,9 +851,11 @@ try {
     # does not escape embedded double quotes when building a native command
     # line, so the remote pattern must not contain any.
     $runIdPattern = 'request_id.:.' + $RunId + '-'
+    $runtimeReceiptPath = "$serverEvidenceRoot/runtime-control-receipts.jsonl"
     $usedRunIdCount = & ssh -o BatchMode=yes $ServerSshTarget (
-        "${serverPrivilegePrefix}grep -c '" + $runIdPattern + "' " +
-        "'$serverEvidenceRoot/runtime-control-receipts.jsonl' 2>/dev/null")
+        "${serverPrivilegePrefix}if test -f '" + $runtimeReceiptPath + "'; then " +
+        "grep -c '" + $runIdPattern + "' '" + $runtimeReceiptPath + "'; " +
+        "else exit 1; fi")
     if ($LASTEXITCODE -eq 0) {
         throw ("RunId '$RunId' already has $usedRunIdCount runtime-control receipts " +
             'on the server; RunIds are single-use - generate a fresh one.')
