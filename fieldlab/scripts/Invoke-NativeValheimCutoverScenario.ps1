@@ -853,7 +853,7 @@ try {
     $runIdPattern = 'request_id.:.' + $RunId + '-'
     $runtimeReceiptPath = "$serverEvidenceRoot/runtime-control-receipts.jsonl"
     $usedRunIdCount = & ssh -o BatchMode=yes $ServerSshTarget (
-        "${serverPrivilegePrefix}if test -f '" + $runtimeReceiptPath + "'; then " +
+        "if test -f '" + $runtimeReceiptPath + "'; then " +
         "grep -c '" + $runIdPattern + "' '" + $runtimeReceiptPath + "'; " +
         "else exit 1; fi")
     if ($LASTEXITCODE -eq 0) {
