@@ -238,10 +238,18 @@ if ([string]$vm.status -ne 'RUNNING') {
 if ([string]$vm.id -ne [string]$boot.instance_id) {
     throw 'Boot receipt belongs to a different P7 VM instance id.'
 }
-$currentBootId = (Invoke-Remote `
+$currentBootOutput = Invoke-Remote `
     'cat /proc/sys/kernel/random/boot_id' `
     'P7 boot identity preflight' `
-    60).Trim().ToLowerInvariant()
+    60
+$currentBootMatch = [regex]::Match(
+    $currentBootOutput,
+    '(?im)(?<![0-9a-f])[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![0-9a-f])')
+$currentBootId = if ($currentBootMatch.Success) {
+    $currentBootMatch.Value.ToLowerInvariant()
+} else {
+    ''
+}
 if ($currentBootId -ne [string]$boot.verified_boot_id) {
     throw "Boot receipt is stale for the current P7 boot: receipt=$($boot.verified_boot_id) current=$currentBootId"
 }
