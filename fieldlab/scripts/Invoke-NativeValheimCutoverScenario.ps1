@@ -473,7 +473,7 @@ function Copy-ServerFailureEvidenceBestEffort {
 function Get-ServerSaveFingerprint {
     $logCommand =
         "$serverDockerCommand logs --since 48h '$ServerContainer' 2>&1 | " +
-        "grep -E 'ZDOS:|ConnectPortals =>|Portal saved-connection hash join|spawned=|Loaded [0-9]+ locations'"
+        "grep -E 'ZDOS:|Loading [0-9]+ zdos|ConnectPortals =>|Portal saved-connection hash join|spawned=|Loaded [0-9]+ locations'"
     $logLines = & ssh -o BatchMode=yes -o ConnectTimeout=10 `
         $ServerSshTarget $logCommand
     if ($LASTEXITCODE -notin @(0, 1)) {
