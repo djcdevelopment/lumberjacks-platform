@@ -60,6 +60,15 @@ if ($Action -eq 'run' -and [string]::IsNullOrWhiteSpace($OutputPath)) {
     $OutputPath = Join-Path $repoRoot `
         "fieldlab\runs\p7-boot-determinism\$RunId\acceptance.json"
 }
+if ($Action -eq 'run') {
+    # The first remote capture intentionally happens before any boot fix is
+    # installed. Create the local receipt directory before that capture so a
+    # failed evidence write cannot strand P7 in its guarded running state.
+    $outputDirectory = Split-Path -Parent ([IO.Path]::GetFullPath($OutputPath))
+    if ($outputDirectory) {
+        New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+    }
+}
 
 function Write-Receipt([object] $Receipt) {
     if (-not [string]::IsNullOrWhiteSpace($OutputPath)) {
