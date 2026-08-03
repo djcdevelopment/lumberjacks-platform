@@ -441,6 +441,21 @@ function Read-AutotestRows([string] $RequestedRunId) {
     return $rows
 }
 
+function Read-RunRows(
+    [string] $Path,
+    [string] $RequestedRunId,
+    [int] $Tail = 256) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
+    $rows = @()
+    foreach ($line in Get-Content -LiteralPath $Path -Tail $Tail -ErrorAction SilentlyContinue) {
+        try {
+            $row = $line | ConvertFrom-Json -ErrorAction Stop
+            if ([string]$row.run_id -eq $RequestedRunId) { $rows += $row }
+        } catch { }
+    }
+    return $rows
+}
+
 function Wait-ForJoined(
     [string] $RequestedRunId,
     [int] $Seconds,
@@ -457,6 +472,32 @@ function Wait-ForJoined(
             Select-Object -Last 1
         if ($bootstrapFailed) {
             throw "Native bootstrap failed: $($bootstrapFailed.detail)"
+        }
+        $descriptorRejected = @(
+            Read-RunRows $worldZoneReceiptsPath $RequestedRunId 256 |
+                Where-Object {
+                    $_.state -eq 'descriptor_rejected_before_scene' -and
+                    (try {
+                        [DateTimeOffset]::Parse([string]$_.timestamp_utc) -gt
+                            $AfterUtc
+                    } catch { $false })
+                } |
+                Select-Object -Last 1)[0]
+        if ($descriptorRejected) {
+            throw "World descriptor rejected before scene: $($descriptorRejected.detail)"
+        }
+        $coldJoinFailed = @(
+            Read-RunRows $logicalPeerReceiptsPath $RequestedRunId 256 |
+                Where-Object {
+                    $_.state -eq 'cold_join_failed' -and
+                    (try {
+                        [DateTimeOffset]::Parse([string]$_.timestamp_utc) -gt
+                            $AfterUtc
+                    } catch { $false })
+                } |
+                Select-Object -Last 1)[0]
+        if ($coldJoinFailed) {
+            throw "Steam-free cold join failed: $($coldJoinFailed.detail)"
         }
         $recovered = $rows | Where-Object state -eq 'profile_recovered' | Select-Object -Last 1
         if ($recovered) { return $recovered }

@@ -423,6 +423,29 @@ public static class ValheimRoutedRpcAdmissions
                 "String,Single,Vector3"),
             P2("Step", ValheimRoutedRpcScope.Instance, "Int32,Vector3"),
 
+            // The bounded station-family review found these exact methods on
+            // ordinary vanilla interaction paths. Requests and mutations target
+            // the current ZDO owner; responses and presentation edges target a
+            // peer or Everybody. They must therefore cross the reliable routed
+            // lane once native fallback is poisoned, just like the P1 station
+            // methods below. Signatures and registrants are locked against the
+            // pinned extractor-v2 inventory by the shared admission tests.
+            P2("RPC_AnimateLever", ValheimRoutedRpcScope.Instance, ""),
+            P2("RPC_AnimateLeverReturn", ValheimRoutedRpcScope.Instance, ""),
+            P2("RPC_Attack", ValheimRoutedRpcScope.Instance, ""),
+            P2("RPC_HitNow", ValheimRoutedRpcScope.Instance, ""),
+            P2("RPC_IncinerateRespons", ValheimRoutedRpcScope.Instance,
+                "Int32"),
+            P2("RPC_RequestIncinerate", ValheimRoutedRpcScope.Instance,
+                "Int64"),
+            P2("RPC_SetFuel", ValheimRoutedRpcScope.Instance, "Single"),
+            P2("RPC_SetFuelAmount", ValheimRoutedRpcScope.Instance, "Single"),
+            P2("RPC_SetSlotVisual", ValheimRoutedRpcScope.Instance,
+                "Int32,String"),
+            P2("RPC_Tap", ValheimRoutedRpcScope.Instance, ""),
+            P2("RPC_ToggleOn", ValheimRoutedRpcScope.Instance, ""),
+            P2("RPC_UpdateEffects", ValheimRoutedRpcScope.Instance, ""),
+
             // Optional gameplay can legitimately invoke this on a remotely owned
             // player. Harpoon status processing debits the remote attacker, and an
             // authoritative fishing float can debit a rod owner held by another

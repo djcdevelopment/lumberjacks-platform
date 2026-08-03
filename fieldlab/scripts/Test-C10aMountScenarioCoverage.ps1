@@ -49,16 +49,26 @@ $i5ObserveTwo = Get-Action $i5 'i5-c10a-mount-observe-omen'
 $i5ReleaseTwo = Get-Action $i5 'i5-c10a-mount-second-release'
 $omenHold = Get-Action $omen 'omen-c10a-mount-proof-hold'
 $i5Hold = Get-Action $i5 'i5-c10a-mount-proof-hold'
+$spawn = Get-Action $omen 'omen-c10a-mount-spawn'
+$isRelevance = [string]$scenario.profile -eq 'c10a-vehicle-relevance'
+$omenServerHandoff = Get-Action $omen 'omen-c10a-server-handoff'
+$i5ServerObserve = Get-Action $i5 'i5-c10a-server-observe'
+$i5RelevanceLeave = Get-Action $i5 'i5-c10a-relevance-leave'
+$i5RelevanceEnter = Get-Action $i5 'i5-c10a-relevance-enter'
 
 $checks = [ordered]@{
-    profile_is_c10a_mount = [string]$scenario.profile -eq 'c10a-mount'
+    profile_is_c10a_mount_family =
+        [string]$scenario.profile -in @('c10a-mount', 'c10a-vehicle-relevance')
     run_id_matches = [string]$scenario.run_id -eq $RunId
     action_ids_unique_per_client = @(
         $scenario.actions |
             Group-Object { "$($_.client):$($_.id)" } |
             Where-Object Count -gt 1).Count -eq 0
     deterministic_spawn_and_two_replica_waits =
-        $null -ne (Get-Action $omen 'omen-c10a-mount-spawn') -and
+        $null -ne $spawn -and
+        [string]$spawn.kind -eq $(if ($isRelevance) {
+            'saddle_spawn_untagged'
+        } else { 'saddle_spawn' }) -and
         $null -ne (Get-Action $omen 'omen-c10a-mount-wait') -and
         $null -ne (Get-Action $i5 'i5-c10a-mount-wait')
     first_leg_pair_present =
@@ -105,6 +115,22 @@ $checks = [ordered]@{
         [string]$omenHold.kind -eq 'wait' -and [string]$i5Hold.kind -eq 'wait' -and
         [double]$omenHold.duration_seconds -ge 10 -and
         [double]$i5Hold.duration_seconds -ge 10
+    relevance_profile_has_bounded_leave_and_reenter =
+        (-not $isRelevance) -or (
+            $null -ne $omenServerHandoff -and
+            [string]$omenServerHandoff.kind -eq 'saddle_server_handoff' -and
+            $null -ne $i5ServerObserve -and
+            [string]$i5ServerObserve.kind -eq 'saddle_observe_server' -and
+            $null -ne $i5RelevanceLeave -and
+            [string]$i5RelevanceLeave.kind -eq 'saddle_relevance_leave' -and
+            $null -ne $i5RelevanceEnter -and
+            [string]$i5RelevanceEnter.kind -eq 'saddle_relevance_enter' -and
+            (Get-Index $i5 'i5-c10a-relevance-leave') -gt
+                (Get-Index $i5 'i5-c10a-server-observe') -and
+            (Get-Index $omen 'omen-c10a-relevance-leave-hold') -gt
+                (Get-Index $omen 'omen-c10a-server-handoff') -and
+            (Get-Index $i5 'i5-c10a-relevance-enter') -gt
+                (Get-Index $i5 'i5-c10a-relevance-leave'))
 }
 
 $failed = @($checks.GetEnumerator() | Where-Object { -not [bool]$_.Value })

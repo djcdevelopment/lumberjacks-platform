@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "experiment_id": "m7-e04-vehicle-relevance",
+  "scenario_id": "third-recipient-enter-leave-v1",
+  "seed": 414,
+  "plane": "relevance",
+  "duration_seconds": 15,
+  "actors": [
+    { "id": "owner", "trajectory": "near" },
+    { "id": "observer", "trajectory": "leave" },
+    { "id": "third", "trajectory": "outside-enter-hysteresis-leave-reenter" }
+  ],
+  "objects": {
+    "generator": "existing_untagged_vehicle",
+    "count": 1,
+    "classes": ["ship", "mount"]
+  },
+  "policy": {
+    "name": "producer_direct_per_observer",
+    "near_meters": 30,
+    "outer_meters": 64,
+    "mid_hz": 5
+  },
+  "driver": "pure",
+  "stop_rules": [
+    "third_recipient_missed_enter",
+    "third_recipient_missed_leave",
+    "cross_recipient_edge_coupling"
+  ],
+  "parameters": {
+    "hysteresis_meters": 8
+  }
+}

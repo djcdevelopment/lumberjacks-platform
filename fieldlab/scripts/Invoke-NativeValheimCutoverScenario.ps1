@@ -218,6 +218,7 @@ $serverLogicalPeerDisarmError = $null
 $serverPoisonArmed = $false
 $serverPoisonReceipts = @()
 $serverPoisonDisarmError = $null
+$serverRunContextEstablished = $false
 $residueCleanupReceipt = $null
 $residueCleanupError = $null
 $vehicleSummaryError = $null
@@ -504,6 +505,18 @@ function Wait-GatewayCutoverReady {
 
 try {
     New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
+    # Every reducer must inspect the exact manifest that drove the clients.  Keeping
+    # this only for the C8 profile let later profile-specific reducers silently
+    # treat a missing scenario as a different profile and bypass conditional gates.
+    $retainedScenario = Join-Path $runDirectory 'scenario.json'
+    if (-not [IO.Path]::GetFullPath($scenario).Equals(
+            [IO.Path]::GetFullPath($retainedScenario),
+            [StringComparison]::OrdinalIgnoreCase)) {
+        Copy-Item -LiteralPath $scenario -Destination $retainedScenario -Force
+    }
+    $scenario = $retainedScenario
+    $scenarioName = 'scenario.json'
+    $remoteScenarioPath = "$remoteScenarioDirectory/$scenarioName"
     if ($scenarioDocument.profile -eq 'c6') {
         $coveragePath = Join-Path $runDirectory 'c6-scenario-coverage.json'
         $coverageOutput =
@@ -534,7 +547,7 @@ try {
         }
         $coverageOutput | Write-Host
     }
-    if ($scenarioDocument.profile -eq 'c10a-mount') {
+    if ($scenarioDocument.profile -in @('c10a-mount', 'c10a-vehicle-relevance')) {
         $coveragePath = Join-Path $runDirectory 'c10a-mount-scenario-coverage.json'
         $coverageOutput =
             & (Join-Path $PSScriptRoot 'Test-C10aMountScenarioCoverage.ps1') `
@@ -545,7 +558,7 @@ try {
             Get-Content -LiteralPath $coveragePath -Raw -Encoding utf8 |
             ConvertFrom-Json
         if ($coverageReceipt.result -ne 'passed') {
-            throw 'C10a mount rider/reclaim choreography is incomplete; no remote state was changed.'
+            throw 'C10a mount/relevance choreography is incomplete; no remote state was changed.'
         }
         $coverageOutput | Write-Host
     }
@@ -594,15 +607,6 @@ try {
         throw "Gateway image '$GatewayImage' is unavailable after release verification."
     }
     if ($EnableC8Composition) {
-        $retainedScenario = Join-Path $runDirectory 'scenario.json'
-        if (-not [IO.Path]::GetFullPath($scenario).Equals(
-                [IO.Path]::GetFullPath($retainedScenario),
-                [StringComparison]::OrdinalIgnoreCase)) {
-            Copy-Item -LiteralPath $scenario -Destination $retainedScenario -Force
-            $scenario = $retainedScenario
-            $scenarioName = 'scenario.json'
-            $remoteScenarioPath = "$remoteScenarioDirectory/$scenarioName"
-        }
         $coveragePath = Join-Path $runDirectory 'c8-scenario-coverage.json'
         $coverageOutput =
             & (Join-Path $PSScriptRoot 'Test-C8ScenarioCoverage.ps1') `
@@ -616,10 +620,6 @@ try {
             throw 'C8 scenario coverage is incomplete; no remote state was changed.'
         }
         $coverageOutput | Write-Host
-        $saveIntegrityBefore = Get-Am4SaveFingerprint
-        Write-JsonAtomic `
-            (Join-Path $runDirectory 'save-integrity-before.json') `
-            $saveIntegrityBefore
     }
     & (Join-Path $i5Tools 'Test-I5Link.ps1')
     if ($LASTEXITCODE -ne 0) {
@@ -627,8 +627,8 @@ try {
     }
 
     # RunIds are single-use: runtime-control request ids derive from them and
-    # the server mod refuses replays (duplicate_request_id) from a durable
-    # dedup set. Refuse reuse before any remote state is armed.
+    # the server mod refuses replays from a durable dedup set. Check before
+    # deploying/restarting AM4 so a stale manifest cannot change any machine.
     # Dot-wildcards stand in for the JSON quote characters: PowerShell 5.1
     # does not escape embedded double quotes when building a native command
     # line, so the remote pattern must not contain any.
@@ -642,6 +642,37 @@ try {
     }
     if ($LASTEXITCODE -ne 1) {
         throw "RunId preflight could not read the server runtime-control receipts (ssh exit $LASTEXITCODE)."
+    }
+
+    # A physical run is one deployment transaction.  Previously callers had to
+    # remember a separate AM4 deploy, which allowed r37 clients/Gateway to launch
+    # against an r36 server and strand both games at a black cold-join screen.
+    $am4DeployPath = Join-Path $runDirectory 'am4-deploy.json'
+    $am4DeployOutput =
+        & (Join-Path $repoRoot 'tools\am4\Deploy-NetworkSense.ps1') `
+            -DllPath $dll `
+            -Container $ServerContainer `
+            -OutputPath $am4DeployPath
+    $am4Deploy =
+        Get-Content -LiteralPath $am4DeployPath -Raw -Encoding utf8 |
+        ConvertFrom-Json
+    $expectedDllHash =
+        (Get-FileHash -Algorithm SHA256 -LiteralPath $dll).Hash.ToLowerInvariant()
+    if ([string]$am4Deploy.result -ne 'passed' -or
+        -not [bool]$am4Deploy.plugin_loaded -or
+        -not [bool]$am4Deploy.server_ready -or
+        [string]$am4Deploy.local_sha256 -ne $expectedDllHash -or
+        [string]$am4Deploy.host_sha256 -ne $expectedDllHash -or
+        [string]$am4Deploy.container_sha256 -ne $expectedDllHash) {
+        throw 'AM4 did not load the exact candidate DLL; no client was launched.'
+    }
+    $am4DeployOutput | Write-Host
+
+    if ($EnableC8Composition) {
+        $saveIntegrityBefore = Get-Am4SaveFingerprint
+        Write-JsonAtomic `
+            (Join-Path $runDirectory 'save-integrity-before.json') `
+            $saveIntegrityBefore
     }
 
     $gatewayTunnel = Start-Process `
@@ -668,6 +699,7 @@ try {
             -RequestId "$RunId-direct-run"
         if ($LASTEXITCODE -ne 0) { throw 'Server run-id control failed.' }
         $serverControlReceipts += (($runOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+        $serverRunContextEstablished = $true
 
         $armOutput = & $serverControl `
             -Setting directControlCutoverEnabled `
@@ -687,6 +719,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Server routed run-id control failed.' }
         $serverRoutedReceipts +=
             (($runOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+        $serverRunContextEstablished = $true
 
         $gatewayOutput = & $serverControl `
             -Setting lumberjacksGatewayUrl `
@@ -1404,52 +1437,63 @@ try {
             Write-Warning ("i5 failure evidence retrieval failed: " + $_.Exception.Message)
         }
     }
-    Copy-ServerFailureEvidenceBestEffort
+    if ($serverRunContextEstablished -or $completed) {
+        Copy-ServerFailureEvidenceBestEffort
+    }
     if ($gatewayTunnel -and -not $gatewayTunnel.HasExited) {
         Stop-Process -Id $gatewayTunnel.Id -Force -ErrorAction SilentlyContinue
     }
-    # Residue hygiene, unconditional: destroy this run's leaked synthetic
-    # drive/probe objects. A completed run receipts destroyed=0 (steady-state
-    # proof); an abort is exactly where the leak happens (full32/full33 grew
-    # zone 35,-1 from 1245 to 1790 and broke bootstrap convergence). Failure
-    # here is recorded but never masks the run's own outcome.
-    try {
-        $residueCleanupOutput =
-            & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
-                -Setting cutoverResidueCleanup `
-                -Value $RunId `
-                -RequestId "$RunId-residue-cleanup" `
-                -WaitSeconds 30
-        if ($LASTEXITCODE -eq 0) {
-            $residueCleanupReceipt =
-                (($residueCleanupOutput -join [Environment]::NewLine) |
-                    ConvertFrom-Json)
-            if ($completed -and $scenarioDocument.profile -in @('c10a-mount', 'c10a-creature')) {
-                $effect = [string]$residueCleanupReceipt.effect
-                if ($effect -notmatch '(?:^| )matched=1(?: |$)' -or
-                    $effect -notmatch '(?:^| )destroyed=1(?: |$)' -or
-                    $effect -notmatch '(?:^| )skipped_live_owner=0(?: |$)' -or
-                    $effect -notmatch '(?:^| )mount=1(?: |$)') {
-                    $residueCleanupError =
-                        "C10a mount/creature cleanup did not destroy exactly one tagged mount: $effect"
+    # Once a server run context exists, destroy that run's leaked synthetic
+    # drive/probe objects. Preflight-only failures cannot have created residue
+    # and must not pay for a multi-million-ZDO scan or copy full server logs.
+    # Failure here is recorded but never masks the run's own outcome.
+    if ($serverRunContextEstablished -or $completed) {
+        try {
+            $residueCleanupOutput =
+                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    -Setting cutoverResidueCleanup `
+                    -Value $RunId `
+                    -RequestId "$RunId-residue-cleanup" `
+                    -WaitSeconds 30
+            if ($LASTEXITCODE -eq 0) {
+                $residueCleanupReceipt =
+                    (($residueCleanupOutput -join [Environment]::NewLine) |
+                        ConvertFrom-Json)
+                if ($completed -and $scenarioDocument.profile -in @(
+                        'c10a-mount', 'c10a-vehicle-relevance', 'c10a-creature')) {
+                    $effect = [string]$residueCleanupReceipt.effect
+                    if ($effect -notmatch '(?:^| )matched=1(?: |$)' -or
+                        $effect -notmatch '(?:^| )destroyed=1(?: |$)' -or
+                        $effect -notmatch '(?:^| )skipped_live_owner=0(?: |$)' -or
+                        $effect -notmatch '(?:^| )mount=1(?: |$)') {
+                        $residueCleanupError =
+                            "C10a mount/creature cleanup did not destroy exactly one expected mount: $effect"
+                    }
+                    if ($scenarioDocument.profile -eq 'c10a-vehicle-relevance' -and
+                        $effect -notmatch '(?:^| )untagged_tracked=1(?: |$)') {
+                        $residueCleanupError =
+                            "C10a relevance cleanup did not destroy the exact tracked untagged mount: $effect"
+                    }
                 }
-            }
-            if ($completed -and $scenarioDocument.profile -eq 'c10a-container') {
-                $effect = [string]$residueCleanupReceipt.effect
-                if ($effect -notmatch '(?:^| )matched=1(?: |$)' -or
-                    $effect -notmatch '(?:^| )destroyed=1(?: |$)' -or
-                    $effect -notmatch '(?:^| )skipped_live_owner=0(?: |$)' -or
-                    $effect -notmatch '(?:^| )container=1(?: |$)') {
-                    $residueCleanupError =
-                        "C10a container cleanup did not destroy exactly one tagged container: $effect"
+                if ($completed -and $scenarioDocument.profile -eq 'c10a-container') {
+                    $effect = [string]$residueCleanupReceipt.effect
+                    if ($effect -notmatch '(?:^| )matched=1(?: |$)' -or
+                        $effect -notmatch '(?:^| )destroyed=1(?: |$)' -or
+                        $effect -notmatch '(?:^| )skipped_live_owner=0(?: |$)' -or
+                        $effect -notmatch '(?:^| )container=1(?: |$)') {
+                        $residueCleanupError =
+                            "C10a container cleanup did not destroy exactly one tagged container: $effect"
+                    }
                 }
+            } else {
+                $residueCleanupError =
+                    "Server residue cleanup exited $LASTEXITCODE."
             }
-        } else {
-            $residueCleanupError =
-                "Server residue cleanup exited $LASTEXITCODE."
+        } catch {
+            $residueCleanupError = $_.Exception.Message
         }
-    } catch {
-        $residueCleanupError = $_.Exception.Message
+    } else {
+        $residueCleanupError = 'Residue cleanup was not required before server arming.'
     }
     if ($serverPoisonArmed) {
         try {
@@ -1785,7 +1829,7 @@ try {
             Write-Warning ("C10a vehicle reducer failed: " + $_.Exception.Message)
         }
     }
-    if ($scenarioDocument.profile -eq 'c10a-mount') {
+    if ($scenarioDocument.profile -in @('c10a-mount', 'c10a-vehicle-relevance')) {
         # Run the reducer out-of-process so its fail-closed exit code cannot
         # interrupt this finally block. Failed scenarios need the same
         # correlated receipt as successful ones, after server logs and exact

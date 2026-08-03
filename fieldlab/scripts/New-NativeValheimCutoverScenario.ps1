@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'c10a-vehicle', 'c10a-mount', 'c10a-creature', 'c10a-container', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'c10a-vehicle', 'c10a-mount', 'c10a-vehicle-relevance', 'c10a-creature', 'c10a-container', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -109,13 +109,18 @@ if ($Profile -eq 'c10a-stamina') {
     )
 }
 
-if ($Profile -eq 'c10a-mount') {
+if ($Profile -in @('c10a-mount', 'c10a-vehicle-relevance')) {
+    $mountSpawnKind = if ($Profile -eq 'c10a-vehicle-relevance') {
+        'saddle_spawn_untagged'
+    } else {
+        'saddle_spawn'
+    }
     $actions += @(
         New-Action 'omen-c10a-mount-safe-origin' 'omen' 'teleport_to' 20 0 0 0 '' '' 2211 33 -69
         New-Action 'i5-c10a-mount-safe-origin' 'i5' 'teleport_to' 20 0 0 0 '' '' 2211 33 -69
         New-Action 'omen-c10a-mount-origin-settle' 'omen' 'wait' 12 5
         New-Action 'i5-c10a-mount-origin-settle' 'i5' 'wait' 12 5
-        New-Action 'omen-c10a-mount-spawn' 'omen' 'saddle_spawn' 30
+        New-Action 'omen-c10a-mount-spawn' 'omen' $mountSpawnKind 30
         New-Action 'omen-c10a-mount-wait' 'omen' 'saddle_wait' 45
         New-Action 'i5-c10a-mount-wait' 'i5' 'saddle_wait' 45
         New-Action 'omen-c10a-mount-rendezvous' 'omen' 'saddle_rendezvous' 30
@@ -148,6 +153,25 @@ if ($Profile -eq 'c10a-mount') {
         New-Action 'omen-c10a-mount-proof-hold' 'omen' 'wait' 20 12
         New-Action 'i5-c10a-mount-proof-hold' 'i5' 'wait' 20 12
     )
+    if ($Profile -eq 'c10a-vehicle-relevance') {
+        # Hand the now-unridden ordinary mount to the canonical dedicated
+        # server. Both clients must advance on server-originated snapshots;
+        # this prevents an all-client-owner canary from hiding the normal
+        # server-owned autonomous mount path.
+        $actions += @(
+            New-Action 'omen-c10a-server-handoff' 'omen' 'saddle_server_handoff' 30
+            New-Action 'i5-c10a-server-observe' 'i5' 'saddle_observe_server' 30
+
+            # Move the non-owner observer across the live snapshot edge while
+            # AM4 keeps publishing the same ordinary, untagged Lox.
+            New-Action 'omen-c10a-relevance-leave-hold' 'omen' 'wait' 20 12
+            New-Action 'i5-c10a-relevance-leave' 'i5' 'saddle_relevance_leave' 30
+            New-Action 'i5-c10a-relevance-left-hold' 'i5' 'wait' 20 10
+            New-Action 'omen-c10a-relevance-enter-hold' 'omen' 'wait' 20 12
+            New-Action 'i5-c10a-relevance-enter' 'i5' 'saddle_relevance_enter' 30
+            New-Action 'i5-c10a-relevance-entered-hold' 'i5' 'wait' 20 10
+        )
+    }
 }
 
 if ($Profile -eq 'c10a-creature') {

@@ -11,5 +11,6 @@
     <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\ZdoIntegrationContract.cs" Link="Policies\ZdoIntegrationContract.cs" />
     <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\ZdoBandPolicy.cs" Link="Policies\ZdoBandPolicy.cs" />
     <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\ZdoFanoutPolicy.cs" Link="Policies\ZdoFanoutPolicy.cs" />
+    <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\VehicleSnapshotRelevanceSet.cs" Link="Policies\VehicleSnapshotRelevanceSet.cs" />
   </ItemGroup>
 </Project>

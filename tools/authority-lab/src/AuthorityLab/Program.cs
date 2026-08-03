@@ -424,6 +424,9 @@ internal static class AuthorityEngine
                 else if (scenario.Driver.Equals("gateway", StringComparison.OrdinalIgnoreCase)) ExecuteGatewayE03(scenario, events, invariants, predictions);
                 else ExecuteE03(scenario, events, invariants, predictions);
                 break;
+            case "m7-e04-vehicle-relevance":
+                ExecuteE04(scenario, events, invariants, predictions);
+                break;
             case "cre-e01-runtime-envelope":
                 ExecuteCreativeRuntimeEnvelope(scenario, events, invariants, predictions);
                 break;
@@ -2031,6 +2034,101 @@ internal static class AuthorityEngine
         invariants.Add(new() { Name = "already_delivered_is_local", Passed = events.Any(e => e.Payload.TryGetValue("disposition", out var d) && Equals(d, "AlreadyDelivered")), Detail = "one observer starts at revision 410" });
         predictions.Add(new() { Name = "cross_recipient_activity", Observed = "none expected; slow, duplicate, and already-delivered observers remain local" });
         predictions.Add(new() { Name = "scaling_shape", Observed = "emissions grow with in-band observers; this is not a 100-player capacity claim" });
+    }
+
+    private static void ExecuteE04(
+        Scenario s,
+        List<EventEnvelope> events,
+        List<InvariantResult> invariants,
+        List<PredictionObservation> predictions)
+    {
+        var relevance = new VehicleSnapshotRelevanceSet();
+        var hysteresis = s.DoubleParameter("hysteresis_meters", 8);
+        var trajectories = new[]
+        {
+            new[] { 4.0, 32.0, 90.0 },
+            new[] { 4.0, 32.0, 63.9 },
+            new[] { 4.0, 32.0, 70.0 },
+            new[] { 4.0, 80.0, 72.1 },
+            new[] { 4.0, 80.0, 64.0 },
+        };
+        var actorIds = new[] { "owner", "observer", "third" };
+        var peerIds = new[] { 101L, 202L, 303L };
+        var tick = 0;
+
+        foreach (var distances in trajectories)
+        {
+            var decisions = relevance.Reconcile(
+                "ship:7:42",
+                peerIds.Select((peerId, index) =>
+                    new VehicleSnapshotRelevanceCandidate(
+                        peerId, distances[index])),
+                s.Policy.OuterMeters,
+                hysteresis);
+            foreach (var decision in decisions)
+            {
+                var actorIndex = Array.IndexOf(peerIds, decision.PeerId);
+                events.Add(Event(s, tick, $"e04-{tick:000}-{decision.PeerId}",
+                    new Dictionary<string, object?>
+                    {
+                        ["object_id"] = "ship:7:42",
+                        ["recipient"] = actorIds[actorIndex],
+                        ["peer_id"] = decision.PeerId,
+                        ["distance_meters"] = decision.DistanceMeters,
+                        ["transition"] = decision.Transition.ToString(),
+                        ["deliver"] = decision.Deliver,
+                    }));
+            }
+            tick++;
+        }
+
+        var thirdTransitions = events
+            .Where(item => Equals(item.Payload["recipient"], "third"))
+            .Select(item => (string)item.Payload["transition"]!)
+            .ToArray();
+        var observerTransitions = events
+            .Where(item => Equals(item.Payload["recipient"], "observer"))
+            .Select(item => (string)item.Payload["transition"]!)
+            .ToArray();
+        var expectedThird = new[]
+        {
+            "Outside", "Entered", "Retained", "Left", "Entered"
+        };
+        invariants.Add(new()
+        {
+            Name = "third_recipient_enter_leave",
+            Passed = thirdTransitions.SequenceEqual(expectedThird),
+            Detail = $"observed={string.Join(",", thirdTransitions)}"
+        });
+        invariants.Add(new()
+        {
+            Name = "hysteresis_prevents_boundary_flap",
+            Passed = thirdTransitions[2] == "Retained",
+            Detail = $"outer={s.Policy.OuterMeters}; hysteresis={hysteresis}; retained_at=70"
+        });
+        invariants.Add(new()
+        {
+            Name = "recipient_edges_are_independent",
+            Passed = observerTransitions[3] == "Left" &&
+                     thirdTransitions[3] == "Left" &&
+                     events.Where(item => Equals(item.Payload["recipient"], "owner"))
+                         .All(item => Equals(item.Payload["transition"], "Entered") ||
+                                      Equals(item.Payload["transition"], "Retained")),
+            Detail = "owner remains relevant while observer and third leave on their own distances"
+        });
+        invariants.Add(new()
+        {
+            Name = "deliver_matches_open_edge",
+            Passed = events.All(item =>
+                (bool)item.Payload["deliver"]! ==
+                ((string)item.Payload["transition"]! is "Entered" or "Retained")),
+            Detail = "only entered and retained recipients receive the direct snapshot"
+        });
+        predictions.Add(new()
+        {
+            Name = "producer_direct_fanout",
+            Observed = "each native recipient is evaluated independently; far and left recipients receive no snapshot"
+        });
     }
 
     private static void ExecuteGatewayE02(Scenario s, List<EventEnvelope> events, List<InvariantResult> invariants, List<PredictionObservation> predictions)
