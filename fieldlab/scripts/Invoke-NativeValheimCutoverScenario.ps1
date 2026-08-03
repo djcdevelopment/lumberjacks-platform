@@ -222,6 +222,7 @@ $residueCleanupReceipt = $null
 $residueCleanupError = $null
 $vehicleSummaryError = $null
 $mountSummaryError = $null
+$containerSummaryError = $null
 $gatewayRestartReceipt = $null
 $gatewayImageReceipt = $null
 $saveIntegrityBefore = $null
@@ -254,6 +255,8 @@ function Copy-ServerFailureEvidenceBestEffort {
     foreach ($name in @(
             'ship-cutover.jsonl',
             'saddle-cutover.jsonl',
+            'container-cutover.jsonl',
+            'zdo-journal-cutover.jsonl',
             'routed-rpc-cutover.jsonl',
             'logical-peer-cutover.jsonl',
             'native-network-use.jsonl',
@@ -542,6 +545,21 @@ try {
             ConvertFrom-Json
         if ($coverageReceipt.result -ne 'passed') {
             throw 'C10a mount rider/reclaim choreography is incomplete; no remote state was changed.'
+        }
+        $coverageOutput | Write-Host
+    }
+    if ($scenarioDocument.profile -eq 'c10a-container') {
+        $coveragePath = Join-Path $runDirectory 'c10a-container-scenario-coverage.json'
+        $coverageOutput =
+            & (Join-Path $PSScriptRoot 'Test-C10aContainerScenarioCoverage.ps1') `
+                -ScenarioPath $scenario `
+                -RunId $RunId `
+                -OutputPath $coveragePath
+        $coverageReceipt =
+            Get-Content -LiteralPath $coveragePath -Raw -Encoding utf8 |
+            ConvertFrom-Json
+        if ($coverageReceipt.result -ne 'passed') {
+            throw 'C10a container contention/reconstruction choreography is incomplete; no remote state was changed.'
         }
         $coverageOutput | Write-Host
     }
@@ -1192,6 +1210,10 @@ try {
             'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/saddle-cutover.jsonl' `
             "$serverDirectory\saddle-cutover.jsonl"
         if ($LASTEXITCODE -ne 0) { throw 'Server saddle-cutover evidence retrieval failed.' }
+        & scp `
+            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/container-cutover.jsonl' `
+            "$serverDirectory\container-cutover.jsonl"
+        if ($LASTEXITCODE -ne 0) { throw 'Server container-cutover evidence retrieval failed.' }
     }
     if ($EnableZdoJournalCutover) {
         $serverDirectory = Join-Path $runDirectory 'server'
@@ -1394,6 +1416,16 @@ try {
                     $effect -notmatch '(?:^| )mount=1(?: |$)') {
                     $residueCleanupError =
                         "C10a mount cleanup did not destroy exactly one tagged mount: $effect"
+                }
+            }
+            if ($completed -and $scenarioDocument.profile -eq 'c10a-container') {
+                $effect = [string]$residueCleanupReceipt.effect
+                if ($effect -notmatch '(?:^| )matched=1(?: |$)' -or
+                    $effect -notmatch '(?:^| )destroyed=1(?: |$)' -or
+                    $effect -notmatch '(?:^| )skipped_live_owner=0(?: |$)' -or
+                    $effect -notmatch '(?:^| )container=1(?: |$)') {
+                    $residueCleanupError =
+                        "C10a container cleanup did not destroy exactly one tagged container: $effect"
                 }
             }
         } else {
@@ -1760,6 +1792,25 @@ try {
             Write-Warning ("C10a mount reducer failed: " + $_.Exception.Message)
         }
     }
+    if ($scenarioDocument.profile -eq 'c10a-container') {
+        try {
+            $containerSummaryOutput =
+                & powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
+                    (Join-Path $PSScriptRoot 'Write-C10aContainerSummary.ps1') `
+                    -RunDirectory $runDirectory `
+                    -RunId $RunId `
+                    -OutputPath (Join-Path $runDirectory 'c10a-container-summary.json')
+            $containerSummaryExitCode = $LASTEXITCODE
+            $containerSummaryOutput | Write-Host
+            if ($completed -and $containerSummaryExitCode -ne 0) {
+                $containerSummaryError =
+                    "C10a container reducer exited $containerSummaryExitCode."
+            }
+        } catch {
+            if ($completed) { $containerSummaryError = $_.Exception.Message }
+            Write-Warning ("C10a container reducer failed: " + $_.Exception.Message)
+        }
+    }
     if ($completed -and $serverDisarmError) {
         throw "Scenario completed but server direct-control disarm failed: $serverDisarmError"
     }
@@ -1792,6 +1843,9 @@ try {
     }
     if ($completed -and $mountSummaryError) {
         throw "C10a mount physical evidence did not satisfy the reducer: $mountSummaryError"
+    }
+    if ($completed -and $containerSummaryError) {
+        throw "C10a container physical evidence did not satisfy the reducer: $containerSummaryError"
     }
 }
 

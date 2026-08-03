@@ -114,6 +114,7 @@ $directControlReceiptsPath = Join-Path $autotestRoot 'direct-control-cutover.jso
 $routedRpcReceiptsPath = Join-Path $autotestRoot 'routed-rpc-cutover.jsonl'
 $shipCutoverReceiptsPath = Join-Path $autotestRoot 'ship-cutover.jsonl'
 $saddleCutoverReceiptsPath = Join-Path $autotestRoot 'saddle-cutover.jsonl'
+$containerCutoverReceiptsPath = Join-Path $autotestRoot 'container-cutover.jsonl'
 $zdoJournalReceiptsPath = Join-Path $autotestRoot 'zdo-journal-cutover.jsonl'
 $ownershipLeaseReceiptsPath = Join-Path $autotestRoot 'ownership-lease-cutover.jsonl'
 $worldZoneReceiptsPath = Join-Path $autotestRoot 'world-zone-cutover.jsonl'
@@ -697,6 +698,8 @@ function Write-RunReceipt([string] $Result, [object] $Preflight, [object] $Deplo
                 Copy-EvidenceFile $shipCutoverReceiptsPath 'ship-cutover.jsonl'
             saddle_cutover =
                 Copy-EvidenceFile $saddleCutoverReceiptsPath 'saddle-cutover.jsonl'
+            container_cutover =
+                Copy-EvidenceFile $containerCutoverReceiptsPath 'container-cutover.jsonl'
             zdo_journal_cutover =
                 Copy-EvidenceFile $zdoJournalReceiptsPath 'zdo-journal-cutover.jsonl'
             ownership_lease_cutover =

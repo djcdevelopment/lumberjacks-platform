@@ -36,7 +36,7 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
 | C8 | **Complete and runtime-reconfirmed on AM4 (2026-08-02)** | `native-20260731-c8-full44` + `full45` passed the full 49-action composition twice. `native-20260802-cutover-recovery5` repeated it on fresh GPU-rendered OMEN/i5 processes with the hash-identical candidate, 20/20 coverage, zero client/server native use or poison trips, clean save integrity, ownership contention, Gateway replay, and clean rejoin. The same window runtime-proved the session-scoped epoch across a real AM4 restart and rejected an old-session mutation. |
 | C9 | **Machine/artifact complete; subjective acceptance pending** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. The retained 2560×720 side-by-side clip covers both views; Derek's `smooth`/`rough`/`mixed` verdict remains open. |
-| C10 | **Selected ship and saddle gates accepted on AM4; breadth and finalization remain** | `m7-c10a-20260802-r4` passed the 49-action aligned-release reducer and exact r6 closed `UseStamina` in both physical directions. The split typed-control work now has two real receipts: r27 accepted a run-tagged tamed Lox in both rider directions, including disconnect reclaim, owner epochs, rider attachment, snapshot fan-out, stale fences, native-zero, and exact cleanup; r28 reconfirmed both Karve directions after r27 exposed and repaired a non-atomic helm-release/owner-transfer defect. Containers/stations, AI/creatures, arbitrary untagged mount/vehicle generalization, third-recipient/AoI relevance, P7 promotion, fallback deletion, and the post-deletion release remain. Earlier runs remain named falsifiers rather than claimed progress. |
+| C10 | **Selected ship, saddle, and container gates accepted on AM4; breadth and finalization remain** | `m7-c10a-20260802-r4` passed the 49-action aligned-release reducer and exact r6 closed `UseStamina` in both physical directions. r27 accepted a run-tagged tamed Lox, r28 reconfirmed both Karve directions after repairing atomic helm release/owner transfer, and exact r34 accepted a real two-client wood-chest transaction: four-copy barrier, one commit, one stale loser, two duplicate replays, exact inventory delta, fresh-process reconstruction, native-zero, and exact cleanup. Station-specific semantics remain unexercised rather than implied by that canary. AI/creatures, arbitrary untagged mount/vehicle generalization, third-recipient/AoI relevance, P7 promotion, fallback deletion, and the post-deletion release remain. Earlier runs remain named falsifiers rather than claimed progress. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
 waits for Steam Cloud profile visibility, promotes a completed interrupted `.fch.new`
@@ -760,7 +760,9 @@ comparison.
   the shared hashes require separate typed ship and saddle contracts and stay outside the
   generic lane. Exact r27 accepts the selected two-client saddle boundary; exact r28
   reconfirms the Karve boundary after repairing atomic helm release plus owner handoff.
-  The remaining component-family gates are containers/stations and AI/creatures. Arbitrary
+  Exact r34 accepts the selected ordered container transaction and both fresh-process
+  reconstructions. AI/creature is the remaining named component-family physical gate;
+  station-specific semantics remain explicit admitted/poisoned breadth. Arbitrary
   untagged mounts/vehicles and third-recipient/AoI relevance remain a separate
   generalization boundary. P2/P3 may ship behind the poison tripwire with the deferred
   bucket documented in the C10 gate.
@@ -817,8 +819,9 @@ comparison.
    admin recall. `UseStamina [VERIFY]` is physically accepted on exact r6. The
    vehicle-control `[VERIFY]` item is source-closed as a required ship/saddle contract
    split. Exact r27 accepts the selected saddle canary, and exact r28 reconfirms the ship
-   canary with atomic canonical helm release and owner handoff. Pass container/station and
-   AI/creature physical gates, then prove arbitrary untagged vehicle/mount handling plus a
+   canary with atomic canonical helm release and owner handoff. Exact r34 accepts the
+   selected container transaction; review station-specific breadth and pass the
+   AI/creature physical gate, then prove arbitrary untagged vehicle/mount handling plus a
    third recipient's AoI enter/leave and relevance-scoped fan-out. Wall 11's release
    alignment/runtime gate and interim WAL-discard rule are closed.
 3. **C10b â€” P7 promotion and close:** boot P7 per `RUNBOOK-boot-determinism.md`
@@ -1150,8 +1153,44 @@ the final post-deletion release remain open.
 
 These receipts close the selected two-client ship and saddle canaries, not arbitrary
 existing untagged vehicle/mount prefabs, a third distant recipient, AoI enter/leave, or
-relevance-scoped fan-out. Those generalization checks remain alongside container/station
-and AI/creature before C10b.
+relevance-scoped fan-out. At this checkpoint those generalization checks remained
+alongside container/station and AI/creature; the r34 section below closes the selected
+container transaction canary without claiming all station semantics.
+
+#### C10a container r29-r33 falsifiers and r34 physical acceptance — 2026-08-02
+
+- The selected container lane intercepts the actual `Container.TakeAll` call on each
+  physical client and carries a typed transaction through Lumberjacks. A server-held
+  barrier requires an original and exact duplicate from two distinct physical peers
+  before any mutation. One revision can commit; the other becomes stale; transaction
+  IDs replay their original result without another inventory credit.
+- The AM4 runner creates a real `piece_chest_wood`, grounds it from deterministic
+  `WorldGenerator` height, seeds one real Raspberry, serializes the actual inventory
+  into `ZDOVars.s_items` inside the canonical journal batch, and suppresses only the
+  tagged canary's proximity-owner reassignment. Both fresh processes explicitly refresh
+  durable interest before reconstructing the empty chest.
+- r29-r33 remain falsifiers for structural-wear tombstoning, missing Steam-free terrain
+  collision, fixed-delay contention ordering, stale vanilla inventory/native ownership,
+  and process-vs-logical-peer durable-interest identity. Each changed implementation or
+  proof and is not counted as a pass.
+- Exact paired r34 (`m7-c10a-20260802-r34`, mod `0.5.73`, DLL SHA-256
+  `6a076ce929b3d343883a88ba5e1f8a1601648299292b73ef1c1d37c815ec0635`) passed
+  preserved run `native-20260802-c10a-container-r34-1` against exact Gateway image
+  `sha256:7942aca93246505340822f939d3bab5a6236848e60f45874aa02ccbfafc55c51`.
+  OMEN won 10→11; i5 lost stale at 23→23; the server recorded one commit, one stale
+  rejection, and two duplicate replays. Both clients relaunched and reconstructed
+  revision 2, count 0, actual inventory 0, owner 0. All 19 reducer checks, composition,
+  native-zero, and exact one-container cleanup passed. Retained receipt:
+  `fieldlab/evidence/c10a-container-physical-acceptance/verification-summary.json`.
+- The harness process returned nonzero only because the first reducer predicate required
+  every owner-suppression row to be owner zero. The corrected reducer requires both
+  distinct attempted owners in the server-owned precommit phase and owner-zero
+  postcommit phase; rerunning it over the unchanged preserved run passed 19/19.
+
+This closes the selected two-client container transaction canary. It does not claim that
+smelter, cooking-station, or every station-specific RPC was physically invoked. Those
+admitted/poisoned paths remain breadth until exercised or contradicted; AI/creature is
+the remaining named component-family physical gate before C10b.
 
 **Candidate promotion**
 
@@ -1234,10 +1273,12 @@ at least one native Valheim client; composition slices require both clients.
 ## Estimated remaining cost
 
 After r4's physical acceptance, the two source classifications, r6's two-direction
-`UseStamina` acceptance, the vehicle-control split, r27's selected saddle acceptance, and
-r28's ship handoff reconfirmation, the honest remaining local burn-down is **two component
-family gates plus one vehicle/mount generalization and relevance gate**. Container/station
-and AI/creature each need source classification plus a physical receipt. The selected
+`UseStamina` acceptance, the vehicle-control split, r27's selected saddle acceptance,
+r28's ship handoff reconfirmation, and r34's selected container acceptance, the honest
+remaining local burn-down is **one component-family gate plus one vehicle/mount
+generalization and relevance gate**. AI/creature still needs source classification plus
+a physical receipt. Station-specific semantics remain unexercised breadth rather than a
+claim silently inherited from the selected wood-chest transaction. The selected
 vehicle/mount implementation must then prove arbitrary untagged targets and a third
 recipient's AoI enter/leave with relevance-scoped fan-out; the current saddle canary uses
 run-tagged construction and `Everybody` fan-out. C10b then has two bounded P7 reloads:
@@ -1246,7 +1287,8 @@ post-deletion artifact/reproof. C9 still needs Derek's one-word retained-clip ve
 
 | Remaining unit | Count |
 | --- | ---: |
-| Container/station and AI/creature physical family gates | 2 |
+| AI/creature physical family gate | 1 |
+| Station-specific admitted/poisoned breadth (no new physical gate absent contradiction) | 1 breadth review |
 | Untagged vehicle/mount plus third-recipient AoI/relevance generalization | 1 |
 | P7 candidate promotion and final no-fallback promotion | 2 reloads |
 | C9 subjective retained-clip verdict | 1 operator verdict |
@@ -1264,11 +1306,16 @@ and r6 `UseStamina` receipt remain retained. Exact r27 now closes the selected p
 saddle canary in both rider directions with authoritative reclaim, epochs, attachment,
 stale fencing, and native-zero. The exact r27 ship rerun falsified a stale helm-user
 handoff; r28 repaired it atomically and reconfirmed both physical ship directions with
-19/19 machine checks. Earlier stamina, ship, and saddle runs remain named falsifiers.
+19/19 machine checks. Exact r34 closes the selected container transaction with one real
+Raspberry, one commit, one stale loser, duplicate replay, fresh-process empty
+reconstruction, native-zero, and exact cleanup. Earlier stamina, ship, saddle, and
+container runs remain named falsifiers.
 
-The immediate next functional gate is **container/station**, followed by AI/creature,
-then arbitrary untagged vehicle/mount handling plus third-recipient AoI/relevance. Do not
-rebuild the epoch, Gateway replay, C8 composition, selected saddle/ship canaries, or
+The immediate next functional gate is **AI/creature**, followed by arbitrary untagged
+vehicle/mount handling plus third-recipient AoI/relevance. Station-specific admitted and
+poisoned paths receive a bounded breadth review before fallback deletion; they do not
+inherit a physical-pass claim from the chest. Do not rebuild the epoch, Gateway replay,
+C8 composition, selected saddle/ship canaries, the selected container transaction, or
 rendered-motion machinery without contradictory evidence. Workbench/dashboard
 implementation remains frozen until these remaining local functional cutover gates are
 complete. C10b then promotes the accepted pair to P7, re-proves the named boundaries,

@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'c10a-vehicle', 'c10a-mount', 'full')]
+    [ValidateSet('baseline', 'c1', 'c2a', 'c2b', 'c3', 'c4a', 'c4', 'c5', 'c6', 'c7', 'c7-cold', 'c8', 'c10a-stamina', 'c10a-vehicle', 'c10a-mount', 'c10a-container', 'full')]
     [string] $Profile = 'baseline',
 
     [string] $OmenOwnershipTargetTag = '',
@@ -147,6 +147,30 @@ if ($Profile -eq 'c10a-mount') {
         New-Action 'i5-c10a-mount-second-release' 'i5' 'saddle_wait_released' 20
         New-Action 'omen-c10a-mount-proof-hold' 'omen' 'wait' 20 12
         New-Action 'i5-c10a-mount-proof-hold' 'i5' 'wait' 20 12
+    )
+}
+
+if ($Profile -eq 'c10a-container') {
+    $actions += @(
+        New-Action 'omen-c10a-container-safe-origin' 'omen' 'teleport_to' 20 0 0 0 '' '' 2211 33 -69
+        New-Action 'i5-c10a-container-safe-origin' 'i5' 'teleport_to' 20 0 0 0 '' '' 2211 33 -69
+        New-Action 'omen-c10a-container-origin-settle' 'omen' 'wait' 12 5
+        New-Action 'i5-c10a-container-origin-settle' 'i5' 'wait' 12 5
+        New-Action 'omen-c10a-container-spawn' 'omen' 'container_spawn' 30
+        New-Action 'omen-c10a-container-wait' 'omen' 'container_wait' 45
+        New-Action 'i5-c10a-container-wait' 'i5' 'container_wait' 45
+        New-Action 'omen-c10a-container-ready' 'omen' 'wait' 10 3
+        New-Action 'i5-c10a-container-ready' 'i5' 'wait' 10 3
+
+        # Both real clients invoke Container.TakeAll against the same actual
+        # wood chest at canonical revision one. Each client deliberately sends
+        # its transaction twice; the server must commit one player, reject the
+        # other as stale, and replay both duplicate receipts without another
+        # item or inventory mutation.
+        New-Action 'c10a-container-contended-take' 'omen' 'container_contend_take' 45
+        New-Action 'c10a-container-contended-take' 'i5' 'container_contend_take' 45
+        New-Action 'omen-c10a-container-proof-hold' 'omen' 'wait' 20 12
+        New-Action 'i5-c10a-container-proof-hold' 'i5' 'wait' 20 12
     )
 }
 
@@ -381,6 +405,16 @@ $actions += @(
     New-Action 'omen-resumed' 'omen' 'wait' 10 2
     New-Action 'i5-resumed' 'i5' 'wait' 10 2
 )
+
+if ($Profile -eq 'c10a-container') {
+    # These run after the harness' fresh-process resume. Passing requires the
+    # actual Container component to reconstruct the journaled empty inventory,
+    # not merely retain runner memory from the contention process.
+    $actions += @(
+        New-Action 'omen-c10a-container-reconstructed' 'omen' 'container_observe_empty' 45
+        New-Action 'i5-c10a-container-reconstructed' 'i5' 'container_observe_empty' 45
+    )
+}
 
 $manifest = [ordered]@{
     schema_version = 1

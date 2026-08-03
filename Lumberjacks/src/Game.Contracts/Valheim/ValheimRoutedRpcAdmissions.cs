@@ -188,6 +188,14 @@ public static class ValheimRoutedRpcAdmissions
         "ComfyNetworkSense_CutoverSaddleTransferRequest";
     public const string CutoverSaddleTransferResponse =
         "ComfyNetworkSense_CutoverSaddleTransferResponse";
+    public const string CutoverContainerSpawnRequest =
+        "ComfyNetworkSense_CutoverContainerSpawnRequest";
+    public const string CutoverContainerSpawnResponse =
+        "ComfyNetworkSense_CutoverContainerSpawnResponse";
+    public const string ModContainerTransactionRequest =
+        "ComfyNetworkSense_ContainerTransactionRequest";
+    public const string ModContainerTransactionResult =
+        "ComfyNetworkSense_ContainerTransactionResult";
     public const string ShipTargetKind = "ship";
     public const string SaddleTargetKind = "saddle";
 
@@ -372,12 +380,16 @@ public static class ValheimRoutedRpcAdmissions
             Harness(CutoverSaddleSpawnResponse, ValheimRoutedRpcScope.Global, "ZPackage"),
             Harness(CutoverSaddleTransferRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
             Harness(CutoverSaddleTransferResponse, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverContainerSpawnRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Harness(CutoverContainerSpawnResponse, ValheimRoutedRpcScope.Global, "ZPackage"),
 
             Runtime(ModAutoPort, ValheimRoutedRpcScope.Global, "ZPackage"),
             Runtime(ModGameplayEvent, ValheimRoutedRpcScope.Global, "ZPackage"),
             Runtime(ModServerPulse, ValheimRoutedRpcScope.Global, "ZPackage"),
             Runtime(ModShipSnapshot, ValheimRoutedRpcScope.Global, "ZPackage"),
             Runtime(ModSaddleSnapshot, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Runtime(ModContainerTransactionRequest, ValheimRoutedRpcScope.Global, "ZPackage"),
+            Runtime(ModContainerTransactionResult, ValheimRoutedRpcScope.Global, "ZPackage"),
 
             // These native calls still occur during normal Valheim bookkeeping,
             // but their semantics are already owned by the named replacement lane.
