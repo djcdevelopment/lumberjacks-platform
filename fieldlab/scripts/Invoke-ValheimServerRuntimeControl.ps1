@@ -160,6 +160,11 @@ try {
         Remove-Item -LiteralPath $temporaryPath -Force
     }
     if ($UseSudo) {
+        # gcloud's Windows IAP proxy can surface a benign stdin teardown warning
+        # as a PowerShell error record even after the remote cleanup succeeded.
+        $previousErrorAction = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
         & ssh -o BatchMode=yes $SshTarget "rm -f '$remoteStaged'" 2>$null | Out-Null
+        $ErrorActionPreference = $previousErrorAction
     }
 }
