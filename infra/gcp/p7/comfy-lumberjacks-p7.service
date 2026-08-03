@@ -32,7 +32,7 @@ EnvironmentFile=/etc/comfy-p7/environment
 # flagged as explicitly stopped (which suppresses `restart: unless-stopped`). Starting
 # `up` on top of that wreckage is what leaves containers in `Created`. Leading `-` so a
 # failure here never blocks the start.
-ExecStartPre=-/usr/bin/docker compose down --remove-orphans
+ExecStartPre=-/usr/bin/docker compose --env-file /etc/comfy-p7/environment down --remove-orphans
 
 # Apply the database schema before anything connects. NOT a `-` prefix and not optional: a
 # schema-less database is how the /community gameplay panels sat permanently empty while every
@@ -46,19 +46,19 @@ ExecStartPre=-/usr/bin/docker compose down --remove-orphans
 # the exact failure --wait was added to prevent. Keeping dbschema behind the `schema` profile
 # holds it out of the waited set; `run` auto-enables the target's profile, and starts postgres
 # through its own depends_on first.
-ExecStartPre=/usr/bin/docker compose run --rm dbschema
+ExecStartPre=/usr/bin/docker compose --env-file /etc/comfy-p7/environment run --rm dbschema
 
 # --wait is load-bearing: without it `up -d` returns as soon as containers are CREATED
 # and systemd calls the unit started while nothing is serving. With it, exit 0 means
 # every service is running and every healthcheck passes, so a failure is a real failure
 # that Restart=on-failure can retry. Keep --wait-timeout under TimeoutStartSec.
-ExecStart=/usr/bin/docker compose up -d --wait --wait-timeout 900
+ExecStart=/usr/bin/docker compose --env-file /etc/comfy-p7/environment up -d --wait --wait-timeout 900
 
 # `stop`, not `down`. The unit is now the single authoritative starter, so containers do
 # not need to be removed on shutdown, and leaving them present makes the next boot's
 # reconcile cheaper. Save the Valheim world BEFORE stopping the VM regardless — the
 # shutdown path is not a save mechanism (see RUNBOOK-boot-determinism.md).
-ExecStop=/usr/bin/docker compose stop
+ExecStop=/usr/bin/docker compose --env-file /etc/comfy-p7/environment stop
 
 Restart=on-failure
 RestartSec=30s
