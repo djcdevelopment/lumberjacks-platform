@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-Reduce one complete C8 AM4 composition into a fail-closed machine receipt.
+Reduce one complete C8 dedicated-server composition into a fail-closed machine receipt.
 #>
 [CmdletBinding()]
 param(
@@ -212,7 +212,7 @@ $summary = [ordered]@{
         'a distinct logical peer was rejected from the contended ownership target',
         'Gateway restart replay and UDP loss recovery completed',
         'clean disconnect/rejoin completed on both clients',
-        'AM4 save fingerprint stayed structurally clean')
+        'dedicated-server save fingerprint stayed structurally clean')
     inferred = @()
     unverified = @(
         'subjective motion quality',

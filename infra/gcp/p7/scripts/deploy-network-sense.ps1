@@ -3,6 +3,9 @@ param(
   [string] $SshTarget = "comfy-p7",
   [string] $Container = "comfy-lumberjacks-p7-valheim-server-1",
   [string] $Project,
+  [string] $ArtifactPath = '',
+  [string] $ExpectedSha256 = '',
+  [string] $ExpectedRelease = '',
   [string] $Configuration = "Release",
   [int] $ReadyTimeoutSeconds = 360,
   [string] $ManifestPath
@@ -14,19 +17,43 @@ if ([string]::IsNullOrWhiteSpace($Project)) {
 }
 $projectPath = [IO.Path]::GetFullPath($Project)
 $projectDir = Split-Path $projectPath
-$dll = Join-Path $projectDir "bin\$Configuration\ComfyNetworkSense.dll"
+$dll = if ([string]::IsNullOrWhiteSpace($ArtifactPath)) {
+  Join-Path $projectDir "bin\$Configuration\ComfyNetworkSense.dll"
+} else {
+  (Resolve-Path -LiteralPath $ArtifactPath -ErrorAction Stop).Path
+}
 $remoteDll = "/tmp/ComfyNetworkSense-deploy.dll"
 $runtimeDll = "/opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll"
 $fallbackDll = "/mnt/comfy-p7/valheim/config/bepinex/plugins/ComfyNetworkSense.dll"
 $hostConfig = "/mnt/comfy-p7/valheim/config/bepinex/djcdevelopment.valheim.comfynetworksense.cfg"
 $startedUtc = (Get-Date).ToUniversalTime().ToString("o")
 
-dotnet build $projectPath -c $Configuration
-if ($LASTEXITCODE -ne 0 -or !(Test-Path $dll)) {
-  throw "ComfyNetworkSense build failed or did not produce $dll"
+if ([string]::IsNullOrWhiteSpace($ArtifactPath)) {
+  dotnet build $projectPath -c $Configuration
+  if ($LASTEXITCODE -ne 0 -or !(Test-Path $dll)) {
+    throw "ComfyNetworkSense build failed or did not produce $dll"
+  }
+} elseif (!(Test-Path -LiteralPath $dll -PathType Leaf)) {
+  throw "Frozen ComfyNetworkSense artifact does not exist: $dll"
 }
 
 $expectedHash = (Get-FileHash $dll -Algorithm SHA256).Hash.ToLowerInvariant()
+if (-not [string]::IsNullOrWhiteSpace($ExpectedSha256)) {
+  $normalizedExpectedHash = $ExpectedSha256.Trim().ToLowerInvariant()
+  if ($normalizedExpectedHash -notmatch '^[0-9a-f]{64}$' -or
+      $expectedHash -ne $normalizedExpectedHash) {
+    throw "Frozen artifact hash mismatch: expected=$normalizedExpectedHash actual=$expectedHash"
+  }
+}
+$releaseIdentityLib = Join-Path $PSScriptRoot 'lib\ReleaseIdentity.ps1'
+. $releaseIdentityLib
+$artifactRelease = Get-AssemblyMetadataValue `
+  -DllPath $dll `
+  -Key 'LumberjacksModReleaseId'
+if (-not [string]::IsNullOrWhiteSpace($ExpectedRelease) -and
+    $artifactRelease -ne $ExpectedRelease) {
+  throw "Frozen artifact release mismatch: expected=$ExpectedRelease actual=$artifactRelease"
+}
 $pluginVersion = [Reflection.AssemblyName]::GetAssemblyName($dll).Version.ToString(3)
 $backupStamp = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ")
 $backupRoot = "/mnt/comfy-p7/backups/comfynetworksense/$backupStamp"
@@ -143,6 +170,8 @@ if ($metadataExit -ne 0) { throw "Deployment metadata fallback reconciliation fa
   Container = $Container
   Sha256 = $actualHash
   Version = $pluginVersion
+  Release = $artifactRelease
+  FrozenArtifact = -not [string]::IsNullOrWhiteSpace($ArtifactPath)
   BackupPath = $backupRoot
   ModReady = $modReady
   ServerReady = $serverReady
@@ -165,7 +194,7 @@ if ($ManifestPath) {
     captured_utc = (Get-Date).ToUniversalTime().ToString('o')
     target = $SshTarget
     source_revision = $sourceRevision
-    plugin = [ordered]@{ version = $pluginVersion; sha256 = $expectedHash; runtime_sha256 = $actualHash; cold_start_sha256 = $fallbackHash }
+    plugin = [ordered]@{ release = $artifactRelease; version = $pluginVersion; sha256 = $expectedHash; runtime_sha256 = $actualHash; cold_start_sha256 = $fallbackHash }
     assembly_inputs = @($assemblyInputs)
     backup_path = $backupRoot
     gateway_image = (($remoteImage -join "`n").Trim())

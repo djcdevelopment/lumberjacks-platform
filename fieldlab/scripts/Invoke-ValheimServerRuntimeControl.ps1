@@ -47,6 +47,8 @@ param(
     [string] $RemoteBepInExConfigRoot =
         '/home/derek/comfy-valheim-lab/server-state/config/bepinex',
 
+    [switch] $UseSudo,
+
     [string] $RequestId = '',
 
     [ValidateRange(2, 60)]
@@ -73,7 +75,11 @@ if (-not $RemoteBepInExConfigRoot.StartsWith('/') -or
 
 $controlDirectory = "$RemoteBepInExConfigRoot/comfy-network-sense"
 $remoteFinal = "$controlDirectory/runtime-control.json"
-$remoteStaged = "$controlDirectory/runtime-control.json.new-$RequestId"
+$remoteStaged = if ($UseSudo) {
+    "/tmp/baseline-runtime-control-$RequestId.json"
+} else {
+    "$controlDirectory/runtime-control.json.new-$RequestId"
+}
 $remoteReceipts = "$controlDirectory/runtime-control-receipts.jsonl"
 $temporaryPath = Join-Path ([IO.Path]::GetTempPath()) (
     'baseline-valheim-runtime-control-' + [Guid]::NewGuid().ToString('N') + '.json')
@@ -91,7 +97,12 @@ try {
         (($command | ConvertTo-Json -Compress) + [Environment]::NewLine),
         (New-Object Text.UTF8Encoding($false)))
 
-    & ssh -o BatchMode=yes $SshTarget "install -d -m 700 '$controlDirectory'"
+    $prepare = if ($UseSudo) {
+        "sudo install -d -o 1000 -g 1000 -m 0750 '$controlDirectory'; rm -f '$remoteStaged'"
+    } else {
+        "install -d -m 700 '$controlDirectory'"
+    }
+    & ssh -o BatchMode=yes $SshTarget $prepare
     if ($LASTEXITCODE -ne 0) {
         throw "ssh failed while preparing the runtime-control directory (exit $LASTEXITCODE)."
     }
@@ -101,7 +112,11 @@ try {
         throw "scp failed while staging runtime command (exit $LASTEXITCODE)."
     }
 
-    $publish = "set -eu; mv '$remoteStaged' '$remoteFinal'"
+    $publish = if ($UseSudo) {
+        "set -eu; sudo install -o 1000 -g 1000 -m 0600 '$remoteStaged' '$remoteFinal'; rm -f '$remoteStaged'"
+    } else {
+        "set -eu; mv '$remoteStaged' '$remoteFinal'"
+    }
     & ssh -o BatchMode=yes $SshTarget $publish
     if ($LASTEXITCODE -ne 0) {
         throw "ssh failed while publishing runtime command (exit $LASTEXITCODE)."
@@ -111,7 +126,12 @@ try {
     $receipt = $null
     do {
         Start-Sleep -Milliseconds 500
-        $receiptOutput = @(& ssh -o BatchMode=yes $SshTarget "tail -n 64 '$remoteReceipts' 2>/dev/null")
+        $tailCommand = if ($UseSudo) {
+            "sudo tail -n 64 '$remoteReceipts' 2>/dev/null"
+        } else {
+            "tail -n 64 '$remoteReceipts' 2>/dev/null"
+        }
+        $receiptOutput = @(& ssh -o BatchMode=yes $SshTarget $tailCommand)
         if ($LASTEXITCODE -notin @(0, 1)) {
             throw "ssh failed while reading runtime receipts (exit $LASTEXITCODE)."
         }
@@ -138,5 +158,8 @@ try {
 } finally {
     if (Test-Path -LiteralPath $temporaryPath -PathType Leaf) {
         Remove-Item -LiteralPath $temporaryPath -Force
+    }
+    if ($UseSudo) {
+        & ssh -o BatchMode=yes $SshTarget "rm -f '$remoteStaged'" 2>$null | Out-Null
     }
 }

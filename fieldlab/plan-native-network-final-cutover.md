@@ -1319,6 +1319,47 @@ falsifiers.
   container when the DLL requires it, and allow the normal world reload.
 - Run C8's non-destructive pair scenario against P7 with native poison armed.
 
+#### C10b P7 execution-lane checkpoint — 2026-08-02
+
+- The retained physical orchestrator was not actually capable of the promotion named
+  above: it hardcoded the `am4` SSH target, AM4 evidence/world paths, the local
+  `lumberjacks-local` Gateway, and an i5 reverse tunnel back to OMEN. Pointing its
+  client `Server` argument at P7 would still have deployed and measured AM4, so a
+  hand-edited invocation could have produced mixed-environment evidence.
+- The orchestrator now has an explicit remote-server/remote-Gateway mode. It requires
+  a predeployed server artifact, verifies the host and container DLL hashes plus the
+  loaded plugin/server-ready logs, verifies the remote Gateway container image id
+  against the frozen local image, uses the selected server's runtime-control and
+  evidence roots, restarts that exact Gateway for the C3 replay cell, and records the
+  deployment topology in the composition receipt. P7's sudo-only host paths use a
+  bounded staging copy; AM4 defaults remain unchanged.
+- `tools/p7/Invoke-C10bCandidateProof.ps1` binds those parameters to P7 and refuses to
+  generate a fresh C8 manifest or launch either rendered client until the exact local
+  r41 pair, i5 lane, P7 unit, direct Gateway health, remote image id, both remote DLL
+  copies, Valheim readiness, and a machine-readable boot receipt proving both the cold
+  stop/start and forced-retry gates are green. The P7 mod deployer can now accept a frozen
+  DLL with required release and SHA-256 instead of rebuilding source during promotion.
+- `tools/p7/Invoke-P7BootDeterminism.ps1` now produces that receipt instead of asking an
+  operator to hand-author two booleans. Its default preflight is read-only. The authorized
+  execution captures previous/current-boot and persisted-container evidence before changing
+  the unit, immediately guards Valheim, and refuses a newer `.db.new`, a world load already
+  begun on the capture boot, unsafe disk headroom, or a missing boot-critical `init.sql`,
+  installs the unit and docker mount
+  ordering transactionally, performs a real GCE cold cycle, then injects a one-shot
+  `ExecStartPre` failure and requires systemd's restart counter plus the full seven-service
+  recovery. The former runbook command (stop postgres, then explicitly restart the unit)
+  did not actually prove `Restart=on-failure` and is superseded by this receipt path.
+- `tools/p7/Invoke-C10bPairPromotion.ps1` snapshots the live environment and both mod copies,
+  promotes the exact Gateway image and frozen DLL, verifies the pair, and restores the
+  complete prior pair on any failure. Both promotion and proof bind the accepted boot receipt
+  to the GCE instance id and current Linux boot id, so another boot invalidates it.
+- The first read-only preflight proves the local r41 release/image/DLL and i5 lane, then
+  returns `not_ready`: GCP reports P7 `TERMINATED`, and therefore no accepted cold-cycle/
+  retry receipt or live remote checks exist yet. P7 was not started, contacted over SSH,
+  or changed. The next authorized external action remains the boot-determinism
+  runbook (preserving pre-fix evidence), followed by paired candidate promotion and this
+  exact proof wrapper. This checkpoint is tooling readiness, not C10b acceptance.
+
 **Finalization**
 
 - Delete migration-only native fallback branches and flags. Keep the native-use telemetry

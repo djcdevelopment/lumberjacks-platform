@@ -133,10 +133,20 @@ fan-in point it takes the whole stack down rather than just the database.
 
 ## Next-boot procedure
 
-Read steps 0–2 before starting the VM. Steps 0 and 1 capture evidence that is **destroyed** by
-the fix, so do not skip ahead.
+Use `tools/p7/Invoke-P7BootDeterminism.ps1` from the repository root for this
+procedure. Its default preflight is read-only; `-Action run -Execute` is the
+machine receipt path. It starts the stopped VM, captures the previous/current
+boot and persisted container evidence before changing the unit, refuses to
+continue if Valheim already loaded or the save/disk checks are unsafe, installs
+the fix transactionally, performs the cold cycle, and proves real automatic
+retry. The commands below remain the diagnosis reference, not a substitute for
+the receipt.
 
-### 0a. Before starting — check the ComfyEra16 save
+Read steps 0–2 before authorizing the start. Steps 0 and 1 are the first SSH
+checks after the stopped VM starts; they cannot literally run while the VM is
+stopped. Their evidence is destroyed by the fix, so do not skip ahead.
+
+### 0a. First SSH after start — check the ComfyEra16 save
 
 Boot 1 loaded the world and reached "Game server connected", then took a
 `gcloud compute instances stop`. That is the graceful-stop hazard: the stop can orphan a
@@ -151,7 +161,7 @@ ssh comfy-p7 "ls -la --time-style=long-iso /mnt/comfy-p7/valheim/config/worlds_l
 A `ComfyEra16.db.new` newer than `ComfyEra16.db` is an interrupted save, not a good one. Do not
 let the server start on top of it until it is resolved — take a copy of both first.
 
-### 0b. Before starting — reclaim disk
+### 0b. First SSH after start — inspect disk headroom
 
 Root was at 79% (30G/38G, 8.1G avail) and `/mnt/comfy-p7` at 67% (21G/32G). Docker's data root
 is on the **root** disk, so a boot-time image pull needs headroom there. Do not blind-prune:
@@ -171,7 +181,7 @@ This is the one chance to settle whether finding 5 or finding 6 was the trigger.
 **before** installing the new unit.
 
 ```bash
-ssh comfy-p7 "sudo journalctl -u comfy-lumberjacks-p7 -b --no-pager | tail -80"
+ssh comfy-p7 "sudo journalctl -u comfy-lumberjacks-p7 -b -1 --no-pager | tail -80; sudo journalctl -u comfy-lumberjacks-p7 -b --no-pager | tail -80"
 ```
 
 ```bash
@@ -268,14 +278,22 @@ for that line before telling anyone to join.
 
 ### 4. Prove the retry actually recovers
 
-The whole point of `Restart=on-failure` is untested until something fails. Force it:
+The whole point of `Restart=on-failure` is untested until the unit's first start
+actually fails and systemd, without another operator start, converges on its own.
+The tool installs a temporary drop-in whose first `ExecStartPre` returns 75 and
+whose second pass succeeds, verifies that `NRestarts` advanced and the full stack
+recovered, then removes the drop-in. Merely stopping postgres followed by an
+explicit `systemctl restart` does not prove `Restart=on-failure`: the clean-slate
+start can recreate postgres and succeed on its first try.
 
-```bash
-ssh comfy-p7 "sudo docker stop comfy-lumberjacks-p7-postgres-1 && sudo systemctl restart comfy-lumberjacks-p7; sleep 90; systemctl is-active comfy-lumberjacks-p7; sudo docker ps -a --format 'table {{.Names}}\t{{.Status}}'"
+```powershell
+tools/p7/Invoke-P7BootDeterminism.ps1 -Action run -Execute
 ```
 
-**Pass:** the stack converges to all-`Up` on its own. **Fail:** anything left in `Created` — the
-clean-slate `ExecStartPre` did not do its job, and the fix is incomplete.
+**Pass:** the receipt records the injected first-start failure, an advanced
+systemd restart counter, all seven containers `Up`, postgres healthy, Gateway
+health/TLS green, Valheim ready, and zero `Created`. **Fail:** any missing check
+means the fix is incomplete and no promotion receipt is admitted.
 
 ---
 

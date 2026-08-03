@@ -18,6 +18,24 @@ param(
 
     [string] $Server = '100.116.82.60:2456',
 
+    [string] $ServerSshTarget = 'am4',
+
+    [string] $ServerBepInExConfigRoot =
+        '/home/derek/comfy-valheim-lab/server-state/config/bepinex',
+
+    [string] $ServerContainerPluginPath =
+        '/config/bepinex/plugins/ComfyNetworkSense.dll',
+
+    [switch] $ServerDockerRequiresSudo,
+
+    # P7 promotion verifies an already-promoted Gateway and server DLL. It
+    # must not silently start the local lumberjacks-local Gateway instead.
+    [switch] $UseRemoteGateway,
+
+    [string] $RemoteGatewayContainer = '',
+
+    [switch] $SkipServerDeploy,
+
     [string] $OmenGatewayUrl = 'http://127.0.0.1:4000',
 
     [string] $I5GatewayUrl = 'http://127.0.0.1:4400',
@@ -123,6 +141,29 @@ if ($Server -notmatch '^[^\s:]+:\d{2,5}$') {
 if ($ServerContainer -notmatch '^[A-Za-z0-9_.-]+$') {
     throw "ServerContainer must be a safe Docker container name: $ServerContainer"
 }
+if ($ServerSshTarget -notmatch '^[A-Za-z0-9._-]+$') {
+    throw "ServerSshTarget must be an SSH alias or hostname token: $ServerSshTarget"
+}
+if (-not $ServerBepInExConfigRoot.StartsWith('/') -or
+    $ServerBepInExConfigRoot -match "[`r`n'`"]" -or
+    -not $ServerBepInExConfigRoot.EndsWith('/bepinex')) {
+    throw 'ServerBepInExConfigRoot must be an absolute path ending in /bepinex.'
+}
+if (-not $ServerContainerPluginPath.StartsWith('/') -or
+    $ServerContainerPluginPath -match "[`r`n'`"]") {
+    throw 'ServerContainerPluginPath must be an absolute quote-free path.'
+}
+if ($UseRemoteGateway -and
+    ([string]::IsNullOrWhiteSpace($RemoteGatewayContainer) -or
+     $RemoteGatewayContainer -notmatch '^[A-Za-z0-9_.-]+$')) {
+    throw '-UseRemoteGateway requires a safe RemoteGatewayContainer name.'
+}
+if ($UseRemoteGateway -and -not $SkipServerDeploy) {
+    throw '-UseRemoteGateway requires -SkipServerDeploy; promote and verify the artifact pair before launching clients.'
+}
+if ($SkipServerDeploy -and -not $UseRemoteGateway) {
+    throw '-SkipServerDeploy is reserved for the explicit remote promotion lane.'
+}
 foreach ($worldPath in @($ServerWorldDb, $ServerWorldFwl)) {
     if ($worldPath -notmatch '^/[A-Za-z0-9._/-]+$') {
         throw "Server world paths must be safe absolute POSIX paths: $worldPath"
@@ -185,6 +226,22 @@ $remoteScenarioDirectory = 'C:/deploy/baseline/fieldlab/scenarios'
 $remoteScenarioPath = "$remoteScenarioDirectory/$scenarioName"
 $remoteEvidenceRoot = 'C:/deploy/baseline/fieldlab/runs/native-valheim'
 $runDirectory = Join-Path $EvidenceRoot $RunId
+$serverEvidenceRoot = "$ServerBepInExConfigRoot/comfy-network-sense"
+$serverRemotePluginPath =
+    "$ServerBepInExConfigRoot/plugins/ComfyNetworkSense.dll"
+$serverDockerCommand = if ($ServerDockerRequiresSudo) {
+    'sudo docker'
+} else {
+    'docker'
+}
+$serverPrivilegePrefix = if ($ServerDockerRequiresSudo) { 'sudo ' } else { '' }
+$serverControlPath =
+    Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
+$serverControlTarget = @{
+    SshTarget = $ServerSshTarget
+    RemoteBepInExConfigRoot = $ServerBepInExConfigRoot
+    UseSudo = [bool]$ServerDockerRequiresSudo
+}
 $completed = $false
 $gatewayTunnel = $null
 $serverDirectArmed = $false
@@ -248,12 +305,44 @@ function Write-JsonAtomic([string] $Path, [object] $Value) {
     Move-Item -LiteralPath $temporary -Destination $Path -Force
 }
 
+function Copy-ServerEvidenceFile(
+    [string] $Name,
+    [string] $Destination,
+    [switch] $Optional) {
+    if ($Name -notmatch '^[A-Za-z0-9._-]+$') {
+        throw "Server evidence name must be a safe file name: $Name"
+    }
+    $remotePath = "$serverEvidenceRoot/$Name"
+    $copySource = "${ServerSshTarget}:$remotePath"
+    $stagedPath = $null
+    try {
+        if ($ServerDockerRequiresSudo) {
+            $stagedPath = "/tmp/baseline-$RunId-$Name"
+            & ssh -o BatchMode=yes $ServerSshTarget `
+                "sudo install -m 0644 '$remotePath' '$stagedPath'"
+            if ($LASTEXITCODE -ne 0) {
+                if ($Optional) { return $false }
+                throw "Server evidence staging failed for $Name."
+            }
+            $copySource = "${ServerSshTarget}:$stagedPath"
+        }
+        & scp -q -- $copySource $Destination
+        if ($LASTEXITCODE -ne 0) {
+            if ($Optional) { return $false }
+            throw "Server evidence copy failed for $Name."
+        }
+        return $true
+    } finally {
+        if ($stagedPath) {
+            & ssh -o BatchMode=yes $ServerSshTarget `
+                "sudo rm -f '$stagedPath'" 2>$null | Out-Null
+        }
+    }
+}
+
 function Copy-ServerFailureEvidenceBestEffort {
     $serverDirectory = Join-Path $runDirectory 'server'
     New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
-    $remoteRoot =
-        '/home/derek/comfy-valheim-lab/server-state/config/bepinex/' +
-        'comfy-network-sense'
     foreach ($name in @(
             'ship-cutover.jsonl',
             'saddle-cutover.jsonl',
@@ -261,28 +350,42 @@ function Copy-ServerFailureEvidenceBestEffort {
             'zdo-journal-cutover.jsonl',
             'routed-rpc-cutover.jsonl',
             'logical-peer-cutover.jsonl',
-            'native-network-use.jsonl',
-            'lumberjacks-game-session.jsonl')) {
+        'native-network-use.jsonl',
+        'lumberjacks-game-session.jsonl')) {
         try {
-            & scp -q "am4:$remoteRoot/$name" (Join-Path $serverDirectory $name)
-            if ($LASTEXITCODE -ne 0) {
-                Write-Warning "Best-effort AM4 evidence copy failed for $name."
+            $copied = Copy-ServerEvidenceFile `
+                -Name $name `
+                -Destination (Join-Path $serverDirectory $name) `
+                -Optional
+            if (-not $copied) {
+                Write-Warning "Best-effort server evidence copy failed for $name."
             }
         } catch {
-            Write-Warning ("Best-effort AM4 evidence copy failed for ${name}: " +
+            Write-Warning ("Best-effort server evidence copy failed for ${name}: " +
                 $_.Exception.Message)
         }
     }
 
     try {
-        $container = if ($gatewayImageReceipt -and
-            $gatewayImageReceipt.running_container) {
-            [string]$gatewayImageReceipt.running_container
-        } else { 'lumberjacks-local-gateway-1' }
-        $gatewayLines = @(
-            docker logs --since 2h $container 2>&1 |
-                Select-String -SimpleMatch $RunId |
-                ForEach-Object Line)
+        if ($UseRemoteGateway) {
+            $gatewayLines = @(
+                & ssh -o BatchMode=yes $ServerSshTarget `
+                    "$serverDockerCommand logs --since 2h '$RemoteGatewayContainer' 2>&1" |
+                    Select-String -SimpleMatch $RunId |
+                    ForEach-Object Line)
+            if ($LASTEXITCODE -ne 0) {
+                throw "Remote Gateway log copy exited $LASTEXITCODE."
+            }
+        } else {
+            $container = if ($gatewayImageReceipt -and
+                $gatewayImageReceipt.running_container) {
+                [string]$gatewayImageReceipt.running_container
+            } else { 'lumberjacks-local-gateway-1' }
+            $gatewayLines = @(
+                docker logs --since 2h $container 2>&1 |
+                    Select-String -SimpleMatch $RunId |
+                    ForEach-Object Line)
+        }
         [IO.File]::WriteAllLines(
             (Join-Path $runDirectory 'gateway-run.log'),
             $gatewayLines,
@@ -293,13 +396,14 @@ function Copy-ServerFailureEvidenceBestEffort {
     }
 }
 
-function Get-Am4SaveFingerprint {
+function Get-ServerSaveFingerprint {
     $logCommand =
-        "docker logs --since 48h '$ServerContainer' 2>&1 | " +
+        "$serverDockerCommand logs --since 48h '$ServerContainer' 2>&1 | " +
         "grep -E 'ZDOS:|ConnectPortals =>|Portal saved-connection hash join|spawned=|Loaded [0-9]+ locations'"
-    $logLines = & ssh -o BatchMode=yes -o ConnectTimeout=10 am4 $logCommand
+    $logLines = & ssh -o BatchMode=yes -o ConnectTimeout=10 `
+        $ServerSshTarget $logCommand
     if ($LASTEXITCODE -notin @(0, 1)) {
-        throw "AM4 save fingerprint log query failed with exit $LASTEXITCODE."
+        throw "Server save fingerprint log query failed with exit $LASTEXITCODE."
     }
     $logText = @($logLines) -join [Environment]::NewLine
 
@@ -310,16 +414,17 @@ function Get-Am4SaveFingerprint {
     }
 
     $statCommand =
-        "stat -c '%n|%s|%Y' '$ServerWorldDb' '$ServerWorldFwl'"
-    $statLines = & ssh -o BatchMode=yes -o ConnectTimeout=10 am4 $statCommand
+        "${serverPrivilegePrefix}stat -c '%n|%s|%Y' '$ServerWorldDb' '$ServerWorldFwl'"
+    $statLines = & ssh -o BatchMode=yes -o ConnectTimeout=10 `
+        $ServerSshTarget $statCommand
     if ($LASTEXITCODE -ne 0) {
-        throw "AM4 save fingerprint stat query failed with exit $LASTEXITCODE."
+        throw "Server save fingerprint stat query failed with exit $LASTEXITCODE."
     }
     $files = [ordered]@{}
     foreach ($line in @($statLines)) {
         $parts = [string]$line -split '\|'
         if ($parts.Count -ne 3) {
-            throw "AM4 save fingerprint returned an invalid stat row: $line"
+            throw "Server save fingerprint returned an invalid stat row: $line"
         }
         $files[[IO.Path]::GetFileName($parts[0])] = [ordered]@{
             bytes = [long]$parts[1]
@@ -329,7 +434,8 @@ function Get-Am4SaveFingerprint {
 
     $fingerprint = [ordered]@{
         schema_version = 1
-        receipt_type = 'am4_world_save_fingerprint'
+        receipt_type = 'server_world_save_fingerprint'
+        ssh_target = $ServerSshTarget
         captured_utc = [DateTimeOffset]::UtcNow.ToString('o')
         container = $ServerContainer
         zdos = Last-Integer $logText 'ZDOS:(\d+)'
@@ -346,20 +452,20 @@ function Get-Am4SaveFingerprint {
     }
     foreach ($field in @('zdos', 'portals', 'spawned', 'targets', 'locations')) {
         if ($null -eq $fingerprint[$field]) {
-            throw "AM4 save fingerprint is missing $field from the current load block."
+            throw "Server save fingerprint is missing $field from the current load block."
         }
     }
     foreach ($name in @(
             [IO.Path]::GetFileName($ServerWorldDb),
             [IO.Path]::GetFileName($ServerWorldFwl))) {
         if (-not $files.Contains($name) -or [long]$files[$name].bytes -le 0) {
-            throw "AM4 save fingerprint is missing a non-empty $name."
+            throw "Server save fingerprint is missing a non-empty $name."
         }
     }
     return $fingerprint
 }
 
-function Compare-Am4SaveFingerprint([object] $Before, [object] $After) {
+function Compare-ServerSaveFingerprint([object] $Before, [object] $After) {
     $checks = [ordered]@{}
     foreach ($field in @('portals', 'spawned', 'targets', 'locations')) {
         $checks["${field}_exact"] =
@@ -606,6 +712,21 @@ try {
         [string]::IsNullOrWhiteSpace($gatewayExpectedImageId)) {
         throw "Gateway image '$GatewayImage' is unavailable after release verification."
     }
+    if ($UseRemoteGateway) {
+        $remoteGatewayPreflight = @(& ssh -o BatchMode=yes `
+            -o ConnectTimeout=15 $ServerSshTarget `
+            "$serverDockerCommand inspect --format '{{.Image}}' '$RemoteGatewayContainer'")
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Remote Gateway image identity preflight failed; no remote state was changed.'
+        }
+        $remoteGatewayPreflightImageId =
+            [regex]::Match(($remoteGatewayPreflight -join "`n"),
+                'sha256:[0-9a-fA-F]{64}').Value.ToLowerInvariant()
+        if ([string]::IsNullOrWhiteSpace($remoteGatewayPreflightImageId) -or
+            $remoteGatewayPreflightImageId -ne $gatewayExpectedImageId.Trim()) {
+            throw "Remote Gateway bytes do not match '$GatewayImage': expected=$gatewayExpectedImageId actual=$remoteGatewayPreflightImageId; no remote state was changed."
+        }
+    }
     if ($EnableC8Composition) {
         $coveragePath = Join-Path $runDirectory 'c8-scenario-coverage.json'
         $coverageOutput =
@@ -628,14 +749,14 @@ try {
 
     # RunIds are single-use: runtime-control request ids derive from them and
     # the server mod refuses replays from a durable dedup set. Check before
-    # deploying/restarting AM4 so a stale manifest cannot change any machine.
+    # deploying/restarting the server so a stale manifest cannot change any machine.
     # Dot-wildcards stand in for the JSON quote characters: PowerShell 5.1
     # does not escape embedded double quotes when building a native command
     # line, so the remote pattern must not contain any.
     $runIdPattern = 'request_id.:.' + $RunId + '-'
-    $usedRunIdCount = & ssh -o BatchMode=yes am4 (
-        "grep -c '" + $runIdPattern + "' " +
-        "'/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/runtime-control-receipts.jsonl' 2>/dev/null")
+    $usedRunIdCount = & ssh -o BatchMode=yes $ServerSshTarget (
+        "${serverPrivilegePrefix}grep -c '" + $runIdPattern + "' " +
+        "'$serverEvidenceRoot/runtime-control-receipts.jsonl' 2>/dev/null")
     if ($LASTEXITCODE -eq 0) {
         throw ("RunId '$RunId' already has $usedRunIdCount runtime-control receipts " +
             'on the server; RunIds are single-use - generate a fresh one.')
@@ -644,56 +765,116 @@ try {
         throw "RunId preflight could not read the server runtime-control receipts (ssh exit $LASTEXITCODE)."
     }
 
-    # A physical run is one deployment transaction.  Previously callers had to
-    # remember a separate AM4 deploy, which allowed r37 clients/Gateway to launch
-    # against an r36 server and strand both games at a black cold-join screen.
-    $am4DeployPath = Join-Path $runDirectory 'am4-deploy.json'
-    $am4DeployOutput =
-        & (Join-Path $repoRoot 'tools\am4\Deploy-NetworkSense.ps1') `
-            -DllPath $dll `
-            -Container $ServerContainer `
-            -OutputPath $am4DeployPath
-    $am4Deploy =
-        Get-Content -LiteralPath $am4DeployPath -Raw -Encoding utf8 |
-        ConvertFrom-Json
+    # A local physical run is one deployment transaction. A promoted P7 run
+    # takes the opposite posture: the pair is deployed by its rollback-aware
+    # promotion tools first, and this harness refuses to launch either client
+    # until both remote artifacts match the frozen local candidate.
     $expectedDllHash =
         (Get-FileHash -Algorithm SHA256 -LiteralPath $dll).Hash.ToLowerInvariant()
-    if ([string]$am4Deploy.result -ne 'passed' -or
-        -not [bool]$am4Deploy.plugin_loaded -or
-        -not [bool]$am4Deploy.server_ready -or
-        [string]$am4Deploy.local_sha256 -ne $expectedDllHash -or
-        [string]$am4Deploy.host_sha256 -ne $expectedDllHash -or
-        [string]$am4Deploy.container_sha256 -ne $expectedDllHash) {
-        throw 'AM4 did not load the exact candidate DLL; no client was launched.'
+    $serverDeployFile = if ($SkipServerDeploy) {
+        'server-deploy.json'
+    } else {
+        'am4-deploy.json'
     }
-    $am4DeployOutput | Write-Host
+    $serverDeployPath = Join-Path $runDirectory $serverDeployFile
+    if ($SkipServerDeploy) {
+        $hostHashOutput = @(& ssh -o BatchMode=yes $ServerSshTarget `
+            "${serverPrivilegePrefix}sha256sum '$serverRemotePluginPath'")
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Predeployed server DLL host hash could not be read; no client was launched.'
+        }
+        $hostHash = (($hostHashOutput -join "`n") -split '\s+')[0].ToLowerInvariant()
+        $containerHashOutput = @(& ssh -o BatchMode=yes $ServerSshTarget `
+            "$serverDockerCommand exec '$ServerContainer' sha256sum '$ServerContainerPluginPath'")
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Predeployed server DLL container hash could not be read; no client was launched.'
+        }
+        $containerHash =
+            (($containerHashOutput -join "`n") -split '\s+')[0].ToLowerInvariant()
+        $serverLogs = @(& ssh -o BatchMode=yes $ServerSshTarget `
+            "$serverDockerCommand logs --since 24h '$ServerContainer' 2>&1")
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Predeployed server readiness logs could not be read; no client was launched.'
+        }
+        $serverLogText = $serverLogs -join "`n"
+        $expectedVersion =
+            [Diagnostics.FileVersionInfo]::GetVersionInfo($dll).FileVersion
+        $pluginLoaded =
+            $serverLogText -match [regex]::Escape("Loading [ComfyNetworkSense $expectedVersion]")
+        $serverReady = $serverLogText -match 'Game server connected'
+        $serverDeploy = [ordered]@{
+            schema_version = 1
+            event = 'server_network_sense_predeployed_verification'
+            timestamp_utc = [DateTimeOffset]::UtcNow.ToString('o')
+            ssh_target = $ServerSshTarget
+            container = $ServerContainer
+            version = $expectedVersion
+            local_path = $dll
+            remote_plugin_path = $serverRemotePluginPath
+            container_plugin_path = $ServerContainerPluginPath
+            local_sha256 = $expectedDllHash
+            host_sha256 = $hostHash
+            container_sha256 = $containerHash
+            plugin_loaded = $pluginLoaded
+            server_ready = $serverReady
+            deployment = 'predeployed_by_rollback_aware_promotion_lane'
+            result = if ($pluginLoaded -and $serverReady -and
+                $hostHash -eq $expectedDllHash -and
+                $containerHash -eq $expectedDllHash) { 'passed' } else { 'failed' }
+        }
+        Write-JsonAtomic $serverDeployPath $serverDeploy
+        $serverDeploy | ConvertTo-Json -Depth 6 | Write-Host
+    } else {
+        $serverDeployOutput =
+            & (Join-Path $repoRoot 'tools\am4\Deploy-NetworkSense.ps1') `
+                -DllPath $dll `
+                -SshTarget $ServerSshTarget `
+                -Container $ServerContainer `
+                -RemotePluginPath $serverRemotePluginPath `
+                -ContainerPluginPath $ServerContainerPluginPath `
+                -OutputPath $serverDeployPath
+        $serverDeploy =
+            Get-Content -LiteralPath $serverDeployPath -Raw -Encoding utf8 |
+            ConvertFrom-Json
+        $serverDeployOutput | Write-Host
+    }
+    if ([string]$serverDeploy.result -ne 'passed' -or
+        -not [bool]$serverDeploy.plugin_loaded -or
+        -not [bool]$serverDeploy.server_ready -or
+        [string]$serverDeploy.local_sha256 -ne $expectedDllHash -or
+        [string]$serverDeploy.host_sha256 -ne $expectedDllHash -or
+        [string]$serverDeploy.container_sha256 -ne $expectedDllHash) {
+        throw 'The server did not load the exact candidate DLL; no client was launched.'
+    }
 
     if ($EnableC8Composition) {
-        $saveIntegrityBefore = Get-Am4SaveFingerprint
+        $saveIntegrityBefore = Get-ServerSaveFingerprint
         Write-JsonAtomic `
             (Join-Path $runDirectory 'save-integrity-before.json') `
             $saveIntegrityBefore
     }
 
-    $gatewayTunnel = Start-Process `
-        -FilePath 'ssh.exe' `
-        -ArgumentList @(
-            '-N',
-            '-o', 'BatchMode=yes',
-            '-o', 'ExitOnForwardFailure=yes',
-            '-o', 'ServerAliveInterval=15',
-            '-R', "127.0.0.1:${I5GatewayTunnelPort}:127.0.0.1:4000",
-            'i5') `
-        -WindowStyle Hidden `
-        -PassThru
-    Start-Sleep -Seconds 1
-    if ($gatewayTunnel.HasExited) {
-        throw "The bounded i5 Gateway reverse tunnel failed with exit $($gatewayTunnel.ExitCode)."
+    if (-not $UseRemoteGateway) {
+        $gatewayTunnel = Start-Process `
+            -FilePath 'ssh.exe' `
+            -ArgumentList @(
+                '-N',
+                '-o', 'BatchMode=yes',
+                '-o', 'ExitOnForwardFailure=yes',
+                '-o', 'ServerAliveInterval=15',
+                '-R', "127.0.0.1:${I5GatewayTunnelPort}:127.0.0.1:4000",
+                'i5') `
+            -WindowStyle Hidden `
+            -PassThru
+        Start-Sleep -Seconds 1
+        if ($gatewayTunnel.HasExited) {
+            throw "The bounded i5 Gateway reverse tunnel failed with exit $($gatewayTunnel.ExitCode)."
+        }
     }
 
     if ($EnableDirectControlCutover) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
-        $runOutput = & $serverControl `
+        $runOutput = & $serverControl @serverControlTarget `
             -Setting nativeNetworkEvidenceRunId `
             -Value $RunId `
             -RequestId "$RunId-direct-run"
@@ -701,7 +882,7 @@ try {
         $serverControlReceipts += (($runOutput -join [Environment]::NewLine) | ConvertFrom-Json)
         $serverRunContextEstablished = $true
 
-        $armOutput = & $serverControl `
+        $armOutput = & $serverControl @serverControlTarget `
             -Setting directControlCutoverEnabled `
             -Value true `
             -RequestId "$RunId-direct-arm"
@@ -712,7 +893,7 @@ try {
 
     if ($useRoutedRpc) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
-        $runOutput = & $serverControl `
+        $runOutput = & $serverControl @serverControlTarget `
             -Setting nativeNetworkEvidenceRunId `
             -Value $RunId `
             -RequestId "$RunId-routed-run"
@@ -721,7 +902,7 @@ try {
             (($runOutput -join [Environment]::NewLine) | ConvertFrom-Json)
         $serverRunContextEstablished = $true
 
-        $gatewayOutput = & $serverControl `
+        $gatewayOutput = & $serverControl @serverControlTarget `
             -Setting lumberjacksGatewayUrl `
             -Value $ServerGatewayUrl `
             -RequestId "$RunId-routed-gateway"
@@ -732,7 +913,7 @@ try {
         $oldServerGatewayUrl = [string]$gatewayReceipt.old_value
         $serverGatewayChanged = $true
 
-        $armOutput = & $serverControl `
+        $armOutput = & $serverControl @serverControlTarget `
             -Setting routedRpcCutoverEnabled `
             -Value true `
             -RequestId "$RunId-routed-arm"
@@ -745,7 +926,7 @@ try {
 
     if ($EnableZdoJournalCutover) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
-        $journalArmOutput = & $serverControl `
+        $journalArmOutput = & $serverControl @serverControlTarget `
             -Setting zdoJournalCutoverEnabled `
             -Value true `
             -RequestId "$RunId-journal-arm"
@@ -754,7 +935,7 @@ try {
             (($journalArmOutput -join [Environment]::NewLine) | ConvertFrom-Json)
         $serverJournalArmed = $true
         if ($EnableZdoJournalCanonicalSession) {
-            $canonicalArmOutput = & $serverControl `
+            $canonicalArmOutput = & $serverControl @serverControlTarget `
                 -Setting zdoJournalCanonicalSessionEnabled `
                 -Value true `
                 -RequestId "$RunId-journal-canonical-arm"
@@ -769,7 +950,7 @@ try {
 
     if ($EnableOwnershipLeaseCutover) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
-        $ownershipArmOutput = & $serverControl `
+        $ownershipArmOutput = & $serverControl @serverControlTarget `
             -Setting ownershipLeaseCutoverEnabled `
             -Value true `
             -RequestId "$RunId-ownership-arm"
@@ -781,7 +962,7 @@ try {
 
     if ($EnableWorldZoneCutover) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
-        $worldZoneArmOutput = & $serverControl `
+        $worldZoneArmOutput = & $serverControl @serverControlTarget `
             -Setting worldZoneCutoverEnabled `
             -Value true `
             -RequestId "$RunId-world-zone-arm"
@@ -793,7 +974,7 @@ try {
 
     if ($EnablePortalTraversal) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
-        $portalTraversalOutput = & $serverControl `
+        $portalTraversalOutput = & $serverControl @serverControlTarget `
             -Setting portalTraversalEnabled `
             -Value true `
             -RequestId "$RunId-portal-traversal-arm"
@@ -812,7 +993,7 @@ try {
 
     if ($EnableMotionAuthorityCutover) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
-        $motionArmOutput = & $serverControl `
+        $motionArmOutput = & $serverControl @serverControlTarget `
             -Setting motionAuthorityCutoverEnabled `
             -Value true `
             -RequestId "$RunId-motion-arm"
@@ -827,7 +1008,7 @@ try {
 
     if ($EnableSteamFreeColdJoin) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
-        $logicalPeerArmOutput = & $serverControl `
+        $logicalPeerArmOutput = & $serverControl @serverControlTarget `
             -Setting logicalPeerCutoverEnabled `
             -Value true `
             -RequestId "$RunId-logical-peer-arm"
@@ -842,7 +1023,7 @@ try {
 
     if ($EnableServerNativePoison) {
         $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
-        $poisonArmOutput = & $serverControl `
+        $poisonArmOutput = & $serverControl @serverControlTarget `
             -Setting nativeNetworkPoisonEnabled `
             -Value true `
             -RequestId "$RunId-native-poison-arm"
@@ -903,26 +1084,43 @@ try {
     }
 
     if ($useConcurrentHarness) {
-        $gatewayCompose = Join-Path $repoRoot 'Lumberjacks\infra\docker'
-        $previousGatewayImage = $env:LUMBERJACKS_GATEWAY_IMAGE
-        Push-Location $gatewayCompose
-        try {
-            $env:LUMBERJACKS_GATEWAY_IMAGE = $GatewayImage
-            & docker compose -p lumberjacks-local up -d --no-deps --no-build gateway
+        $gatewayCompose = $null
+        if ($UseRemoteGateway) {
+            $remoteGatewayInspect = @(& ssh -o BatchMode=yes $ServerSshTarget `
+                "$serverDockerCommand inspect --format '{{.Image}}' '$RemoteGatewayContainer'")
             if ($LASTEXITCODE -ne 0) {
-                throw 'Exact paired Gateway deployment for the canonical-session slice failed.'
+                throw 'Remote Gateway image identity could not be read; no client was launched.'
             }
-        } finally {
-            if ($null -eq $previousGatewayImage) {
-                Remove-Item Env:LUMBERJACKS_GATEWAY_IMAGE -ErrorAction SilentlyContinue
-            } else {
-                $env:LUMBERJACKS_GATEWAY_IMAGE = $previousGatewayImage
+            $gatewayContainerImageId =
+                [regex]::Match(($remoteGatewayInspect -join "`n"),
+                    'sha256:[0-9a-fA-F]{64}').Value.ToLowerInvariant()
+            $gatewayRunningContainer = $RemoteGatewayContainer
+            $gatewayDeployment = 'remote_predeployed'
+        } else {
+            $gatewayCompose = Join-Path $repoRoot 'Lumberjacks\infra\docker'
+            $previousGatewayImage = $env:LUMBERJACKS_GATEWAY_IMAGE
+            Push-Location $gatewayCompose
+            try {
+                $env:LUMBERJACKS_GATEWAY_IMAGE = $GatewayImage
+                & docker compose -p lumberjacks-local up -d --no-deps --no-build gateway
+                if ($LASTEXITCODE -ne 0) {
+                    throw 'Exact paired Gateway deployment for the canonical-session slice failed.'
+                }
+            } finally {
+                if ($null -eq $previousGatewayImage) {
+                    Remove-Item Env:LUMBERJACKS_GATEWAY_IMAGE -ErrorAction SilentlyContinue
+                } else {
+                    $env:LUMBERJACKS_GATEWAY_IMAGE = $previousGatewayImage
+                }
+                Pop-Location
             }
-            Pop-Location
+            $gatewayContainerImageId = [string](
+                & docker inspect --format '{{.Image}}' lumberjacks-local-gateway-1)
+            $gatewayRunningContainer = 'lumberjacks-local-gateway-1'
+            $gatewayDeployment = 'local_compose_exact_image'
         }
-        $gatewayContainerImageId = [string](
-            & docker inspect --format '{{.Image}}' lumberjacks-local-gateway-1)
         if ($LASTEXITCODE -ne 0 -or
+            [string]::IsNullOrWhiteSpace($gatewayContainerImageId) -or
             $gatewayContainerImageId.Trim() -ne $gatewayExpectedImageId.Trim()) {
             throw "Running Gateway bytes do not match '$GatewayImage': expected=$gatewayExpectedImageId actual=$gatewayContainerImageId"
         }
@@ -934,8 +1132,10 @@ try {
             mod_release = $modRelease
             requested_image = $GatewayImage
             expected_image_id = $gatewayExpectedImageId.Trim()
-            running_container = 'lumberjacks-local-gateway-1'
+            running_container = $gatewayRunningContainer
             running_image_id = $gatewayContainerImageId.Trim()
+            deployment = $gatewayDeployment
+            server_ssh_target = $ServerSshTarget
             exact_image_match = $true
             result = 'passed'
         }
@@ -1010,8 +1210,7 @@ try {
         $i5Queued = $true
 
         if ($EnableGatewayJournalRestartProof) {
-            $serverJournalPath =
-                '/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/zdo-journal-cutover.jsonl'
+            $serverJournalPath = "$serverEvidenceRoot/zdo-journal-cutover.jsonl"
             $mutationDeadline = (Get-Date).AddSeconds($WaitSeconds)
             $mutationRow = $null
             do {
@@ -1023,8 +1222,8 @@ try {
                 if ($i5State.terminal) {
                     throw "i5 harness ended before the first durable C3 mutation: $($i5State.detail)"
                 }
-                $tail = & ssh -o BatchMode=yes am4 `
-                    "if test -f '$serverJournalPath'; then tail -n 256 '$serverJournalPath'; fi"
+                $tail = & ssh -o BatchMode=yes $ServerSshTarget `
+                    "if ${serverPrivilegePrefix}test -f '$serverJournalPath'; then ${serverPrivilegePrefix}tail -n 256 '$serverJournalPath'; fi"
                 if ($LASTEXITCODE -ne 0) {
                     throw 'Server C3 evidence tail failed while waiting for the first mutation.'
                 }
@@ -1056,12 +1255,22 @@ try {
                 throw 'The correlated C3 drive completed with zero durable Gateway objects.'
             }
             $restartStarted = [DateTimeOffset]::UtcNow
-            Push-Location $gatewayCompose
-            try {
-                & docker compose -p lumberjacks-local restart gateway
-                if ($LASTEXITCODE -ne 0) { throw 'Gateway restart for C3 replay proof failed.' }
-            } finally {
-                Pop-Location
+            if ($UseRemoteGateway) {
+                & ssh -o BatchMode=yes $ServerSshTarget `
+                    "$serverDockerCommand restart '$RemoteGatewayContainer'"
+                if ($LASTEXITCODE -ne 0) {
+                    throw 'Remote Gateway restart for C3 replay proof failed.'
+                }
+            } else {
+                Push-Location $gatewayCompose
+                try {
+                    & docker compose -p lumberjacks-local restart gateway
+                    if ($LASTEXITCODE -ne 0) {
+                        throw 'Gateway restart for C3 replay proof failed.'
+                    }
+                } finally {
+                    Pop-Location
+                }
             }
             $healthDeadline = (Get-Date).AddSeconds(90)
             do {
@@ -1154,39 +1363,30 @@ try {
     if ($EnableOwnershipLeaseCutover) {
         $serverDirectory = Join-Path $runDirectory 'server'
         New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/ownership-lease-cutover.jsonl' `
-            "$serverDirectory\ownership-lease-cutover.jsonl"
-        if ($LASTEXITCODE -ne 0) {
-            throw 'Server ownership-lease evidence retrieval failed.'
-        }
+        [void](Copy-ServerEvidenceFile `
+            -Name 'ownership-lease-cutover.jsonl' `
+            -Destination "$serverDirectory\ownership-lease-cutover.jsonl")
     }
     if ($EnableWorldZoneCutover) {
         $serverDirectory = Join-Path $runDirectory 'server'
         New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/world-zone-cutover.jsonl' `
-            "$serverDirectory\world-zone-cutover.jsonl"
-        if ($LASTEXITCODE -ne 0) {
-            throw 'Server world/zone evidence retrieval failed.'
-        }
+        [void](Copy-ServerEvidenceFile `
+            -Name 'world-zone-cutover.jsonl' `
+            -Destination "$serverDirectory\world-zone-cutover.jsonl")
     }
     if ($EnableMotionAuthorityCutover) {
         $serverDirectory = Join-Path $runDirectory 'server'
         New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
-        $remoteMotionEvidence =
-            '/home/derek/comfy-valheim-lab/server-state/config/bepinex/' +
-            'comfy-network-sense/motion-authority-cutover.jsonl'
-        & ssh -o BatchMode=yes am4 "test -f '$remoteMotionEvidence'"
+        $remoteMotionEvidence = "$serverEvidenceRoot/motion-authority-cutover.jsonl"
+        & ssh -o BatchMode=yes $ServerSshTarget `
+            "${serverPrivilegePrefix}test -f '$remoteMotionEvidence'"
         if ($LASTEXITCODE -eq 0) {
-            & scp "am4:$remoteMotionEvidence" `
-                "$serverDirectory\motion-authority-cutover.jsonl"
-            if ($LASTEXITCODE -ne 0) {
-                throw 'Server motion-authority evidence retrieval failed.'
-            }
+            [void](Copy-ServerEvidenceFile `
+                -Name 'motion-authority-cutover.jsonl' `
+                -Destination "$serverDirectory\motion-authority-cutover.jsonl")
         } elseif ($LASTEXITCODE -eq 1) {
             # LumberjacksMotionRunner is a client-only adapter and explicitly
-            # refuses to run on a dedicated server. A clean AM4 therefore has no
+            # refuses to run on a dedicated server. A clean server therefore has no
             # server-side motion event file for either active C6 probes or C7's
             # wait-only prerequisite. Preserve that absence as an explicit
             # boundary receipt; the two rendered client files are the C6 proof.
@@ -1218,18 +1418,12 @@ try {
     if ($EnableSteamFreeColdJoin) {
         $serverDirectory = Join-Path $runDirectory 'server'
         New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/logical-peer-cutover.jsonl' `
-            "$serverDirectory\logical-peer-cutover.jsonl"
-        if ($LASTEXITCODE -ne 0) {
-            throw 'Server logical-peer evidence retrieval failed.'
-        }
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/native-network-use.jsonl' `
-            "$serverDirectory\native-network-use.jsonl"
-        if ($LASTEXITCODE -ne 0) {
-            throw 'Server native-network evidence retrieval failed.'
-        }
+        [void](Copy-ServerEvidenceFile `
+            -Name 'logical-peer-cutover.jsonl' `
+            -Destination "$serverDirectory\logical-peer-cutover.jsonl")
+        [void](Copy-ServerEvidenceFile `
+            -Name 'native-network-use.jsonl' `
+            -Destination "$serverDirectory\native-network-use.jsonl")
     }
 
     & scp -r `
@@ -1239,45 +1433,33 @@ try {
     if ($EnableDirectControlCutover) {
         $serverDirectory = Join-Path $runDirectory 'server'
         New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/direct-control-cutover.jsonl' `
-            "$serverDirectory\direct-control-cutover.jsonl"
-        if ($LASTEXITCODE -ne 0) { throw 'Server direct-control evidence retrieval failed.' }
+        [void](Copy-ServerEvidenceFile `
+            -Name 'direct-control-cutover.jsonl' `
+            -Destination "$serverDirectory\direct-control-cutover.jsonl")
     }
     if ($useRoutedRpc) {
         $serverDirectory = Join-Path $runDirectory 'server'
         New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/routed-rpc-cutover.jsonl' `
-            "$serverDirectory\routed-rpc-cutover.jsonl"
-        if ($LASTEXITCODE -ne 0) { throw 'Server routed-RPC evidence retrieval failed.' }
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/ship-cutover.jsonl' `
-            "$serverDirectory\ship-cutover.jsonl"
-        if ($LASTEXITCODE -ne 0) { throw 'Server ship-cutover evidence retrieval failed.' }
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/saddle-cutover.jsonl' `
-            "$serverDirectory\saddle-cutover.jsonl"
-        if ($LASTEXITCODE -ne 0) { throw 'Server saddle-cutover evidence retrieval failed.' }
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/container-cutover.jsonl' `
-            "$serverDirectory\container-cutover.jsonl"
-        if ($LASTEXITCODE -ne 0) { throw 'Server container-cutover evidence retrieval failed.' }
+        foreach ($name in @(
+                'routed-rpc-cutover.jsonl',
+                'ship-cutover.jsonl',
+                'saddle-cutover.jsonl',
+                'container-cutover.jsonl')) {
+            [void](Copy-ServerEvidenceFile `
+                -Name $name `
+                -Destination (Join-Path $serverDirectory $name))
+        }
     }
     if ($EnableZdoJournalCutover) {
         $serverDirectory = Join-Path $runDirectory 'server'
         New-Item -ItemType Directory -Path $serverDirectory -Force | Out-Null
-        & scp `
-            'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/zdo-journal-cutover.jsonl' `
-            "$serverDirectory\zdo-journal-cutover.jsonl"
-        if ($LASTEXITCODE -ne 0) { throw 'Server ZDO-journal evidence retrieval failed.' }
+        [void](Copy-ServerEvidenceFile `
+            -Name 'zdo-journal-cutover.jsonl' `
+            -Destination "$serverDirectory\zdo-journal-cutover.jsonl")
         if ($EnableZdoJournalCanonicalSession) {
-            & scp `
-                'am4:/home/derek/comfy-valheim-lab/server-state/config/bepinex/comfy-network-sense/lumberjacks-game-session.jsonl' `
-                "$serverDirectory\lumberjacks-game-session.jsonl"
-            if ($LASTEXITCODE -ne 0) {
-                throw 'Server canonical-session evidence retrieval failed.'
-            }
+            [void](Copy-ServerEvidenceFile `
+                -Name 'lumberjacks-game-session.jsonl' `
+                -Destination "$serverDirectory\lumberjacks-game-session.jsonl")
         }
     }
 
@@ -1317,6 +1499,17 @@ try {
         generated_utc = [DateTimeOffset]::UtcNow.ToString('o')
         run_id = $RunId
         server = $Server
+        server_ssh_target = $ServerSshTarget
+        server_deployment = if ($SkipServerDeploy) {
+            'predeployed_verified'
+        } else {
+            'harness_deployed'
+        }
+        gateway_deployment = if ($UseRemoteGateway) {
+            'remote_predeployed_verified'
+        } else {
+            'local_compose_exact_image'
+        }
         result = 'completed'
         mod_release = $modRelease
         gateway_image = $GatewayImage
@@ -1461,7 +1654,7 @@ try {
     if ($serverRunContextEstablished -or $completed) {
         try {
             $residueCleanupOutput =
-                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                & $serverControlPath @serverControlTarget `
                     -Setting cutoverResidueCleanup `
                     -Value $RunId `
                     -RequestId "$RunId-residue-cleanup" `
@@ -1509,7 +1702,7 @@ try {
     if ($serverPoisonArmed) {
         try {
             $poisonDisarmOutput =
-                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                & $serverControlPath @serverControlTarget `
                     -Setting nativeNetworkPoisonEnabled `
                     -Value false `
                     -RequestId "$RunId-native-poison-disarm"
@@ -1528,7 +1721,7 @@ try {
     if ($serverPortalTraversalChanged) {
         try {
             $portalTraversalRestoreOutput =
-                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                & $serverControlPath @serverControlTarget `
                     -Setting portalTraversalEnabled `
                     -Value false `
                     -RequestId "$RunId-portal-traversal-restore"
@@ -1547,7 +1740,7 @@ try {
     if ($serverLogicalPeerArmed) {
         try {
             $logicalPeerDisarmOutput =
-                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                & $serverControlPath @serverControlTarget `
                     -Setting logicalPeerCutoverEnabled `
                     -Value false `
                     -RequestId "$RunId-logical-peer-disarm"
@@ -1566,7 +1759,7 @@ try {
     if ($serverMotionArmed) {
         try {
             $motionDisarmOutput =
-                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                & $serverControlPath @serverControlTarget `
                     -Setting motionAuthorityCutoverEnabled `
                     -Value false `
                     -RequestId "$RunId-motion-disarm"
@@ -1584,7 +1777,7 @@ try {
     }
     if ($serverDirectArmed) {
         try {
-            $disarmOutput = & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+            $disarmOutput = & $serverControlPath @serverControlTarget `
                 -Setting directControlCutoverEnabled `
                 -Value false `
                 -RequestId "$RunId-direct-disarm"
@@ -1601,7 +1794,7 @@ try {
     if ($serverRoutedArmed) {
         try {
             $routeDisarmOutput =
-                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                & $serverControlPath @serverControlTarget `
                     -Setting routedRpcCutoverEnabled `
                     -Value false `
                     -RequestId "$RunId-routed-disarm"
@@ -1619,7 +1812,7 @@ try {
     if ($serverOwnershipArmed) {
         try {
             $ownershipDisarmOutput =
-                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                & $serverControlPath @serverControlTarget `
                     -Setting ownershipLeaseCutoverEnabled `
                     -Value false `
                     -RequestId "$RunId-ownership-disarm"
@@ -1638,7 +1831,7 @@ try {
     if ($serverWorldZoneArmed) {
         try {
             $worldZoneDisarmOutput =
-                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                & $serverControlPath @serverControlTarget `
                     -Setting worldZoneCutoverEnabled `
                     -Value false `
                     -RequestId "$RunId-world-zone-disarm"
@@ -1658,7 +1851,7 @@ try {
         if ($serverJournalCanonicalArmed) {
             try {
                 $canonicalDisarmOutput =
-                    & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                    & $serverControlPath @serverControlTarget `
                         -Setting zdoJournalCanonicalSessionEnabled `
                         -Value false `
                         -RequestId "$RunId-journal-canonical-disarm"
@@ -1676,7 +1869,7 @@ try {
         }
         try {
             $journalDisarmOutput =
-                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                & $serverControlPath @serverControlTarget `
                     -Setting zdoJournalCutoverEnabled `
                     -Value false `
                     -RequestId "$RunId-journal-disarm"
@@ -1695,7 +1888,7 @@ try {
         -not [string]::IsNullOrWhiteSpace($oldServerGatewayUrl)) {
         try {
             $restoreOutput =
-                & (Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1') `
+                & $serverControlPath @serverControlTarget `
                     -Setting lumberjacksGatewayUrl `
                     -Value $oldServerGatewayUrl `
                     -RequestId "$RunId-routed-restore"
@@ -1945,12 +2138,12 @@ try {
 }
 
 if ($completed -and $EnableC8Composition) {
-    $saveIntegrityAfter = Get-Am4SaveFingerprint
+    $saveIntegrityAfter = Get-ServerSaveFingerprint
     Write-JsonAtomic `
         (Join-Path $runDirectory 'save-integrity-after.json') `
         $saveIntegrityAfter
     $saveIntegrity =
-        Compare-Am4SaveFingerprint $saveIntegrityBefore $saveIntegrityAfter
+        Compare-ServerSaveFingerprint $saveIntegrityBefore $saveIntegrityAfter
     Write-JsonAtomic `
         (Join-Path $runDirectory 'c8-save-integrity.json') `
         $saveIntegrity

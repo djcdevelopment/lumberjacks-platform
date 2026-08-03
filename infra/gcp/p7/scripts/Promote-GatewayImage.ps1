@@ -25,6 +25,7 @@ param(
   [string] $ComposeRoot = '/opt/comfy/infra/gcp/p7',
   [string] $EnvironmentFile = '/etc/comfy-p7/environment',
   [string] $GatewayContainer = 'comfy-lumberjacks-p7-gateway-1',
+  [switch] $DeferFailureRecoveryToPair,
   [switch] $DryRun
 )
 
@@ -34,12 +35,14 @@ $verifier = Join-Path $scriptRoot 'Test-GatewayImageRelease.ps1'
 if (!(Test-Path -LiteralPath $verifier -PathType Leaf)) { throw "missing verifier: $verifier" }
 
 function Invoke-NativeJob([string] $Exe, [string[]] $Arguments, [int] $TimeoutSeconds, [int] $Retries = 2) {
+  $serializedArguments = ConvertTo-Json -InputObject @($Arguments) -Compress
   for ($attempt = 1; $attempt -le $Retries; $attempt++) {
     $job = Start-Job -ScriptBlock {
-      param($exe, $exeArgs)
-      $out = & $exe $exeArgs 2>&1
+      param($exe, $exeArgsJson)
+      $exeArgs = [object[]](ConvertFrom-Json $exeArgsJson)
+      $out = & $exe @exeArgs 2>&1
       [pscustomobject]@{ Output = (@($out) -join "`n"); Code = $LASTEXITCODE }
-    } -ArgumentList $Exe, $Arguments
+    } -ArgumentList @($Exe, $serializedArguments)
     $done = Wait-Job $job -Timeout $TimeoutSeconds
     if ($done) {
       $result = Receive-Job $job
@@ -78,6 +81,7 @@ if ($DryRun) {
     target = $SshTarget
     compose_root = $ComposeRoot
     environment_file = $EnvironmentFile
+    defer_failure_recovery_to_pair = [bool]$DeferFailureRecoveryToPair
     action = 'would docker save, sha256 verify, docker load, re-pin LUMBERJACKS_GATEWAY_IMAGE, up -d --no-build --no-deps gateway'
   }
   return
@@ -85,6 +89,8 @@ if ($DryRun) {
 
 $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
 $releaseId = $Image.Split(':')[-1]
+$deferFailureRecovery =
+  $DeferFailureRecoveryToPair.IsPresent.ToString().ToLowerInvariant()
 $archiveName = "gateway-image-$($Image.Split(':')[-1])-$stamp.oci.tar"
 $localArchive = Join-Path ([IO.Path]::GetTempPath()) $archiveName
 $remoteArchive = "/tmp/$archiveName"
@@ -113,6 +119,7 @@ expected_archive_hash='$archiveHash'
 compose_root='$ComposeRoot'
 environment_file='$EnvironmentFile'
 gateway_container='$GatewayContainer'
+defer_failure_recovery='$deferFailureRecovery'
 stamp='$stamp'
 backup_root="/mnt/comfy-p7/backups/gateway-image-promote/`$stamp"
 backup_file="`$backup_root/environment"
@@ -125,7 +132,7 @@ rollback() {
     if test -f "`$backup_file"; then
       sudo cp -a "`$backup_file" "`$environment_file"
       cd "`$compose_root"
-      if test -n "`$old_ref"; then
+      if test "`$defer_failure_recovery" != true && test -n "`$old_ref"; then
         sudo docker compose --env-file "`$environment_file" up -d --no-build --no-deps gateway >/dev/null 2>&1 || true
       fi
     fi
