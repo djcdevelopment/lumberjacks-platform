@@ -644,7 +644,21 @@ public class MessageRouter
                 },
                 CancellationToken.None);
             if (!queued.Queued)
+            {
+                // A wedged recipient must degrade alone, exactly like
+                // SendPendingZdoDeliveriesAsync: throwing here aborts the publisher's
+                // processing loop and takes healthy recipients down with the slow one
+                // (candidate-8 wedge). The skipped peer recovers via its own resync path.
+                if (string.Equals(queued.Reason, "reliable_send_queue_full",
+                        StringComparison.Ordinal))
+                {
+                    _logger.LogWarning(
+                        "Motion resync skipped recipient {LogicalPeer}: reliable queue full",
+                        target.ValheimLogicalPeerId);
+                    continue;
+                }
                 throw new InvalidOperationException(queued.Reason);
+            }
             targetCount++;
         }
 
@@ -662,7 +676,19 @@ public class MessageRouter
             },
             CancellationToken.None);
         if (!receipt.Queued)
+        {
+            // The fan-out already happened; a full publisher queue only loses the
+            // informational receipt, so it degrades instead of failing the message.
+            if (string.Equals(receipt.Reason, "reliable_send_queue_full",
+                    StringComparison.Ordinal))
+            {
+                _logger.LogWarning(
+                    "Motion resync receipt dropped for publisher {LogicalPeer}: reliable queue full",
+                    session.ValheimLogicalPeerId);
+                return;
+            }
             throw new InvalidOperationException(receipt.Reason);
+        }
     }
 
     async Task SendNextZoneChunkAsync(GameSession target)
@@ -1694,12 +1720,17 @@ public class MessageRouter
 
     async Task SendPendingZdoDeliveriesAsync(GameSession target, string worldEpoch)
     {
-        const int controlHeadroom = 32;
+        // In-flight cap for bulk ZDO redelivery, well under the 256-frame reliable queue.
+        // Refilling to the full control headroom (224) after a Gateway restart buried the
+        // reconnected peer under the whole replayed journal: the client applies slower than
+        // the refill loop enqueues, ACK progress stops, and the wedge cascades into the
+        // stall abort. 64 unACKed bulk frames keeps the client's apply loop ahead of the
+        // refill while control frames retain their reserved headroom above it.
+        const int bulkInFlightCap = 64;
         foreach (var delivery in _zdoJournal.Pending(
                      target.ValheimLogicalPeerId, worldEpoch, 1024))
         {
-            if (target.Reliable.PendingCount >=
-                ReliableGameSessionState.MaxPendingFrames - controlHeadroom)
+            if (target.Reliable.PendingCount >= bulkInFlightCap)
                 break;
             if (!target.TryMarkZdoDelivery(worldEpoch, delivery.Sequence))
                 continue;

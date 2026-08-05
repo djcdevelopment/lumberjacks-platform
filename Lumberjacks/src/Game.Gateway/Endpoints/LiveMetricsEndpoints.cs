@@ -52,7 +52,11 @@ public static class LiveMetricsEndpoints
         // the canonical dedicated server has connected and published the selected run descriptor.
         app.MapGet("/live/valheim-cutover", (
             SessionManager sessions,
-            ValheimWorldZoneService worldZones) =>
+            ValheimWorldZoneService worldZones,
+            ValheimTelemetryHeartbeatService heartbeats,
+            ValheimZdoRedirectService redirects,
+            ValheimZdoConsumerTelemetryService consumers,
+            ValheimWindowActivityService activity) =>
         {
             const long heartbeatFreshnessMs = 5_000;
             var server = sessions.GetAll().FirstOrDefault(session =>
@@ -69,6 +73,19 @@ public static class LiveMetricsEndpoints
             var heartbeatFresh =
                 inboundAgeMs.HasValue &&
                 inboundAgeMs.Value <= heartbeatFreshnessMs;
+            // Effective mode + admission state, so "server up but not admitted" is one
+            // curl away. Runtime arming is per-run and in-memory on the mod side; both
+            // silent transitions on 2026-08-05 (abort left lumberjacks-primary armed,
+            // container restart dropped to native) were invisible until players saw an
+            // empty world.
+            var (effectiveMode, manifestId, modeSeen) = heartbeats.LatestModeInfo();
+            var modeStale = modeSeen is null ||
+                DateTimeOffset.UtcNow - modeSeen > TimeSpan.FromSeconds(15);
+            var verdict = heartbeats.LastVerdict;
+            var authoritativeComplete = string.IsNullOrWhiteSpace(manifestId)
+                ? (bool?)null
+                : heartbeats.IsAuthoritativeComplete(
+                    manifestId, redirects, consumers, activity, DateTime.UtcNow);
             return Results.Ok(new
             {
                 ready =
@@ -80,6 +97,17 @@ public static class LiveMetricsEndpoints
                 descriptor_published = descriptor is not null,
                 descriptor_run_id = descriptor?.RunId ?? "",
                 server_last_inbound_age_ms = inboundAgeMs,
+                effective_mode = effectiveMode,
+                effective_mode_stale = modeStale,
+                enrollment_manifest_id = manifestId,
+                authoritative_complete = authoritativeComplete,
+                admission = verdict is null ? null : new
+                {
+                    admitted = verdict.Admitted,
+                    mode = verdict.Mode,
+                    enrollment_manifest_id = verdict.EnrollmentManifestId,
+                    at_utc = verdict.AtUtc,
+                },
             });
         });
 

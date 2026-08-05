@@ -12,7 +12,8 @@ public static class ValheimTelemetryHeartbeatEndpoints
             ValheimTelemetryHeartbeat heartbeat,
             ValheimTelemetryHeartbeatService service,
             ValheimZdoRedirectService redirects,
-            ValheimZdoConsumerTelemetryService consumers) =>
+            ValheimZdoConsumerTelemetryService consumers,
+            ValheimWindowActivityService activity) =>
         {
             var expected = Environment.GetEnvironmentVariable("VALHEIM_TELEMETRY_KEY");
             if (!string.IsNullOrWhiteSpace(expected) &&
@@ -39,7 +40,7 @@ public static class ValheimTelemetryHeartbeatEndpoints
 
             // Records liveness first, then gates acceptance — a rejected beat still keeps the
             // dashboard fresh. See ValheimTelemetryHeartbeatService.RecordAndAdmit.
-            if (!service.RecordAndAdmit(heartbeat, redirects, consumers))
+            if (!service.RecordAndAdmit(heartbeat, redirects, consumers, activity))
             {
                 return Results.Conflict(new
                 {
@@ -58,8 +59,9 @@ public static class ValheimTelemetryHeartbeatEndpoints
             .RequireCors(PublicTelemetryV0.CorsPolicyName);
 
         app.MapGet("/api/v0/telemetry/cutover", (ValheimTelemetryHeartbeatService service,
-            ValheimZdoRedirectService redirects, ValheimZdoConsumerTelemetryService consumers) =>
-            Results.Ok(service.CutoverSnapshot(redirects, consumers)))
+            ValheimZdoRedirectService redirects, ValheimZdoConsumerTelemetryService consumers,
+            ValheimWindowActivityService activity) =>
+            Results.Ok(service.CutoverSnapshot(redirects, consumers, activity)))
             .RequireCors(PublicTelemetryV0.CorsPolicyName);
 
         app.MapGet("/api/v0/valheim/enrollment/{manifestId}", (string manifestId, HttpContext context, ValheimTelemetryHeartbeatService service) =>

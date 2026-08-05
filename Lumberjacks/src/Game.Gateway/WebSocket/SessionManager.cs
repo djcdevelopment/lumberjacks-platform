@@ -299,6 +299,9 @@ public sealed class ReliableGameSessionState
     long _lastClientSequence;
     string _resumeToken = Guid.NewGuid().ToString("N");
     long _resumeEpoch;
+    // UTC ticks of the last ACK progress while frames are pending (or of the enqueue that made
+    // the queue non-empty). Zero while nothing is pending. Feeds the stalled-session abort.
+    long _ackProgressMarkUtcTicks;
 
     public ReliableGameSessionState(string serverInstanceId, string worldId)
     {
@@ -358,6 +361,8 @@ public sealed class ReliableGameSessionState
                 sequence,
                 Encoding.UTF8.GetBytes(EnvelopeFactory.Serialize(envelope)));
             _pending[sequence] = frame;
+            if (_pending.Count == 1)
+                _ackProgressMarkUtcTicks = DateTime.UtcNow.Ticks;
             reason = "queued";
             return true;
         }
@@ -375,6 +380,8 @@ public sealed class ReliableGameSessionState
             var removed = 0;
             foreach (var key in _pending.Keys.Where(key => key <= sequence).ToArray())
                 if (_pending.Remove(key)) removed++;
+            if (removed > 0)
+                _ackProgressMarkUtcTicks = _pending.Count == 0 ? 0 : DateTime.UtcNow.Ticks;
             return removed;
         }
     }
@@ -397,6 +404,25 @@ public sealed class ReliableGameSessionState
         {
             _resumeEpoch++;
             _resumeToken = Guid.NewGuid().ToString("N");
+            // The new incarnation replays pending frames from scratch; it must earn its own
+            // stall verdict rather than inherit the wedged predecessor's clock.
+            if (_pending.Count > 0)
+                _ackProgressMarkUtcTicks = DateTime.UtcNow.Ticks;
+        }
+    }
+
+    /// <summary>
+    /// How long frames have been pending without any ACK progress. Zero when nothing is
+    /// pending. The stalled-session monitor aborts the socket past its threshold, which is
+    /// the server-side mirror of the mod's 5-second send guard.
+    /// </summary>
+    public TimeSpan PendingStalledFor(DateTime utcNow)
+    {
+        lock (_gate)
+        {
+            if (_pending.Count == 0 || _ackProgressMarkUtcTicks == 0) return TimeSpan.Zero;
+            var mark = new DateTime(_ackProgressMarkUtcTicks, DateTimeKind.Utc);
+            return utcNow > mark ? utcNow - mark : TimeSpan.Zero;
         }
     }
 }
@@ -431,34 +457,79 @@ public class SessionManager
     /// Try to resume a detached session with a new WebSocket.
     /// Returns a new GameSession with the original PlayerId, GuildId, and RegionId.
     /// </summary>
-    public GameSession? TryResume(string resumeToken, System.Net.WebSockets.WebSocket socket)
-    {
-        if (!_detached.TryRemove(resumeToken, out var match)) return null;
+    public GameSession? TryResume(string resumeToken, System.Net.WebSockets.WebSocket socket) =>
+        TryResume(resumeToken, socket, out _);
 
-        // Check if resume window has expired
-        if (DateTimeOffset.UtcNow - match.DetachedAt > ResumeWindow)
+    /// <summary>
+    /// A well-formed resume token can also name a session the Gateway still holds live: the
+    /// client abandoned that socket (send guard, WAN loss) but the Gateway's receive loop has
+    /// not noticed yet. Refusing the token there loops the client against the duplicate
+    /// logical-peer rejection forever (the candidate-8/9 reconnect storm), so the zombie is
+    /// evicted instead — socket aborted, reliable state carried into the new incarnation,
+    /// resume epoch advanced — and the resume succeeds.
+    /// </summary>
+    public GameSession? TryResume(
+        string resumeToken,
+        System.Net.WebSockets.WebSocket socket,
+        out bool evictedLiveSession)
+    {
+        evictedLiveSession = false;
+        if (_detached.TryRemove(resumeToken, out var match))
         {
-            return null;
+            // Check if resume window has expired
+            if (DateTimeOffset.UtcNow - match.DetachedAt > ResumeWindow)
+            {
+                return null;
+            }
+
+            return AttachResumed(socket, match.PlayerId, match.GuildId, match.RegionId,
+                match.ValheimRole, match.ValheimPeerUid, match.ValheimLogicalPeerId,
+                match.ValheimCharacter, match.ValheimCharacterAuthority,
+                match.ValheimMotionPosition, match.Reliable);
         }
 
-        match.Reliable.AdvanceResume();
+        var zombie = _sessions.Values.FirstOrDefault(candidate =>
+            string.Equals(candidate.ResumeToken, resumeToken, StringComparison.Ordinal));
+        if (zombie is null || !_sessions.TryRemove(zombie.SessionId, out _)) return null;
+        try { zombie.Socket.Abort(); } catch { }
+        evictedLiveSession = true;
+        // The zombie's receive loop unwinds through the middleware finally block, whose
+        // Detach() no-ops because the session is already out of _sessions.
+        return AttachResumed(socket, zombie.PlayerId, zombie.GuildId, zombie.RegionId,
+            zombie.ValheimRole, zombie.ValheimPeerUid, zombie.ValheimLogicalPeerId,
+            zombie.ValheimCharacter, zombie.ValheimCharacterAuthority,
+            zombie.ValheimMotionPosition, zombie.Reliable);
+    }
+
+    private GameSession AttachResumed(
+        System.Net.WebSockets.WebSocket socket,
+        string playerId,
+        string? guildId,
+        string? regionId,
+        string valheimRole,
+        long? valheimPeerUid,
+        string valheimLogicalPeerId,
+        string valheimCharacter,
+        ValheimCharacterAuthority? characterAuthority,
+        ValheimMotionPosition? motionPosition,
+        ReliableGameSessionState reliable)
+    {
+        reliable.AdvanceResume();
 
         var session = new GameSession(
             SessionId: Guid.NewGuid().ToString(),
-            PlayerId: match.PlayerId,
+            PlayerId: playerId,
             Socket: socket,
-            Reliable: match.Reliable)
+            Reliable: reliable)
         {
-            GuildId = match.GuildId,
-            RegionId = match.RegionId,
-            ValheimRole = match.ValheimRole,
-            ValheimPeerUid = match.ValheimPeerUid,
-            ValheimLogicalPeerId = match.ValheimLogicalPeerId,
-            ValheimCharacter = match.ValheimCharacter,
+            GuildId = guildId,
+            RegionId = regionId,
+            ValheimRole = valheimRole,
+            ValheimPeerUid = valheimPeerUid,
+            ValheimLogicalPeerId = valheimLogicalPeerId,
+            ValheimCharacter = valheimCharacter,
         };
-        session.RestoreValheimCharacter(
-            match.ValheimCharacterAuthority,
-            match.ValheimMotionPosition);
+        session.RestoreValheimCharacter(characterAuthority, motionPosition);
 
         _sessions[session.SessionId] = session;
         LumberjacksTelemetry.SessionCreated(resumed: true);

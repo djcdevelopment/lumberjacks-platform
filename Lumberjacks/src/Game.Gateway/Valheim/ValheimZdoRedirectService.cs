@@ -70,6 +70,9 @@ public sealed record ValheimZdoRedirectWindowStatus(
     IReadOnlyDictionary<string, long> PerPrefab,
     IReadOnlyDictionary<string, long> PerSource)
 {
+    /// <summary>Envelopes dropped by the per-partition pending bound (oldest first).</summary>
+    public long Shed { get; init; }
+
     public static ValheimZdoRedirectWindowStatus Aggregate(
         string windowId, IReadOnlyList<ValheimZdoRedirectWindowStatus> statuses)
     {
@@ -99,7 +102,10 @@ public sealed record ValheimZdoRedirectWindowStatus(
             first,
             last,
             perPrefab,
-            perSource);
+            perSource)
+        {
+            Shed = Sum(statuses, status => status.Shed),
+        };
     }
 }
 
@@ -112,10 +118,33 @@ public sealed record ValheimZdoRedirectWindowStatus(
 public sealed class ValheimZdoRedirectService
 {
     private const int MaxWalEntryBytes = 64 * 1024 * 1024;
+    /// <summary>
+    /// Replayed recipient partitions are provisional until their consumer re-attaches. A
+    /// partition whose peer never returns after this long is dropped — durable session-plane
+    /// state must not outlive the sessions it describes (zone bank, journal interests, and
+    /// the 2026-08-05 window-completeness starvation were all this same defect).
+    /// </summary>
+    public static readonly TimeSpan ReplayedPartitionTtl = TimeSpan.FromSeconds(60);
+    /// <summary>
+    /// Per-partition pending bound. With 100% redirect and zero consumers the queue (and its
+    /// WAL) otherwise grows without limit — 1,002 MB in one evening on P7's 32 GB state disk.
+    /// Past the cap the oldest envelopes are shed and counted; a consumer-less deploy
+    /// degrades instead of filling the disk.
+    /// </summary>
+    public static readonly int MaxPendingPerPartition = ReadPositiveEnv(
+        "VALHEIM_ZDO_MAX_PENDING_PER_PARTITION", 100_000);
+    /// <summary>WAL size that triggers an automatic compaction sweep.</summary>
+    public static readonly long WalCompactThresholdBytes = ReadPositiveEnv(
+        "VALHEIM_ZDO_WAL_COMPACT_BYTES", 256L * 1024 * 1024);
+
     private readonly ConcurrentDictionary<string, ValheimZdoRedirectWindow> _windows =
         new(StringComparer.Ordinal);
+    private readonly HashSet<string> _provisionalReplayKeys = new(StringComparer.Ordinal);
+    private readonly object _provisionalGate = new();
     private readonly object _persistenceGate = new();
     private readonly string? _walPath;
+    private readonly DateTime _replayCompletedUtc;
+    private readonly int _maxPendingPerPartition;
 
     public bool PersistenceEnabled => _walPath is not null;
     public bool PersistenceHealthy { get; private set; } = true;
@@ -126,13 +155,31 @@ public sealed class ValheimZdoRedirectService
     {
     }
 
-    public ValheimZdoRedirectService(string? walPath)
+    public ValheimZdoRedirectService(string? walPath, int? maxPendingPerPartition = null)
     {
+        _maxPendingPerPartition = maxPendingPerPartition ?? MaxPendingPerPartition;
         if (string.IsNullOrWhiteSpace(walPath)) return;
         _walPath = Path.GetFullPath(walPath);
         Directory.CreateDirectory(Path.GetDirectoryName(_walPath)!);
         ReplayWal();
+        _replayCompletedUtc = DateTime.UtcNow;
+        lock (_provisionalGate)
+        {
+            foreach (var pair in _windows)
+                if (pair.Value.ToSnapshot().Pending.Count > 0)
+                    _provisionalReplayKeys.Add(pair.Key);
+        }
     }
+
+    private static long ReadPositiveEnv(string name, long fallback) =>
+        long.TryParse(Environment.GetEnvironmentVariable(name), out var value) && value > 0
+            ? value
+            : fallback;
+
+    private static int ReadPositiveEnv(string name, int fallback) =>
+        int.TryParse(Environment.GetEnvironmentVariable(name), out var value) && value > 0
+            ? value
+            : fallback;
 
     public ValheimZdoRedirectRecordResult RecordEnvelopes(
         string windowId,
@@ -214,6 +261,8 @@ public sealed class ValheimZdoRedirectService
 
     public IReadOnlyList<ValheimZdoRedirectEnvelope> Pending(string windowId, string recipientId, int limit)
     {
+        // Only a consumer polls pending, so this is proof the partition's peer re-attached.
+        MarkConsumerAttached(windowId, recipientId);
         return _windows.TryGetValue(Key(windowId, NormalizeRecipient(recipientId)), out var window)
             ? window.Pending(Math.Clamp(limit, 1, 1024))
             : Array.Empty<ValheimZdoRedirectEnvelope>();
@@ -224,6 +273,7 @@ public sealed class ValheimZdoRedirectService
 
     public ValheimZdoRedirectAckResult Acknowledge(string windowId, string recipientId, IReadOnlyList<long> sequences)
     {
+        MarkConsumerAttached(windowId, recipientId);
         lock (_persistenceGate)
         {
             var normalized = NormalizeRecipient(recipientId);
@@ -277,6 +327,61 @@ public sealed class ValheimZdoRedirectService
                 throw;
             }
         }
+    }
+
+    private void MarkConsumerAttached(string windowId, string recipientId)
+    {
+        lock (_provisionalGate)
+        {
+            if (_provisionalReplayKeys.Count > 0)
+                _provisionalReplayKeys.Remove(Key(windowId, NormalizeRecipient(recipientId)));
+        }
+    }
+
+    /// <summary>
+    /// Drops replayed partitions whose consumer never re-attached within
+    /// <see cref="ReplayedPartitionTtl"/> of startup. Returns the dropped partition count.
+    /// The drop is written to the WAL so a later restart does not resurrect the partition.
+    /// </summary>
+    public int PurgeStaleReplayedPartitions(DateTime utcNow, TimeSpan? ttl = null)
+    {
+        string[] stale;
+        lock (_provisionalGate)
+        {
+            if (_provisionalReplayKeys.Count == 0 ||
+                utcNow - _replayCompletedUtc < (ttl ?? ReplayedPartitionTtl))
+                return 0;
+            stale = _provisionalReplayKeys.ToArray();
+            _provisionalReplayKeys.Clear();
+        }
+
+        var dropped = 0;
+        lock (_persistenceGate)
+        {
+            foreach (var key in stale)
+            {
+                if (!_windows.TryRemove(key, out _)) continue;
+                var parsed = ParseKey(key);
+                AppendWal(new() { SchemaVersion = CurrentWalSchemaVersion, Op = "reset_recipient",
+                    WindowId = parsed.WindowId, RecipientId = parsed.RecipientId });
+                dropped++;
+            }
+        }
+        return dropped;
+    }
+
+    /// <summary>
+    /// Compacts the WAL when it exceeds <see cref="WalCompactThresholdBytes"/>. Returns the
+    /// bytes reclaimed (zero when below the threshold or persistence is off). Combined with
+    /// the per-partition pending bound, this keeps a consumer-less deploy's disk footprint
+    /// proportional to the bounded queue instead of to the evening's traffic.
+    /// </summary>
+    public long CompactIfOversized()
+    {
+        if (_walPath is null) return 0;
+        var before = WalBytes;
+        if (before <= WalCompactThresholdBytes) return 0;
+        return Math.Max(0, before - Compact());
     }
 
     /// <summary>Clears a single window. Returns whether it existed.</summary>
@@ -383,11 +488,15 @@ public sealed class ValheimZdoRedirectService
                 if (_windows.TryGetValue(Key(entry.WindowId, recipientId), out var window)) window.Acknowledge(entry.Sequences);
                 break;
             case "snapshot" when !string.IsNullOrWhiteSpace(entry.WindowId) && entry.Snapshot is not null:
-                _windows[Key(entry.WindowId, recipientId)] = ValheimZdoRedirectWindow.FromSnapshot(entry.Snapshot);
+                _windows[Key(entry.WindowId, recipientId)] =
+                    ValheimZdoRedirectWindow.FromSnapshot(entry.Snapshot, _maxPendingPerPartition);
                 break;
             case "reset" when !string.IsNullOrWhiteSpace(entry.WindowId):
                 foreach (var key in _windows.Keys.Where(key => ParseKey(key).WindowId == entry.WindowId).ToList())
                     _windows.TryRemove(key, out _);
+                break;
+            case "reset_recipient" when !string.IsNullOrWhiteSpace(entry.WindowId):
+                _windows.TryRemove(Key(entry.WindowId, recipientId), out _);
                 break;
             case "reset_all":
                 _windows.Clear();
@@ -434,7 +543,8 @@ public sealed class ValheimZdoRedirectService
         windowId + "\u001f" + NormalizeRecipient(recipientId);
 
     private ValheimZdoRedirectWindow GetOrAdd(string windowId, string recipientId) =>
-        _windows.GetOrAdd(Key(windowId, recipientId), static _ => new ValheimZdoRedirectWindow());
+        _windows.GetOrAdd(Key(windowId, recipientId),
+            _ => new ValheimZdoRedirectWindow(_maxPendingPerPartition));
 
     private static (string WindowId, string RecipientId) ParseKey(string key)
     {
@@ -464,7 +574,13 @@ public sealed class ValheimZdoRedirectService
         // past the cap we keep counting totals but flag seq tracking as saturated.
         private const int MaxTrackedSeq = 1_000_000;
 
+        private readonly int _maxPending;
         private readonly object _gate = new();
+
+        public ValheimZdoRedirectWindow(int maxPending)
+        {
+            _maxPending = maxPending;
+        }
         private readonly HashSet<long> _distinctSeq = new();
         private readonly Dictionary<long, ValheimZdoRedirectEnvelope> _pending = new();
         private readonly Dictionary<int, long> _perPrefab = new();
@@ -473,6 +589,7 @@ public sealed class ValheimZdoRedirectService
         private long _receipts;
         private long _duplicates;
         private long _acknowledged;
+        private long _shed;
         private long? _minSeq;
         private long? _maxSeq;
         private long _emptyBodyCount;
@@ -524,6 +641,16 @@ public sealed class ValheimZdoRedirectService
                     var prefabKey = envelope.Prefab.GetValueOrDefault(0);
                     _perPrefab[prefabKey] = _perPrefab.GetValueOrDefault(prefabKey) + 1;
                     _perSource[source] = _perSource.GetValueOrDefault(source) + 1;
+                }
+
+                // Shed in 10% batches so the O(n log n) oldest-first scan amortizes instead
+                // of running per envelope once the partition sits at the bound.
+                if (_pending.Count > _maxPending)
+                {
+                    var excess = _pending.Count - _maxPending
+                        + Math.Max(1, _maxPending / 10);
+                    foreach (var seq in _pending.Keys.OrderBy(seq => seq).Take(excess).ToArray())
+                        if (_pending.Remove(seq)) _shed++;
                 }
 
                 return _receipts;
@@ -588,7 +715,10 @@ public sealed class ValheimZdoRedirectService
                     _firstUtc,
                     _lastUtc,
                     _perPrefab.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
-                    new Dictionary<string, long>(_perSource));
+                    new Dictionary<string, long>(_perSource))
+                {
+                    Shed = _shed,
+                };
             }
         }
 
@@ -613,9 +743,10 @@ public sealed class ValheimZdoRedirectService
             }
         }
 
-        public static ValheimZdoRedirectWindow FromSnapshot(RedirectWalSnapshot snapshot)
+        public static ValheimZdoRedirectWindow FromSnapshot(
+            RedirectWalSnapshot snapshot, int maxPending)
         {
-            var window = new ValheimZdoRedirectWindow
+            var window = new ValheimZdoRedirectWindow(maxPending)
             {
                 _receipts = snapshot.Receipts,
                 _duplicates = snapshot.Duplicates,

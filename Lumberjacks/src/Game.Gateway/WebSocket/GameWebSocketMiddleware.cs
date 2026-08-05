@@ -44,14 +44,19 @@ public class GameWebSocketMiddleware
 
         if (!string.IsNullOrEmpty(resumeToken))
         {
-            var existing = _sessions.TryResume(resumeToken, ws);
+            var existing = _sessions.TryResume(resumeToken, ws, out var evictedZombie);
             if (existing != null)
             {
                 session = existing;
                 resumed = true;
-                _logger.LogInformation(
-                    "Session {SessionId} resumed (player {PlayerId}, region {RegionId})",
-                    session.SessionId, session.PlayerId, session.RegionId);
+                if (evictedZombie)
+                    _logger.LogWarning(
+                        "Session {SessionId} resumed by evicting its live zombie incarnation (player {PlayerId}, epoch {ResumeEpoch})",
+                        session.SessionId, session.PlayerId, session.ResumeEpoch);
+                else
+                    _logger.LogInformation(
+                        "Session {SessionId} resumed (player {PlayerId}, region {RegionId})",
+                        session.SessionId, session.PlayerId, session.RegionId);
             }
             else
             {

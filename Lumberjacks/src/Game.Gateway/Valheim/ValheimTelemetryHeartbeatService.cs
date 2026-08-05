@@ -1,11 +1,35 @@
 namespace Game.Gateway.Valheim;
 
+/// <summary>Last admission decision for a primary heartbeat, kept for the operator surface —
+/// "server up but not admitted" must be one curl away, not a Cloud Logging dig.</summary>
+public sealed record ValheimAdmissionVerdict(
+    bool Admitted,
+    string? Mode,
+    string? EnrollmentManifestId,
+    DateTimeOffset AtUtc);
+
 /// <summary>Bounded latest-value store for the mod's sanitized runtime heartbeat.</summary>
 public sealed class ValheimTelemetryHeartbeatService
 {
+    /// <summary>
+    /// How recently a recipient partition's consumer must have polled or acked for the
+    /// partition to count toward window completeness. Matches the C8 restart-resume budget:
+    /// a consumer silent longer than a full restart-resume cycle is not draining anything.
+    /// </summary>
+    public const int ConsumerLivenessLeaseSeconds = 45;
+
     private readonly object _gate = new();
     private ValheimTelemetryHeartbeat? _latest;
     private DateTimeOffset? _lastSeen;
+    private ValheimAdmissionVerdict? _lastVerdict;
+
+    public ValheimAdmissionVerdict? LastVerdict { get { lock (_gate) return _lastVerdict; } }
+
+    /// <summary>Cutover mode and manifest from the latest heartbeat, for the live surface.</summary>
+    public (string? Mode, string? ManifestId, DateTimeOffset? LastSeen) LatestModeInfo()
+    {
+        lock (_gate) return (_latest?.CutoverMode, _latest?.EnrollmentManifestId, _lastSeen);
+    }
 
     public void Record(ValheimTelemetryHeartbeat heartbeat)
     {
@@ -96,7 +120,9 @@ public sealed class ValheimTelemetryHeartbeatService
         }
     }
 
-    public object CutoverSnapshot(ValheimZdoRedirectService redirects, ValheimZdoConsumerTelemetryService consumers)
+    public object CutoverSnapshot(ValheimZdoRedirectService redirects,
+        ValheimZdoConsumerTelemetryService consumers,
+        ValheimWindowActivityService? activity = null)
     {
         lock (_gate)
         {
@@ -111,7 +137,8 @@ public sealed class ValheimTelemetryHeartbeatService
             var windowId = _latest?.EnrollmentManifestId ?? string.Empty;
             var redirect = redirects.GetStatus(windowId);
             var consumer = consumers.GetWindowStatus(windowId);
-            var authoritativeComplete = IsAuthoritativeComplete(windowId, redirects, consumers);
+            var authoritativeComplete = IsAuthoritativeComplete(
+                windowId, redirects, consumers, activity, DateTime.UtcNow);
             var consumerActive = consumer.ActiveConsumers > 0;
             var consumerDraining = consumerActive && (redirect.Pending > 0 || consumer.Pending > 0);
 
@@ -166,10 +193,23 @@ public sealed class ValheimTelemetryHeartbeatService
     }
 
     public bool IsAuthoritativeComplete(string windowId, ValheimZdoRedirectService redirects,
-        ValheimZdoConsumerTelemetryService consumers)
+        ValheimZdoConsumerTelemetryService consumers) =>
+        IsAuthoritativeComplete(windowId, redirects, consumers, activity: null,
+            utcNow: DateTime.UtcNow);
+
+    /// <summary>
+    /// With an activity service supplied, only partitions whose consumer is live (poll/ack
+    /// within <see cref="ConsumerLivenessLeaseSeconds"/>) count toward completeness. A dead
+    /// partition — typically one replayed from the WAL for a peer that never came back —
+    /// must never permanently veto lumberjacks-primary admission; that starvation is what
+    /// emptied the 2026-08-05 human session (heartbeat 409 → no admission → no delivery).
+    /// </summary>
+    public bool IsAuthoritativeComplete(string windowId, ValheimZdoRedirectService redirects,
+        ValheimZdoConsumerTelemetryService consumers, ValheimWindowActivityService? activity,
+        DateTime utcNow)
     {
         if (string.IsNullOrWhiteSpace(windowId)) return false;
-        var redirect = redirects.GetStatus(windowId);
+        var redirect = ResolveRedirectStatus(windowId, redirects, activity, utcNow);
         var consumer = consumers.GetWindowStatus(windowId);
         return redirect.DistinctSeq > 0 &&
             redirect.MissingSeq == 0 &&
@@ -188,6 +228,22 @@ public sealed class ValheimTelemetryHeartbeatService
             consumer.Pending == 0;
     }
 
+    private static ValheimZdoRedirectWindowStatus ResolveRedirectStatus(string windowId,
+        ValheimZdoRedirectService redirects, ValheimWindowActivityService? activity,
+        DateTime utcNow)
+    {
+        if (activity is null) return redirects.GetStatus(windowId);
+        var live = redirects.GetAllRecipientStatuses()
+            .Where(status =>
+                string.Equals(status.WindowId, windowId, StringComparison.Ordinal) &&
+                activity.IsLive(windowId, status.RecipientId, utcNow,
+                    ConsumerLivenessLeaseSeconds))
+            .ToList();
+        return live.Count == 0
+            ? redirects.GetStatus(windowId)
+            : ValheimZdoRedirectWindowStatus.Aggregate(windowId, live);
+    }
+
     /// <summary>
     /// Records liveness, then answers whether the beat is admissible. The order is the
     /// point and is why this is one method rather than two calls at the endpoint: a
@@ -202,14 +258,23 @@ public sealed class ValheimTelemetryHeartbeatService
     /// is the truth. Same reasoning as the <c>PeerCount == 0</c> carve-out below.
     /// </summary>
     public bool RecordAndAdmit(ValheimTelemetryHeartbeat heartbeat,
-        ValheimZdoRedirectService redirects, ValheimZdoConsumerTelemetryService consumers)
+        ValheimZdoRedirectService redirects, ValheimZdoConsumerTelemetryService consumers,
+        ValheimWindowActivityService? activity = null)
     {
         Record(heartbeat);
-        return CanAcceptPrimaryHeartbeat(heartbeat, redirects, consumers);
+        var admitted = CanAcceptPrimaryHeartbeat(heartbeat, redirects, consumers, activity);
+        lock (_gate)
+        {
+            _lastVerdict = new ValheimAdmissionVerdict(
+                admitted, heartbeat.CutoverMode, heartbeat.EnrollmentManifestId,
+                DateTimeOffset.UtcNow);
+        }
+        return admitted;
     }
 
     public bool CanAcceptPrimaryHeartbeat(ValheimTelemetryHeartbeat heartbeat,
-        ValheimZdoRedirectService redirects, ValheimZdoConsumerTelemetryService consumers)
+        ValheimZdoRedirectService redirects, ValheimZdoConsumerTelemetryService consumers,
+        ValheimWindowActivityService? activity = null)
     {
         if (heartbeat.CutoverMode != "lumberjacks-primary") return true;
         if (string.IsNullOrWhiteSpace(heartbeat.EnrollmentManifestId)) return false;
@@ -221,7 +286,8 @@ public sealed class ValheimTelemetryHeartbeatService
         // and the full apply/ack gate on every accepted primary heartbeat.
         if (heartbeat.PeerCount == 0) return true;
         return heartbeat.CoverageTotal is > 0 && heartbeat.CoverageNativeOnly is 0 &&
-            IsAuthoritativeComplete(heartbeat.EnrollmentManifestId, redirects, consumers);
+            IsAuthoritativeComplete(heartbeat.EnrollmentManifestId, redirects, consumers,
+                activity, DateTime.UtcNow);
     }
 
     public object EnrollmentSnapshot(string manifestId)
