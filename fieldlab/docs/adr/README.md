@@ -22,6 +22,7 @@ Format follows the standard Status / Context / Decision / Consequences shape.
 | [0014](0014-boot-must-converge-or-say-so.md) | Boot must converge on its own, or say so loudly | Accepted | cross-cutting / P7 stack lifecycle |
 | [0015](0015-pin-line-endings-for-load-bearing-bytes.md) | Pin line endings for bytes that are hashed or parsed elsewhere | Accepted | cross-cutting / repo hygiene |
 | [0016](0016-banked-state-must-carry-session-identity.md) | Banked state must carry the identity scope of what it banks | Accepted | netcode / canonical session |
+| [0017](0017-prove-the-lane-users-ship-on.md) | Acceptance proofs must exercise the lane users ship on | Accepted | M7 / cutover acceptance |
 
 Canon: [`Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json`](../../../Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json)
 (state — milestones, gate/proof state) ·
