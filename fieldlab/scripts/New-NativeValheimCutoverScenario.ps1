@@ -447,8 +447,15 @@ if ($Profile -eq 'c8') {
         New-Action 'i5-c8-routed-target' 'i5' 'routed_target_zdo' 20
         New-Action 'omen-c8-zdo-journal-drive' 'omen' 'zdo_journal_drive' 90
         New-Action 'i5-c8-zdo-journal-observe' 'i5' 'zdo_journal_observe' 90
-        New-Action 'omen-c8-gateway-restart-resume' 'omen' 'gateway_restart_resume' 20
-        New-Action 'i5-c8-gateway-restart-resume' 'i5' 'gateway_restart_resume' 20
+        # 45s: the probe clock includes the harness's remote restart command, which
+        # is ~1s on the local lab but ~8s over IAP SSH to P7, plus a slower remote
+        # Gateway boot and Caddy-mediated death detection. P7 attempts at 20s:
+        # candidate7 deadlined, candidate8 passed at 18.16s, candidate10 deadlined
+        # with zero client-side socket events - a calibration miss, not a recovery
+        # defect. The mod accepts deadlines up to 300s, so the deployed pair is
+        # unaffected.
+        New-Action 'omen-c8-gateway-restart-resume' 'omen' 'gateway_restart_resume' 45
+        New-Action 'i5-c8-gateway-restart-resume' 'i5' 'gateway_restart_resume' 45
         New-Action 'c8-ownership-contended' 'omen' 'ownership_lease_pickup' 90
         New-Action 'c8-ownership-contended' 'i5' 'ownership_contention' 60
         New-Action 'omen-c8-post-contention-settle' 'omen' 'wait' 10 3
