@@ -27,10 +27,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\workbench\Publish-Work
 #>
 [CmdletBinding()]
 param(
-    [string] $SshTarget = 'comfy-p7',
-    [string] $RemoteRoot = '/mnt/comfy-p7/lumberjacks/roadmap',
-    # The origin the published page is reached at. The live surface today is the AM4 funnel;
-    # comfy-p7.duckdns.org belongs to the future P7 cutover recipe.
+    # Where the page actually lives today. The AM4 host serves it: the lj-workbench container
+    # reads LUMBERJACKS_WORKBENCH_HTML=/var/lib/lumberjacks/roadmap/workbench.html from a
+    # read-only bind of the host's /srv/lumberjacks/roadmap, and re-reads on mtime change --
+    # so publishing is a file copy, no image build and no restart.
+    #
+    # These defaulted to comfy-p7:/mnt/comfy-p7/lumberjacks/roadmap until 2026-08-06, which
+    # made the script verify against one host and upload to another: $PublicBaseUrl was
+    # already the AM4 funnel while the upload targeted a GCP VM that has been terminated
+    # since 2026-07-25. The only documented way to update the live page therefore failed
+    # closed on a dead host. Pass -SshTarget/-RemoteRoot explicitly for the P7 cutover.
+    [string] $SshTarget = 'homebase',
+    [string] $RemoteRoot = '/srv/lumberjacks/roadmap',
+    # The origin the published page is reached at.
     [string] $PublicBaseUrl = 'https://am4.tail8e749c.ts.net'
 )
 

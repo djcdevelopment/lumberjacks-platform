@@ -807,7 +807,7 @@ function linkOwners(escaped, ownersHref) {
 
 /// Same argument for the licence file: six cards end "see LICENSING.md." and a named document
 /// must be reachable. One stored href — the same one the footer's "license details" uses.
-const licensingHref = 'https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md';
+const licensingHref = 'https://github.com/djcdevelopment/baseline/blob/main/docs/legal/LICENSING.md';
 
 function linkLicensing(escaped) {
   return escaped.replaceAll(

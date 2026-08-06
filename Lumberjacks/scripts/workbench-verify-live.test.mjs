@@ -122,7 +122,7 @@ test('pre-publish runs no download or served-artifact checks', async () => {
 
 // Negative test 7 (trust review §8): a public-repo deep link that 404s.
 test('a 404 on a public deep link fails the github class and names the URL', async () => {
-  const target = 'https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md';
+  const target = 'https://github.com/djcdevelopment/baseline/blob/main/docs/legal/LICENSING.md';
   const receipt = await run({ [target]: (url) => response({ url, status: 404 }) });
   assert.equal(receipt.verdict, 'fail');
   const failure = receipt.checks.find((c) => !c.ok && c.class === 'github' && c.target === target);

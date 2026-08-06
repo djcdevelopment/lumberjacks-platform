@@ -75,7 +75,7 @@ const FOOTER_GITHUB_LINKS = [
   'https://github.com/djcdevelopment/baseline',
   'https://github.com/djcdevelopment/Lumberjacks',
   'https://github.com/djcdevelopment/comfy',
-  'https://github.com/djcdevelopment/baseline/blob/main/LICENSING.md',
+  'https://github.com/djcdevelopment/baseline/blob/main/docs/legal/LICENSING.md',
 ];
 
 function sha256Hex(bytes) {
