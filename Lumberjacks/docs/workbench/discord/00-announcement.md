@@ -8,22 +8,21 @@ divider as the message.*
 
 **Why now**
 
-I put the deep networking work on hold this week. Not because it broke — it's actually sitting
-at a clean stopping point, machine side all green. It's on hold because what's left needs me,
-personally, driving two Steam clients on two screens, for hours, watching for anything to go
-sideways. That's real work. It's also invisible — nobody sees it happen, and it was quietly
-eating the only time I had left for Comfy.
+The deep networking work is still going, and it's closer than it's ever been — the machine side
+is green on everything a machine can check. What's left needs me, personally, driving two Steam
+clients on two screens for hours, watching for anything to go sideways. That's real work. It's
+also invisible: nobody sees it happen, and it quietly eats the only time I have.
 
-So I moved that time somewhere you can see it. Four tools that already exist and already run.
-Until this week you'd have had to ask me directly to even know they were there.
+So I'm putting something where you can actually see it. Three tools that already exist and
+already run. Until now you'd have had to ask me directly to even know they were there.
 
 **What's here**
 
-There's a catalog page now: <WORKBENCH-URL>. It lists what each tool actually does, its real
-status — not "coming soon," what's true today — how to run it on your own machine, and where to
-talk about it.
+There's a catalog page now: https://am4.tail8e749c.ts.net/workbench. It lists what each tool
+actually does, its real status — not "coming soon," what's true today — how to run it on your
+own machine, and where to talk about it.
 
-**Four things you can run today**
+**Three things you can run today**
 
 - **Quest picker** — turns a guild's real quest tracker into a page where you check off what
   you're chasing; the mod reads the result.
@@ -31,11 +30,14 @@ talk about it.
   players, who owns what.
 - **Community telemetry** — a live, aggregates-only view of what's happening on the server. No
   player names or positions, ever — tested to stay that way, not just promised.
-- **Steam join flow** — an invite, a Steam sign-in, and a mod-pack zip with your setup already
-  done. No config file to hand-edit.
 
 Each one has its own thread below: a plain-language rundown and a couple of small first things to
 try.
+
+There's a fourth card in the catalog — the **Steam join flow**, which turns an invite into a
+mod-pack zip with your setup already done. It's built, and you can read it, but it isn't wired
+up to anything you can reach yet. Its card says so, and its thread is open if you want to look
+at how it's put together.
 
 **Two more, if you want a bigger project**
 
@@ -43,6 +45,12 @@ Two other pieces got cut when I pruned the repo for time — not because they fa
 themselves first. A camera that flies a world save's best builds into a gallery. A bridge that
 turns a quest or rank submission into something a human can review and approve. Full story in the
 recoverable-pieces thread. Reviving either one is a real claim on it, not a warm-up exercise.
+
+Fair warning on the camera one: I've since rebuilt the front half of it — a scanner that finds
+every player-built structure in a world save, ranks them as camera subjects, and emits a shot
+list with the waypoints already worked out (`tools/selfie-stick/`). So that piece starts from a
+head start rather than from nothing. The half that's still missing is the actual flying and the
+gallery cut.
 
 **How feedback works**
 

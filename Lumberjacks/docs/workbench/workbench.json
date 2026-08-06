@@ -270,19 +270,18 @@
       "id": "steam-join",
       "name": "Steam Self-Service Join",
       "one_liner": "An invite link, a Steam sign-in, and a mod-pack zip with your credentials already in it — no config file to hand-edit.",
-      "status": "live",
-      "status_detail": "The join flow serves on the public AM4 endpoint today — invite, Steam sign-in, personalized zip, self-service update and reissue — over HTTPS end to end (Tailscale terminates TLS at the public edge, which retires the old plaintext-credential caveat). Stated plainly, what remains: the full Steam sign-in round-trip has not been walked on this host yet (that is exactly first task SJ-1), rate limiting is not in place, it is open to the alpha cohort only, and volunteer platform readiness is recorded as NOT READY. The Valheim world itself carries no password, by operator decision while the cohort is the operator and name-known friends: the invite gates this enrollment flow, not the world, so anyone who knows the address can direct-connect without it.",
+      "status": "local-only",
+      "status_detail": "Built and working on the Gateway, but NOT publicly reachable today — so there is nothing here for you to click yet. The public /join path on this host currently belongs to a different service entirely, so the enrollment flow is not routed to the internet; that has to be untangled before anyone outside the operator's machine can walk it. Beyond routing, stated plainly: the full Steam sign-in round-trip has never been walked end to end (that is exactly first task SJ-1), rate limiting is not in place, only one client can be admitted at a time while the enrollment queue is shared, and volunteer platform readiness is recorded as NOT READY. The world this would connect you to is not open either. Opening this is gated on the server opening, which has not happened.",
       "what_it_does": "An invite link opens a page that hands off to Steam OpenID sign-in. A one-use bootstrap token is exchanged for a personalized mod-pack zip with the player's credentials already baked in. Self-service update and reissue run through the same path. The per-player token is stored only as a hash.",
-      "who_its_for": "The next wave of playtesters — people who want to join and play without being told to edit a config file first.",
-      "time_to_first_result": "about 5 minutes",
+      "who_its_for": "The next wave of playtesters — people who will want to join and play without being told to edit a config file first. Not yet available to them.",
+      "time_to_first_result": "not yet — nothing to run until the routing and the server both open",
       "requires": [
-        "A Steam account",
-        "Valheim",
-        "An invite link from the operator — the endpoint is alpha-cohort only"
+        "Nothing yet — there is no public endpoint to try",
+        "When it opens: a Steam account, Valheim, and an invite link from the operator"
       ],
       "access": {
-        "kind": "live-service",
-        "href": "https://am4.tail8e749c.ts.net/join",
+        "kind": "not-published",
+        "href": null,
         "sha256": null,
         "size_bytes": null,
         "published_at": null
@@ -294,8 +293,8 @@
       },
       "docs": [
         {
-          "label": "Join the alpha (the live flow)",
-          "href": "https://am4.tail8e749c.ts.net/join"
+          "label": "What the flow does, and what is not wired up yet",
+          "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/tools/steam-join.md"
         },
         {
           "label": "Volunteer roadmap — the M2 and M5 gates this sits behind",
@@ -404,7 +403,7 @@
       "name": "Camera Flythrough → Gallery Pipeline",
       "one_liner": "Fly a camera along waypoints derived from a world save, then cut the capture into a gallery of what people actually built.",
       "status": "recoverable-not-running",
-      "status_detail": "Not running. It was pruned from baseline on 2026-07-21 and nothing here executes today. Two of the four segments are real: segment 1 was built and produced real output, and segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. Every piece is still in the public comfy repo, so this is a revival rather than a rewrite. Since 2026-07-29 the revivable raw material — both scripts, the four briefs, and the two sample fixtures — also sits unwired in this repo at recipes/camera-gallery/, byte-exact from the archive with provenance recorded; the camera proof-of-concept kit stays archive-only.",
+      "status_detail": "Not running. It was pruned from baseline on 2026-07-21 and nothing here executes today. Two of the four segments are real: segment 1 was built and produced real output, and segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. Every piece is still in the public comfy repo, so this is a revival rather than a rewrite. Since 2026-07-29 the revivable raw material — both scripts, the four briefs, and the two sample fixtures — also sits unwired in this repo at recipes/camera-gallery/, byte-exact from the archive with provenance recorded; the camera proof-of-concept kit stays archive-only. Updated 2026-08-06: the subject-selection half now has a working modern replacement in this repo at tools/selfie-stick/ — it reads a world save's structures, ranks them as camera subjects, and emits a shot list with waypoints and standoff distances already computed. That removes the hardest guesswork from a revival; what remains unbuilt is the flight execution and the gallery cut.",
       "what_it_does": "A four-segment pipeline: read a world save, emit camera waypoints via ComfyStewardView, fly those waypoints in-game with a BepInEx camera plugin, then cut the capture into a gallery with ffmpeg.",
       "who_its_for": "Anyone who wants to show a server's builds to people who will never log into it.",
       "time_to_first_result": "Unknown — nothing runs yet. CG-1 produces the first honest estimate.",

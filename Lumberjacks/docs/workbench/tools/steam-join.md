@@ -3,9 +3,16 @@
 An invite link, a Steam sign-in, and a mod-pack zip that already has your
 own credentials baked in — no config file to hand-edit.
 
+> **Not reachable today.** This is built and it answers on the Gateway, but it is not
+> routed to the public internet right now — the public `/join` path on the community
+> host currently belongs to an unrelated service. The world it would connect you to is
+> not open either. Nothing on this page is clickable yet; it is here so you can read
+> what exists and see what it would take to open it.
+
 ## What it is
 
-A live service at `https://comfy-p7.duckdns.org/join`. The flow:
+An enrollment flow served by the Gateway. When it is routed publicly, it works like
+this:
 
 ```text
 admin generates a random, one-use, 24-hour invite
@@ -41,10 +48,16 @@ same Gateway are not gated the way the join/credential flow is.
 
 ## Status
 
-The join flow works end to end on `comfy-p7.duckdns.org` today: invite,
-Steam sign-in, personalized zip, self-service update and reissue.
+Built, unrouted, and never walked end to end.
 
-## How to get in (there's no local "run it" — this is a live service)
+The endpoints exist in the Gateway and have test coverage. What has not happened: the
+public host does not route `/join` here, no one has completed the Steam round-trip on
+this deployment, and the server is closed. The earlier host this doc pointed at
+(`comfy-p7.duckdns.org`) is a terminated VM.
+
+## How you would get in, once it opens
+
+Written down so the shape is reviewable — none of these steps are available yet.
 
 1. Ask for an invite in this tool's Discord thread.
 2. Open the invite link you're sent.
@@ -54,10 +67,8 @@ Steam sign-in, personalized zip, self-service update and reissue.
    install folder, letting it merge.
 6. Close and restart Valheim so BepInEx reloads the config and plugin.
 
-Already installed and just need the latest build? Open
-`https://comfy-p7.duckdns.org/join/update` (or the direct
-`http://8.231.129.249:42317/join/update` while TLS isn't on yet — see
-below) and sign in again; this does **not** rotate your credential.
+Updating an existing install would go through `/join/update`, which re-signs you in
+without rotating your credential.
 
 ## What you'll see
 
@@ -74,21 +85,22 @@ your enrollment id and access token already filled in under `[Lumberjacks]`.
 The operator runbook (`infra/gcp/p7/VOLUNTEER-ENDPOINT.md`) is direct about
 what's not done, and this doc isn't going to soften it:
 
-- **Plain HTTP today.** The endpoint is unencrypted HTTP on a non-default,
-  world-open port. TLS is built and staged — the certificate name, the
-  Caddy sidecar, and the firewall rule all exist — but it has not been
-  switched on. Until it is, your enrollment credential crosses a plaintext
-  public link during install.
-- **No rate limiting yet.** The runbook lists rate limiting as something to
-  add "before wider public use," alongside credential revocation/rotation
-  and access logging — none of that exists today.
-- **Alpha cohort only, one client at a time**, per the shared-queue
-  limitation above.
+- **Not publicly routed.** The community host serves an unrelated service on
+  `/join`, so the Gateway's real enrollment flow is unreachable from outside.
+  Untangling that comes before anything else on this list.
+- **Never walked end to end.** The Steam round-trip has not been completed once
+  on this deployment. That is first task SJ-1, and it cannot start until routing
+  is fixed.
+- **No rate limiting.** The runbook lists rate limiting as something to add
+  "before wider public use," alongside credential revocation/rotation and access
+  logging — none of that exists today.
+- **One client at a time**, per the shared-queue limitation above.
 - **Dashboard `GET` routes aren't access-controlled**, even though the
   join/credential flow is.
 
-None of that should stop you from trying the flow — it's exactly why SJ-1
-below exists — just don't treat this as a hardened public service yet.
+Taken together: this is a design and a codebase you can read and critique right
+now, not a service you can use. Treating it as a hardened public service would be
+wrong in both directions.
 
 ## First tasks
 

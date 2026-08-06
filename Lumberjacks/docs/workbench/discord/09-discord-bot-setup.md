@@ -147,7 +147,7 @@ guideline post and the recoverable-pieces post. After the deploy, either set
 `site_base_url` in `provision.json` or pass it once:
 
 ```powershell
-python tools\workbench\discord\workbench_discord.py --site-base-url https://comfy-p7.duckdns.org plan
+python tools\workbench\discord\workbench_discord.py --site-base-url https://am4.tail8e749c.ts.net plan
 ```
 
 and the remaining four unblock.
