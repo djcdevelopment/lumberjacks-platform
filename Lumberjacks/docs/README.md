@@ -1,10 +1,18 @@
 # Lumberjacks Documentation
 
-The network infrastructure is the spine of this repository. Start there, then read
-outward into the Godot client, research labs, architecture decisions, and historical
-records.
+> **Archive notice (added 2026-08-06): this is an era-1 entrance, not the current one.**
+> Most of this directory was written in the pre-Valheim greenfield era for a team that
+> never formed, and the reading list below leads into that material — greenfield ADRs
+> 0001–0020, the Godot client, 90-day plans. Individual files are not all bannered, so
+> treat anything here as historical unless it says otherwise.
+>
+> **For current truth:** the repo root [`README.md`](../../README.md), the era map at
+> [`docs/internal/START-HERE.md`](../../docs/internal/START-HERE.md), and the live
+> roadmap journal under [`docs/roadmap/`](roadmap/README.md). The netcode program's own
+> canon is [`fieldlab/NETCODE-MAP.md`](../../fieldlab/NETCODE-MAP.md) and the ADR track
+> at [`fieldlab/docs/adr/`](../../fieldlab/docs/adr/README.md).
 
-## Start here
+## Start here (era-1 reading order — see the notice above)
 
 1. [Network infrastructure](network/README.md) — system overview and reading guide.
 2. [Network architecture](network/architecture.md) — component and authority boundaries.

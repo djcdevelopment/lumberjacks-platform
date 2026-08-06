@@ -127,7 +127,7 @@ port `8721` (or another explicitly recorded free loopback port). The launcher
 checks it after profile convergence and fails clearly if another local MCP owns
 it; endpoint identity is then verified by the read-only checker rather than
 inferred from reachability. See the
-[endpoint provenance audit](../../docs/audit/2026-08-01-mcp-endpoint-provenance-audit.md).
+[endpoint provenance audit](../../../docs/audit/2026-08-01-mcp-endpoint-provenance-audit.md).
 Run `tools\workbench\Test-WorkbenchMcpIdentity.ps1 -Profile Dev -McpPort 8721`
 for the authenticated identity receipt, or
 `tools\workbench\Test-WorkbenchProfileBoundary.ps1 -Profile Explore` for a

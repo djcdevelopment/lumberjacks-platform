@@ -1,5 +1,12 @@
 # Comfy Guest Package
 
+> **Which install path do I use?** Neither, right now — **no install path is publicly
+> open**. The server is closed and the Gateway's Steam enrollment flow is not routed to
+> the internet (see the `steam-join` card in the Workbench catalog). When that opens,
+> **Steam enrollment is the intended path** and this package is the older LAN/alpha-cohort
+> mechanism kept alongside it. This README exists so the mechanism is reviewable, not
+> because it is the recommended route.
+
 An earlier/parallel LAN-oriented guest install mechanism for the Valheim mod
 (ComfyNetworkSense). A guest installs a sealed mod DLL + config into their own
 Valheim install by running a PowerShell script against a package built here,

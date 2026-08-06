@@ -60,11 +60,11 @@ PowerShell 5.1** — `&&` is a parser error in this shell, so each command stand
 
 - [ ] **C1.** The four remaining posts carry catalog links, so they need the live site:
       ```powershell
-      python tools\workbench\discord\workbench_discord.py --site-base-url https://comfy-p7.duckdns.org plan
+      python tools\workbench\discord\workbench_discord.py --site-base-url https://am4.tail8e749c.ts.net plan
       ```
       then `apply --yes --expect-plan <hash from that receipt>`.
 - [ ] **C2.** Optional, so you stop passing the flag: set `"site_base_url"` in
-      [`provision.json`](provision.json) to `https://comfy-p7.duckdns.org`.
+      [`provision.json`](provision.json) to `https://am4.tail8e749c.ts.net`.
 - [ ] **C3.** Hand `tools/workbench/discord/provision-state.json` to an agent for the
       `discussion.href` fill (see the handoff block below).
 
