@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T09:22:13.306Z</span>
+        <span>Updated 2026-08-07T09:30:57.129Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807092213-quest-lab-gallery-stands-on-a-raised-platform-pl">
+        <div class="journal"><article class="journal-entry" id="note-20260807093057-am4-runs-lumberjacks-full-cutover-prefabs-is-now">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T09:30:57.129Z">2026-08-07T09:30:57.129Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>AM4 runs Lumberjacks: full cutover (prefabs *) is now the at-rest posture on the lab; native is the rollback, not the default</h3>
+      <p><strong>Impact:</strong> Posture inversion, permanent: server at lumberjacks-primary with full suppression, both clients running their personalized pack configs at rest (credentialed, consumer armed), gateway on the r42 pair image with a restart policy. Launching Valheim normally on either machine now plays on Lumberjacks with no harness or arming. Coherence preflight: zero failures, admission true. The ADR 0013 building-sharing question is now live in the next play session with the hot-reloadable fan-out as the fix-forward lever. Remaining for 100 percent: the same posture on P7 (promote r42, candidate 12, human alpha gate).</p>
+      <details><summary>Verification (1)</summary><ul><li>Test-CutoverModeCoherence coherent with zero failures; i5 config hash-verified via the deploy lane&#39;s new -ValheimConfig switch; server cfg and both client backups named in fieldlab/evidence/am4-full-cutover-posture-20260807.md</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807092213-quest-lab-gallery-stands-on-a-raised-platform-pl">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
