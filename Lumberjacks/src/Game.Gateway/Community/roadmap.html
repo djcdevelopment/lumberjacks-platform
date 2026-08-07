@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T10:30:19.490Z</span>
+        <span>Updated 2026-08-07T10:39:21.269Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807103019-wearntear-no-wear-flags-are-opt-ins-false-is-off">
+        <div class="journal"><article class="journal-entry" id="note-20260807103921-component-packets-gains-field-ask-what-a-flag-ac">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T10:39:21.269Z">2026-08-07T10:39:21.269Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A5</span>
+      </div>
+      <h3>component-packets gains --field: ask what a flag actually gates instead of trusting its description</h3>
+      <p><strong>Impact:</strong> The atlas annotation for WearNTear.m_noSupportWear said Disables when the field is an opt-in, and three rounds of a collapsing gallery went by before anyone read the branch. The extractor already walked IL for ZDO keys, so the capability was there and unexposed. New mode: dotnet run -- &lt;dll&gt; --field &lt;Type&gt;.&lt;field&gt; prints every read of the field and, where the read is branched on, the block of IL that branch skips, then states which polarity runs it. The README Confidence labeling section now records that a drafted description can be confidently and unmarkedly backwards, and that a negated boolean name is a coin flip the description cannot settle. Also resolved a standing question: the mod reports 27/27 seams while check_lab_patches.py counts 28 targets - Player.UseStamina is gated behind LabConfig.ObserveStamina, off by default, so both numbers are right and answer different questions.</p>
+      <details><summary>Verification (1)</summary><ul><li>Ran against the shipped assembly for m_noSupportWear, m_noRoofWear and m_supports: reproduces the UpdateWear support-damage block behind brfalse, finds both read sites on m_supports, and reports polarity per read. Seam count traced to ProgressionPatches.cs:33.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807103019-wearntear-no-wear-flags-are-opt-ins-false-is-off">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
