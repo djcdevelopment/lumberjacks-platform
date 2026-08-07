@@ -1,135 +1,118 @@
-# Camera Flythrough → Gallery Pipeline
+# World Photography → Gallery Pipeline
 
-Fly a camera along waypoints pulled from a real world save, then cut the
-recording into a gallery of what people actually built.
+Find every structure in a world save, place a camera at each one from its own
+geometry, and photograph them unattended into a ranked gallery.
 
-Source of truth: the public archive
-[`github.com/djcdevelopment/comfy/tree/main/handoffs`](https://github.com/djcdevelopment/comfy/tree/main/handoffs).
-Nothing described here runs in `baseline` today — see "Status."
+This entry used to describe a four-segment *flythrough* pipeline that did not
+run. That plan was **superseded rather than revived** — what exists now shoots
+stills, not video, and it runs. The history is kept below because the archive
+still holds the original briefs and someone may want them.
 
 ## What it is
 
-A four-segment pipeline, each segment written to be handed to a different
-builder with none of the surrounding context — the only thing segments
-share is the file format at the handoff point:
+Two halves in two public repos, joined only by files on disk:
 
 ```text
-world .db --[Segment 1: extraction]--> waypoints.json
-waypoints.json + a running modded Valheim --[Segments 2 & 3: fly it]--> timeline.json (+ a screen recording)
-recording + timeline.json --[Segment 4: cut it]--> gallery/ (clips + stills + gallery.json)
+world .db  --[ComfyStewardView cache]-->  DuckDB
+DuckDB     --[scan_clusters.py]--------->  clusters.json   (1,833 structures)
+clusters   --[plan_shots.py]------------>  shotplan.tsv    (6 frames each)
+shotplan   --[BepInEx plugin, in-game]-->  PNGs + receipts.jsonl
+receipts   --[build_valheim_index.py]--->  index.json + webp
+index      --[score_images.py]---------->  a ranked, filterable gallery
 ```
 
-Recording itself isn't a segment — any screen recorder (OBS, Discord "Go
-Live") works; the pipeline only needs the resulting video file and a
-`timeline.json` saying which build was on screen at which second.
+- **The planning, scoring and gallery half is in this repo**, at
+  [`tools/selfie-stick/`](../../../../tools/selfie-stick/). It clusters building
+  pieces in 3-D on a 16 m grid, ranks each structure as a camera subject, and
+  derives a standoff distance, bearing, elevation and time of day from its
+  bounding box. No terrain data is needed: a cluster's lowest piece *is* ground
+  at that build.
+- **The in-game half is a BepInEx plugin in the public `comfy` archive**, at
+  `handoffs/valheim-camera-proof/`. It reads the shot plan as tab-separated text
+  (it has no JSON parser and scrapes with regex), teleports, aims, forces the sun
+  and weather, checks the view is not blocked, captures, and writes one JSON
+  receipt per frame. It is kept out of this repo on purpose, so that claiming the
+  in-game half stays a real, available piece of work.
 
-What's actually real, verified by reading it:
+The receipt is the load-bearing part: it records `planned` (what the planner
+asked for), `placed` (where the engine actually put the player after its own
+ground clamp) and `lens` (where the camera was, ~1.6 m above the player origin),
+plus an occlusion raycast. That is what lets a frame be audited a week later
+instead of trusted on faith.
 
-- **Segment 1 (extraction) is built.** `segment-1-emit-waypoints.py` (a
-  69-line, standard-library-only script) ranks locations by build density
-  via ComfyStewardView's `GET /api/v1/heatmap?type=BUILDING`, attributes
-  each dense cell to a builder via `GET /api/v1/points?cat=PORTAL|CONTAINER|BED`,
-  and writes `waypoints.json`. No parser change — pure composition of
-  endpoints ComfyStewardView already exposes. It produced a real result
-  once: the top 15 build clusters of a real world, each attributed to a
-  real player.
-- **`valheim-camera-proof/` is a working, separate proof-of-concept kit** —
-  not Segment 3 itself, but the thing you're told to run *before*
-  attempting it. It's a real 746-line BepInEx plugin (`Plugin.cs`) with
-  console commands (`comfyproof_status`, `comfyproof_move`,
-  `comfyproof_stills`, `comfyproof_variantstills`, `comfyproof_envs`, and
-  more) and F8/F9 hotkeys that prove a given machine can load the target
-  world, load BepInEx, find `Player.m_localPlayer`, teleport the camera,
-  and write proof files and screenshots to disk.
-- **Segment 2 (get into the world) is a brief only** — a checklist of
-  manual human steps (copy the save, enable `-console`, install BepInEx,
-  load the world, verify god/fly mode, confirm a throwaway plugin loads).
-  No code beyond that throwaway test plugin.
-- **Segment 3 (the actual flight-path mod that reads every waypoint, flies
-  the camera, and writes `timeline.json`) is a brief only, and it is the
-  real gap.** It has a precise C#/BepInEx spec (hotkey, ground-height
-  resolution, teleport-first-then-glide, the exact `timeline.json` shape)
-  but no code — the working proof kit above is not a substitute for it.
-- **Segment 4 has real code, not just a brief.** `video_to_gallery.py`
-  consumes a recording and `timeline.json` and writes one clip, one still,
-  and a `gallery.json` manifest per timeline event. Its dry-run needs no
-  media tools at all.
+## What actually runs
+
+Verified on **2026-08-06**: 161 structures photographed across 54 unattended
+sessions, **1,411 frames**, none of them framed by a human. Scanning a world and
+producing a ranked shot list takes about two minutes; capture is unattended after
+that and scales with how many structures you asked for.
+
+The write-up, with the arithmetic and the real output of each stage:
+**<https://djcdevelopment.github.io/baseline/selfie-stick/>**
 
 ## What it is NOT
 
-Not running in `baseline`, in any form, today. `baseline`'s repo root does
-carry one static leftover — a real, committed `waypoints.json` from Era 16
-(real coordinates, real builder names) — but nothing in this repo can
-regenerate it, read it, or fly it. Treat it as a fossil, not a working
-input.
+**Not packaged, and not something a stranger can run tonight.** There is no
+download. You need a ComfyStewardView analytics cache for the world, a Valheim +
+BepInEx install with the plugin built from the archive, and — only if you want
+frames scored — a local CLIP ViT-L/14 with a LAION aesthetic head. Nothing about
+that is hard; it is simply not assembled for anyone else yet. That is the gap.
 
-Not a finished mod. There is no BepInEx plugin today that takes
-`waypoints.json` in and flies a full route out — see Segment 3 above.
+**Not a video pipeline.** There is no flythrough and no ffmpeg step. Segment 4's
+`video_to_gallery.py` still exists in the archive and still dry-runs, but the
+stills approach means it is unlikely to be built as specified.
+
+**Not a taste engine.** The aesthetic head sorts competently and is confidently
+wrong at the edges. It makes a 1,411-frame pile reviewable; it does not know
+which photograph is good.
 
 ## Status
 
-Not running. It was pruned from `baseline` on 2026-07-21 in commit `d75ffb2`
-(the prune audit lists the whole `handoffs/` tree; the last ref that still
-contains it is `57654fd`) and nothing here executes in this repo today. Every
-piece is preserved in the public `comfy` repo, so this is a revival, not a
-rewrite — and since 2026-07-29 the revivable raw material (both scripts, the
-segment briefs, and the two sample fixtures, byte-exact from the archive) is
-back in this repo, unwired, at `recipes/camera-gallery/` with provenance in
-its `PROVENANCE.md`. The camera proof-of-concept kit stays archive-only.
+`local-only`. Runs end to end on the operator's machine; nothing is published.
 
-## Run it today (about 10 minutes) — the one thing that actually runs
+Original prune: `d75ffb2` (2026-07-21); the last ref containing the whole
+`handoffs/` tree is `57654fd`. Since 2026-07-29 the archive's raw material —
+both scripts, the segment briefs, the two sample fixtures — sits unwired in this
+repo at `recipes/camera-gallery/` with provenance in its `PROVENANCE.md`. The
+camera plugin itself stays archive-only.
 
-Nothing end-to-end runs yet. The one piece you can exercise right now,
-with no Valheim, no Java, and no ffmpeg, is Segment 4's dry run, against
-its own fixture:
+## Where the old segments went
 
-1. Clone the public archive:
-   `git clone https://github.com/djcdevelopment/comfy` (or just fetch the
-   `handoffs/` folder).
-2. From that checkout:
-   `python .\handoffs\video_to_gallery.py flythrough.mp4 .\handoffs\timeline.sample.json --dry-run --duration 60`
-   — this needs a placeholder `flythrough.mp4` path but no real video and
-   no ffmpeg for a dry run. From a `baseline` checkout the same dry run
-   needs no clone at all:
-   `python .\recipes\camera-gallery\video_to_gallery.py flythrough.mp4 .\recipes\camera-gallery\timeline.sample.json --dry-run --duration 60`
-3. Read `segment-1-waypoints-from-world.md` (in the archive, or landed at
-   `recipes/camera-gallery/`) and `handoffs/valheim-camera-proof/README.md`
-   (archive-only) before touching CG-1 below — they're short and specific
-   about what "done" looks like for each piece.
-
-## What you'll see
-
-The Segment 4 dry run prints what it *would* cut, without touching ffmpeg.
-A real run (`--offset <seconds> --out gallery`, ffmpeg + ffprobe on `PATH`)
-writes a `gallery/` folder with one clip and one still per timeline event
-plus a `gallery.json` manifest. The camera proof kit, once built and
-installed into a disposable Valheim + BepInEx install, writes JSON proof
-files under `BepInEx/config/comfy-camera-proof-status.json` and
-`...-move.json`, and screenshot folders under
-`BepInEx/config/comfy-gallery-proof/` or `comfy-manual-captures/`.
+| Segment | Then | Now |
+| --- | --- | --- |
+| 1 — extraction | 69-line script over ComfyStewardView's heatmap endpoints; produced a real top-15 once | **Superseded.** `scan_clusters.py` reads the DuckDB cache directly and finds 1,833 structures with true 3-D bounding boxes |
+| 2 — get into the world | brief only, manual checklist | **Superseded.** `Invoke-OrbitCapture.ps1` arms the plugin and launches the game |
+| 3 — the flight-path mod | brief only, *"the real gap"* | **Built.** The proof kit was 746 lines when this page was first written and is **1,787** today — camera boom, aim-at-target, an unattended orbit runner, per-frame receipts |
+| 4 — cut the video | `video_to_gallery.py`, real code | **Not used.** Stills replaced the recording; the gallery is built from receipts instead |
 
 ## What's rough
 
-- **Segment 3 — the actual flythrough mod — doesn't exist.** This is the
-  real blocker for the whole pipeline; everything downstream depends on it.
-- The camera proof kit's own README notes its dev checkout "currently does
-  not have a compiler on `PATH`" — building it needs a C# compiler
-  (Visual Studio Build Tools, Rider, or the .NET SDK) that isn't assumed
-  to be there.
-- Segment 2 is entirely manual human setup — nothing to automate there
-  beyond what's already written down.
-- The related, separately-built "control surface" (in-game submission →
-  local review inbox → guild-bot command) is a **different** tool, covered
-  by the Quest Submission Bridge one-pager — don't conflate the two just
-  because they share a retirement date and a parent folder.
+- **Dense forest still eats the camera.** The occlusion raycast catches a wall
+  between lens and subject. It does not catch a pine branch across a third of
+  the frame, and no amount of standoff fixes a tree closer than the building.
+- **Prefab names are hashes.** The cache stores `hash:538325542`, not
+  `wood_wall`, so "dominant material" is a stable ID rather than a word. The
+  offline `classification.json` does not help — it holds 617 *item* names and no
+  building pieces. See CG-2.
+- **Builder names are IDs.** Attribution works, but turning an ID into a name
+  needs records that only exist in the running server.
+- **Structure names come from a vision model** reading the photograph, because
+  the metadata cannot supply them. It is a good trick and it is not authoritative.
+- The related in-game submission → review inbox → guild-bot tool is a
+  **different** thing, covered by the Quest Submission Bridge one-pager. Don't
+  conflate them just because they share a parent folder and a retirement date.
 
 ## First tasks
 
-- **CG-1 — Revive Segment 1 against ComfyStewardView and produce a
-  committed `waypoints.sample.json`.** Done when:
-  `segment-1-emit-waypoints.py` runs against a current ComfyStewardView
-  build and writes a `waypoints.sample.json` that Segment 3 (once it
-  exists) can consume. This is the claiming task for this tool.
+- **CG-1 — Bring the camera plugin into this repo so the capture half runs
+  here.** Done when the BepInEx plugin builds from a checkout of this repo and a
+  capture run completes without reaching into the `comfy` archive. This is the
+  claiming task for this tool. *It supersedes the old CG-1, which asked for a
+  `waypoints.sample.json` from Segment 1 — `tools/selfie-stick/` already emits
+  that.*
+- **CG-2 — Resolve prefab hashes to names.** Done when a one-time in-game dump of
+  `ZNetScene`'s prefab table lands as a committed lookup and the scanner reports
+  a material name instead of a hash.
 
 ## Where to talk about it
 
@@ -137,15 +120,20 @@ Its Discord thread (link lands with the announcement).
 
 ## License & privacy
 
-**Not BSL 1.1.** Every file in this pipeline lives in the public `comfy`
-repository, which is MIT-licensed (`comfy/LICENSE`) — a separate, more
-permissive license than Baseline's own BSL 1.1. If you revive Segment 1 or
-build Segment 3 and later land it inside `baseline` itself, the copy that
-lives here would fall under `baseline`'s BSL 1.1 instead; until then, what
-you're forking is MIT.
+**The two halves are licensed differently.** The `comfy` archive is MIT
+(`comfy/LICENSE`); `tools/selfie-stick/` in this repo is BUSL-1.1 like the rest
+of Baseline. If you build the plugin and land it here, that copy falls under
+BUSL-1.1; what you fork from the archive is MIT.
 
-Privacy: `waypoints.json` attributes real coordinates to real builder
-names, and a flythrough shows other people's builds up close. Ask before
-publishing a gallery of a world you don't own, and don't assume "it's just
-a heatmap" — the whole point of this pipeline is to make specific builds,
-tied to specific players, visible to people who were never on the server.
+Privacy: this photographs other people's builds, and the scan attributes real
+coordinates to real builders. Three things follow, and they are deliberate:
+
+- `tools/selfie-stick/out/` is **gitignored**. Regenerating it takes two minutes;
+  publishing someone's home coordinates to save a rerun is not a trade worth
+  making.
+- Every record the indexer emits is marked `"published": false` by default —
+  ingest is automatic, exposure is not.
+- The public write-up withholds coordinates and creator IDs everywhere, including
+  inside its code samples.
+
+Ask before publishing a gallery of a world you don't own.

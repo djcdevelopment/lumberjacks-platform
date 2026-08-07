@@ -119,7 +119,10 @@
         "record": null
       },
       "recovery": null,
-      "roadmap_milestones": ["A5", "A7"],
+      "roadmap_milestones": [
+        "A5",
+        "A7"
+      ],
       "contribution": {
         "stage_3_reward": "Commit access to recipes/quest-catalogs/ in baseline, and you triage this tool's thread.",
         "code_contributions": true
@@ -184,7 +187,10 @@
         "record": null
       },
       "recovery": null,
-      "roadmap_milestones": ["A3", "A7"],
+      "roadmap_milestones": [
+        "A3",
+        "A7"
+      ],
       "contribution": {
         "stage_3_reward": "Documentation and feedback stewardship: you own this tool's quickstart and probe-utility docs, and you triage its thread. The repository is all-rights-reserved, so code changes are not on offer here until that licence changes.",
         "code_contributions": false
@@ -258,7 +264,10 @@
         "record": null
       },
       "recovery": null,
-      "roadmap_milestones": ["A4", "A7"],
+      "roadmap_milestones": [
+        "A4",
+        "A7"
+      ],
       "contribution": {
         "stage_3_reward": "Commit access to the telemetry stack and the operator viewer in baseline, and you triage this tool's thread.",
         "code_contributions": true
@@ -330,7 +339,11 @@
         "record": null
       },
       "recovery": null,
-      "roadmap_milestones": ["M2", "M5", "A7"],
+      "roadmap_milestones": [
+        "M2",
+        "M5",
+        "A7"
+      ],
       "contribution": {
         "stage_3_reward": "Commit access to Lumberjacks/src/Game.Gateway/Valheim/ in baseline, and you triage this tool's thread.",
         "code_contributions": true
@@ -390,7 +403,9 @@
         "record": null
       },
       "recovery": null,
-      "roadmap_milestones": ["A7"],
+      "roadmap_milestones": [
+        "A7"
+      ],
       "contribution": {
         "stage_3_reward": "Commit access to network/mcp/ in baseline, and you triage this tool's thread.",
         "code_contributions": true
@@ -400,18 +415,18 @@
     },
     {
       "id": "camera-gallery",
-      "name": "Camera Flythrough → Gallery Pipeline",
-      "one_liner": "Fly a camera along waypoints derived from a world save, then cut the capture into a gallery of what people actually built.",
-      "status": "recoverable-not-running",
-      "status_detail": "Not running. It was pruned from baseline on 2026-07-21 and nothing here executes today. Two of the four segments are real: segment 1 was built and produced real output, and segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. Every piece is still in the public comfy repo, so this is a revival rather than a rewrite. Since 2026-07-29 the revivable raw material — both scripts, the four briefs, and the two sample fixtures — also sits unwired in this repo at recipes/camera-gallery/, byte-exact from the archive with provenance recorded; the camera proof-of-concept kit stays archive-only. Updated 2026-08-06: the subject-selection half now has a working modern replacement in this repo at tools/selfie-stick/ — it reads a world save's structures, ranks them as camera subjects, and emits a shot list with waypoints and standoff distances already computed. That removes the hardest guesswork from a revival; what remains unbuilt is the flight execution and the gallery cut.",
-      "what_it_does": "A four-segment pipeline: read a world save, emit camera waypoints via ComfyStewardView, fly those waypoints in-game with a BepInEx camera plugin, then cut the capture into a gallery with ffmpeg.",
-      "who_its_for": "Anyone who wants to show a server's builds to people who will never log into it.",
-      "time_to_first_result": "Unknown — nothing runs yet. CG-1 produces the first honest estimate.",
+      "name": "World Photography → Gallery Pipeline",
+      "one_liner": "Find every structure in a world save, place a camera at each one from its own geometry, and photograph them unattended into a ranked gallery.",
+      "status": "local-only",
+      "status_detail": "Runs today, end to end, on the operator's machine. On 2026-08-06 it photographed 161 structures across 54 unattended sessions and produced 1,411 frames, none of them framed by a human. The planning half is in this repo at tools/selfie-stick/: it clusters a world save's building pieces into structures in 3-D, ranks them as camera subjects, and computes a standoff distance, bearing and elevation for each. The in-game half reads that plan, flies it, and writes a receipt per frame. Why local-only and not live: the in-game half is a BepInEx plugin that lives in the public comfy archive rather than in this repo, and the pipeline also wants a ComfyStewardView DuckDB cache for the world plus a local CLIP model to score the frames. Nothing is packaged and there is no download — a stranger cannot run this tonight, and that is the honest gap, not the code. Note the original plan was superseded rather than revived: the four-segment flythrough (waypoints → flight → ffmpeg video cut) gave way to stills, so there is no video step and segments 2 and 4 are unlikely to be built as written. Prune history and the segment-by-segment story are in Lumberjacks/docs/workbench/tools/camera-gallery.md. Written up in full at https://djcdevelopment.github.io/baseline/selfie-stick/ .",
+      "what_it_does": "Clusters a world save's building pieces into structures on a 16 m grid, scores each as a camera subject, and derives a camera position, bearing, elevation and time of day from its bounding box. An in-game plugin reads that shot plan as tab-separated text, teleports, aims, forces the sun and weather, checks the view is not blocked, and writes one JSON receipt per frame recording what was asked for against what the engine actually did. A final pass joins receipts to the files on disk, scores every photograph with a CLIP aesthetic head, and emits a filterable gallery.",
+      "who_its_for": "Anyone who wants to show a server's builds to people who will never log into it — especially on a world too large to tour by hand.",
+      "time_to_first_result": "about 2 minutes to scan a world and get a ranked shot list; capture is unattended after that and scales with how many structures you asked for",
       "requires": [
-        "Python 3",
-        "Java, for the ComfyStewardView side of segment 1",
-        "A BepInEx Valheim install, for segment 3",
-        "ffmpeg, for segment 4"
+        "Python 3, with duckdb",
+        "A ComfyStewardView analytics cache for the world you want to photograph",
+        "A BepInEx Valheim install, plus the camera plugin built from the comfy archive",
+        "Optional: a local CLIP ViT-L/14 and LAION aesthetic head, to score the frames"
       ],
       "access": {
         "kind": "not-published",
@@ -423,16 +438,20 @@
       "source": {
         "kind": "public-repo",
         "href": "https://github.com/djcdevelopment/comfy/tree/main/handoffs",
-        "note": "Pruned from baseline, but fully preserved in the public comfy repo — nothing was lost."
+        "note": "Split across two public repos on purpose. The planning, scoring and gallery half is in this repo at tools/selfie-stick/. The BepInEx camera plugin stays in the public comfy archive so that claiming the in-game half remains a real, available piece of work rather than something already finished here."
       },
       "docs": [
         {
-          "label": "Handoff overview (handoffs/README.md)",
-          "href": "https://github.com/djcdevelopment/comfy/blob/main/handoffs/README.md"
+          "label": "How it works, and what it found (the write-up)",
+          "href": "https://djcdevelopment.github.io/baseline/selfie-stick/"
         },
         {
-          "label": "Segment 3 brief — the flight-path mod",
-          "href": "https://github.com/djcdevelopment/comfy/blob/main/handoffs/segment-3-flight-path-mod.md"
+          "label": "tools/selfie-stick/ — the planning half, in this repo",
+          "href": "https://github.com/djcdevelopment/baseline/tree/main/tools/selfie-stick"
+        },
+        {
+          "label": "Handoff overview (handoffs/README.md)",
+          "href": "https://github.com/djcdevelopment/comfy/blob/main/handoffs/README.md"
         },
         {
           "label": "Landed raw material (recipes/camera-gallery/)",
@@ -446,9 +465,15 @@
       "first_tasks": [
         {
           "id": "CG-1",
-          "title": "Revive segment 1 against ComfyStewardView and produce a waypoints.sample.json",
+          "title": "Bring the camera plugin into this repo so the capture half runs here",
           "size": "medium",
-          "done_when": "segment-1-emit-waypoints.py runs against a current ComfyStewardView build and writes a committed waypoints.sample.json that segment 3 can consume. This is the claiming task for this tool."
+          "done_when": "The BepInEx plugin builds from a checkout of this repo and a capture run completes without reaching into the comfy archive. This is the claiming task for this tool. It supersedes the old CG-1, which asked for a waypoints sample from segment 1 — tools/selfie-stick/ already emits that."
+        },
+        {
+          "id": "CG-2",
+          "title": "Resolve prefab hashes to names so a structure can be described by material",
+          "size": "small",
+          "done_when": "A one-time in-game dump of ZNetScene's prefab table lands as a committed lookup, and the scanner reports \"dominant material: wood_wall\" instead of \"hash:538325542\". The offline classification.json does not cover building pieces — it holds 617 item names and none of them are pieces."
         }
       ],
       "ownership": {
@@ -457,29 +482,16 @@
         "claimed_at": null,
         "record": null
       },
-      "recovery": {
-        "origin_href": "https://github.com/djcdevelopment/comfy/tree/main/handoffs",
-        "paths": [
-          "handoffs/README.md",
-          "handoffs/segment-1-emit-waypoints.py",
-          "handoffs/segment-1-waypoints-from-world.md",
-          "handoffs/segment-2-get-into-the-world.md",
-          "handoffs/segment-3-flight-path-mod.md",
-          "handoffs/segment-4-runner.md",
-          "handoffs/segment-4-video-to-gallery.md",
-          "handoffs/video_to_gallery.py",
-          "handoffs/timeline.sample.json",
-          "handoffs/waypoints.sample.json",
-          "handoffs/valheim-camera-proof/"
-        ],
-        "notes": "Segment 1 was built and produced real output. Segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. Pruned in d75ffb2 (2026-07-21); the baseline pre-prune ref is 57654fd. Raw material re-landed unwired at recipes/camera-gallery/ on 2026-07-29 — see its PROVENANCE.md."
-      },
-      "roadmap_milestones": ["A3", "A7"],
+      "recovery": null,
+      "roadmap_milestones": [
+        "A3",
+        "A7"
+      ],
       "contribution": {
         "stage_3_reward": "Commit access to the revived pipeline once it lands in baseline, and you triage this tool's thread. The comfy archive it is recovered from stays read-only.",
         "code_contributions": true
       },
-      "privacy_note": "A flythrough shows other people's builds. Ask before publishing a gallery of a world you do not own.",
+      "privacy_note": "This photographs other people's builds. The pipeline withholds coordinates and builder IDs from anything it publishes, and every record it emits is marked unpublished by default — ingest is automatic, exposure is not. Ask before publishing a gallery of a world you do not own.",
       "license": "MIT — everything recoverable here lives in the public comfy archive, which is MIT-licensed. A revival landing in this repo would land under BUSL-1.1; see LICENSING.md."
     },
     {
@@ -551,7 +563,10 @@
         ],
         "notes": "Front half is alive and tested in the live mod — network/mod/ComfyNetworkSense/Core/Services/QuestViewLoader.cs and QuestTriggerEvaluator.cs. Only the back half needs reviving, and it has fixtures to test against. Pruned in d75ffb2 (2026-07-21; pre-prune ref 57654fd); the Python consumer, fixtures, and briefs re-landed unwired at recipes/quest-submission-bridge/ on 2026-07-29 — see its PROVENANCE.md. The C# pieces stay archive-only."
       },
-      "roadmap_milestones": ["A5", "A7"],
+      "roadmap_milestones": [
+        "A5",
+        "A7"
+      ],
       "contribution": {
         "stage_3_reward": "Commit access to the bridge once the back half lands in baseline, and you triage this tool's thread. The comfy archive it is recovered from stays read-only.",
         "code_contributions": true

@@ -40,6 +40,8 @@ const linkPrefixes = [
   'https://discord.gg/',
   'https://comfy-p7.duckdns.org/',
   'https://am4.tail8e749c.ts.net/',
+  // Baseline's own GitHub Pages site, published from site/ by .github/workflows/pages.yml.
+  'https://djcdevelopment.github.io/baseline/',
 ];
 
 // A /channels/ URL only resolves for someone already inside the server. It is a destination,

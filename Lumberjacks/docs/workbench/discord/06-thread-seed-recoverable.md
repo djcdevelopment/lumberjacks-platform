@@ -9,16 +9,23 @@ These two got pruned out of the repo a while back. Not because they failed — b
 themselves before I ran out of time to carry them further. Nothing runs today; both are sitting in
 the public archive as working code, just not wired back in.
 
-**Camera flythrough → gallery**
+**World photography → gallery**
 
-The idea: turn a world save into a ranked, attributed list of the most-built areas, fly a camera
-through the top spots, and cut the footage into a short clip and still per builder — a gallery for
-builds that never had one. Proof it worked: the first stage (world save → ranked waypoint list,
-attributed to whoever built there) was built and produced real output against an actual era save.
-A separate camera proof-of-concept — a 746-line BepInEx plugin — proved the harder part: it could
-load the world, find the player, teleport to a waypoint, and write out files proving it landed in
-the right spot. The last two stages (flying the full waypoint list, and cutting a recording into
-the gallery) are written briefs, not code yet.
+The idea: turn a world save into a ranked list of the places people actually built, put a camera at
+every one of them, and photograph the lot — a gallery for builds that never had one.
+
+Update, 2026-08-06: this one is no longer in the recoverable pile. It got built, as **stills rather
+than a video flythrough**. It reads a world save, finds 1,833 structures, works out where to stand
+and which way to point from each one's own geometry, then shoots them unattended. Last run: 161
+structures, 1,411 photographs, none of them framed by a human. The camera proof-of-concept grew
+from 746 lines to 1,787 along the way — it now has a camera boom, aim-at-target, and an orbit
+runner that writes a receipt for every frame.
+
+What is still open is packaging, not code: the planning half is in `baseline` at
+`tools/selfie-stick/`, the in-game plugin is still archive-only, and nobody but the operator can
+run it yet. Claiming the in-game half is a real, available piece of work — that's CG-1.
+
+How it works, and what it found: <https://djcdevelopment.github.io/baseline/selfie-stick/>
 
 **Quest submission → review bridge**
 
