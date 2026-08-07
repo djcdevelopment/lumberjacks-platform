@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T08:48:57.295Z</span>
+        <span>Updated 2026-08-07T08:54:35.925Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807084857-enrollment-consumer-lane-proven-on-the-r42-pair-">
+        <div class="journal"><article class="journal-entry" id="note-20260807085435-quest-lab-the-journal-becomes-a-spellbook-and-on">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T08:54:35.925Z">2026-08-07T08:54:35.925Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A5</span>
+      </div>
+      <h3>Quest Lab: the journal becomes a spellbook, and one rune per school filters the live view</h3>
+      <p><strong>Impact:</strong> Reframing from documentation to grimoire, on Derek&#39;s steer. Eight Elder Futhark runes, one per school of things the world answers to, and the same rune is both the spellbook tab and the live-view filter toggle - so learning the book teaches the console for free, because the mark is the same mark. Drawn procedurally from line segments rather than shipped as art: runes ARE line segments, so there is no atlas to keep in sync with a game update and no font that might lack the glyph, and the source stays readable as three lines of coordinates instead of a base64 blob. Meanings are apt rather than decorative - Jera is literally harvest, Fehu property, Othala the homestead, Tiwaz battle.</p>
+      <details><summary>Verification (1)</summary><ul><li>dotnet build -c Release, 0 warnings, both copy guards shut, live plugins folder untouched. check_lab_patches.py still 28/28. Runes rendered headless from the same segment table at both inspection size and the actual 18px display size before shipping: the first pass had Fehu and Ansuz as near-identical shapes, so Social moved to Mannaz. Legible beat faithful. NOT verified in game.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807084857-enrollment-consumer-lane-proven-on-the-r42-pair-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
