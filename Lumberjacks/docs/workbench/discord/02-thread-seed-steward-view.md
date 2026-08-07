@@ -10,10 +10,15 @@ file — the `.db` — and turns it into a map you can click around: build densi
 containers, tombstones, signs, who owns what. It's not connected to the live server and it doesn't
 watch anyone play. You point it at a copy of a save file and it parses locally, once.
 
-It's already real — the public repo builds a working app, and it's been used to steward
-high-player worlds. The honest gap: there are roughly twenty GM probe utilities bundled alongside
-it, and they work, but today you'd have to read the source to know what each one answers. That's
-first-in-line for someone to fix.
+**Try it right now, no install:** a live, read-only sample is running at
+https://am4.tail8e749c.ts.net/steward/ — the full dashboard over a frozen snapshot of the Comfy
+Era16 lab world, including the pre-rendered map layers and the DB-backed drilldowns. That's the
+same app you'd run against your own world.
+
+It's already real — the public repo builds a working app (now with a Dockerfile too), and it's
+been used to steward high-player worlds. The honest gap: there are roughly twenty GM probe
+utilities bundled alongside it, and they work, but today you'd have to read the source to know
+what each one answers. That's first-in-line for someone to fix.
 
 One-pager: <ONEPAGER-URL>
 Get it: <ACCESS-URL>
