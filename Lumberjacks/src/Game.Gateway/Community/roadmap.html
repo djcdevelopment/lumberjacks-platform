@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T13:53:13.799Z</span>
+        <span>Updated 2026-08-07T14:11:09.757Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807135313-turnkey-quest-lab-packaging-and-unified-tool-sui">
+        <div class="journal"><article class="journal-entry" id="note-20260807141109-lab-setup-exists-stop-the-mod-s-own-docs-saying-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T14:11:09.757Z">2026-08-07T14:11:09.757Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>A5</span>
+      </div>
+      <h3>lab_setup exists: stop the mod&#39;s own docs saying it does not</h3>
+      <p><strong>Impact:</strong> The README and CHANGELOG both still claimed lab_setup was not here yet, while ComfyQuestLab.cs registers it as a console command that raises the practice gallery and points at the tome. Found while fact-checking a strategy document written by another agent, which listed turnkey lab_setup packaging as complete - the doc was right and the repo was under-claiming. Stale docs are the same failure in either direction: a README that undersells a shipped command costs a newcomer the one instruction they needed. Also noted for follow-up and NOT changed here: the ontology document says 7 Schools of Magic where every source in the repo says 8, probably from misreading the in-game roster line about seven of the eight categories not being wired; and the README&#39;s no download claim now contradicts workbench.json, which describes downloading a zip - that contradiction is unresolved and someone should settle which is true.</p>
+      <details><summary>Verification (1)</summary><ul><li>Read ComfyQuestLab.cs where the lab_setup Terminal.ConsoleCommand is registered and confirmed it starts the gallery build coroutine. Grep across the repo for lab_setup showed the two stale claims plus the workbench.json entry that already assumed it worked. NOT verified: whether a packaged download exists, which is why that claim was dropped rather than rewritten.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807135313-turnkey-quest-lab-packaging-and-unified-tool-sui">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
