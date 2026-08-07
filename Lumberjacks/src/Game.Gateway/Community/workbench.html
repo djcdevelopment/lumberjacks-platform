@@ -315,9 +315,9 @@
       </div>
       <p class="join-path">The path in: join → read <a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a> → post in a tool's thread. Those last two and the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a> are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span class="freshness">Published from 3cf9bd1 · 2026-08-07 15:13 UTC</span>
+        <span class="freshness">Published from 0a07d22 · 2026-08-07 15:18 UTC</span>
         <span>2 live · 1 dev-only · 5 local-only</span>
-        <a href="#tools">13 first tasks open</a>
+        <a href="#tools">14 first tasks open</a>
       </div>
     </div>
 
@@ -363,7 +363,7 @@
           <span class="pill local-only">LOCAL ONLY</span>
           <span class="index-name">Quest Lab Turnkey Package</span>
           <span class="index-time">10 minutes. Download the zip, drop the DLL in your BepInEx/plugins folder, launch a private world, and run `lab_setup` in the F5 console.</span>
-          <span class="index-tasks">1 open</span>
+          <span class="index-tasks">2 open</span>
         </a></nav>
         <div class="tool-grid"><article class="tool live" id="quest-picker">
     <div class="tool-head">
@@ -804,36 +804,44 @@
       <span class="pill local-only">LOCAL ONLY</span>
     </div>
     <p class="one-liner">An arcane tome in-game that teaches you exactly what quests are possible, letting you practice writing them before trying them out for real.</p>
-    <div class="status-detail local-only"><strong>What that status actually means</strong>A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. Contains all 8 rune schools.</div>
+    <div class="status-detail local-only"><strong>What that status actually means</strong>A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. All 8 rune schools are hooked, and `lab_setup` also writes you a starter quest file you can edit and reload without restarting. Worth knowing before you start: only a creature kill can currently fire a quest, so a quest built on anything else parses cleanly and never fires. The lab exists to make that visible rather than let you find it the hard way.</div>
     <p class="tool-audience"><strong>For</strong>Creators and leaders who want to learn how to write custom quests without guessing.</p>
     <div class="tool-action">
       <span class="first-result"><em>First result</em>10 minutes. Download the zip, drop the DLL in your BepInEx/plugins folder, launch a private world, and run `lab_setup` in the F5 console.</span>
       <a class="access-button site-download" href="/workbench/downloads/quest-lab" aria-label="Download Quest Lab Turnkey Package">Download</a>
     </div>
     <div class="access-verify">
-      <div class="access-detail"><span>SHA-256</span><code>82ac0d9fed98264af50216cf076a216ecbfb2b761f131ee3e92ea1b43d9c0f9a</code></div>
-      <div class="access-detail"><span>Size</span><code>60.7 KB</code></div>
-      <div class="access-detail"><span>Published</span><code>2026-08-07T06:41:00Z</code></div>
+      <div class="access-detail"><span>SHA-256</span><code>c2f6df16af33590a4f372cdc091dd8bf7e007c8b3cf3907dc01a476d97505171</code></div>
+      <div class="access-detail"><span>Size</span><code>71.3 KB</code></div>
+      <div class="access-detail"><span>Published</span><code>2026-08-07T15:20:00Z</code></div>
     </div>
     <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="/questlab">The Web Tome (Learn what&#39;s possible)</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">Quest Lab thread</a></span></div>
     <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>A private Valheim world</li><li>BepInEx installed on your client</li></ul></div>
     <details class="tool-detail">
       <summary>How it works, in detail</summary>
       <div class="tool-detail-body">
-        <p>Draws an interactive console over the screen and hooks into 91 different game events to show you precisely what is happening when you perform actions in-game.</p>
+        <p>Draws an interactive console over the screen and hooks 28 game seams across all 8 schools, so you can see precisely what the game does when you act — and, on every row, whether a quest could actually be bound to it. Then you write a quest against it: edit a JSON file, run `lab_reload`, and watch it fire or be told plainly why it cannot.</p>
         <p class="deps">roadmap <span class="dep">unlinked</span></p>
       </div>
     </details>
     <div class="first-tasks">
-      <strong>Pick one to start · 1 open</strong>
+      <strong>Pick one to start · 2 open</strong>
       <ul class="first-task-list"><li class="first-task">
         <div class="first-task-top">
           <strong>Try it and verify one school</strong>
           <span class="task-flags"><span class="task-size small">small</span></span>
         </div>
-        <span class="done-when"><em>Done when:</em> Run the lab, try the actions for one school, and post in the thread whether the in-game events fired as the Tome predicted.</span>
+        <span class="done-when"><em>Done when:</em> Run the lab, try the actions for one school, and post in the thread whether the in-game events fired as the Tome predicted. Only harvest has ever been witnessed firing, so seven of the eight are unclaimed ground.</span>
         
         <span class="task-id">QL-1</span>
+      </li><li class="first-task">
+        <div class="first-task-top">
+          <strong>Author a quest that fires</strong>
+          <span class="task-flags"><span class="task-size small">small</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> Edit the starter quest file into a quest of your own, get `lab_reload` to report it armed, make it fire, and post the file. A second worked example is worth more than any amount of documentation.</span>
+        
+        <span class="task-id">QL-2</span>
       </li></ul>
       <div class="ownership-state unclaimed">
         <span class="pill ownership unclaimed">UNCLAIMED</span>
@@ -846,7 +854,7 @@
     <details class="tool-detail">
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
-        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab" target="_blank" rel="noreferrer">Source Code</a></div>
+        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/tools/quest-lab.md" target="_blank" rel="noreferrer">One-pager (what it is, what&#39;s rough)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab" target="_blank" rel="noreferrer">Source Code</a></div>
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab</a></div>
         <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
         <p class="source-note">A client-only BepInEx plugin.</p>
