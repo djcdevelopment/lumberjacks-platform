@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T08:05:23.617Z</span>
+        <span>Updated 2026-08-07T08:13:42.377Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807080523-wedge-repro-ladder-complete-on-the-local-loop-ca">
+        <div class="journal"><article class="journal-entry" id="note-20260807081342-quest-lab-four-of-eight-hook-categories-wired-pl">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T08:13:42.377Z">2026-08-07T08:13:42.377Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A5</span>
+      </div>
+      <h3>Quest Lab: four of eight hook categories wired, plus the two tools that keep the mod and the atlas from drifting</h3>
+      <p><strong>Impact:</strong> Harmony resolves AccessTools.Method at runtime, so a wrong argument list does not fail the build - it returns null and the patch silently never applies, which is the same class of silent failure the lab exists to expose. Two tools close that: generate_seam_catalog.py projects the atlas into a compiled-in lookup so a patch names its seam and the catalog answers category and usability (no hand-copied verdicts to rot), and check_lab_patches.py verifies every TryPatch target against the atlas headless. Categories wired: harvest, combat, inventory, progression - 17 seams. Inventory.AddItem is deliberately not hooked: seven overloads and it fires on every internal shuffle.</p>
+      <details><summary>Verification (1)</summary><ul><li>dotnet build -c Release, 0 warnings, both PluginOutputPath guards shut and live plugins folder untouched. check_lab_patches.py: 17/17 targets resolve against the atlas. Guard proven non-decorative against the real atlas - it rejects wrong arg lists, missing parameters, typo&#39;d method names, and overloads that do not exist, while accepting one of AddItem&#39;s seven. NOT verified in game: no hook has been observed firing.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807080523-wedge-repro-ladder-complete-on-the-local-loop-ca">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
