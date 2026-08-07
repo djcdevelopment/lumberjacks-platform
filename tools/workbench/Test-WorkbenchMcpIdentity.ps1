@@ -18,7 +18,12 @@ param(
     [string]$BaseUrl = '',
     [string]$ApiKey = 'comfy-dev-local',
     [string]$ExpectedSourceRevision = '',
-    [string]$ExpectedImage = ''
+    [string]$ExpectedImage = '',
+    # Which repository's runtime this endpoint is supposed to be. Defaults to
+    # baseline so every existing invocation keeps its current meaning. Pass
+    # 'isolate' to attest the decoupled runtime — without this the check cannot
+    # tell the two apart, because both report source_root /workspace.
+    [string]$ExpectedProject = 'baseline'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,7 +35,7 @@ $BaseUrl = $BaseUrl.TrimEnd('/')
 $result = [ordered]@{
     schema_version = 1
     expected = [ordered]@{
-        project = 'baseline'
+        project = $ExpectedProject
         profile = $Profile
         published_port = $McpPort
         required_provider = 'comfy_gateway.toolsurface.workbench'
@@ -56,7 +61,7 @@ try {
 
 $mismatches = @()
 if ($identity.schema -ne 'baseline.mcp.identity.v1') { $mismatches += 'schema' }
-if ($identity.project -ne 'baseline') { $mismatches += 'project' }
+if ($identity.project -ne $ExpectedProject) { $mismatches += 'project' }
 if ($identity.profile -ne $Profile) { $mismatches += 'profile' }
 if ([int]$identity.published_port -ne $McpPort) { $mismatches += 'published_port' }
 if (@($identity.providers) -notcontains 'comfy_gateway.toolsurface.workbench') { $mismatches += 'required_provider' }

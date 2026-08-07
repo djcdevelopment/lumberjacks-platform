@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T15:23:15.089Z</span>
+        <span>Updated 2026-08-07T16:00:03.122Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807152315-correct-the-quest-lab-docs-to-match-the-build-8-">
+        <div class="journal"><article class="journal-entry" id="note-20260807160003-make-the-pd-8-isolate-boundary-assert-something-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T16:00:03.122Z">2026-08-07T16:00:03.122Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A4 · A7</span>
+      </div>
+      <h3>Make the PD-8 isolate boundary assert something: /identity can name which repository answered, and the API contract file is now enforced by a test</h3>
+      <p><strong>Impact:</strong> The isolate extraction was a copy, and three of its own guards could not fail. Its compose file was byte-identical to baseline&#39;s including name: comfy-valheim-lab -- the LIVE lab project -- and with AUTONOMOUS_ROOT unset the world mounts rendered as blank-rooted absolute paths while docker compose still exited 0, so the documented launch command would have adopted the running server and recreated it against an empty world. gateway_identity() hardcoded project=baseline and source_root is /workspace in any container built from this Dockerfile, so /identity, the endpoint PD-8 names as THE contract boundary, could not distinguish the two repositories. contracts/api-contract.json declared fields the endpoints do not return and named 8721, a host publish belonging to baseline&#39;s companion container, as the protocol default. Fixed: project now comes from COMFY_MCP_PROJECT defaulting to baseline, the isolate stack runs as its own isolate-lab project with defaults resolving inside its own tree, and the contract is enforced in both directions. Test-WorkbenchMcpIdentity.ps1 gained -ExpectedProject.</p>
+      <details><summary>Verification (1)</summary><ul><li>OMEN 2026-08-07. Baseline suite 18 green, isolate 19 green (was 11 with 2 failures). The new contract guard was mutation-tested three ways -- dropping a declared field, declaring a phantom field, and reverting the wrong default port -- and turned the suite red each time, with the file restored byte-identical after. The re-scoped privacy scan was proven non-vacuous by planting a leak and detecting it. Negative control: the identity gate pointed at 8721 fails on &#39;project&#39; FIRST, a mismatch that could not have fired before this change. Real probe: verdict passed on 8722 with project=isolate and real git provenance. The live comfy-valheim-lab server was untouched throughout -- container id and StartedAt unchanged. Multi-peer motion remains BLOCKED and unattempted: i5 is offline (TCP timeout).</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/evidence/isolate-boundary-verification-20260807.json</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807152315-correct-the-quest-lab-docs-to-match-the-build-8-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
