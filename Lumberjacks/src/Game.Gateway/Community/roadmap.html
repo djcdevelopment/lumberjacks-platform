@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T15:06:53.484Z</span>
+        <span>Updated 2026-08-07T15:14:12.445Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807150653-lab-reload-lands-the-quest-lane-is-wired-end-to-">
+        <div class="journal"><article class="journal-entry" id="note-20260807151412-the-quest-lab-tome-finally-tells-you-how-to-inst">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T15:14:12.445Z">2026-08-07T15:14:12.445Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>The Quest Lab tome finally tells you how to install the mod, stops garbling its own prose, and can be published without a Gateway image</h3>
+      <p><strong>Impact:</strong> The tome taught 8 schools and 78 spells and never once said where to get the mod, what BepInEx is, or that lab_setup exists -- a reader who wanted to try it had nowhere to go. Added a Start here block: download link, install, F5 lab_setup vs F6 panel, edit-and-lab_reload, plus the honest note that all eight schools are hooked and exactly one can have a quest bound to it. Two render defects fixed: the what/try fields are line-WRAPPED prose joined with a comma, producing a garbled pseudo-list; and the per-school watch field -- the trap sentence, the most valuable paragraph on each page -- was in journal-pages.json and in the in-game spellbook but silently dropped from the web. QuestLabViewEndpoints now mirrors WorkbenchViewEndpoints: LUMBERJACKS_QUESTLAB_HTML override, mtime cache, X-QuestLab-Sha256, degrading in steps; Publish-WorkbenchAssets carries questlab.html with the same remote SHA-256 verification.</p>
+      <details><summary>Verification (4)</summary><ul><li>Gateway builds clean in mcr.microsoft.com/dotnet/sdk:9.0 (host SDK 8 cannot target net9)</li><li>npm run workbench:test: 29 passed</li><li>Regenerated questlab.html: onboarding present, 8 Worth knowing sections, prose rejoined as sentences, no U+FFFD, no BOM, LF endings</li><li>PENDING: the lj-workbench container needs LUMBERJACKS_QUESTLAB_HTML added and a one-time recreate before tome edits ship by file copy rather than by image</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807150653-lab-reload-lands-the-quest-lane-is-wired-end-to-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

@@ -28,6 +28,20 @@ h1 { font-size: 2.5rem; letter-spacing: -.02em; margin-bottom: 1rem; }
 .spell-verdict { font-size: 0.85rem; color: var(--muted); text-align: right; }
 .verdict-today { color: var(--green); }
 .bound-badge { display: inline-block; background: rgba(255,255,255,0.1); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.75rem; text-transform: uppercase; margin-left: 0.5rem; }
+.start { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 2rem; margin-bottom: 2rem; }
+.start h2 { margin-top: 0; font-size: 1.5rem; }
+ol.steps { margin: 0; padding-left: 1.3rem; }
+ol.steps > li { margin-bottom: 1rem; }
+ol.steps > li > strong { display: block; }
+ol.steps p { margin: .25rem 0 0; color: var(--muted); font-size: .95rem; }
+kbd { font-family: var(--mono); font-size: .85rem; background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: .1rem .4rem; color: var(--ink); }
+code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
+.cta { display: inline-block; margin-bottom: 1.25rem; background: var(--wood); color: #1a1206; font-weight: 700; text-decoration: none; padding: .6rem 1.1rem; border-radius: 8px; }
+.cta:hover { filter: brightness(1.08); }
+.note { border-left: 3px solid var(--wood); background: var(--panel-2); padding: .85rem 1rem; border-radius: 0 8px 8px 0; margin: 1.25rem 0 0; color: var(--muted); font-size: .95rem; }
+.note strong { color: var(--ink); }
+.watch { color: var(--muted); font-size: .95rem; border-left: 3px solid var(--line); padding-left: .9rem; margin: 1rem 0 0; }
+.watch strong { color: var(--ink); }
 </style>
 </head><body>
 <div class="topbar"><div class="topbar-inner">
@@ -46,11 +60,32 @@ h1 { font-size: 2.5rem; letter-spacing: -.02em; margin-bottom: 1rem; }
 <div class="wrap">
 <h1>The Quest Lab Tome</h1>
 <p class="intro">This is the web-facing version of the in-game spellbook. It lists every spell the world genuinely answers to, categorized by rune school. Spells marked with a badge are ones this build can witness in-game today.</p>
+<div class="start">
+<h2>Start here</h2>
+<a class="cta" href="/workbench/downloads/quest-lab">Download the Quest Lab</a>
+<ol class="steps">
+<li><strong>Install BepInEx on your Valheim client.</strong>
+<p>The lab is a BepInEx plugin. If you already run mods, you have this.</p></li>
+<li><strong>Drop <code>ComfyQuestLab.dll</code> into <code>BepInEx/plugins</code>.</strong>
+<p>That is the whole install. The zip also carries a README and a default config.</p></li>
+<li><strong>Launch a private, single-player world.</strong>
+<p>The lab is client-only and does nothing at all on a dedicated server. Nothing it does touches anyone else, and uninstalling it changes nothing about your game.</p></li>
+<li><strong>Press <kbd>F5</kbd> and type <code>lab_setup</code>.</strong>
+<p>This raises the practice gallery &mdash; eight rune monuments, a station under each, and an armoury &mdash; and writes you a starter quest file.</p></li>
+<li><strong>Press <kbd>F6</kbd> to open the lab panel.</strong>
+<p><kbd>F5</kbd> is Valheim&rsquo;s console, where you type commands. <kbd>F6</kbd> is the lab&rsquo;s own window. Two different keys, and mixing them up is the usual first stumble.</p></li>
+<li><strong>Edit <code>BepInEx/config/comfy-quest-lab/quests/starter.json</code>, then run <code>lab_reload</code>.</strong>
+<p>No restart. The <em>Quests</em> tab names what changed, what will fire, and what cannot &mdash; and shows the last kill the matcher was actually handed, which is how you find out why something did not fire.</p></li>
+</ol>
+<p class="note"><strong>The starter file holds two quests that disagree on purpose.</strong> <code>neck_romancer</code> is armed: kill a Neck and it fires. <code>punchwood</code> is not, and nothing errors to tell you &mdash; a <code>hit</code> trigger parses perfectly and can never fire, because only a creature kill can complete a quest today. All eight schools below are <em>hooked</em>, meaning the lab can show you every one of them. Exactly one can have a quest <em>bound</em> to it. Knowing which is which is the entire reason this tool exists, and the verdict on every row below is the honest answer.</p>
+<p class="note"><strong>Each school&rsquo;s rune is also its filter.</strong> The mark beside each heading is the same mark you click in the lab&rsquo;s console to show or hide that school &mdash; so learning the book teaches the console for free. One fight emits more rows than the window holds, which is why the filters matter.</p>
+</div>
 <div class="school">
 <div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="50.0" y1="10.0" x2="50.0" y2="95.0" stroke="#ed7366" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="10.0" x2="15.0" y2="42.0" stroke="#ed7366" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="10.0" x2="85.0" y2="42.0" stroke="#ed7366" stroke-width="12" stroke-linecap="round"/></svg><h2>Combat</h2></div>
 <div style="margin-bottom: 1.5rem">
-<p><strong>What it covers:</strong> Hitting things, and things dying. The only category with any ground a quest, can stand on today — and the only place you can see all three verdicts side, by side, which is the fastest way to understand what they mean.</p>
-<p><strong>Go and try:</strong> Find a Greyling and hit it once, then finish it., You get two kinds of row: the hits, and the death.</p>
+<p><strong>What it covers:</strong> Hitting things, and things dying. The only category with any ground a quest can stand on today — and the only place you can see all three verdicts side by side, which is the fastest way to understand what they mean.</p>
+<p><strong>Go and try:</strong> Find a Greyling and hit it once, then finish it. You get two kinds of row: the hits, and the death.</p>
+<p class="watch"><strong>Worth knowing:</strong> The hits and the kill get DIFFERENT verdicts, and that is the whole lesson. The kill says a quest can fire on it. The hits say they emit an event that no quest trigger matches — real, visible, and unusable. If you want a quest that fires on a hit rather than a kill, nothing today will run it.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -105,8 +140,9 @@ h1 { font-size: 2.5rem; letter-spacing: -.02em; margin-bottom: 1rem; }
 <div class="school">
 <div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="12.0" y1="20.0" x2="50.0" y2="42.0" stroke="#7ace85" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="42.0" x2="12.0" y2="62.0" stroke="#7ace85" stroke-width="12" stroke-linecap="round"/><line x1="88.0" y1="80.0" x2="50.0" y2="57.99999999999999" stroke="#7ace85" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="57.99999999999999" x2="88.0" y2="38.0" stroke="#7ace85" stroke-width="12" stroke-linecap="round"/></svg><h2>Harvest</h2></div>
 <div style="margin-bottom: 1.5rem">
-<p><strong>What it covers:</strong> Chopping trees, breaking bushes and rocks, picking berries. The first thing, most people try, and the reason this lab exists: hitting a bush used to fire, a quest, and the mod that could do it was retired.</p>
-<p><strong>Go and try:</strong> Punch a tree with bare fists, then punch a raspberry bush, then pick one., Three rows, and the third is a different shape from the first two.</p>
+<p><strong>What it covers:</strong> Chopping trees, breaking bushes and rocks, picking berries. The first thing most people try, and the reason this lab exists: hitting a bush used to fire a quest, and the mod that could do it was retired.</p>
+<p><strong>Go and try:</strong> Punch a tree with bare fists, then punch a raspberry bush, then pick one. Three rows, and the third is a different shape from the first two.</p>
+<p class="watch"><strong>Worth knowing:</strong> A standing tree and a felled trunk are different things to the game, so they are different rows. And picking a berry is not damage at all — it is an interact. Nobody guesses that, and a quest written as though picking were hitting would never fire.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -165,8 +201,9 @@ h1 { font-size: 2.5rem; letter-spacing: -.02em; margin-bottom: 1rem; }
 <div class="school">
 <div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="28.000000000000004" y1="5.0" x2="28.000000000000004" y2="95.0" stroke="#d9b76b" stroke-width="12" stroke-linecap="round"/><line x1="28.000000000000004" y1="28.000000000000004" x2="80.0" y2="8.0" stroke="#d9b76b" stroke-width="12" stroke-linecap="round"/><line x1="28.000000000000004" y1="55.00000000000001" x2="80.0" y2="35.0" stroke="#d9b76b" stroke-width="12" stroke-linecap="round"/></svg><h2>Inventory</h2></div>
 <div style="margin-bottom: 1.5rem">
-<p><strong>What it covers:</strong> Picking things up, equipping them, eating them, emptying chests. The largest, group of seams in the game and the noisiest, because the game moves items, around constantly for reasons that have nothing to do with you.</p>
-<p><strong>Go and try:</strong> Drop something and pick it back up, then equip a weapon and eat food., Then open a chest and take everything.</p>
+<p><strong>What it covers:</strong> Picking things up, equipping them, eating them, emptying chests. The largest group of seams in the game and the noisiest, because the game moves items around constantly for reasons that have nothing to do with you.</p>
+<p><strong>Go and try:</strong> Drop something and pick it back up, then equip a weapon and eat food. Then open a chest and take everything.</p>
+<p class="watch"><strong>Worth knowing:</strong> The lab watches what you DID, not every time the item list changed. Adding an item internally happens on crafting, on stacking, on moving between chests — a quest built on that would fire constantly and mean nothing. It is left alone on purpose, and you can see it listed as available in the atlas if you disagree.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -225,8 +262,9 @@ h1 { font-size: 2.5rem; letter-spacing: -.02em; margin-bottom: 1rem; }
 <div class="school">
 <div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="50.0" y1="8.0" x2="18.0" y2="38.0" stroke="#c79961" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="8.0" x2="82.0" y2="38.0" stroke="#c79961" stroke-width="12" stroke-linecap="round"/><line x1="18.0" y1="38.0" x2="50.0" y2="57.99999999999999" stroke="#c79961" stroke-width="12" stroke-linecap="round"/><line x1="82.0" y1="38.0" x2="50.0" y2="57.99999999999999" stroke="#c79961" stroke-width="12" stroke-linecap="round"/><line x1="32.0" y1="50.0" x2="12.0" y2="95.0" stroke="#c79961" stroke-width="12" stroke-linecap="round"/><line x1="68.0" y1="50.0" x2="88.0" y2="95.0" stroke="#c79961" stroke-width="12" stroke-linecap="round"/></svg><h2>Building</h2></div>
 <div style="margin-bottom: 1.5rem">
-<p><strong>What it covers:</strong> Placing pieces, repairing them, taking them down, and structures breaking., The category a settlement steward actually wants: build a longhouse, repair, the dock, keep the walls up.</p>
-<p><strong>Go and try:</strong> Place a workbench, hit it with a hammer to repair it, then remove it., If something of yours is damaged, let it break and watch that row too.</p>
+<p><strong>What it covers:</strong> Placing pieces, repairing them, taking them down, and structures breaking. The category a settlement steward actually wants: build a longhouse, repair the dock, keep the walls up.</p>
+<p><strong>Go and try:</strong> Place a workbench, hit it with a hammer to repair it, then remove it. If something of yours is damaged, let it break and watch that row too.</p>
+<p class="watch"><strong>Worth knowing:</strong> Placing is something YOU do; breaking is something that HAPPENS. So breaking is reported whoever caused it, and the row says whether it was you. That distinction is what lets a 'defend the base' quest work at all.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -269,8 +307,9 @@ h1 { font-size: 2.5rem; letter-spacing: -.02em; margin-bottom: 1rem; }
 <div class="school">
 <div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="78.0" y1="8.0" x2="25.0" y2="50.0" stroke="#eb9e4c" stroke-width="12" stroke-linecap="round"/><line x1="25.0" y1="50.0" x2="78.0" y2="92.0" stroke="#eb9e4c" stroke-width="12" stroke-linecap="round"/></svg><h2>Crafting</h2></div>
 <div style="margin-bottom: 1.5rem">
-<p><strong>What it covers:</strong> Making things at a bench, and feeding the machines that make things —, smelters, kilns, cooking stations. Two different acts that people tend to, lump together.</p>
-<p><strong>Go and try:</strong> Craft anything at a workbench. Then put ore and coal into a smelter., Notice they are separate rows with separate names.</p>
+<p><strong>What it covers:</strong> Making things at a bench, and feeding the machines that make things — smelters, kilns, cooking stations. Two different acts that people tend to lump together.</p>
+<p><strong>Go and try:</strong> Craft anything at a workbench. Then put ore and coal into a smelter. Notice they are separate rows with separate names.</p>
+<p class="watch"><strong>Worth knowing:</strong> The craft is reported by the crafting WINDOW, not by your character. That is genuinely surprising and it is why searching for a 'player crafts' event turns up nothing and people conclude crafting cannot be tracked. It can.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -321,8 +360,9 @@ h1 { font-size: 2.5rem; letter-spacing: -.02em; margin-bottom: 1rem; }
 <div class="school">
 <div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="80.0" y1="10.0" x2="32.0" y2="10.0" stroke="#f5d66b" stroke-width="12" stroke-linecap="round"/><line x1="32.0" y1="10.0" x2="68.0" y2="50.0" stroke="#f5d66b" stroke-width="12" stroke-linecap="round"/><line x1="68.0" y1="50.0" x2="20.0" y2="50.0" stroke="#f5d66b" stroke-width="12" stroke-linecap="round"/><line x1="20.0" y1="50.0" x2="56.00000000000001" y2="90.0" stroke="#f5d66b" stroke-width="12" stroke-linecap="round"/></svg><h2>Progression</h2></div>
 <div style="margin-bottom: 1.5rem">
-<p><strong>What it covers:</strong> Skills going up, stamina being spent, and dying. The category people ask for, by name and then cannot find, because the names they ask for do not exist.</p>
-<p><strong>Go and try:</strong> Swing an axe at a tree a few times until the skill-up message appears., You will see the skill row fire at the same moment.</p>
+<p><strong>What it covers:</strong> Skills going up, stamina being spent, and dying. The category people ask for by name and then cannot find, because the names they ask for do not exist.</p>
+<p><strong>Go and try:</strong> Swing an axe at a tree a few times until the skill-up message appears. You will see the skill row fire at the same moment.</p>
+<p class="watch"><strong>Worth knowing:</strong> There is an event for 'a skill went up'. There is no event for 'my skill is level 30' — that is a question you can ask, not something the game announces. A quest can fire on the first and cannot on the second, and that difference catches everybody once. Stamina is off by default. It fires when you run, so it buries everything.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -369,8 +409,9 @@ h1 { font-size: 2.5rem; letter-spacing: -.02em; margin-bottom: 1rem; }
 <div class="school">
 <div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="25.0" y1="5.0" x2="25.0" y2="95.0" stroke="#75c2eb" stroke-width="12" stroke-linecap="round"/><line x1="25.0" y1="5.0" x2="75.0" y2="22.0" stroke="#75c2eb" stroke-width="12" stroke-linecap="round"/><line x1="75.0" y1="22.0" x2="25.0" y2="48.0" stroke="#75c2eb" stroke-width="12" stroke-linecap="round"/><line x1="35.0" y1="48.0" x2="80.0" y2="95.0" stroke="#75c2eb" stroke-width="12" stroke-linecap="round"/></svg><h2>World</h2></div>
 <div style="margin-bottom: 1.5rem">
-<p><strong>What it covers:</strong> Moving through the world, and the world itself changing state. Small, and it, contains the most interesting seam nobody has used.</p>
-<p><strong>Go and try:</strong> Take a portal., If you are on a world where a boss has been killed, that already fired.</p>
+<p><strong>What it covers:</strong> Moving through the world, and the world itself changing state. Small, and it contains the most interesting seam nobody has used.</p>
+<p><strong>Go and try:</strong> Take a portal. If you are on a world where a boss has been killed, that already fired.</p>
+<p class="watch"><strong>Worth knowing:</strong> Valheim keeps a short list of world-wide flags — which bosses are dead, and so what the world allows. That is the nearest thing the game has to a server-wide event, which makes it the obvious foundation for a guild-scale quest, and nothing has ever built on it.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -397,8 +438,9 @@ h1 { font-size: 2.5rem; letter-spacing: -.02em; margin-bottom: 1rem; }
 <div class="school">
 <div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="15.0" y1="8.0" x2="15.0" y2="92.0" stroke="#c2a8f0" stroke-width="12" stroke-linecap="round"/><line x1="85.0" y1="8.0" x2="85.0" y2="92.0" stroke="#c2a8f0" stroke-width="12" stroke-linecap="round"/><line x1="15.0" y1="12.0" x2="85.0" y2="57.99999999999999" stroke="#c2a8f0" stroke-width="12" stroke-linecap="round"/><line x1="85.0" y1="12.0" x2="15.0" y2="57.99999999999999" stroke="#c2a8f0" stroke-width="12" stroke-linecap="round"/></svg><h2>Social</h2></div>
 <div style="margin-bottom: 1.5rem">
-<p><strong>What it covers:</strong> Talking, and writing on signs. The quietest category and the one with the, most room, because it needs nothing from combat at all.</p>
+<p><strong>What it covers:</strong> Talking, and writing on signs. The quietest category and the one with the most room, because it needs nothing from combat at all.</p>
 <p><strong>Go and try:</strong> Say something in chat, then place a sign and write on it.</p>
+<p class="watch"><strong>Worth knowing:</strong> A quest that completes when somebody writes a particular sign, or says a phrase somewhere specific, is entirely possible and nobody has written one. Community rituals tend to look far more like this than like killing things — which is worth remembering when the combat seams are the ones that work.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">

@@ -70,7 +70,15 @@ const INVITE_WARN_DAYS = 14;
 // These two lists mirror literal template text in scripts/workbench.mjs (the nav bar and the
 // provenance footer). If the generator's template changes, change these with it — check() cannot
 // see this file, so the mirror is maintained by hand and verified by the routes/github classes.
-const NAV_ROUTES = ['/workbench', '/community', '/roadmap', '/networksense', '/events', '/testing', '/join', '/health'];
+//
+// The mirror had drifted: the nav in workbench.mjs carries /questpicker, /steward and /questlab,
+// none of which were verified, while /join and /health are verified and are not in the nav.
+// /questlab is added here now that it is publishable (2026-08-07) — before that the served page
+// could only change with a Gateway image, so a live check told you about the image, not the tree.
+// /questpicker and /steward stay OUT deliberately: no route for either exists in this repo's
+// Gateway source, so whatever serves them is outside this repo and asserting on it here would be
+// verifying somebody else's deploy. That gap is real and belongs in its own pass.
+const NAV_ROUTES = ['/workbench', '/community', '/roadmap', '/questlab', '/networksense', '/events', '/testing', '/join', '/health'];
 const FOOTER_GITHUB_LINKS = [
   'https://github.com/djcdevelopment/baseline',
   'https://github.com/djcdevelopment/Lumberjacks',
