@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T10:56:44.964Z</span>
+        <span>Updated 2026-08-07T11:00:23.620Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807105644-questlab-prefabs-dump-the-runtime-prefab-catalog">
+        <div class="journal"><article class="journal-entry" id="note-20260807110023-questlab-blueprint-a-blueprint-file-at-your-feet">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T11:00:23.620Z">2026-08-07T11:00:23.620Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A5</span>
+      </div>
+      <h3>questlab_blueprint: a .blueprint file at your feet, and a clear that survives restarts</h3>
+      <p><strong>Impact:</strong> The second world-changing lane. list/check/build/clear over PlanBuild .blueprint files dropped into the mod config dir - no DLL rebuild between a community blueprint and the world. Build refuses past a failed check, places at the player&#39;s feet with ONE ground sample (a house keeps its own levels; the gallery&#39;s highest-ground scan would hoist the building by its tallest bump), batches per frame via new config blueprintPiecesPerFrame, and writes the blueprint&#39;s name into each piece&#39;s own ZDO. Clear is the fix the gallery documented wanting: a mark-sweep over the loaded ZDO table (the FieldRefAccess pattern CutoverResidueSweeper proved), so a restart costs nothing - no manifest at all. The WearNTear keep-standing postfix now keys off LabMarks.IsLabBuilt covering both lanes; that one line is load-bearing, since Fallingwater&#39;s terraces are cantilevers by design. Gallery code untouched beyond that line.</p>
+      <details><summary>Verification (1)</summary><ul><li>Mod builds clean, 203/203 host tests green. NOT verified in game yet: first build is the Fallingwater session, where the zone-boundary walk proves the keep-standing generalization and a client restart proves the mark-sweep clear.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807105644-questlab-prefabs-dump-the-runtime-prefab-catalog">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
