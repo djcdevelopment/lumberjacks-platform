@@ -48,7 +48,7 @@ Format:
 
 Valid tool ids (must match `workbench.json`): `quest-picker`, `steward-view`,
 `community-telemetry`, `steam-join`, `mcp-mod-channel`, `camera-gallery`,
-`quest-submission-bridge`.
+`quest-submission-bridge`, `quest-lab`.
 
 <!--
 EXAMPLE ENTRY — not a real claim. Shown only to illustrate the append format; delete this comment
@@ -73,6 +73,7 @@ block once a real entry exists, or leave it as a reference — either is fine, i
 | `mcp-mod-channel` | MCP mod channel | unclaimed | — | — | *(no thread yet — dev-only tool; raise interest in 05)* |
 | `camera-gallery` | Camera flythrough → gallery | unclaimed | — | — | 06 |
 | `quest-submission-bridge` | Quest submission → review bridge | unclaimed | — | — | 06 |
+| `quest-lab` | Quest Lab turnkey package | unclaimed | — | — | 13 |
 
-All seven are unclaimed as of this writing. That's a description of where the catalog is today,
+All eight are unclaimed as of this writing. That's a description of where the catalog is today,
 not a mark against anyone — see the announcement post's closing note.

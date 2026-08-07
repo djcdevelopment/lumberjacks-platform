@@ -581,8 +581,8 @@
       "name": "Quest Lab Turnkey Package",
       "one_liner": "An arcane tome in-game that teaches you exactly what quests are possible, letting you practice writing them before trying them out for real.",
       "status": "local-only",
-      "status_detail": "A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. Contains all 8 rune schools.",
-      "what_it_does": "Draws an interactive console over the screen and hooks into 91 different game events to show you precisely what is happening when you perform actions in-game.",
+      "status_detail": "A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. All 8 rune schools are hooked, and `lab_setup` also writes you a starter quest file you can edit and reload without restarting. Worth knowing before you start: only a creature kill can currently fire a quest, so a quest built on anything else parses cleanly and never fires. The lab exists to make that visible rather than let you find it the hard way.",
+      "what_it_does": "Draws an interactive console over the screen and hooks 28 game seams across all 8 schools, so you can see precisely what the game does when you act — and, on every row, whether a quest could actually be bound to it. Then you write a quest against it: edit a JSON file, run `lab_reload`, and watch it fire or be told plainly why it cannot.",
       "who_its_for": "Creators and leaders who want to learn how to write custom quests without guessing.",
       "time_to_first_result": "10 minutes. Download the zip, drop the DLL in your BepInEx/plugins folder, launch a private world, and run `lab_setup` in the F5 console.",
       "requires": [
@@ -592,9 +592,9 @@
       "access": {
         "kind": "site-download",
         "href": "/workbench/downloads/quest-lab",
-        "sha256": "82ac0d9fed98264af50216cf076a216ecbfb2b761f131ee3e92ea1b43d9c0f9a",
-        "size_bytes": 62118,
-        "published_at": "2026-08-07T06:41:00Z"
+        "sha256": "c2f6df16af33590a4f372cdc091dd8bf7e007c8b3cf3907dc01a476d97505171",
+        "size_bytes": 73049,
+        "published_at": "2026-08-07T15:20:00Z"
       },
       "source": {
         "kind": "public-repo",
@@ -605,6 +605,10 @@
         {
           "label": "The Web Tome (Learn what's possible)",
           "href": "/questlab"
+        },
+        {
+          "label": "One-pager (what it is, what's rough)",
+          "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/tools/quest-lab.md"
         },
         {
           "label": "Source Code",
@@ -620,7 +624,13 @@
           "id": "QL-1",
           "title": "Try it and verify one school",
           "size": "small",
-          "done_when": "Run the lab, try the actions for one school, and post in the thread whether the in-game events fired as the Tome predicted."
+          "done_when": "Run the lab, try the actions for one school, and post in the thread whether the in-game events fired as the Tome predicted. Only harvest has ever been witnessed firing, so seven of the eight are unclaimed ground."
+        },
+        {
+          "id": "QL-2",
+          "title": "Author a quest that fires",
+          "size": "small",
+          "done_when": "Edit the starter quest file into a quest of your own, get `lab_reload` to report it armed, make it fire, and post the file. A second worked example is worth more than any amount of documentation."
         }
       ],
       "ownership": {
