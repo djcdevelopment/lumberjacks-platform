@@ -278,7 +278,7 @@
       </div>
       <p class="join-path">The path in: join → read <a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a> → post in a tool's thread. Those last two and the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a> are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span class="freshness">Published from 20616a8 · 2026-08-07 01:05 UTC</span>
+        <span class="freshness">Published from 468e9d1 · 2026-08-07 03:33 UTC</span>
         <span>2 live · 1 dev-only · 3 local-only · 1 recoverable</span>
         <a href="#tools">12 first tasks open</a>
       </div>
@@ -320,7 +320,7 @@
         </a><a class="index-row recoverable-not-running" href="#quest-submission-bridge">
           <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
           <span class="index-name">Quest Submission → Review Bridge</span>
-          <span class="index-time">Unknown until QB-1 lands. The front half already runs, so the first honest measurement comes from the port.</span>
+          <span class="index-time">About 10 minutes against the test fixture (tools/quest-bridge/, tests/test_quest_bridge.py). The live measurement — a real in-game completion out the other end — is QB-1.</span>
           <span class="index-tasks">1 open</span>
         </a></nav>
         <div class="tool-grid"><article class="tool live" id="quest-picker">
@@ -707,15 +707,15 @@
       <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
     </div>
     <p class="one-liner">The back half of quest capture: package what a player did in-game, land it in a review inbox, and turn it into a record a GM can read.</p>
-    <div class="status-detail recoverable-not-running"><strong>What that status actually means</strong>Not running. The front half is alive in the mod today with tests — QuestViewLoader.cs reads a player&#39;s quest-view and QuestTriggerEvaluator.cs evaluates triggers in-game. The back half, which packages a submission and turns it into a reviewable record, is not wired to anything; its code sits in the public comfy repo waiting to be pointed at the live mod&#39;s telemetry. Since 2026-07-29 that code also sits byte-exact and unwired in this repo at recipes/quest-submission-bridge/ — the port is still QB-1.</div>
+    <div class="status-detail recoverable-not-running"><strong>What that status actually means</strong>Ported, not yet live-proven. The front half is alive in the mod today with tests — QuestViewLoader.cs reads a player&#39;s quest-view and QuestTriggerEvaluator.cs evaluates triggers in-game. The back half was never a matter of pointing a script at a folder: the old consumer expected an evidence envelope (screenshot, trace, position) that the live mod deliberately does not produce — its proof is the durable EventLog row (ADR 0012). That design call is now decided (ADR 0018: the EventLog row IS the evidence; no re-materialized screenshots) and implemented at tools/quest-bridge/ — EventLog row → thin submission → review record → guild-command export, fixture-proven in tests/test_quest_bridge.py. What remains for QB-1 is the live proof: one real in-game completion through that path. The archive copies at recipes/quest-submission-bridge/ stay as raw material.</div>
     <p class="tool-audience"><strong>For</strong>GMs who want players to submit completions without a screenshot and a Discord message.</p>
     <div class="tool-action">
-      <span class="first-result"><em>First result</em>Unknown until QB-1 lands. The front half already runs, so the first honest measurement comes from the port.</span>
+      <span class="first-result"><em>First result</em>About 10 minutes against the test fixture (tools/quest-bridge/, tests/test_quest_bridge.py). The live measurement — a real in-game completion out the other end — is QB-1.</span>
       <span class="access-button disabled" aria-disabled="true">Not published yet</span>
     </div>
     <div class="access-verify"><p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p></div>
     <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/comfy-control-surface/QUEST.md" target="_blank" rel="noreferrer">Quest handoff brief (QUEST.md)</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531927004197425172" target="_blank" rel="noreferrer">Recoverable pieces thread</a></span></div>
-    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3, for the bridge consumer</li><li>The mod running locally with quest telemetry enabled</li><li>.NET (net48), only if you take the C# submission service rather than the Python consumer</li></ul></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3, for the bridge consumer</li><li>The mod running locally with QuestEvaluatorEnabled on</li><li>Access to the durable EventLog (private plane — the lab box or a tunnel); the review inbox is operator tooling and stays off public surfaces</li></ul></div>
     <details class="tool-detail">
       <summary>How it works, in detail</summary>
       <div class="tool-detail-body">
@@ -727,10 +727,10 @@
       <strong>Pick one to start · 1 open</strong>
       <ul class="first-task-list"><li class="first-task">
         <div class="first-task-top">
-          <strong>Port bridge_consumer.py to read the live mod&#39;s quest telemetry and emit one review record</strong>
-          <span class="task-flags"><span class="task-size medium">medium</span></span>
+          <strong>Prove the ported bridge live: one real in-game completion, EventLog to review record (design: ADR 0018)</strong>
+          <span class="task-flags"><span class="task-size small">small</span></span>
         </div>
-        <span class="done-when"><em>Done when:</em> A real in-game quest completion travels from the running mod through the consumer and comes out as one human-readable review record. This is the claiming task for this tool.</span>
+        <span class="done-when"><em>Done when:</em> A real in-game quest completion, produced by the live mod with QuestEvaluatorEnabled on, is fetched from the durable EventLog by tools/quest-bridge/fetch_completions.py and comes out as one human-readable review record with the quest&#39;s guild-command draft. The design call this task used to hide — re-materialize the old screenshot/trace evidence envelope, or accept a thinner record — is decided in ADR 0018 (the EventLog row is the evidence), and the fixture-driven path already passes in tests/test_quest_bridge.py; what remains is the live run. This is the claiming task for this tool.</span>
         
         <span class="task-id">QB-1</span>
       </li></ul>
@@ -743,14 +743,14 @@
     </div>
     <div class="recovery">
       <strong>Where the pieces are</strong>
-      <p>Front half is alive and tested in the live mod — network/mod/ComfyNetworkSense/Core/Services/QuestViewLoader.cs and QuestTriggerEvaluator.cs. Only the back half needs reviving, and it has fixtures to test against. Pruned in d75ffb2 (2026-07-21; pre-prune ref 57654fd); the Python consumer, fixtures, and briefs re-landed unwired at recipes/quest-submission-bridge/ on 2026-07-29 — see its PROVENANCE.md. The C# pieces stay archive-only.</p>
+      <p>Front half is alive and tested in the live mod — network/mod/ComfyNetworkSense/Core/Services/QuestViewLoader.cs and QuestTriggerEvaluator.cs. Pruned in d75ffb2 (2026-07-21; pre-prune ref 57654fd); the Python consumer, fixtures, and briefs re-landed unwired at recipes/quest-submission-bridge/ on 2026-07-29 — see its PROVENANCE.md. The C# pieces stay archive-only: ADR 0018 (2026-08-06) declines re-materializing the ComfyControlSurface evidence envelope, and the back half is ported to the EventLog contract at tools/quest-bridge/ (MIT-derived, provenance noted in each file).</p>
       <p class="recovery-origin"><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface</a></p>
       <ul class="recovery-paths"><li><code>Core/SubmissionService.cs</code></li><li><code>bridge-consumer/bridge_consumer.py</code></li><li><code>bridge-consumer/fixtures/</code></li><li><code>QUEST.md</code></li><li><code>PROOF.md</code></li></ul>
     </div>
     <details class="tool-detail">
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
-        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/comfy-control-surface/PROOF.md" target="_blank" rel="noreferrer">What was proved (PROOF.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/tree/main/recipes/quest-submission-bridge" target="_blank" rel="noreferrer">Landed raw material (recipes/quest-submission-bridge/)</a></div>
+        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/comfy-control-surface/PROOF.md" target="_blank" rel="noreferrer">What was proved (PROOF.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/tree/main/recipes/quest-submission-bridge" target="_blank" rel="noreferrer">Landed raw material (recipes/quest-submission-bridge/)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/blob/main/fieldlab/docs/adr/0018-quest-proof-is-the-eventlog-row.md" target="_blank" rel="noreferrer">The design decision (ADR 0018 — the proof is the EventLog row)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/tree/main/tools/quest-bridge" target="_blank" rel="noreferrer">Ported bridge (tools/quest-bridge/)</a></div>
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface</a></div>
         <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
         <p class="source-note">The back half is preserved in the public comfy repo. The front half is live in this repo&#39;s mod at network/mod/ComfyNetworkSense/Core/Services/.</p>
