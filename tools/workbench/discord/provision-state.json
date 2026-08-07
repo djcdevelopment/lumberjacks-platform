@@ -24,11 +24,9 @@
         "1531927004197425172",
         "1531927007745806386"
       ],
-      "content_sha256": "54de9958a58b5279a2380c3ce6de3708911ce4d4108351a77d03ba304da6d2bf",
+      "content_sha256": "fa2cc43be7014547a4cdaa50bf3893dcbc39d1eac37120daa80bd99f4b6ee819",
       "pinned": false,
-      "workbench_tools": [
-        "quest-submission-bridge"
-      ],
+      "workbench_tools": [],
       "url": "https://discord.com/channels/1531911987074957442/1531927004197425172"
     },
     "quest-picker": {
@@ -144,5 +142,5 @@
   "channel_id": "1531926985314668635",
   "channel_name": "workbench",
   "guild_id": "1531911987074957442",
-  "last_apply_utc": "2026-08-07T06:45:06Z"
+  "last_apply_utc": "2026-08-07T06:53:44Z"
 }
