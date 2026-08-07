@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T11:35:51.146Z</span>
+        <span>Updated 2026-08-07T12:32:04.808Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807113551-sky-mode-a-blueprint-overhead-doors-bound-by-nam">
+        <div class="journal"><article class="journal-entry" id="note-20260807123204-marble-halls-signs-and-a-floating-stage-per-rune">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T12:32:04.808Z">2026-08-07T12:32:04.808Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A5</span>
+      </div>
+      <h3>Marble halls, signs, and a floating stage per rune - all built against a validated prefab palette</h3>
+      <p><strong>Impact:</strong> The gallery is rebuilt in stone and black marble against a questlab_prefabs dump, with the generator failing loudly on any palette name the game build lacks and checking that anything laid on the 2m grid really spans 2m by its own snap points. Eight halls of blackmarble_2x2x1, open air, with a sign at each mouth carrying Unity rich-text into the piece&#39;s own ZDO text field - school name in its colour, what is staged there, and whether a quest can bind (only Combat can). Each rune now stands on its own 16x8m stage past the hall end with 4m of open air between, backed by a 16x16m backdrop of blackmarble_floor_large slabs stood on edge, which stops a chest or hearth from ever occluding the glyph and gives the light something black to land on. Pivots are measured, not assumed: snap-point minima showed the marble pieces pivot at their centre where wood_floor pivoted at its top face, which had buried every wall a metre and silently raised the walking surface. School colours now live once in the generator and are carried into the plan, so the rune lamp and the sign heading cannot drift. Lamps are tunable live via questlab_runelight without a rebuild.</p>
+      <details><summary>Verification (1)</summary><ul><li>Human-confirmed in game by Derek across several iterations: halls stand, signs placed, backdrop panels stood vertical and catching rune light, clear keeps up at ~2100 pieces. Palette checked against 3458 prefabs. Builds Release 0 warnings alongside the concurrent blueprint lane. NOT verified: whether the 4m stage gap reads as intended, and default lamp values are still 40/6 while Derek&#39;s dialled-in look against the new backdrop is nearer 3/11.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807113551-sky-mode-a-blueprint-overhead-doors-bound-by-nam">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
