@@ -437,7 +437,7 @@
       },
       "source": {
         "kind": "public-repo",
-        "href": "https://github.com/djcdevelopment/comfy/tree/main/handoffs",
+        "href": "https://github.com/djcdevelopment/baseline/tree/main/tools/selfie-stick",
         "note": "Split across two public repos on purpose. The planning, scoring and gallery half is in this repo at tools/selfie-stick/. The BepInEx camera plugin stays in the public comfy archive so that claiming the in-game half remains a real, available piece of work rather than something already finished here."
       },
       "docs": [
@@ -459,8 +459,8 @@
         }
       ],
       "discussion": {
-        "label": "Recoverable pieces thread",
-        "href": "https://discord.com/channels/1531911987074957442/1531927004197425172"
+        "label": "World photography → gallery thread",
+        "href": "https://discord.com/channels/1531911987074957442/1535091188464357496"
       },
       "first_tasks": [
         {

@@ -35,44 +35,79 @@
     {
       "key": "quest-picker",
       "seed": "01-thread-seed-quest-picker.md",
-      "tags": ["question"],
+      "tags": [
+        "question"
+      ],
       "pinned": false,
-      "workbench_tools": ["quest-picker"]
+      "workbench_tools": [
+        "quest-picker"
+      ]
     },
     {
       "key": "steward-view",
       "seed": "02-thread-seed-steward-view.md",
-      "tags": ["question"],
+      "tags": [
+        "question"
+      ],
       "pinned": false,
-      "workbench_tools": ["steward-view"]
+      "workbench_tools": [
+        "steward-view"
+      ]
     },
     {
       "key": "community-telemetry",
       "seed": "03-thread-seed-community-telemetry.md",
-      "tags": ["question"],
+      "tags": [
+        "question"
+      ],
       "pinned": false,
-      "workbench_tools": ["community-telemetry"]
+      "workbench_tools": [
+        "community-telemetry"
+      ]
     },
     {
       "key": "steam-join",
       "seed": "04-thread-seed-steam-join.md",
-      "tags": ["question"],
+      "tags": [
+        "question"
+      ],
       "pinned": false,
-      "workbench_tools": ["steam-join"]
+      "workbench_tools": [
+        "steam-join"
+      ]
     },
     {
       "key": "recoverable",
       "seed": "06-thread-seed-recoverable.md",
-      "tags": ["question"],
+      "tags": [
+        "question"
+      ],
       "pinned": false,
-      "workbench_tools": ["camera-gallery", "quest-submission-bridge"]
+      "workbench_tools": [
+        "quest-submission-bridge"
+      ]
+    },
+    {
+      "key": "camera-gallery",
+      "seed": "11-thread-seed-camera-gallery.md",
+      "tags": [
+        "question"
+      ],
+      "pinned": false,
+      "workbench_tools": [
+        "camera-gallery"
+      ]
     },
     {
       "key": "mcp-mod-channel",
       "seed": "10-thread-seed-mcp-mod-channel.md",
-      "tags": ["question"],
+      "tags": [
+        "question"
+      ],
       "pinned": false,
-      "workbench_tools": ["mcp-mod-channel"]
+      "workbench_tools": [
+        "mcp-mod-channel"
+      ]
     }
   ]
 }

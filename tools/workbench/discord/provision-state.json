@@ -24,10 +24,9 @@
         "1531927004197425172",
         "1531927007745806386"
       ],
-      "content_sha256": "bee5091b2ec7359542eb05448aee385110f716d6abaaf45c99feca9f79be92c7",
+      "content_sha256": "54de9958a58b5279a2380c3ce6de3708911ce4d4108351a77d03ba304da6d2bf",
       "pinned": false,
       "workbench_tools": [
-        "camera-gallery",
         "quest-submission-bridge"
       ],
       "url": "https://discord.com/channels/1531911987074957442/1531927004197425172"
@@ -85,7 +84,7 @@
       "message_ids": [
         "1531977732769058898"
       ],
-      "content_sha256": "f0952d45ce5ecff9bf02fbaa327ff0cbbbfa7ed7963cc71013d0db5177d59615",
+      "content_sha256": "623b7aa5a65778c074b5631cf25c90c956006fbd5d2611f9a32e70df1000d9fa",
       "pinned": false,
       "workbench_tools": [
         "steam-join"
@@ -106,6 +105,22 @@
         "mcp-mod-channel"
       ],
       "url": "https://discord.com/channels/1531911987074957442/1532310779402129438"
+    },
+    "camera-gallery": {
+      "key": "camera-gallery",
+      "seed": "11-thread-seed-camera-gallery.md",
+      "title": "World photography → gallery",
+      "thread_id": "1535091188464357496",
+      "message_ids": [
+        "1535091188464357496",
+        "1535091194739163348"
+      ],
+      "content_sha256": "89a3c2f2d5d23f7e255cd8c8a5642e0250840752e2fac4eef53c603e6fd80f77",
+      "pinned": false,
+      "workbench_tools": [
+        "camera-gallery"
+      ],
+      "url": "https://discord.com/channels/1531911987074957442/1535091188464357496"
     }
   },
   "invite_href": "https://discord.gg/JCDaYQ68kN",
@@ -113,5 +128,5 @@
   "channel_id": "1531926985314668635",
   "channel_name": "workbench",
   "guild_id": "1531911987074957442",
-  "last_apply_utc": "2026-07-30T08:55:58Z"
+  "last_apply_utc": "2026-08-07T01:04:21Z"
 }
