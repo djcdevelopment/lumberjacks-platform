@@ -135,14 +135,14 @@
       "name": "ComfyStewardView",
       "one_liner": "Reads a Valheim world file and answers the questions that stop being walkable once a server gets big: where is everyone building, and who owns this.",
       "status": "live",
-      "status_detail": "The public repo builds a fat JAR that parses a real world .db, serves a localhost API, and draws a browser heatmap. It has been used to steward high-player worlds. What is missing is a quickstart for the roughly twenty GM probe utilities — they work, but today you have to read the source to know what each one does.",
+      "status_detail": "A hosted, read-only sample is live at https://am4.tail8e749c.ts.net/steward/ — the full dashboard, DB-backed drilldowns, and pre-rendered map layers over a frozen Comfy Era16 snapshot. The public repo builds the same fat JAR for your own worlds and now ships a Dockerfile plus a one-command deploy script. What is missing is a quickstart for the roughly twenty GM probe utilities — they work, but today you have to read the source to know what each one does.",
       "what_it_does": "A Java fat-JAR extracts and parses a Valheim world file (.db), exposes a REST API on localhost:7080 (/api/v1/heatmap, /api/v1/points), and serves a browser heatmap viewer. Around twenty GM probe utilities sit alongside it for build-density clustering and ownership investigation.",
       "who_its_for": "Server stewards and GMs on worlds big enough that walking around stopped being a way to find out what is happening.",
-      "time_to_first_result": "about 15 minutes",
+      "time_to_first_result": "instant for the hosted sample; about 15 minutes against your own world",
       "requires": [
-        "Java",
-        "A copy of a Valheim world .db — a copy, never the live save",
-        "A browser"
+        "Nothing at all for the hosted sample — just a browser",
+        "Java (or Docker), for running it against your own world",
+        "A copy of a Valheim world .db — a copy, never the live save"
       ],
       "access": {
         "kind": "public-repo",
@@ -157,6 +157,10 @@
         "note": "A standalone public repository, separate from baseline. Clone it and build."
       },
       "docs": [
+        {
+          "label": "The live hosted sample — frozen Comfy Era16 snapshot",
+          "href": "/steward/"
+        },
         {
           "label": "ComfyStewardView repository and README",
           "href": "https://github.com/djcdevelopment/ComfyStewardView"

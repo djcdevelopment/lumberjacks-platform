@@ -48,13 +48,21 @@ Not part of this repo. It's a fully separate GitHub repository
 
 ## Status
 
-The public repo builds a fat JAR that parses a real world `.db`, serves a
-localhost API, and draws a browser heatmap — it has been used to steward
-real high-player-count worlds. What's missing is a quickstart for the ~19
-GM probe utilities: they work, but today you have to read the Java source
-to know what each one answers.
+A hosted, read-only sample is live at
+https://am4.tail8e749c.ts.net/steward/ — the full dashboard, DB-backed
+drilldowns, and pre-rendered map layers over a frozen Comfy Era16
+snapshot. The public repo builds the same fat JAR for your own worlds and
+now ships a Dockerfile plus a one-command deploy script. What is missing
+is a quickstart for the roughly twenty GM probe utilities — they work, but
+today you have to read the source to know what each one does.
 
 ## Run it in about 15 minutes
+
+**Or in zero:** the hosted sample at
+https://am4.tail8e749c.ts.net/steward/ is the real dashboard over a
+frozen snapshot of the Comfy Era16 lab world — no build, no Java, no
+world file needed. Everything below is for running it against *your own*
+world.
 
 From a clone of `ComfyStewardView` (a separate checkout, not inside
 `baseline`):
@@ -134,4 +142,8 @@ Privacy: run it against **copies** of world files, never a live save —
 nothing in the tool enforces that for you, it's on you. Output can contain
 real player names (portal owners, sign authors, tombstone owners, chest
 contents by inferred owner). Share aggregates and screenshots in the
-thread, not raw dumps or the `.db` itself.
+thread, not raw dumps or the `.db` itself. The hosted sample serves a
+frozen snapshot of the Comfy Era16 lab world; publishing that world's
+contents (builder names, sign text, chest contents) is a deliberate,
+accepted decision for the lab community — it is not a precedent for
+publishing anyone else's world.

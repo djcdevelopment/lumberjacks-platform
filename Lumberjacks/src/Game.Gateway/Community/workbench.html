@@ -278,7 +278,7 @@
       </div>
       <p class="join-path">The path in: join → read <a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a> → post in a tool's thread. Those last two and the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a> are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span class="freshness">Published from d58360a · 2026-08-07 06:45 UTC</span>
+        <span class="freshness">Preview rendered 2026-08-07 11:49 UTC with uncommitted changes</span>
         <span>2 live · 1 dev-only · 4 local-only</span>
         <a href="#tools">12 first tasks open</a>
       </div>
@@ -295,7 +295,7 @@
         </a><a class="index-row live" href="#steward-view">
           <span class="pill live">LIVE</span>
           <span class="index-name">ComfyStewardView</span>
-          <span class="index-time">about 15 minutes</span>
+          <span class="index-time">instant for the hosted sample; about 15 minutes against your own world</span>
           <span class="index-tasks">2 open</span>
         </a><a class="index-row local-only" href="#community-telemetry">
           <span class="pill local-only">LOCAL ONLY</span>
@@ -396,15 +396,15 @@
       <span class="pill live">LIVE</span>
     </div>
     <p class="one-liner">Reads a Valheim world file and answers the questions that stop being walkable once a server gets big: where is everyone building, and who owns this.</p>
-    <div class="status-detail live"><strong>What that status actually means</strong>The public repo builds a fat JAR that parses a real world .db, serves a localhost API, and draws a browser heatmap. It has been used to steward high-player worlds. What is missing is a quickstart for the roughly twenty GM probe utilities — they work, but today you have to read the source to know what each one does.</div>
+    <div class="status-detail live"><strong>What that status actually means</strong>A hosted, read-only sample is live at https://am4.tail8e749c.ts.net/steward/ — the full dashboard, DB-backed drilldowns, and pre-rendered map layers over a frozen Comfy Era16 snapshot. The public repo builds the same fat JAR for your own worlds and now ships a Dockerfile plus a one-command deploy script. What is missing is a quickstart for the roughly twenty GM probe utilities — they work, but today you have to read the source to know what each one does.</div>
     <p class="tool-audience"><strong>For</strong>Server stewards and GMs on worlds big enough that walking around stopped being a way to find out what is happening.</p>
     <div class="tool-action">
-      <span class="first-result"><em>First result</em>about 15 minutes</span>
+      <span class="first-result"><em>First result</em>instant for the hosted sample; about 15 minutes against your own world</span>
       <a class="access-button public-repo" href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer" aria-label="Open the public repository for ComfyStewardView">Open repository</a>
     </div>
     <div class="access-verify"><p class="access-note">Clone and build it yourself — there is no packaged download.</p></div>
-    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">ComfyStewardView repository and README</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531977724711931956" target="_blank" rel="noreferrer">ComfyStewardView thread</a></span></div>
-    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Java</li><li>A copy of a Valheim world .db — a copy, never the live save</li><li>A browser</li></ul></div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="/steward/">The live hosted sample — frozen Comfy Era16 snapshot</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531977724711931956" target="_blank" rel="noreferrer">ComfyStewardView thread</a></span></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Nothing at all for the hosted sample — just a browser</li><li>Java (or Docker), for running it against your own world</li><li>A copy of a Valheim world .db — a copy, never the live save</li></ul></div>
     <details class="tool-detail">
       <summary>How it works, in detail</summary>
       <div class="tool-detail-body">
@@ -442,7 +442,7 @@
     <details class="tool-detail">
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
-        
+        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">ComfyStewardView repository and README</a></div>
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/ComfyStewardView</a></div>
         <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 does not open commit access here — the card above says what it grants.</p>
         <p class="source-note">A standalone public repository, separate from baseline. Clone it and build.</p>
