@@ -1,0 +1,12 @@
+# Lab overlay: make the enrollment flow usable against the local gateway.
+# - The public URL must match the published port (4000); the code's fallback is
+#   127.0.0.1:4006, which nothing serves locally.
+# - The enrollment store moves onto the gatewaydata volume so minted invites and
+#   redeemed enrollments survive a container recreate (the default path lives in
+#   the container filesystem and silently vanishes with it).
+# Compose with: docker compose -p lumberjacks-local -f docker-compose.yml -f docker-compose.enrollment-lab.yml up -d --no-deps gateway
+services:
+  gateway:
+    environment:
+      LUMBERJACKS_ENROLLMENT_PUBLIC_URL: "http://127.0.0.1:4000"
+      LUMBERJACKS_ENROLLMENT_PATH: "/data/enrollment/invites.json"
