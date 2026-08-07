@@ -278,9 +278,9 @@
       </div>
       <p class="join-path">The path in: join → read <a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a> → post in a tool's thread. Those last two and the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a> are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span class="freshness">Published from 5b86518 · 2026-08-06 09:43 UTC</span>
-        <span>2 live · 1 dev-only · 2 local-only · 2 recoverable</span>
-        <a href="#tools">11 first tasks open</a>
+        <span class="freshness">Published from d2fcde5 · 2026-08-07 00:38 UTC</span>
+        <span>2 live · 1 dev-only · 3 local-only · 1 recoverable</span>
+        <a href="#tools">12 first tasks open</a>
       </div>
     </div>
 
@@ -312,11 +312,11 @@
           <span class="index-name">MCP Mod Channel</span>
           <span class="index-time">about 20 minutes</span>
           <span class="index-tasks">1 open</span>
-        </a><a class="index-row recoverable-not-running" href="#camera-gallery">
-          <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
-          <span class="index-name">Camera Flythrough → Gallery Pipeline</span>
-          <span class="index-time">Unknown — nothing runs yet. CG-1 produces the first honest estimate.</span>
-          <span class="index-tasks">1 open</span>
+        </a><a class="index-row local-only" href="#camera-gallery">
+          <span class="pill local-only">LOCAL ONLY</span>
+          <span class="index-name">World Photography → Gallery Pipeline</span>
+          <span class="index-time">about 2 minutes to scan a world and get a ranked shot list; capture is unattended after that and scales with how many structures you asked for</span>
+          <span class="index-tasks">2 open</span>
         </a><a class="index-row recoverable-not-running" href="#quest-submission-bridge">
           <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
           <span class="index-name">Quest Submission → Review Bridge</span>
@@ -638,38 +638,46 @@
       </div>
     </details>
   </article>
-<article class="tool recoverable-not-running" id="camera-gallery">
+<article class="tool local-only" id="camera-gallery">
     <div class="tool-head">
-      <div><h3>Camera Flythrough → Gallery Pipeline</h3><span class="tool-id">camera-gallery</span></div>
-      <span class="pill recoverable-not-running">RECOVERABLE · NOT RUNNING</span>
+      <div><h3>World Photography → Gallery Pipeline</h3><span class="tool-id">camera-gallery</span></div>
+      <span class="pill local-only">LOCAL ONLY</span>
     </div>
-    <p class="one-liner">Fly a camera along waypoints derived from a world save, then cut the capture into a gallery of what people actually built.</p>
-    <div class="status-detail recoverable-not-running"><strong>What that status actually means</strong>Not running. It was pruned from baseline on 2026-07-21 and nothing here executes today. Two of the four segments are real: segment 1 was built and produced real output, and segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. Every piece is still in the public comfy repo, so this is a revival rather than a rewrite. Since 2026-07-29 the revivable raw material — both scripts, the four briefs, and the two sample fixtures — also sits unwired in this repo at recipes/camera-gallery/, byte-exact from the archive with provenance recorded; the camera proof-of-concept kit stays archive-only. Updated 2026-08-06: the subject-selection half now has a working modern replacement in this repo at tools/selfie-stick/ — it reads a world save&#39;s structures, ranks them as camera subjects, and emits a shot list with waypoints and standoff distances already computed. That removes the hardest guesswork from a revival; what remains unbuilt is the flight execution and the gallery cut.</div>
-    <p class="tool-audience"><strong>For</strong>Anyone who wants to show a server&#39;s builds to people who will never log into it.</p>
+    <p class="one-liner">Find every structure in a world save, place a camera at each one from its own geometry, and photograph them unattended into a ranked gallery.</p>
+    <div class="status-detail local-only"><strong>What that status actually means</strong>Runs today, end to end, on the operator&#39;s machine. On 2026-08-06 it photographed 161 structures across 54 unattended sessions and produced 1,411 frames, none of them framed by a human. The planning half is in this repo at tools/selfie-stick/: it clusters a world save&#39;s building pieces into structures in 3-D, ranks them as camera subjects, and computes a standoff distance, bearing and elevation for each. The in-game half reads that plan, flies it, and writes a receipt per frame. Why local-only and not live: the in-game half is a BepInEx plugin that lives in the public comfy archive rather than in this repo, and the pipeline also wants a ComfyStewardView DuckDB cache for the world plus a local CLIP model to score the frames. Nothing is packaged and there is no download — a stranger cannot run this tonight, and that is the honest gap, not the code. Note the original plan was superseded rather than revived: the four-segment flythrough (waypoints → flight → ffmpeg video cut) gave way to stills, so there is no video step and segments 2 and 4 are unlikely to be built as written. Prune history and the segment-by-segment story are in Lumberjacks/docs/workbench/tools/camera-gallery.md. Written up in full at https://djcdevelopment.github.io/baseline/selfie-stick/ .</div>
+    <p class="tool-audience"><strong>For</strong>Anyone who wants to show a server&#39;s builds to people who will never log into it — especially on a world too large to tour by hand.</p>
     <div class="tool-action">
-      <span class="first-result"><em>First result</em>Unknown — nothing runs yet. CG-1 produces the first honest estimate.</span>
+      <span class="first-result"><em>First result</em>about 2 minutes to scan a world and get a ranked shot list; capture is unattended after that and scales with how many structures you asked for</span>
       <span class="access-button disabled" aria-disabled="true">Not published yet</span>
     </div>
     <div class="access-verify"><p class="access-note">No download exists for this today. That is a fact about the packaging, not about whether the code works — read the status above.</p></div>
-    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/README.md" target="_blank" rel="noreferrer">Handoff overview (handoffs/README.md)</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531927004197425172" target="_blank" rel="noreferrer">Recoverable pieces thread</a></span></div>
-    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>Java, for the ComfyStewardView side of segment 1</li><li>A BepInEx Valheim install, for segment 3</li><li>ffmpeg, for segment 4</li></ul></div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://djcdevelopment.github.io/baseline/selfie-stick/" target="_blank" rel="noreferrer">How it works, and what it found (the write-up)</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531927004197425172" target="_blank" rel="noreferrer">Recoverable pieces thread</a></span></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3, with duckdb</li><li>A ComfyStewardView analytics cache for the world you want to photograph</li><li>A BepInEx Valheim install, plus the camera plugin built from the comfy archive</li><li>Optional: a local CLIP ViT-L/14 and LAION aesthetic head, to score the frames</li></ul></div>
     <details class="tool-detail">
       <summary>How it works, in detail</summary>
       <div class="tool-detail-body">
-        <p>A four-segment pipeline: read a world save, emit camera waypoints via ComfyStewardView, fly those waypoints in-game with a BepInEx camera plugin, then cut the capture into a gallery with ffmpeg.</p>
+        <p>Clusters a world save&#39;s building pieces into structures on a 16 m grid, scores each as a camera subject, and derives a camera position, bearing, elevation and time of day from its bounding box. An in-game plugin reads that shot plan as tab-separated text, teleports, aims, forces the sun and weather, checks the view is not blocked, and writes one JSON receipt per frame recording what was asked for against what the engine actually did. A final pass joins receipts to the files on disk, scores every photograph with a CLIP aesthetic head, and emits a filterable gallery.</p>
         <p class="deps">roadmap <span class="dep">A3</span><span class="dep">A7</span></p>
       </div>
     </details>
     <div class="first-tasks">
-      <strong>Pick one to start · 1 open</strong>
+      <strong>Pick one to start · 2 open</strong>
       <ul class="first-task-list"><li class="first-task">
         <div class="first-task-top">
-          <strong>Revive segment 1 against ComfyStewardView and produce a waypoints.sample.json</strong>
+          <strong>Bring the camera plugin into this repo so the capture half runs here</strong>
           <span class="task-flags"><span class="task-size medium">medium</span></span>
         </div>
-        <span class="done-when"><em>Done when:</em> segment-1-emit-waypoints.py runs against a current ComfyStewardView build and writes a committed waypoints.sample.json that segment 3 can consume. This is the claiming task for this tool.</span>
+        <span class="done-when"><em>Done when:</em> The BepInEx plugin builds from a checkout of this repo and a capture run completes without reaching into the comfy archive. This is the claiming task for this tool. It supersedes the old CG-1, which asked for a waypoints sample from segment 1 — tools/selfie-stick/ already emits that.</span>
         
         <span class="task-id">CG-1</span>
+      </li><li class="first-task">
+        <div class="first-task-top">
+          <strong>Resolve prefab hashes to names so a structure can be described by material</strong>
+          <span class="task-flags"><span class="task-size small">small</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> A one-time in-game dump of ZNetScene&#39;s prefab table lands as a committed lookup, and the scanner reports &quot;dominant material: wood_wall&quot; instead of &quot;hash:538325542&quot;. The offline classification.json does not cover building pieces — it holds 617 item names and none of them are pieces.</span>
+        
+        <span class="task-id">CG-2</span>
       </li></ul>
       <div class="ownership-state unclaimed">
         <span class="pill ownership unclaimed">UNCLAIMED</span>
@@ -678,21 +686,16 @@
       </div>
       <p class="stage-3-right"><strong>At stage 3</strong>Commit access to the revived pipeline once it lands in baseline, and you triage this tool&#39;s thread. The comfy archive it is recovered from stays read-only.</p>
     </div>
-    <div class="recovery">
-      <strong>Where the pieces are</strong>
-      <p>Segment 1 was built and produced real output. Segment 3 has a 746-line working camera proof-of-concept plugin. Segments 2 and 4 are written briefs, not code. Pruned in d75ffb2 (2026-07-21); the baseline pre-prune ref is 57654fd. Raw material re-landed unwired at recipes/camera-gallery/ on 2026-07-29 — see its PROVENANCE.md.</p>
-      <p class="recovery-origin"><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs</a></p>
-      <ul class="recovery-paths"><li><code>handoffs/README.md</code></li><li><code>handoffs/segment-1-emit-waypoints.py</code></li><li><code>handoffs/segment-1-waypoints-from-world.md</code></li><li><code>handoffs/segment-2-get-into-the-world.md</code></li><li><code>handoffs/segment-3-flight-path-mod.md</code></li><li><code>handoffs/segment-4-runner.md</code></li><li><code>handoffs/segment-4-video-to-gallery.md</code></li><li><code>handoffs/video_to_gallery.py</code></li><li><code>handoffs/timeline.sample.json</code></li><li><code>handoffs/waypoints.sample.json</code></li><li><code>handoffs/valheim-camera-proof/</code></li></ul>
-    </div>
+    
     <details class="tool-detail">
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
-        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/segment-3-flight-path-mod.md" target="_blank" rel="noreferrer">Segment 3 brief — the flight-path mod</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/tree/main/recipes/camera-gallery" target="_blank" rel="noreferrer">Landed raw material (recipes/camera-gallery/)</a></div>
+        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/tools/selfie-stick" target="_blank" rel="noreferrer">tools/selfie-stick/ — the planning half, in this repo</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/blob/main/handoffs/README.md" target="_blank" rel="noreferrer">Handoff overview (handoffs/README.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/tree/main/recipes/camera-gallery" target="_blank" rel="noreferrer">Landed raw material (recipes/camera-gallery/)</a></div>
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/handoffs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/handoffs</a></div>
         <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
-        <p class="source-note">Pruned from baseline, but fully preserved in the public comfy repo — nothing was lost.</p>
+        <p class="source-note">Split across two public repos on purpose. The planning, scoring and gallery half is in this repo at tools/selfie-stick/. The BepInEx camera plugin stays in the public comfy archive so that claiming the in-game half remains a real, available piece of work rather than something already finished here.</p>
         <div class="tool-footnotes">
-          <div class="privacy"><strong>Privacy</strong>A flythrough shows other people&#39;s builds. Ask before publishing a gallery of a world you do not own.</div>
+          <div class="privacy"><strong>Privacy</strong>This photographs other people&#39;s builds. The pipeline withholds coordinates and builder IDs from anything it publishes, and every record it emits is marked unpublished by default — ingest is automatic, exposure is not. Ask before publishing a gallery of a world you do not own.</div>
           <div class="license"><strong>License</strong>MIT — everything recoverable here lives in the public comfy archive, which is MIT-licensed. A revival landing in this repo would land under BUSL-1.1; see <a href="https://github.com/djcdevelopment/baseline/blob/main/docs/legal/LICENSING.md" target="_blank" rel="noreferrer">LICENSING.md</a>.</div>
         </div>
       </div>
