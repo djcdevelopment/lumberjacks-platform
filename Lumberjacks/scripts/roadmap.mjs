@@ -1034,6 +1034,9 @@ function render(roadmap, notes) {
         <a href="/roadmap" aria-current="page">Roadmap</a>
         <a href="/community">Community</a>
         <a href="/workbench">Workbench</a>
+        <a href="/questpicker">Quest Picker</a>
+        <a href="/steward">Steward</a>
+        <a href="/questlab">Quest Lab</a>
         <a href="/networksense">NetworkSense</a>
         <a href="/events">Events</a>
         <a href="/testing">Testing</a>

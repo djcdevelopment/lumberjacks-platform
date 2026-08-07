@@ -54,6 +54,7 @@ $dist = Join-Path $PSScriptRoot 'dist'
 $zipMap = [ordered]@{
     'quest-picker'        = 'quest-picker.zip'
     'community-telemetry' = 'telemetry-starter.zip'
+    'quest-lab'           = 'quest-lab.zip'
 }
 
 # Gate 0: production provenance. A publish is a claim about a commit, so the provenance inputs

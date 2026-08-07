@@ -221,6 +221,7 @@ Game.Simulation.Endpoints.TelemetryV0Endpoints.Map(app);
 Game.Gateway.Endpoints.TelemetryV0SessionsEndpoints.Map(app);
 Game.Gateway.Endpoints.DeploymentTelemetryEndpoints.Map(app);
 Game.Gateway.Endpoints.CommunityViewEndpoints.Map(app);
+Game.Gateway.Endpoints.QuestLabViewEndpoints.Map(app);
 Game.Gateway.Endpoints.DataTrustEndpoints.Map(app);
 Game.Gateway.Endpoints.RoadmapViewEndpoints.Map(app);
 // Community Workbench (GET /workbench): the generated catalog of community-runnable tools, plus

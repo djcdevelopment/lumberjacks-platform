@@ -1,0 +1,425 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ComfyQuestLab — The Tome</title>
+<style>
+:root { --bg: #0b1013; --paper: #11191d; --panel: #162126; --panel-2: #1b292e; --line: #2c3a3f; --ink: #edf5f2; --muted: #9eb0ad; --wood: #d7a86e; --green: #68d391; --sans: Inter, ui-sans-serif, system-ui, sans-serif; --mono: "SFMono-Regular", Consolas, monospace; }
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(circle at 15% 0%, #18302e 0, transparent 28rem), var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.55; }
+.topbar { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,.08); background: rgba(11,16,19,.92); backdrop-filter: blur(14px); }
+.topbar-inner { max-width: 900px; margin: 0 auto; min-height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .02em; }
+.mark { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--wood); color: var(--wood); border-radius: 7px; font-family: var(--mono); }
+nav { display: flex; gap: 14px; font-size: .85rem; }
+nav a { color: var(--muted); text-decoration: none; }
+nav a:hover, nav a[aria-current="page"] { color: var(--ink); }
+.wrap { max-width: 900px; margin: 0 auto; padding: 2rem 16px; }
+h1 { font-size: 2.5rem; letter-spacing: -.02em; margin-bottom: 1rem; }
+.intro { color: var(--muted); font-size: 1.1rem; max-width: 65ch; margin-bottom: 3rem; }
+.school { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 2rem; padding: 2rem; }
+.school-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.school-header h2 { margin: 0; font-size: 1.8rem; }
+.rune { width: 48px; height: 48px; }
+.spell-list { list-style: none; padding: 0; margin: 0; }
+.spell { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.spell:last-child { border-bottom: none; }
+.spell-name { font-weight: 600; }
+.spell-true-name { font-family: var(--mono); font-size: 0.85rem; color: var(--wood); margin-left: 0.5rem; }
+.spell-verdict { font-size: 0.85rem; color: var(--muted); text-align: right; }
+.verdict-today { color: var(--green); }
+.bound-badge { display: inline-block; background: rgba(255,255,255,0.1); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.75rem; text-transform: uppercase; margin-left: 0.5rem; }
+</style>
+</head><body>
+<div class="topbar"><div class="topbar-inner">
+<div class="brand"><div class="mark">B</div>Baseline</div>
+<nav aria-label="Gateway surfaces">
+<a href="/roadmap">Roadmap</a>
+<a href="/community">Community</a>
+<a href="/workbench">Workbench</a>
+<a href="/questpicker">Quest Picker</a>
+<a href="/steward">Steward</a>
+<a href="/questlab" aria-current="page">Quest Lab</a>
+<a href="/networksense">NetworkSense</a>
+<a href="/events">Events</a>
+<a href="/testing">Testing</a>
+</nav></div></div>
+<div class="wrap">
+<h1>The Quest Lab Tome</h1>
+<p class="intro">This is the web-facing version of the in-game spellbook. It lists every spell the world genuinely answers to, categorized by rune school. Spells marked with a badge are ones this build can witness in-game today.</p>
+<div class="school">
+<div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="50.0" y1="10.0" x2="50.0" y2="95.0" stroke="#ed7366" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="10.0" x2="15.0" y2="42.0" stroke="#ed7366" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="10.0" x2="85.0" y2="42.0" stroke="#ed7366" stroke-width="12" stroke-linecap="round"/></svg><h2>Combat</h2></div>
+<div style="margin-bottom: 1.5rem">
+<p><strong>What it covers:</strong> Hitting things, and things dying. The only category with any ground a quest, can stand on today — and the only place you can see all three verdicts side, by side, which is the fastest way to understand what they mean.</p>
+<p><strong>Go and try:</strong> Find a Greyling and hit it once, then finish it., You get two kinds of row: the hits, and the death.</p>
+</div>
+<ul class="spell-list">
+<li class="spell">
+<div><span class="spell-name">a creature dies</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Character.OnDeath</span></div>
+<div class="spell-verdict verdict-today">a quest can be bound to this</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a creature is staggered</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Character.Stagger</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking a living thing</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Character.Damage</span></div>
+<div class="spell-verdict ">the world speaks, but no quest is listening</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking a living thing, when the server carries the blow</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Character.RPC_Damage</span></div>
+<div class="spell-verdict ">the world speaks, but no quest is listening</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">you die</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.OnDeath</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a blow being blocked</span><br><span class="spell-true-name">Character.BlockAttack</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a blow blocked by something carrying a shield</span><br><span class="spell-true-name">Humanoid.BlockAttack</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a creature is staggered, server-carried</span><br><span class="spell-true-name">Character.RPC_Stagger</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">health set outright, rather than damaged or healed</span><br><span class="spell-true-name">Character.SetHealth</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">something being healed</span><br><span class="spell-true-name">Character.Heal</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">something being healed, server-carried</span><br><span class="spell-true-name">Character.RPC_Heal</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">stagger building up on a creature</span><br><span class="spell-true-name">Character.AddStaggerDamage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+</ul></div>
+<div class="school">
+<div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="12.0" y1="20.0" x2="50.0" y2="42.0" stroke="#7ace85" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="42.0" x2="12.0" y2="62.0" stroke="#7ace85" stroke-width="12" stroke-linecap="round"/><line x1="88.0" y1="80.0" x2="50.0" y2="57.99999999999999" stroke="#7ace85" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="57.99999999999999" x2="88.0" y2="38.0" stroke="#7ace85" stroke-width="12" stroke-linecap="round"/></svg><h2>Harvest</h2></div>
+<div style="margin-bottom: 1.5rem">
+<p><strong>What it covers:</strong> Chopping trees, breaking bushes and rocks, picking berries. The first thing, most people try, and the reason this lab exists: hitting a bush used to fire, a quest, and the mod that could do it was retired.</p>
+<p><strong>Go and try:</strong> Punch a tree with bare fists, then punch a raspberry bush, then pick one., Three rows, and the third is a different shape from the first two.</p>
+</div>
+<ul class="spell-list">
+<li class="spell">
+<div><span class="spell-name">picking a berry, mushroom or flower</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Pickable.Interact</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking a bush, or other breakable scenery</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Destructible.Damage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking a fallen trunk</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">TreeLog.Damage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking a standing tree</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">TreeBase.Damage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a picked thing marked as taken</span><br><span class="spell-true-name">Pickable.SetPicked</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a picked thing marked as taken, server-carried</span><br><span class="spell-true-name">Pickable.RPC_SetPicked</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">something being picked, server-carried</span><br><span class="spell-true-name">Pickable.RPC_Pick</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking a fallen trunk, server-carried</span><br><span class="spell-true-name">TreeLog.RPC_Damage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking a large rock or ore vein</span><br><span class="spell-true-name">MineRock5.Damage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking a large rock, server-carried</span><br><span class="spell-true-name">MineRock5.RPC_Damage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking a rock or ore vein</span><br><span class="spell-true-name">MineRock.Damage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking a standing tree, server-carried</span><br><span class="spell-true-name">TreeBase.RPC_Damage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">striking breakable scenery, server-carried</span><br><span class="spell-true-name">Destructible.RPC_Damage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+</ul></div>
+<div class="school">
+<div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="28.000000000000004" y1="5.0" x2="28.000000000000004" y2="95.0" stroke="#d9b76b" stroke-width="12" stroke-linecap="round"/><line x1="28.000000000000004" y1="28.000000000000004" x2="80.0" y2="8.0" stroke="#d9b76b" stroke-width="12" stroke-linecap="round"/><line x1="28.000000000000004" y1="55.00000000000001" x2="80.0" y2="35.0" stroke="#d9b76b" stroke-width="12" stroke-linecap="round"/></svg><h2>Inventory</h2></div>
+<div style="margin-bottom: 1.5rem">
+<p><strong>What it covers:</strong> Picking things up, equipping them, eating them, emptying chests. The largest, group of seams in the game and the noisiest, because the game moves items, around constantly for reasons that have nothing to do with you.</p>
+<p><strong>Go and try:</strong> Drop something and pick it back up, then equip a weapon and eat food., Then open a chest and take everything.</p>
+</div>
+<ul class="spell-list">
+<li class="spell">
+<div><span class="spell-name">eating or drinking</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Humanoid.ConsumeItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">emptying a chest</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Container.TakeAll</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">picking something up off the ground</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Humanoid.Pickup</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">putting something in your hands</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Humanoid.EquipItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">an item landing on the ground</span><br><span class="spell-true-name">ItemDrop.DropItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">an item on the ground being taken</span><br><span class="spell-true-name">ItemDrop.Pickup</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">anything at all entering your pack, including shuffles you did not cause</span><br><span class="spell-true-name">Inventory.AddItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">anything at all leaving your pack</span><br><span class="spell-true-name">Inventory.RemoveItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">claiming a dropped item before taking it</span><br><span class="spell-true-name">ItemDrop.RPC_RequestOwn</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">dropping something</span><br><span class="spell-true-name">Humanoid.DropItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">eating or drinking, as a player</span><br><span class="spell-true-name">Player.ConsumeItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">emptying a chest, server-carried</span><br><span class="spell-true-name">Container.RPC_RequestTakeAll</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">putting something away</span><br><span class="spell-true-name">Humanoid.UnequipItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+</ul></div>
+<div class="school">
+<div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="50.0" y1="8.0" x2="18.0" y2="38.0" stroke="#c79961" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="8.0" x2="82.0" y2="38.0" stroke="#c79961" stroke-width="12" stroke-linecap="round"/><line x1="18.0" y1="38.0" x2="50.0" y2="57.99999999999999" stroke="#c79961" stroke-width="12" stroke-linecap="round"/><line x1="82.0" y1="38.0" x2="50.0" y2="57.99999999999999" stroke="#c79961" stroke-width="12" stroke-linecap="round"/><line x1="32.0" y1="50.0" x2="12.0" y2="95.0" stroke="#c79961" stroke-width="12" stroke-linecap="round"/><line x1="68.0" y1="50.0" x2="88.0" y2="95.0" stroke="#c79961" stroke-width="12" stroke-linecap="round"/></svg><h2>Building</h2></div>
+<div style="margin-bottom: 1.5rem">
+<p><strong>What it covers:</strong> Placing pieces, repairing them, taking them down, and structures breaking., The category a settlement steward actually wants: build a longhouse, repair, the dock, keep the walls up.</p>
+<p><strong>Go and try:</strong> Place a workbench, hit it with a hammer to repair it, then remove it., If something of yours is damaged, let it break and watch that row too.</p>
+</div>
+<ul class="spell-list">
+<li class="spell">
+<div><span class="spell-name">a structure breaking</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">WearNTear.Destroy</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">placing a piece of building</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.PlacePiece</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">repairing something with a hammer</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.Repair</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">taking a piece back down</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.RemovePiece</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a structure being repaired</span><br><span class="spell-true-name">WearNTear.Repair</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a structure being repaired, server-carried</span><br><span class="spell-true-name">WearNTear.RPC_Repair</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a structure being taken away</span><br><span class="spell-true-name">WearNTear.Remove</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a structure being taken away, server-carried</span><br><span class="spell-true-name">WearNTear.RPC_Remove</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a structure taking damage</span><br><span class="spell-true-name">WearNTear.ApplyDamage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+</ul></div>
+<div class="school">
+<div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="78.0" y1="8.0" x2="25.0" y2="50.0" stroke="#eb9e4c" stroke-width="12" stroke-linecap="round"/><line x1="25.0" y1="50.0" x2="78.0" y2="92.0" stroke="#eb9e4c" stroke-width="12" stroke-linecap="round"/></svg><h2>Crafting</h2></div>
+<div style="margin-bottom: 1.5rem">
+<p><strong>What it covers:</strong> Making things at a bench, and feeding the machines that make things —, smelters, kilns, cooking stations. Two different acts that people tend to, lump together.</p>
+<p><strong>Go and try:</strong> Craft anything at a workbench. Then put ore and coal into a smelter., Notice they are separate rows with separate names.</p>
+</div>
+<ul class="spell-list">
+<li class="spell">
+<div><span class="spell-name">crafting something at a bench</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">InventoryGui.DoCrafting</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">feeding coal or wood to a smelter</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Smelter.OnAddFuel</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">feeding ore to a smelter or kiln</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Smelter.OnAddOre</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a smelter finishing something</span><br><span class="spell-true-name">Smelter.Spawn</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">feeding a cooking station</span><br><span class="spell-true-name">CookingStation.RPC_AddFuel</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">fuel reaching the smelter, server-carried</span><br><span class="spell-true-name">Smelter.RPC_AddFuel</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">ore reaching the smelter, server-carried</span><br><span class="spell-true-name">Smelter.RPC_AddOre</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">pressing the craft button</span><br><span class="spell-true-name">InventoryGui.OnCraftPressed</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">putting food on a cooking station</span><br><span class="spell-true-name">CookingStation.RPC_AddItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">starting a fermenter</span><br><span class="spell-true-name">Fermenter.RPC_AddItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">taking cooked food off</span><br><span class="spell-true-name">CookingStation.RPC_RemoveDoneItem</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+</ul></div>
+<div class="school">
+<div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="80.0" y1="10.0" x2="32.0" y2="10.0" stroke="#f5d66b" stroke-width="12" stroke-linecap="round"/><line x1="32.0" y1="10.0" x2="68.0" y2="50.0" stroke="#f5d66b" stroke-width="12" stroke-linecap="round"/><line x1="68.0" y1="50.0" x2="20.0" y2="50.0" stroke="#f5d66b" stroke-width="12" stroke-linecap="round"/><line x1="20.0" y1="50.0" x2="56.00000000000001" y2="90.0" stroke="#f5d66b" stroke-width="12" stroke-linecap="round"/></svg><h2>Progression</h2></div>
+<div style="margin-bottom: 1.5rem">
+<p><strong>What it covers:</strong> Skills going up, stamina being spent, and dying. The category people ask for, by name and then cannot find, because the names they ask for do not exist.</p>
+<p><strong>Go and try:</strong> Swing an axe at a tree a few times until the skill-up message appears., You will see the skill row fire at the same moment.</p>
+</div>
+<ul class="spell-list">
+<li class="spell">
+<div><span class="spell-name">a skill going up</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Skills.RaiseSkill</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">spending stamina</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.UseStamina</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">you die</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.OnDeath</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a skill going up, asked for by you</span><br><span class="spell-true-name">Player.RaiseSkill</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a skill raised by console command</span><br><span class="spell-true-name">Skills.CheatRaiseSkill</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">asking what a skill stands at — a question, not something that happens</span><br><span class="spell-true-name">Skills.GetSkillLevel</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">regaining stamina</span><br><span class="spell-true-name">Player.AddStamina</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">skills being lost, as on death</span><br><span class="spell-true-name">Skills.LowerAllSkills</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">your maximum health changing</span><br><span class="spell-true-name">Player.SetMaxHealth</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">your skills taking the death penalty</span><br><span class="spell-true-name">Skills.OnDeath</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+</ul></div>
+<div class="school">
+<div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="25.0" y1="5.0" x2="25.0" y2="95.0" stroke="#75c2eb" stroke-width="12" stroke-linecap="round"/><line x1="25.0" y1="5.0" x2="75.0" y2="22.0" stroke="#75c2eb" stroke-width="12" stroke-linecap="round"/><line x1="75.0" y1="22.0" x2="25.0" y2="48.0" stroke="#75c2eb" stroke-width="12" stroke-linecap="round"/><line x1="35.0" y1="48.0" x2="80.0" y2="95.0" stroke="#75c2eb" stroke-width="12" stroke-linecap="round"/></svg><h2>World</h2></div>
+<div style="margin-bottom: 1.5rem">
+<p><strong>What it covers:</strong> Moving through the world, and the world itself changing state. Small, and it, contains the most interesting seam nobody has used.</p>
+<p><strong>Go and try:</strong> Take a portal., If you are on a world where a boss has been killed, that already fired.</p>
+</div>
+<ul class="spell-list">
+<li class="spell">
+<div><span class="spell-name">the world recording something, as when a boss falls</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">ZoneSystem.SetGlobalKey</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">travelling by portal</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.TeleportTo</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">asking which biome a place is — a question, not something that happens</span><br><span class="spell-true-name">WorldGenerator.GetBiome</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">the world forgetting something</span><br><span class="spell-true-name">ZoneSystem.RemoveGlobalKey</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">the world recording something, server-carried</span><br><span class="spell-true-name">ZoneSystem.RPC_SetGlobalKey</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+</ul></div>
+<div class="school">
+<div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="15.0" y1="8.0" x2="15.0" y2="92.0" stroke="#c2a8f0" stroke-width="12" stroke-linecap="round"/><line x1="85.0" y1="8.0" x2="85.0" y2="92.0" stroke="#c2a8f0" stroke-width="12" stroke-linecap="round"/><line x1="15.0" y1="12.0" x2="85.0" y2="57.99999999999999" stroke="#c2a8f0" stroke-width="12" stroke-linecap="round"/><line x1="85.0" y1="12.0" x2="15.0" y2="57.99999999999999" stroke="#c2a8f0" stroke-width="12" stroke-linecap="round"/></svg><h2>Social</h2></div>
+<div style="margin-bottom: 1.5rem">
+<p><strong>What it covers:</strong> Talking, and writing on signs. The quietest category and the one with the, most room, because it needs nothing from combat at all.</p>
+<p><strong>Go and try:</strong> Say something in chat, then place a sign and write on it.</p>
+</div>
+<ul class="spell-list">
+<li class="spell">
+<div><span class="spell-name">writing on a sign</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Sign.SetText</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">you saying something</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Chat.SendText</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a message appearing in the chat window</span><br><span class="spell-true-name">Chat.OnNewChatMessage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">a message reaching everyone, server-carried</span><br><span class="spell-true-name">Chat.RPC_ChatMessage</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">something speaking aloud</span><br><span class="spell-true-name">Talker.Say</span></div>
+<div class="spell-verdict ">no quest can be bound to this yet</div>
+</li>
+</ul></div>
+</div></body></html>

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "title": "Comfy × Valheim — Community Workbench",
-  "headline": "Seven tools. What each one actually does today, what it costs you to run it, and exactly how to take one over.",
+  "headline": "Eight tools. What each one actually does today, what it costs you to run it, and exactly how to take one over.",
   "owners_href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/OWNERS.md",
   "honesty_statement": "Every status below is what the thing actually does today.",
   "not_a_verdict_summary": "Volunteers carried this community. An unclaimed tool is not a verdict on anyone.",
@@ -575,6 +575,68 @@
       },
       "privacy_note": "A submission record carries a player's name and what they did. Keep the review inbox off any public surface.",
       "license": "Split: the live front half (in this repo's mod) is BUSL-1.1 per LICENSING.md; the recoverable back half lives in the public comfy archive under MIT."
+    },
+    {
+      "id": "quest-lab",
+      "name": "Quest Lab Turnkey Package",
+      "one_liner": "An arcane tome in-game that teaches you exactly what quests are possible, letting you practice writing them before trying them out for real.",
+      "status": "local-only",
+      "status_detail": "A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. Contains all 8 rune schools.",
+      "what_it_does": "Draws an interactive console over the screen and hooks into 91 different game events to show you precisely what is happening when you perform actions in-game.",
+      "who_its_for": "Creators and leaders who want to learn how to write custom quests without guessing.",
+      "time_to_first_result": "10 minutes. Download the zip, drop the DLL in your BepInEx/plugins folder, launch a private world, and run `lab_setup` in the F5 console.",
+      "requires": [
+        "A private Valheim world",
+        "BepInEx installed on your client"
+      ],
+      "access": {
+        "kind": "site-download",
+        "href": "/workbench/downloads/quest-lab",
+        "sha256": "82ac0d9fed98264af50216cf076a216ecbfb2b761f131ee3e92ea1b43d9c0f9a",
+        "size_bytes": 62118,
+        "published_at": "2026-08-07T06:41:00Z"
+      },
+      "source": {
+        "kind": "public-repo",
+        "href": "https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab",
+        "note": "A client-only BepInEx plugin."
+      },
+      "docs": [
+        {
+          "label": "The Web Tome (Learn what's possible)",
+          "href": "/questlab"
+        },
+        {
+          "label": "Source Code",
+          "href": "https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab"
+        }
+      ],
+      "discussion": {
+        "label": "Quest Lab thread",
+        "href": "https://discord.com/channels/1531911987074957442/1531926985314668635"
+      },
+      "first_tasks": [
+        {
+          "id": "QL-1",
+          "title": "Try it and verify one school",
+          "size": "small",
+          "done_when": "Run the lab, try the actions for one school, and post in the thread whether the in-game events fired as the Tome predicted."
+        }
+      ],
+      "ownership": {
+        "state": "unclaimed",
+        "claimed_by": null,
+        "claimed_at": null,
+        "record": null
+      },
+      "recovery": null,
+      "roadmap_milestones": [],
+      "contribution": {
+        "stage_3_reward": "Commit access to the mod.",
+        "code_contributions": true
+      },
+      "privacy_note": "Runs entirely locally. No data leaves your machine.",
+      "license": "BUSL-1.1"
     }
   ]
 }

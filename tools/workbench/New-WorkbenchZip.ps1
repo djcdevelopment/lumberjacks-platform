@@ -14,7 +14,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\workbench\New-Workbenc
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('quest-picker', 'telemetry-starter')]
+    [ValidateSet('quest-picker', 'telemetry-starter', 'quest-lab')]
     [string]$Tool,
     [string]$OutDir
 )
@@ -69,6 +69,24 @@ try {
         Copy-Item (Join-Path $samples 'telemetry-starter\STARTER.md') -Destination $staging
         Copy-Item (Join-Path $samples 'telemetry-starter\poll_telemetry.py') -Destination $staging
         Copy-Item (Join-Path $root 'Lumberjacks\docs\api\telemetry-v0.md') -Destination $staging
+    }
+
+    if ($Tool -eq 'quest-lab') {
+        Push-Location (Join-Path $root 'network\mod\ComfyQuestLab')
+        try {
+            & dotnet build -c Release
+            if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with $LASTEXITCODE" }
+        } finally { Pop-Location }
+        
+        $dll = Join-Path $root 'network\mod\ComfyQuestLab\bin\Release\ComfyQuestLab.dll'
+        if (-not (Test-Path $dll)) { throw "Quest Lab DLL not found at $dll" }
+        Copy-Item $dll -Destination $staging
+        
+        $readme = Join-Path $root 'network\mod\ComfyQuestLab\README.md'
+        Copy-Item $readme -Destination $staging
+        
+        $config = "enabled = true`npanelShortcut = F6`nconsoleRows = 18`nverboseLogging = false`nobserveStamina = false`nblueprintPiecesPerFrame = 12`n"
+        [System.IO.File]::WriteAllText((Join-Path $staging 'djcdevelopment.valheim.comfyquestlab.cfg'), $config, (New-Object System.Text.UTF8Encoding($false)))
     }
 
     # manifest: relative path + sha256 + bytes for every staged file

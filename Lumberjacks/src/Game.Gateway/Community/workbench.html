@@ -255,6 +255,9 @@
         <a href="/roadmap">Roadmap</a>
         <a href="/community">Community</a>
         <a href="/workbench" aria-current="page">Workbench</a>
+        <a href="/questpicker">Quest Picker</a>
+        <a href="/steward">Steward</a>
+        <a href="/questlab">Quest Lab</a>
         <a href="/networksense">NetworkSense</a>
         <a href="/events">Events</a>
         <a href="/testing">Testing</a>
@@ -266,21 +269,21 @@
     <div class="wrap hero">
       <div class="eyebrow">Comfy × Valheim · Lumberjacks P7</div>
       <h1>Community Workbench</h1>
-      <div class="headline">Seven tools. What each one actually does today, what it costs you to run it, and exactly how to take one over.</div>
+      <div class="headline">Eight tools. What each one actually does today, what it costs you to run it, and exactly how to take one over.</div>
       <p class="invitation">Running one of these once and saying what happened — including that it broke — is a complete contribution.</p>
       <details class="not-a-verdict">
         <summary>Volunteers carried this community. An unclaimed tool is not a verdict on anyone.</summary>
         <p>This catalog is an invitation to run and own tools. It is not a judgment on anyone&#39;s past effort and it is not a verdict on anyone&#39;s burnout — volunteers already carried this community, and the work they did is why any of this exists. Nothing here is owed by anyone. A tool sitting unclaimed is a description of this catalog, never a mark against the people who came before.</p>
       </details>
       <div class="hero-actions">
-        <a class="hero-cta" href="#tools">See the 7 tools</a>
+        <a class="hero-cta" href="#tools">See the 8 tools</a>
         <a class="hero-join" href="https://discord.gg/JCDaYQ68kN" target="_blank" rel="noreferrer">Join the Discord</a>
       </div>
       <p class="join-path">The path in: join → read <a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a> → post in a tool's thread. Those last two and the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a> are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span class="freshness">Published from 1a7902a · 2026-08-07 11:49 UTC</span>
-        <span>2 live · 1 dev-only · 4 local-only</span>
-        <a href="#tools">12 first tasks open</a>
+        <span class="freshness">Preview rendered 2026-08-07 13:47 UTC with uncommitted changes</span>
+        <span>2 live · 1 dev-only · 5 local-only</span>
+        <a href="#tools">13 first tasks open</a>
       </div>
     </div>
 
@@ -321,6 +324,11 @@
           <span class="pill local-only">LOCAL ONLY</span>
           <span class="index-name">Quest Submission → Review Bridge</span>
           <span class="index-time">About 10 minutes against the test fixture (tools/quest-bridge/, tests/test_quest_bridge.py). The live measurement — a real in-game completion out the other end — is QB-1.</span>
+          <span class="index-tasks">1 open</span>
+        </a><a class="index-row local-only" href="#quest-lab">
+          <span class="pill local-only">LOCAL ONLY</span>
+          <span class="index-name">Quest Lab Turnkey Package</span>
+          <span class="index-time">10 minutes. Download the zip, drop the DLL in your BepInEx/plugins folder, launch a private world, and run `lab_setup` in the F5 console.</span>
           <span class="index-tasks">1 open</span>
         </a></nav>
         <div class="tool-grid"><article class="tool live" id="quest-picker">
@@ -752,6 +760,65 @@
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>A submission record carries a player&#39;s name and what they did. Keep the review inbox off any public surface.</div>
           <div class="license"><strong>License</strong>Split: the live front half (in this repo&#39;s mod) is BUSL-1.1 per <a href="https://github.com/djcdevelopment/baseline/blob/main/docs/legal/LICENSING.md" target="_blank" rel="noreferrer">LICENSING.md</a>; the recoverable back half lives in the public comfy archive under MIT.</div>
+        </div>
+      </div>
+    </details>
+  </article>
+<article class="tool local-only" id="quest-lab">
+    <div class="tool-head">
+      <div><h3>Quest Lab Turnkey Package</h3><span class="tool-id">quest-lab</span></div>
+      <span class="pill local-only">LOCAL ONLY</span>
+    </div>
+    <p class="one-liner">An arcane tome in-game that teaches you exactly what quests are possible, letting you practice writing them before trying them out for real.</p>
+    <div class="status-detail local-only"><strong>What that status actually means</strong>A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. Contains all 8 rune schools.</div>
+    <p class="tool-audience"><strong>For</strong>Creators and leaders who want to learn how to write custom quests without guessing.</p>
+    <div class="tool-action">
+      <span class="first-result"><em>First result</em>10 minutes. Download the zip, drop the DLL in your BepInEx/plugins folder, launch a private world, and run `lab_setup` in the F5 console.</span>
+      <a class="access-button site-download" href="/workbench/downloads/quest-lab" aria-label="Download Quest Lab Turnkey Package">Download</a>
+    </div>
+    <div class="access-verify">
+      <div class="access-detail"><span>SHA-256</span><code>82ac0d9fed98264af50216cf076a216ecbfb2b761f131ee3e92ea1b43d9c0f9a</code></div>
+      <div class="access-detail"><span>Size</span><code>60.7 KB</code></div>
+      <div class="access-detail"><span>Published</span><code>2026-08-07T06:41:00Z</code></div>
+    </div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="/questlab">The Web Tome (Learn what&#39;s possible)</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">Quest Lab thread</a></span></div>
+    <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>A private Valheim world</li><li>BepInEx installed on your client</li></ul></div>
+    <details class="tool-detail">
+      <summary>How it works, in detail</summary>
+      <div class="tool-detail-body">
+        <p>Draws an interactive console over the screen and hooks into 91 different game events to show you precisely what is happening when you perform actions in-game.</p>
+        <p class="deps">roadmap <span class="dep">unlinked</span></p>
+      </div>
+    </details>
+    <div class="first-tasks">
+      <strong>Pick one to start · 1 open</strong>
+      <ul class="first-task-list"><li class="first-task">
+        <div class="first-task-top">
+          <strong>Try it and verify one school</strong>
+          <span class="task-flags"><span class="task-size small">small</span></span>
+        </div>
+        <span class="done-when"><em>Done when:</em> Run the lab, try the actions for one school, and post in the thread whether the in-game events fired as the Tome predicted.</span>
+        
+        <span class="task-id">QL-1</span>
+      </li></ul>
+      <div class="ownership-state unclaimed">
+        <span class="pill ownership unclaimed">UNCLAIMED</span>
+        <span>Nobody holds this yet. Completing one of the first tasks above is how that changes.</span>
+        
+      </div>
+      <p class="stage-3-right"><strong>At stage 3</strong>Commit access to the mod.</p>
+    </div>
+    
+    <details class="tool-detail">
+      <summary>Source, privacy &amp; licence</summary>
+      <div class="tool-detail-body">
+        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab" target="_blank" rel="noreferrer">Source Code</a></div>
+        <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab</a></div>
+        <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
+        <p class="source-note">A client-only BepInEx plugin.</p>
+        <div class="tool-footnotes">
+          <div class="privacy"><strong>Privacy</strong>Runs entirely locally. No data leaves your machine.</div>
+          <div class="license"><strong>License</strong>BUSL-1.1</div>
         </div>
       </div>
     </details>
