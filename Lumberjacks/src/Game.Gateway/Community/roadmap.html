@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807105114-first-hook-observed-firing-in-game-the-live-view">
+        <div class="journal"><article class="journal-entry" id="note-20260807105203-the-lab-can-read-a-planbuild-blueprint-parser-la">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T10:52:03.139Z">2026-08-07T10:52:03.139Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A5</span>
+      </div>
+      <h3>The lab can read a PlanBuild blueprint: parser landed, pinned to PlanBuild&#39;s own fixtures</h3>
+      <p><strong>Impact:</strong> First step of the blueprint-import lane (toward building Fallingwater from the HABS drawings). BlueprintFile.cs parses the community .blueprint format Unity-free - headers, bare sections like #Description whose text runs to the next # line, snap-point and terrain sections counted and deliberately ignored, semicolon piece lines with optional scale. Non-unit scale is rejected per piece rather than silently built unscaled. The golden fixtures are verbatim copies of PlanBuild&#39;s checked-in test blueprints, not our own generator&#39;s output, so format drift between the projects fails in a 40 ms test run instead of in a half-placed building. Nothing in the parser throws: a community download with three bad lines builds the other two thousand pieces and itemizes the damage.</p>
+      <details><summary>Verification (1)</summary><ul><li>13 new xunit tests green in ComfyNetworkSense.Tests (203/203 total); ComfyQuestLab builds clean net48 with the linked file. Not yet verified: nothing consumes the parser in game - the builder is the next commit.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807105114-first-hook-observed-firing-in-game-the-live-view">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
