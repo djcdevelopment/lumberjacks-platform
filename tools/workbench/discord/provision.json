@@ -78,7 +78,16 @@
     },
     {
       "key": "recoverable",
-      "seed": "06-thread-seed-quest-bridge.md",
+      "seed": "06-thread-seed-recoverable.md",
+      "tags": [
+        "question"
+      ],
+      "pinned": false,
+      "workbench_tools": []
+    },
+    {
+      "key": "quest-bridge",
+      "seed": "12-thread-seed-quest-bridge.md",
       "tags": [
         "question"
       ],

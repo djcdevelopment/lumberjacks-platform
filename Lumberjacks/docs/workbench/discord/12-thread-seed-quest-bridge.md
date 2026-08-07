@@ -1,8 +1,7 @@
-*Meta: forum thread title suggestion — "Quest submission → review bridge". Paste everything below
-the divider as the thread's opening post. This thread was "Recoverable pieces" until 2026-08-06:
-world-photography moved to its own thread when it started running, and then this piece got ported
-too, so nothing recoverable is left in it. Its provision key stays `recoverable` because that key
-maps to this thread's Discord id — renaming it would orphan the thread and open a second one.*
+*Meta: forum thread title suggestion — "Quest submission → review bridge". Paste everything
+below the divider as the thread's opening post. Split out of the "Recoverable pieces" thread on
+2026-08-07, once this piece was ported and that thread had no recoverable subject left. The old
+thread stays as a signpost — posts are matched by title, so a rename would have orphaned it.*
 
 ---
 

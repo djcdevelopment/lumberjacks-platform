@@ -121,6 +121,22 @@
         "camera-gallery"
       ],
       "url": "https://discord.com/channels/1531911987074957442/1535091188464357496"
+    },
+    "quest-bridge": {
+      "key": "quest-bridge",
+      "seed": "12-thread-seed-quest-bridge.md",
+      "title": "Quest submission → review bridge",
+      "thread_id": "1535176938879066223",
+      "message_ids": [
+        "1535176938879066223",
+        "1535176942418923591"
+      ],
+      "content_sha256": "5fc8d2b6f72aed28cc71844864a7ce508ebe202e5a81f0e2485382cb111021d1",
+      "pinned": false,
+      "workbench_tools": [
+        "quest-submission-bridge"
+      ],
+      "url": "https://discord.com/channels/1531911987074957442/1535176938879066223"
     }
   },
   "invite_href": "https://discord.gg/JCDaYQ68kN",
@@ -128,5 +144,5 @@
   "channel_id": "1531926985314668635",
   "channel_name": "workbench",
   "guild_id": "1531911987074957442",
-  "last_apply_utc": "2026-08-07T01:04:21Z"
+  "last_apply_utc": "2026-08-07T06:45:06Z"
 }
