@@ -45,6 +45,12 @@ param(
     [ValidateRange(0, 5000)]
     [int] $ZdoJournalApplyThrottleMs = 0,
 
+    # Authoritative window the enrolled consumer polls for the run. The at-rest
+    # config may carry a different lane's window (e.g. p7-primary-v1 on a lab
+    # machine); the enrollment-consumer leg must poll the window its enrollment
+    # was minted for. Managed like the other run settings: byte-exact restore.
+    [string] $AuthoritativeWindowId = '',
+
     [string] $RunId = '',
 
     [string] $ValheimRoot = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim',
@@ -320,8 +326,9 @@ function Stop-Valheim([bool] $FailIfNotStopped = $true) {
 function Enable-LabSessionConfig() {
     $hasEnrollment = -not [string]::IsNullOrWhiteSpace($EnrollmentId)
     $hasThrottle = $ZdoJournalApplyThrottleMs -gt 0
-    if ((-not $EnableLabSession -and -not $hasEnrollment -and -not $hasThrottle) -or
-        $script:LabConfigChanged) {
+    $hasWindow = -not [string]::IsNullOrWhiteSpace($AuthoritativeWindowId)
+    if ((-not $EnableLabSession -and -not $hasEnrollment -and -not $hasThrottle -and
+        -not $hasWindow) -or $script:LabConfigChanged) {
         return $null
     }
     if (-not (Test-Path -LiteralPath $configRoot -PathType Container)) {
@@ -343,6 +350,12 @@ function Enable-LabSessionConfig() {
     }
     if ($hasThrottle) {
         $settings['zdoJournalApplyThrottleMs'] = [string]$ZdoJournalApplyThrottleMs
+    }
+    if (-not [string]::IsNullOrWhiteSpace($AuthoritativeWindowId)) {
+        if (-not (Test-SafeToken $AuthoritativeWindowId)) {
+            throw "AuthoritativeWindowId is not a safe token: $AuthoritativeWindowId"
+        }
+        $settings['lumberjacksAuthoritativeWindowId'] = $AuthoritativeWindowId
     }
     $originalBytes = [IO.File]::ReadAllBytes($configPath)
     $content = [Text.Encoding]::UTF8.GetString($originalBytes)
@@ -1024,6 +1037,7 @@ function Invoke-PendingRun() {
         EnrollmentId = [string]$pending.enrollment_id
         ClientAccessKey = [string]$pending.client_access_key
         ZdoJournalApplyThrottleMs = [int]$pending.zdo_journal_apply_throttle_ms
+        AuthoritativeWindowId = [string]$pending.authoritative_window_id
         RunId = [string]$pending.run_id
         ValheimRoot = [string]$pending.valheim_root
         SteamExe = [string]$pending.steam_exe
@@ -1113,6 +1127,7 @@ function Queue-InteractiveSmoke() {
         enrollment_id = $EnrollmentId
         client_access_key = $ClientAccessKey
         zdo_journal_apply_throttle_ms = $ZdoJournalApplyThrottleMs
+        authoritative_window_id = $AuthoritativeWindowId
         run_id = $RunId
         valheim_root = $ValheimRoot
         steam_exe = $SteamExe
