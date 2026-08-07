@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T15:19:23.868Z</span>
+        <span>Updated 2026-08-07T15:23:15.089Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807151923-extract-docker-image-mcp-gateway-and-lab-toolset">
+        <div class="journal"><article class="journal-entry" id="note-20260807152315-correct-the-quest-lab-docs-to-match-the-build-8-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T15:23:15.089Z">2026-08-07T15:23:15.089Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>A4</span>
+      </div>
+      <h3>Correct the Quest Lab docs to match the build: 8 schools not 7, lab_export deferred with its reason, and the F5/F6 distinction that catches everyone</h3>
+      <p><strong>Impact:</strong> The turnkey vision draft sat untracked at the repo root describing three friction removers as though all three shipped. lab_reload did not exist at all (it does now); the failure-boundary story credited LabEventRing, which is a buffer that prints nothing; and lab_export conflicts with fieldlab ADR-0018, which replaced outbox payloads with a durable EventLog row -- the bridge consumer explicitly rejects schema-1 outbox payloads. It also said 7 Schools of Magic, omitting World, while every source in the repo says 8, and placed diagnostics in an F5 overlay when F5 is Valheim&#39;s console and F6 is the lab panel. Rewritten as docs/quest-lab-turnkey-vision.md with a status column per friction remover and the honest gap named: the quest lane is proven by unit tests against the real contract and has never been run inside Valheim. START-HERE gained a ComfyQuestLab row and the full AM4 route list, and now flags that /questpicker and /steward appear in every nav bar with no route in this repo&#39;s Gateway source. 7-tools drift fixed in START-HERE and HANDOFF-2026-07-29.</p>
+      <details><summary>Verification (2)</summary><ul><li>docs/ had zero mentions of the quest lab before this; it now has a vision doc, a START-HERE row, and a workbench one-pager</li><li>fieldlab ADR-0018 path confirmed to exist before citing it (two ADR-0018s exist under different numbering roots; the fieldlab one is the quest-proof decision)</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807151923-extract-docker-image-mcp-gateway-and-lab-toolset">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
