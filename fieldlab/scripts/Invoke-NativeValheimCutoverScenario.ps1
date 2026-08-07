@@ -63,6 +63,14 @@ param(
 
     [string] $I5ClientAccessKey = '',
 
+    # Wedge fault injection (candidate-8/11 repro): pace the named client's journal
+    # apply/ACK loop. Zero = off. Never set for play or acceptance runs.
+    [ValidateRange(0, 5000)]
+    [int] $OmenZdoJournalApplyThrottleMs = 0,
+
+    [ValidateRange(0, 5000)]
+    [int] $I5ZdoJournalApplyThrottleMs = 0,
+
     [string] $DllPath = '',
 
     [string] $EvidenceRoot = '',
@@ -1229,6 +1237,10 @@ try {
             '-EnrollmentId', $I5EnrollmentId,
             '-ClientAccessKey', $I5ClientAccessKey)
     }
+    if ($I5ZdoJournalApplyThrottleMs -gt 0) {
+        $i5Arguments += @(
+            '-ZdoJournalApplyThrottleMs', [string]$I5ZdoJournalApplyThrottleMs)
+    }
     if ($useRoutedRpc) {
         $i5Arguments += '-EnableRoutedRpcCutover'
     }
@@ -1344,6 +1356,10 @@ try {
             $omenHarnessArguments += @(
                 '-EnrollmentId', $OmenEnrollmentId,
                 '-ClientAccessKey', $OmenClientAccessKey)
+        }
+        if ($OmenZdoJournalApplyThrottleMs -gt 0) {
+            $omenHarnessArguments += @(
+                '-ZdoJournalApplyThrottleMs', [string]$OmenZdoJournalApplyThrottleMs)
         }
         if ($useRoutedRpc) {
             $omenHarnessArguments += '-EnableRoutedRpcCutover'

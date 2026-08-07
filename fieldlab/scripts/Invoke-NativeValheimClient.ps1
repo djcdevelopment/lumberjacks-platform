@@ -39,6 +39,12 @@ param(
 
     [string] $ClientAccessKey = '',
 
+    # HARNESS FAULT INJECTION (never for play): paces the journal consumer to one
+    # apply/ACK per interval to reproduce the candidate-8/11 redelivery wedge on
+    # demand. Written into the managed config for the run, restored byte-exact.
+    [ValidateRange(0, 5000)]
+    [int] $ZdoJournalApplyThrottleMs = 0,
+
     [string] $RunId = '',
 
     [string] $ValheimRoot = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim',
@@ -313,7 +319,9 @@ function Stop-Valheim([bool] $FailIfNotStopped = $true) {
 
 function Enable-LabSessionConfig() {
     $hasEnrollment = -not [string]::IsNullOrWhiteSpace($EnrollmentId)
-    if ((-not $EnableLabSession -and -not $hasEnrollment) -or $script:LabConfigChanged) {
+    $hasThrottle = $ZdoJournalApplyThrottleMs -gt 0
+    if ((-not $EnableLabSession -and -not $hasEnrollment -and -not $hasThrottle) -or
+        $script:LabConfigChanged) {
         return $null
     }
     if (-not (Test-Path -LiteralPath $configRoot -PathType Container)) {
@@ -332,6 +340,9 @@ function Enable-LabSessionConfig() {
         $settings['lumberjacksEnrollmentId'] = $EnrollmentId
         $settings['lumberjacksClientAccessKey'] = $ClientAccessKey
         $settings['zdoAuthoritativeConsumerEnabled'] = 'true'
+    }
+    if ($hasThrottle) {
+        $settings['zdoJournalApplyThrottleMs'] = [string]$ZdoJournalApplyThrottleMs
     }
     $originalBytes = [IO.File]::ReadAllBytes($configPath)
     $content = [Text.Encoding]::UTF8.GetString($originalBytes)
@@ -1012,6 +1023,7 @@ function Invoke-PendingRun() {
         GatewayUrl = [string]$pending.gateway_url
         EnrollmentId = [string]$pending.enrollment_id
         ClientAccessKey = [string]$pending.client_access_key
+        ZdoJournalApplyThrottleMs = [int]$pending.zdo_journal_apply_throttle_ms
         RunId = [string]$pending.run_id
         ValheimRoot = [string]$pending.valheim_root
         SteamExe = [string]$pending.steam_exe
@@ -1100,6 +1112,7 @@ function Queue-InteractiveSmoke() {
         gateway_url = $GatewayUrl
         enrollment_id = $EnrollmentId
         client_access_key = $ClientAccessKey
+        zdo_journal_apply_throttle_ms = $ZdoJournalApplyThrottleMs
         run_id = $RunId
         valheim_root = $ValheimRoot
         steam_exe = $SteamExe
