@@ -498,7 +498,7 @@
       "id": "quest-submission-bridge",
       "name": "Quest Submission → Review Bridge",
       "one_liner": "The back half of quest capture: package what a player did in-game, land it in a review inbox, and turn it into a record a GM can read.",
-      "status": "recoverable-not-running",
+      "status": "local-only",
       "status_detail": "Ported, not yet live-proven. The front half is alive in the mod today with tests — QuestViewLoader.cs reads a player's quest-view and QuestTriggerEvaluator.cs evaluates triggers in-game. The back half was never a matter of pointing a script at a folder: the old consumer expected an evidence envelope (screenshot, trace, position) that the live mod deliberately does not produce — its proof is the durable EventLog row (ADR 0012). That design call is now decided (ADR 0018: the EventLog row IS the evidence; no re-materialized screenshots) and implemented at tools/quest-bridge/ — EventLog row → thin submission → review record → guild-command export, fixture-proven in tests/test_quest_bridge.py. What remains for QB-1 is the live proof: one real in-game completion through that path. The archive copies at recipes/quest-submission-bridge/ stay as raw material.",
       "what_it_does": "Packages an in-game quest submission, lands it in a review inbox, and renders human-readable quest records a GM can act on without chasing screenshots.",
       "who_its_for": "GMs who want players to submit completions without a screenshot and a Discord message.",
@@ -517,8 +517,8 @@
       },
       "source": {
         "kind": "public-repo",
-        "href": "https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface",
-        "note": "The back half is preserved in the public comfy repo. The front half is live in this repo's mod at network/mod/ComfyNetworkSense/Core/Services/."
+        "href": "https://github.com/djcdevelopment/baseline/tree/main/tools/quest-bridge",
+        "note": "The ported bridge is in this repo at tools/quest-bridge/, with its design recorded in fieldlab/docs/adr/0018-quest-proof-is-the-eventlog-row.md. The retired ComfyControlSurface originals stay byte-exact and unwired at recipes/quest-submission-bridge/ as raw material."
       },
       "docs": [
         {
@@ -543,7 +543,7 @@
         }
       ],
       "discussion": {
-        "label": "Recoverable pieces thread",
+        "label": "Quest submission → review bridge thread",
         "href": "https://discord.com/channels/1531911987074957442/1531927004197425172"
       },
       "first_tasks": [
@@ -560,17 +560,7 @@
         "claimed_at": null,
         "record": null
       },
-      "recovery": {
-        "origin_href": "https://github.com/djcdevelopment/comfy/tree/main/handoffs/comfy-control-surface",
-        "paths": [
-          "Core/SubmissionService.cs",
-          "bridge-consumer/bridge_consumer.py",
-          "bridge-consumer/fixtures/",
-          "QUEST.md",
-          "PROOF.md"
-        ],
-        "notes": "Front half is alive and tested in the live mod — network/mod/ComfyNetworkSense/Core/Services/QuestViewLoader.cs and QuestTriggerEvaluator.cs. Pruned in d75ffb2 (2026-07-21; pre-prune ref 57654fd); the Python consumer, fixtures, and briefs re-landed unwired at recipes/quest-submission-bridge/ on 2026-07-29 — see its PROVENANCE.md. The C# pieces stay archive-only: ADR 0018 (2026-08-06) declines re-materializing the ComfyControlSurface evidence envelope, and the back half is ported to the EventLog contract at tools/quest-bridge/ (MIT-derived, provenance noted in each file)."
-      },
+      "recovery": null,
       "roadmap_milestones": [
         "A5",
         "A7"
