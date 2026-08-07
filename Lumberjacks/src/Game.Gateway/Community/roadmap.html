@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T11:06:03.751Z</span>
+        <span>Updated 2026-08-07T11:13:33.109Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807110603-fallingwater-as-parametric-massing-a-671-piece-b">
+        <div class="journal"><article class="journal-entry" id="note-20260807111333-the-monuments-read-as-runes-beams-measured-off-t">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T11:13:33.109Z">2026-08-07T11:13:33.109Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A5</span>
+      </div>
+      <h3>The monuments read as runes: beams measured off the prefab, and a coloured lamp per school</h3>
+      <p><strong>Impact:</strong> Three fixes from one in-game look, all human-confirmed. (1) Beam orientation was an assumption - that a wood beam runs along its local Z - and 89 beams standing end-on to the glyphs they drew looked like the dots in a connect-the-dots book. The builder now measures the prefab&#39;s mesh, picks the longest local axis, swings that onto each stroke via FromToRotation, and corrects for a pivot that is not at the mesh centre. It reports what it measured so the next person can check instead of trusting. (2) Each monument carries a coloured lamp, one per school. Valheim has no field for this: LightFlicker and LightLod only modulate and cull an existing light, and only EnvMan.m_dirLight, MenuScene.m_dirLight and ShieldGenerator.m_coloredLights hold a Light at all. So the lamp is a UnityEngine.Light the lab hangs itself - client-side, unsaved, and re-hung from a ZDO mark on every zone reload, the same shape of answer the wear flags needed. Intensity, range and on/off are config; colour is per school. (3) Clear now sweeps by mark rather than by manifest. The manifest only ever described the most recent build because every build empties it first, so a second gallery orphaned the first beyond reach and pieces accumulated to 1527 while clear reported zero. WearNTear.GetAllInstances enumerates every loaded piece, so the sweep finds every lab-marked gallery in any session. It only sees loaded zones and now says so. Blueprint pieces are deliberately excluded - the sweep asks IsGalleryPiece, not IsLabBuilt.</p>
+      <details><summary>Verification (1)</summary><ul><li>Human-confirmed in game by Derek with screenshots: the monuments now read as their glyphs and are lit, and a clear brought the world from 1527 pieces down to 738. Builds Release with 0 warnings alongside the concurrent blueprint lane. WearNTear.GetAllInstances is compile-verified against assembly_valheim. NOT verified: whether the measured axis is correct or merely closer - the measurement line it prints has not been read back yet.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807110603-fallingwater-as-parametric-massing-a-671-piece-b">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
