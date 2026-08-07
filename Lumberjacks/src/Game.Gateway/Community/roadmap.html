@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T11:13:33.109Z</span>
+        <span>Updated 2026-08-07T11:27:19.999Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807111333-the-monuments-read-as-runes-beams-measured-off-t">
+        <div class="journal"><article class="journal-entry" id="note-20260807112719-the-prefab-dump-paid-for-itself-before-the-first">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T11:27:19.999Z">2026-08-07T11:27:19.999Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>A5</span>
+      </div>
+      <h3>The prefab dump paid for itself before the first build: stone pieces pivot at center, not bottom</h3>
+      <p><strong>Impact:</strong> Derek ran questlab_prefabs dump in game: 3458 prefabs, game 0.221.12, committed as tools/component-packets/samples/prefab-dump.json - the artifact the component-packets README has named missing since it was written. All six Fallingwater palette names resolved on the first try, and the snap-point data immediately falsified the generator&#39;s placement assumption: stone_floor_2x2 and both stone walls carry snaps at y -0.5..+0.5 (center pivot) while crystal_wall_1x1 carries them at 0..1 (bottom pivot). As authored, every stone course would have stood half a metre low with glass floating above it. The generator now carries a measured LIFT table per palette entry, the blueprint is regenerated, and the last self-skipping test runs for real: 9/9 green including palette-against-dump.</p>
+      <details><summary>Verification (1)</summary><ul><li>python -m unittest tests.test_fallingwater_blueprint: 9/9, no skips. Corrected blueprint redeployed to the client. Remaining in-game: check, build, zone walk, clear, restart-clear.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807111333-the-monuments-read-as-runes-beams-measured-off-t">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
