@@ -23,6 +23,7 @@ Format follows the standard Status / Context / Decision / Consequences shape.
 | [0015](0015-pin-line-endings-for-load-bearing-bytes.md) | Pin line endings for bytes that are hashed or parsed elsewhere | Accepted | cross-cutting / repo hygiene |
 | [0016](0016-banked-state-must-carry-session-identity.md) | Banked state must carry the identity scope of what it banks | Accepted | netcode / canonical session |
 | [0017](0017-prove-the-lane-users-ship-on.md) | Acceptance proofs must exercise the lane users ship on | Accepted | M7 / cutover acceptance |
+| [0018](0018-quest-proof-is-the-eventlog-row.md) | The quest proof is the durable EventLog row, not a re-materialized evidence envelope | Accepted | Community telemetry / QB-1 |
 
 Canon: [`Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json`](../../../Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json)
 (state — milestones, gate/proof state) ·

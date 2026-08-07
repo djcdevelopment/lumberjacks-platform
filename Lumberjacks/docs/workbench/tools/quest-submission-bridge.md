@@ -37,37 +37,54 @@ style command a GM would paste into Discord, evidence attached).
 
 ## What it is NOT
 
-Not a working pipeline today. The two halves don't talk to each other:
-`bridge_consumer.py`'s input contract is the **old** mod's outbox shape
-(`schema_version: 1`, `status: "ready_for_review"`, a screenshot file on
-disk) — that is not what the live `ComfyNetworkSense` mod produces. The
-live mod's proof is a durable server-side EventLog entry, not a local
-outbox file with a screenshot (a deliberate simplification — see the code
+Not live-proven yet. The two halves historically spoke different
+languages: the archived `bridge_consumer.py`'s input contract is the
+**old** mod's outbox shape (`schema_version: 1`, a screenshot file on
+disk) — not what the live `ComfyNetworkSense` mod produces. The live
+mod's proof is a durable server-side EventLog entry, not a local outbox
+file with a screenshot (a deliberate simplification — see the code
 comment in `QuestTriggerEvaluator.cs`: "the proof is now the durable
-EventLog entry... and not a pair of screenshots"). Porting
-`bridge_consumer.py` to the live mod means reading from somewhere new, not
-just pointing it at a different folder.
+EventLog entry... and not a pair of screenshots"). That gap was a design
+call, and it is now decided and implemented: **ADR 0018** (fieldlab)
+keeps the thin record — the EventLog row is the evidence, the screenshot
+envelope is not re-materialized — and the ported bridge at
+`tools/quest-bridge/` reads that contract. What has not happened yet is
+the live run (see QB-1 below).
 
 Not a bot. Nothing here posts to Discord or holds a bot token — the whole
 design, old and new, is local files and human review in the loop.
 
 ## Status
 
-Not running as a whole. The front half is alive in the mod today with
+Ported, not yet live-proven. The front half is alive in the mod today with
 tests — `QuestViewLoader.cs` and `QuestTriggerEvaluator.cs`. The back half
-that would turn a completion into a GM-reviewable record sits in the
-public `comfy` repo, unwired to the live mod's output. Since 2026-07-29
-that back half also sits in this repo — byte-exact, still unwired — at
-`recipes/quest-submission-bridge/` (provenance in its `PROVENANCE.md`);
-the retired C# mod stays archive-only.
+is ported to the live mod's actual contract at `tools/quest-bridge/`
+(fetch from the durable EventLog → thin submission → review record →
+guild-command export), fixture-proven end to end in
+`tests/test_quest_bridge.py`. The design decision behind that shape is
+ADR 0018 in `fieldlab/docs/adr/`. The byte-exact archive copies stay at
+`recipes/quest-submission-bridge/` as raw material (provenance in its
+`PROVENANCE.md`); the retired C# mod stays archive-only.
 
 ## Run it in about 10 minutes — what actually works today
 
-This runs the **old** demo end to end, against its own fixture data — it
-does not touch the live mod. It's real, working code, and it's the honest
-starting point for understanding the shape QB-1 needs to fill.
+**The ported pipeline, against its test fixture** (a saved EventLog
+response — the durable EventLog itself is private-plane only). From a
+`baseline` checkout:
 
-From a `baseline` checkout, no clone needed:
+```
+python tools/quest-bridge/fetch_completions.py --from-file tests/fixtures/quest-bridge/events-response.json --out bridge-inbox
+python tools/quest-bridge/bridge_consumer.py bridge-inbox
+python tools/quest-bridge/review_inbox.py bridge-inbox list
+python tools/quest-bridge/review_inbox.py bridge-inbox export <submission_id>
+```
+
+Where the lab runs, swap `--from-file ...` for
+`--url http://localhost:4002` and the same commands read live rows.
+
+**The old demo** still runs end to end against its own fixture data — it
+does not touch the live mod, but it is the origin of the review/export
+shape the port preserves:
 
 ```
 python recipes/quest-submission-bridge/bridge-consumer/bridge_consumer.py recipes/quest-submission-bridge/bridge-consumer/mikers-demo
@@ -108,8 +125,13 @@ a matching kill just relays a `quest_completed` telemetry event server-side
 
 ## What's rough
 
-- **The two halves speak different languages**, as above — this is the
-  real content of QB-1, not a detail to smooth over.
+- **The thin record shows no scene.** ADR 0018 trades the screenshot for
+  strictly better provenance (a server-received, Producer-gated EventLog
+  row) — but a GM who wants a picture of the kill doesn't get one from
+  this pipeline. If review practice proves that insufficient, an optional
+  player-initiated attachment lane is a later additive increment.
+- **Rows written before the `quest_name` payload field landed** carry only
+  the quest id; the review record falls back to the id for those.
 - **The live mod expects `quest-view.json` in a different folder than the
   picker currently tells players to use** —
   `Valheim/BepInEx/config/comfy-network-sense/quest-view.json`, not
@@ -123,12 +145,17 @@ a matching kill just relays a `quest_completed` telemetry event server-side
 
 ## First tasks
 
-- **QB-1 — Port `bridge_consumer.py` to read the live mod's quest
-  telemetry and emit one review record.** Done when: a real in-game quest
-  completion, produced by the live mod with `QuestEvaluatorEnabled` on,
-  travels through to one human-readable review record — reusing
-  `review_inbox.py`'s review/export shape rather than reinventing it. This
-  is the claiming task for this tool.
+- **QB-1 — Prove the ported bridge live: one real in-game completion,
+  EventLog → review record.** The design call this task used to hide —
+  re-materialize the old screenshot/trace evidence envelope, or accept a
+  thinner record — is decided in ADR 0018 (the durable EventLog row is
+  the evidence), and the port is implemented and fixture-proven
+  (`tools/quest-bridge/`, `tests/test_quest_bridge.py`). Done when: a
+  real in-game quest completion, produced by the live mod with
+  `QuestEvaluatorEnabled` on, is fetched from the durable EventLog by
+  `fetch_completions.py` and comes out as one human-readable review
+  record with the quest's guild-command draft. This is the claiming task
+  for this tool.
 
 ## Where to talk about it
 
