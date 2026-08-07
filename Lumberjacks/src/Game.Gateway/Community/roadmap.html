@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T10:13:55.562Z</span>
+        <span>Updated 2026-08-07T10:30:19.490Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807101355-quest-lab-gallery-pieces-carry-a-zdo-mark-and-cl">
+        <div class="journal"><article class="journal-entry" id="note-20260807103019-wearntear-no-wear-flags-are-opt-ins-false-is-off">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T10:30:19.490Z">2026-08-07T10:30:19.490Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A5</span>
+      </div>
+      <h3>WearNTear no-wear flags are opt-ins: false is off, and the atlas annotation said the opposite</h3>
+      <p><strong>Impact:</strong> The raised gallery kept decaying after both no-wear flags were set true, and got more consistent about it once a WearNTear.Awake postfix started re-applying them. Reading the shipped assembly with Mono.Cecil settled it: in WearNTear.UpdateWear the support check sits behind brfalse on m_noSupportWear and the rain damage behind brfalse on m_noRoofWear, so each damage path is reached ONLY when its flag is true. The fields are opt-ins wearing a name that reads like an opt-out. Both are now set false at placement and in the Awake postfix. The annotation layer that misled this (annotations-piece.json and wearntear-field-dictionary.md, both saying Disables) is corrected to say ENABLES and to name the branch.</p>
+      <details><summary>Verification (1)</summary><ul><li>Read from assembly_valheim.dll via Mono.Cecil: UpdateWear reads m_noRoofWear and m_noSupportWear, and the brfalse targets skip the damage blocks when false. Builds Release with 0 warnings. NOT verified in game: no gallery has been observed standing since the change.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807101355-quest-lab-gallery-pieces-carry-a-zdo-mark-and-cl">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
