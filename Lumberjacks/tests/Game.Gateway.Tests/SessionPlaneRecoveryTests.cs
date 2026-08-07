@@ -328,6 +328,106 @@ public sealed class SessionPlaneRecoveryTests
         }
     }
 
+    // --- P7 recovery path: fresh-partition starvation and the late-attach flip --------------
+    // The 2026-08-05 human session ended terrain-only because no enrolled consumer ever
+    // attached: pending accumulated on FRESH partitions (not WAL-replayed, so the r42 purge
+    // never applies), and every primary heartbeat was honestly rejected. These two tests pin
+    // that the rejection is by design AND diagnosable, and that credentials arriving later
+    // flip admission without a Gateway restart — the exact remediation path for P7.
+
+    [Fact]
+    public void FreshPartitionWithPeerAndNoConsumerRejectsAdmissionButReportsWhy()
+    {
+        var service = new ValheimTelemetryHeartbeatService();
+        var redirects = new ValheimZdoRedirectService(walPath: null);
+        var consumers = new ValheimZdoConsumerTelemetryService();
+        var activity = new ValheimWindowActivityService();
+
+        // Fresh (never-replayed) partition: the server is suppressing and posting, but no
+        // consumer has ever polled it — the 08-05 signature (receipts pending, applied 0).
+        redirects.RecordEnvelopes("p7-primary-v1", "server", new[]
+        {
+            new ValheimZdoRedirectEnvelope { Seq = 1, BodyB64 = "AA==" },
+        }, "recipient-never");
+
+        var heartbeat = new ValheimTelemetryHeartbeat
+        {
+            CutoverMode = "lumberjacks-primary",
+            EnrollmentManifestId = "p7-primary-v1",
+            PeerCount = 1,
+            CoverageTotal = 10,
+            CoverageNativeOnly = 0,
+        };
+
+        // A connected peer with zero-ever consumers must be rejected (delivery would be a
+        // black hole), and the rejection must still leave a verdict for the operator
+        // surface — "server up but not admitted" is one GET, not a log dig.
+        Assert.False(service.RecordAndAdmit(heartbeat, redirects, consumers, activity));
+        var verdict = service.LastVerdict;
+        Assert.NotNull(verdict);
+        Assert.False(verdict!.Admitted);
+        Assert.Equal("lumberjacks-primary", verdict.Mode);
+        Assert.Equal("p7-primary-v1", verdict.EnrollmentManifestId);
+
+        // The r42 purge is scoped to WAL-replayed partitions; a fresh partition survives
+        // the TTL untouched, so the starvation persists until credentials arrive.
+        Assert.Equal(0, redirects.PurgeStaleReplayedPartitions(
+            DateTime.UtcNow + ValheimZdoRedirectService.ReplayedPartitionTtl +
+            TimeSpan.FromSeconds(1)));
+        Assert.Equal(1, redirects.GetStatus("p7-primary-v1", "recipient-never").Pending);
+
+        // The empty-server carve-out is unaffected: with no peers the same armed window
+        // admits, so a restarted-but-idle primary never reads as an outage.
+        Assert.True(service.RecordAndAdmit(
+            heartbeat with { PeerCount = 0 }, redirects, consumers, activity));
+    }
+
+    [Fact]
+    public void LateConsumerAttachDrainsBacklogAndFlipsAdmissionWithoutRestart()
+    {
+        var service = new ValheimTelemetryHeartbeatService();
+        var redirects = new ValheimZdoRedirectService(walPath: null);
+        var consumers = new ValheimZdoConsumerTelemetryService();
+        var activity = new ValheimWindowActivityService();
+        var now = DateTime.UtcNow;
+
+        redirects.RecordEnvelopes("p7-primary-v1", "server", new[]
+        {
+            new ValheimZdoRedirectEnvelope { Seq = 1, BodyB64 = "AA==" },
+        }, "recipient-omen");
+
+        var heartbeat = new ValheimTelemetryHeartbeat
+        {
+            CutoverMode = "lumberjacks-primary",
+            EnrollmentManifestId = "p7-primary-v1",
+            PeerCount = 1,
+            CoverageTotal = 10,
+            CoverageNativeOnly = 0,
+        };
+
+        // Before the consumer holds credentials: rejected, as above.
+        Assert.False(service.RecordAndAdmit(heartbeat, redirects, consumers, activity));
+
+        // Enrollment keys land and the consumer attaches to the SAME gateway state:
+        // it polls (activity touch), drains and acks the backlog, and heartbeats.
+        activity.Touch("p7-primary-v1", "recipient-omen", now);
+        redirects.Acknowledge("p7-primary-v1", "recipient-omen", new[] { 1L });
+        consumers.Record(new ValheimZdoConsumerHeartbeat
+        {
+            WindowId = "p7-primary-v1",
+            ConsumerId = "recipient-omen",
+            Applied = 1,
+            Acknowledged = 1,
+        });
+
+        // Admission flips on the next heartbeat with no Gateway restart in between —
+        // the same service instances that rejected above now admit.
+        Assert.True(service.RecordAndAdmit(heartbeat, redirects, consumers, activity));
+        var verdict = service.LastVerdict;
+        Assert.NotNull(verdict);
+        Assert.True(verdict!.Admitted);
+    }
+
     // --- WAL/pending bound ------------------------------------------------------------------
 
     [Fact]

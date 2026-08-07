@@ -50,6 +50,19 @@ param(
 
     [string] $I5Character = 'durracktu',
 
+    # Enrollment-consumer lane credentials per leg (ADR 0017), both-or-neither per
+    # client; forwarded to the client harness, which validates token shape, writes
+    # them into the managed config for the run, and restores exact bytes on stop.
+    # The i5 pair rides the ssh argument list and the pending-request file — lab
+    # gateway credentials only, never production ones.
+    [string] $OmenEnrollmentId = '',
+
+    [string] $OmenClientAccessKey = '',
+
+    [string] $I5EnrollmentId = '',
+
+    [string] $I5ClientAccessKey = '',
+
     [string] $DllPath = '',
 
     [string] $EvidenceRoot = '',
@@ -113,6 +126,14 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($OmenEnrollmentId) -ne
+    [string]::IsNullOrWhiteSpace($OmenClientAccessKey)) {
+    throw 'OmenEnrollmentId and OmenClientAccessKey must be supplied together.'
+}
+if ([string]::IsNullOrWhiteSpace($I5EnrollmentId) -ne
+    [string]::IsNullOrWhiteSpace($I5ClientAccessKey)) {
+    throw 'I5EnrollmentId and I5ClientAccessKey must be supplied together.'
+}
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $clientHarness = Join-Path $PSScriptRoot 'Invoke-NativeValheimClient.ps1'
 $i5Tools = Join-Path $repoRoot 'tools\i5'
@@ -1203,6 +1224,11 @@ try {
         '-ScenarioPath', $remoteScenarioPath,
         '-HoldSeconds', [string]$HoldSeconds,
         '-WaitSeconds', [string]$WaitSeconds)
+    if (-not [string]::IsNullOrWhiteSpace($I5EnrollmentId)) {
+        $i5Arguments += @(
+            '-EnrollmentId', $I5EnrollmentId,
+            '-ClientAccessKey', $I5ClientAccessKey)
+    }
     if ($useRoutedRpc) {
         $i5Arguments += '-EnableRoutedRpcCutover'
     }
@@ -1314,6 +1340,11 @@ try {
             '-EvidenceRoot', $EvidenceRoot,
             '-HoldSeconds', [string]$HoldSeconds,
             '-WaitSeconds', [string]$WaitSeconds)
+        if (-not [string]::IsNullOrWhiteSpace($OmenEnrollmentId)) {
+            $omenHarnessArguments += @(
+                '-EnrollmentId', $OmenEnrollmentId,
+                '-ClientAccessKey', $OmenClientAccessKey)
+        }
         if ($useRoutedRpc) {
             $omenHarnessArguments += '-EnableRoutedRpcCutover'
         }
@@ -1465,6 +1496,8 @@ try {
             -Character $OmenCharacter `
             -Server $Server `
             -GatewayUrl $OmenGatewayUrl `
+            -EnrollmentId $OmenEnrollmentId `
+            -ClientAccessKey $OmenClientAccessKey `
             -RunId $RunId `
             -DllPath $dll `
             -ScenarioPath $scenario `

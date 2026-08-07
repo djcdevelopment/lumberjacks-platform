@@ -30,6 +30,15 @@ param(
 
     [string] $GatewayUrl = '',
 
+    # Enrollment-consumer lane credentials (ADR 0017). Both or neither; when supplied the
+    # managed config gets lumberjacksEnrollmentId/lumberjacksClientAccessKey and the
+    # authoritative consumer armed for the run, restored byte-exact on stop. Values are
+    # never written to receipts; the pending-request file that carries them to a remote
+    # client is deleted on consume.
+    [string] $EnrollmentId = '',
+
+    [string] $ClientAccessKey = '',
+
     [string] $RunId = '',
 
     [string] $ValheimRoot = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim',
@@ -175,6 +184,22 @@ function Test-SafeToken([string] $Value) {
         $Value -match '^[A-Za-z0-9._-]+$'
 }
 
+# Both-or-neither, and shell-safe: these values are spliced into the managed config and
+# (for a remote client) a pending-request file, so reject anything outside token shape.
+if ([string]::IsNullOrWhiteSpace($EnrollmentId) -ne
+    [string]::IsNullOrWhiteSpace($ClientAccessKey)) {
+    throw 'EnrollmentId and ClientAccessKey must be supplied together.'
+}
+if (-not [string]::IsNullOrWhiteSpace($EnrollmentId)) {
+    if ($EnrollmentId -notmatch '^[0-9a-fA-F]{32}$') {
+        throw "EnrollmentId is not a 32-hex enrollment id: $EnrollmentId"
+    }
+    if ($ClientAccessKey.Length -gt 256 -or
+        $ClientAccessKey -notmatch '^[A-Za-z0-9._-]{8,}$') {
+        throw 'ClientAccessKey is not a safe token (base64url shape expected).'
+    }
+}
+
 function Get-CharacterProfiles() {
     $files = @()
     $localCharacters = Join-Path $env:USERPROFILE 'AppData\LocalLow\IronGate\Valheim\characters'
@@ -287,7 +312,10 @@ function Stop-Valheim([bool] $FailIfNotStopped = $true) {
 }
 
 function Enable-LabSessionConfig() {
-    if (-not $EnableLabSession -or $script:LabConfigChanged) { return $null }
+    $hasEnrollment = -not [string]::IsNullOrWhiteSpace($EnrollmentId)
+    if ((-not $EnableLabSession -and -not $hasEnrollment) -or $script:LabConfigChanged) {
+        return $null
+    }
     if (-not (Test-Path -LiteralPath $configRoot -PathType Container)) {
         throw "Valheim config directory is missing: $configRoot"
     }
@@ -295,15 +323,26 @@ function Enable-LabSessionConfig() {
     if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
         throw "ComfyNetworkSense config is missing: $configPath"
     }
+    $settings = [ordered]@{}
+    if ($EnableLabSession) {
+        $settings['lumberjacksGameSessionEnabled'] = 'true'
+        $settings['lumberjacksMotionEnabled'] = 'true'
+    }
+    if ($hasEnrollment) {
+        $settings['lumberjacksEnrollmentId'] = $EnrollmentId
+        $settings['lumberjacksClientAccessKey'] = $ClientAccessKey
+        $settings['zdoAuthoritativeConsumerEnabled'] = 'true'
+    }
     $originalBytes = [IO.File]::ReadAllBytes($configPath)
     $content = [Text.Encoding]::UTF8.GetString($originalBytes)
     $updated = $content
-    foreach ($setting in @('lumberjacksGameSessionEnabled', 'lumberjacksMotionEnabled')) {
-        $pattern = '(?m)^(' + [regex]::Escape($setting) + '\s*=\s*)\S+\s*$'
+    foreach ($setting in $settings.Keys) {
+        $pattern = '(?m)^(' + [regex]::Escape($setting) + '\s*=\s*)\S*\s*$'
         if (-not [regex]::IsMatch($updated, $pattern)) {
             throw "Lab session setting is missing from config: $setting"
         }
-        $updated = [regex]::Replace($updated, $pattern, '${1}true')
+        $replacement = '${1}' + $settings[$setting].Replace('$', '$$')
+        $updated = [regex]::Replace($updated, $pattern, $replacement)
     }
     $script:LabConfigBackup = Join-Path $script:ActiveRunDirectory 'config-before-lab-session.cfg'
     [IO.File]::WriteAllBytes($script:LabConfigBackup, $originalBytes)
@@ -312,7 +351,9 @@ function Enable-LabSessionConfig() {
     return [ordered]@{
         path = $configPath
         backup = $script:LabConfigBackup
-        enabled_settings = @('lumberjacksGameSessionEnabled', 'lumberjacksMotionEnabled')
+        # Setting NAMES only — the access key must never reach a receipt.
+        enabled_settings = @($settings.Keys)
+        enrollment_lane = $hasEnrollment
         before_sha256 = (Get-FileHash -LiteralPath $script:LabConfigBackup -Algorithm SHA256).Hash.ToLowerInvariant()
         active_sha256 = (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash.ToLowerInvariant()
     }
@@ -969,6 +1010,8 @@ function Invoke-PendingRun() {
         Character = [string]$pending.character
         Server = [string]$pending.server
         GatewayUrl = [string]$pending.gateway_url
+        EnrollmentId = [string]$pending.enrollment_id
+        ClientAccessKey = [string]$pending.client_access_key
         RunId = [string]$pending.run_id
         ValheimRoot = [string]$pending.valheim_root
         SteamExe = [string]$pending.steam_exe
@@ -1055,6 +1098,8 @@ function Queue-InteractiveSmoke() {
         character = $Character
         server = $Server
         gateway_url = $GatewayUrl
+        enrollment_id = $EnrollmentId
+        client_access_key = $ClientAccessKey
         run_id = $RunId
         valheim_root = $ValheimRoot
         steam_exe = $SteamExe

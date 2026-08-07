@@ -364,7 +364,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-07T03:32:36.262Z</span>
+        <span>Updated 2026-08-07T07:09:44.536Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1014,7 +1014,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260807033236-qb-1-re-scoped-and-executed-adr-0018-decides-the">
+        <div class="journal"><article class="journal-entry" id="note-20260807070944-terrain-only-regression-plan-phases-0-3-diagnosi">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-07T07:09:44.536Z">2026-08-07T07:09:44.536Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M7</span>
+      </div>
+      <h3>Terrain-only regression plan phases 0-3: diagnosis confirmed against the 08-05 retro, recovery-path admission tests, enrollment-lane harness params, WAL reset + mode-coherence tooling</h3>
+      <p><strong>Impact:</strong> The 08-05 outage class now has receipts (Phase 0 census incl. the surprise at-rest client credentials), pinned admission semantics (409-by-design + late-attach flip, 2 new tests, 244/244 green), a client harness that can ride the enrollment-consumer lane (-EnrollmentId/-ClientAccessKey, byte-exact restore), a host-path-aware ZDO queue reset script rehearsed locally, and a read-only mode-coherence preflight that fails loud on the L-2026-08-05-4 three-place divergence (verified: 4 real mismatches caught today).</p>
+      <details><summary>Verification (1)</summary><ul><li>Game.Gateway.Tests 244/244 in sdk:9.0 container; all four scripts parse clean under PS 5.1; Reset-LumberjacksZdoQueue -Target local archived the 5.3MB dev journal with gateway stopped; Test-CutoverModeCoherence exit 1 on lumberjacks-primary (4 named mismatches) and exit 0 on native</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260807033236-qb-1-re-scoped-and-executed-adr-0018-decides-the">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
