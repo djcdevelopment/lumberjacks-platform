@@ -22,7 +22,8 @@ window (`F6`):
 `lab_setup` (typed into Valheim's own console, `F5`) raises a practice gallery —
 eight rune monuments, a station under each, an armoury, ~620 pieces — and writes
 you a starter quest file. `lab_reload` re-reads your quest files without a restart
-and tells you what changed.
+and tells you what changed. `lab_target` puts a fresh practice target in front of
+you, so testing a quest twice never means going to look for a second one.
 
 The web version of the spellbook is [`/questlab`](https://am4.tail8e749c.ts.net/questlab).
 
@@ -65,8 +66,12 @@ The starter file holds two quests that disagree with each other on purpose:
 
 | | |
 | --- | --- |
-| `neck_romancer` — `kill` / `Neck` | **armed.** Kill a Neck and it fires. |
+| `first_blood` — `kill` / `Greyling` | **armed.** Kill the Greyling under the combat monument. |
 | `punchwood` — `hit` / `tree_or_bush` | **not armed**, and nothing errors. |
+
+Killed it already? `lab_target` puts a fresh one in front of you, and `lab_target <school>` does
+the same for any of the eight. You never have to go hunting for the thing your quest is about —
+that is the entire reason the gallery exists.
 
 That second one is the whole lesson. All eight schools are *hooked* — the lab can
 show you every one of them. But `QuestTriggerEvaluator` matches `kill` triggers

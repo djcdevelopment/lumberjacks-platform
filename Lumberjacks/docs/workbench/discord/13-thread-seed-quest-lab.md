@@ -14,6 +14,11 @@ answer to "can I build a quest on what I just did?"
 Then it lets you write one. `lab_setup` also leaves you a starter quest file. Edit it, type
 `lab_reload`, and the Quests tab tells you what changed and what will fire.
 
+And you never go hunting. The starter quest targets the Greyling standing under the combat
+monument, and `lab_target` puts a fresh one in front of you whenever you need another — for any
+of the eight schools. Testing a quest twice should not mean walking across the map to find a
+second thing to kill.
+
 Honest status: local-only, and there's one thing you should know before you spend an evening on
 it. All eight schools are **hooked** — the lab can show you every one of them. But exactly one of
 them can currently have a quest **bound** to it: a creature kill. A quest with a `hit` trigger

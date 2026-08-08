@@ -584,7 +584,7 @@
       "status_detail": "A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. All 8 rune schools are hooked, and `lab_setup` also writes you a starter quest file you can edit and reload without restarting. Worth knowing before you start: only a creature kill can currently fire a quest, so a quest built on anything else parses cleanly and never fires. The lab exists to make that visible rather than let you find it the hard way.",
       "what_it_does": "Draws an interactive console over the screen and hooks 28 game seams across all 8 schools, so you can see precisely what the game does when you act — and, on every row, whether a quest could actually be bound to it. Then you write a quest against it: edit a JSON file, run `lab_reload`, and watch it fire or be told plainly why it cannot.",
       "who_its_for": "Creators and leaders who want to learn how to write custom quests without guessing.",
-      "time_to_first_result": "10 minutes. Download the zip, drop the DLL in your BepInEx/plugins folder, launch a private world, and run `lab_setup` in the F5 console.",
+      "time_to_first_result": "10 minutes. Download the zip, drop the DLL in your BepInEx/plugins folder, launch a private world, and run `lab_setup` in the F5 console. It builds you a practice ground and writes a starter quest aimed at something standing in it, so you are never hunting for the thing your quest is about — `lab_target` puts a fresh one in front of you whenever you need another.",
       "requires": [
         "A private Valheim world",
         "BepInEx installed on your client"
@@ -592,9 +592,9 @@
       "access": {
         "kind": "site-download",
         "href": "/workbench/downloads/quest-lab",
-        "sha256": "3add1dbce2343ec2cdf03b275d5dfc34491cefa01d86de83881f4e0ac364831a",
-        "size_bytes": 73387,
-        "published_at": "2026-08-08T05:22:00Z"
+        "sha256": "b39de9a6f83572c03b40762d6753a16e1c76aaa75536fdf14d1c6034ac25b31a",
+        "size_bytes": 74361,
+        "published_at": "2026-08-08T05:40:00Z"
       },
       "source": {
         "kind": "public-repo",
