@@ -581,7 +581,7 @@
       "name": "Quest Lab Turnkey Package",
       "one_liner": "An arcane tome in-game that teaches you exactly what quests are possible, letting you practice writing them before trying them out for real.",
       "status": "local-only",
-      "status_detail": "A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. All 8 rune schools are hooked, and `lab_setup` also writes you a starter quest file you can edit and reload without restarting. Worth knowing before you start: only a creature kill can currently fire a quest, so a quest built on anything else parses cleanly and never fires. The lab exists to make that visible rather than let you find it the hard way.",
+      "status_detail": "A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. All 8 rune schools are hooked, and `lab_setup` also writes you a starter quest file you can edit and reload without restarting. Worth knowing before you start: only a creature kill can currently fire a quest, so a quest built on anything else parses cleanly and never fires. The lab exists to make that visible rather than let you find it the hard way. Verified in a live session on 2026-08-08: every combat seam fired in one fight and the seeded quest completed on the kill. Six of the eight schools are patched but have never been witnessed firing by anyone — being the first is one of the first tasks below.",
       "what_it_does": "Draws an interactive console over the screen and hooks 28 game seams across all 8 schools, so you can see precisely what the game does when you act — and, on every row, whether a quest could actually be bound to it. Then you write a quest against it: edit a JSON file, run `lab_reload`, and watch it fire or be told plainly why it cannot.",
       "who_its_for": "Creators and leaders who want to learn how to write custom quests without guessing.",
       "time_to_first_result": "10 minutes. Download the zip, drop the DLL in your BepInEx/plugins folder, launch a private world, and run `lab_setup` in the F5 console. It builds you a practice ground and writes a starter quest aimed at something standing in it, so you are never hunting for the thing your quest is about — `lab_target` puts a fresh one in front of you whenever you need another.",
@@ -592,9 +592,9 @@
       "access": {
         "kind": "site-download",
         "href": "/workbench/downloads/quest-lab",
-        "sha256": "cf77d9f6a42eeef2898b37c843f94eaa1ac028bc8941629d745f2a784376cde3",
-        "size_bytes": 74523,
-        "published_at": "2026-08-08T05:50:00Z"
+        "sha256": "d49a20dbf3408eaf64edd281c550b457839b18e076c99ac2b546a3aa2d748b9e",
+        "size_bytes": 74949,
+        "published_at": "2026-08-08T06:05:00Z"
       },
       "source": {
         "kind": "public-repo",

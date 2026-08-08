@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-08T05:38:31.096Z</span>
+        <span>Updated 2026-08-08T05:48:58.480Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260808053831-lab-setup-no-longer-raises-a-second-gallery-thro">
+        <div class="journal"><article class="journal-entry" id="note-20260808054858-combat-and-the-quest-lane-verified-in-a-live-val">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-08T05:48:58.480Z">2026-08-08T05:48:58.480Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>A4</span>
+      </div>
+      <h3>Combat and the quest lane verified in a live Valheim session; the run found a bug in the lab&#39;s own why-didnt-it-fire line</h3>
+      <p><strong>Impact:</strong> First in-game run of the quest lane. All four combat seams fired in one fight (OnDeath, Damage, RPC_Damage, Stagger), so combat joins harvest as witnessed. Startup logged &#39;2 quests loaded (1 armed)&#39; and the seeded quest completed twice on Greyling kills, with the Quests tab reporting fired-2-times and a live cooldown. The creature-naming fix showed correct: console printed $enemy_greyling with no prefab name beside it, because the token already contains Greyling. FOUND AND FIXED: the last-kill diagnostic read &#39;matched nothing&#39; for a kill that matched fine but was on cooldown -- OnCreatureKilled returns empty for both cases -- which sends a creator to edit a target that was never wrong, the exact wrong-place-to-look failure the line exists to prevent. It now names the quest and the seconds remaining, deciding would-this-have-matched by dry-firing the real matcher.</p>
+      <details><summary>Verification (4)</summary><ul><li>BepInEx log: &#39;27/27 seams hooked, 2 quests loaded (1 armed)&#39; then &#39;quest fired: First Blood&#39; twice; no errors or warnings from ComfyQuestLab</li><li>Quests tab screenshot: 2 loaded / 1 armed, First Blood armed with fired 2 times and re-arms in 22s, Punchwood dimmed carrying the verb explanation</li><li>ComfyNetworkSense independently completed greyling_cull off the same kill from its own quest-view.json -- two mods, one linked contract, same verdict</li><li>243 tests pass; DLL rebuilt and installed to the operator&#39;s plugins folder, hash-verified</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260808053831-lab-setup-no-longer-raises-a-second-gallery-thro">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
