@@ -8,12 +8,12 @@ quest could actually fire on it. Then lets you write one and watch it fire.
 A client-only BepInEx plugin, `network/mod/ComfyQuestLab`. Three surfaces, one
 window (`F6`):
 
-1. **What just happened** — a live console of what the game just did, one row per
-   event, each ending in the honest verdict: a stable bindable event name, or
-   *diagnostic only — never bindable*. That boundary is the reason the tool exists.
-2. **Spellbook** — a page per rune school: what it covers, something to go and try,
-   and the trap. Eight schools, and the same rune is the console's filter, so
-   learning the book teaches the console for free.
+1. **What just happened** — a searchable, pausable event grid, each row ending in
+   the honest verdict: a stable bindable event name, or *diagnostic only — never
+   bindable*. Hover any clipped cell for its full meaning in the bottom help bar.
+2. **Spellbook** — a page per rune school plus a compact action/verdict grid. It says
+   `BINDABLE`, `DIAGNOSTIC`, or `NOT IN BUILD` at a glance; exact Valheim method names
+   stay hidden until requested. The same rune filters the live console.
 3. **Quests** — a school-colored grid of your quest files: rune, quest, event/target,
    armed state, and fire count at a glance. Expand one row for its source, evaluator
    verdict, cooldown, and advice. The matcher input remains visible for missed triggers.
@@ -56,9 +56,10 @@ narrower than what is wired — see "What's rough".
 3. Launch a **private, single-player** world.
 4. Press `F5` (Valheim's console) and type `lab_setup`.
 5. Press `F6` (the lab's own panel). Different key — this is the usual first stumble.
-   The panel owns the mouse while open; use its `−` / `+` controls to persistently tune
-   the whole grid between 65% and 200% for windowed, 1080p, or 4K play.
-6. Punch a tree. Watch the row appear, and read its third line.
+   The panel owns the mouse while open; resize or move it once and the geometry is saved.
+   Use `−` / `+` to persistently tune the whole grid between 65% and 200%, or click the
+   percentage to return to 100%.
+6. Punch a tree. Read the event row and its colored **QUEST USE** verdict.
 7. Open the **Quests** tab. Edit
    `BepInEx/config/comfy-quest-lab/quests/starter.json`, then run `lab_reload`.
 
@@ -90,10 +91,10 @@ so outright.
 
 ## What's rough
 
-- **The exact r11 presentation cut still needs its final live pass.** An exact-r4 OMEN
+- **The exact r12 presentation cut still needs its final live pass.** An exact-r4 OMEN
   suite already witnessed 8/8 schools and completed 8/8 ordinary example quests with
-  zero same-action doubles. r11 changes the zoomable panel and compact physical course,
-  so the final release claim waits for those suites and Derek's visual choice on r11.
+  zero same-action doubles. r12 changes the zoomable panel and compact physical course,
+  so the final release claim waits for those suites and Derek's visual choice on r12.
 - **`QuestViewLoader.Parse` throws on the first bad quest in a file**, so a file with
   three problems reports one. The lab says so rather than implying you are done.
 - **The parser is regex-based, not a JSON validator.** A trailing comma can silently

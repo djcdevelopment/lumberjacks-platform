@@ -27,7 +27,7 @@ local/RPC or overload witnesses share an action identity so one action cannot do
 zero-cooldown quest. The starter's broad `hit` alias and ordinary `kill` trigger are both bindable.
 
 An exact-r4 OMEN pass witnessed all eight schools and completed all eight example quests with zero
-same-action doubles. The current r11 presentation/course cut still needs the same machine-readable
+same-action doubles. The current r12 presentation/course cut still needs the same machine-readable
 pass plus a final visual review; that is the honest remaining boundary.
 
 It runs entirely on your machine, sends nothing anywhere, does nothing at all on a dedicated
