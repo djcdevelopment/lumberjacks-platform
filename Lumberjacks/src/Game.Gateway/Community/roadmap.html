@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-08T02:09:21.207Z</span>
+        <span>Updated 2026-08-08T03:50:12.492Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260808020921-i5-is-back-but-the-two-client-test-is-still-bloc">
+        <div class="journal"><article class="journal-entry" id="note-20260808035012-reopen-c9-s-artifact-the-retained-motion-clip-sh">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-08T03:50:12.492Z">2026-08-08T03:50:12.492Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M4b</span>
+      </div>
+      <h3>Reopen C9&#39;s artifact: the retained motion clip shows no motion, so the plan&#39;s &#39;one operator verdict&#39; was never the real remaining work</h3>
+      <p><strong>Impact:</strong> The final-cutover plan recorded C9 as machine/artifact complete with only Derek&#39;s one-word smooth/rough/mixed verdict outstanding, and the remaining-cost table listed it as 1 operator verdict. That was wrong for six days. The retained side-by-side clip&#39;s own receipt records events 4 for the OMEN panel and events 5 for the i5 panel across two 20-second views -- near-static frames with a counter overlay rather than observable movement. Derek had already declined to call it on exactly that basis; the plan recorded the absence of a verdict as a pending reviewer action instead of an insufficient artifact, so every reader since has been told C9 was one word from done. Corrected the C9 execution-status row, the C9 acceptance and exit criteria, the 2026-08-02 checkpoint, the remaining-cost table, and the immediate-next-build paragraph. C9 is now blocked on producing an artifact that shows motion, or on a live two-client window, and the retained-boundary list no longer protects the artifact from being re-produced.</p>
+      <details><summary>Verification (1)</summary><ul><li>Read from the artifact&#39;s own receipt at fieldlab/runs/motion-clips/native-20260802-c9-motion6/c9-motion-quality-side-by-side.receipt.json, which reports panels.omen.events=4 duration=20.001s and panels.i5.events=5 duration=20.010s. No rerun performed and no machine claim altered: C9&#39;s machine evidence (zero holds, gaps, resyncs, native use or poison trips, and 0.895 s reliable-resync recovery from the injected 20-frame loss) stands unchanged. Only the artifact sufficiency claim and the derived remaining-work accounting were corrected. Acceptance criteria now require any replacement clip to state its per-panel motion event counts so this cannot recur silently.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/runs/motion-clips/native-20260802-c9-motion6/c9-motion-quality-side-by-side.receipt.json</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260808020921-i5-is-back-but-the-two-client-test-is-still-bloc">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

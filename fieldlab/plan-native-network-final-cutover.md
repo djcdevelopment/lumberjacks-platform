@@ -35,7 +35,7 @@ The motion/transpiling experiments remain on hold until the native-use gate is g
 | C6 | **Complete on AM4 (2026-07-30)** | `native-20260730-c6-eighth`: both physical clients applied numbered Lumberjacks motion to the real remote player in both directions while the selected native transform writer and position writes were suppressed. OMEN withheld sequences 600–619; i5 held without native fallback, applied the reliable resync, and queued its ACK. Both clients completed a fresh-process resume; i5 also proved binary-WebSocket fallback when its advertised UDP path was unreachable. |
 | C7 | **Complete on AM4 (2026-07-31)** | `native-20260731-c7-cold-final`: OMEN and i5 launched without `+connect`, authenticated only to Lumberjacks, constructed the logical server peer, reached the character scene twice, and recorded zero client native use with poison armed. `native-20260731-c7-negative-second` passed invalid-enrollment, unavailable-Gateway, wrong-release, and wrong-descriptor fail-closed cells. |
 | C8 | **Complete and runtime-reconfirmed on AM4 (2026-08-02)** | `native-20260731-c8-full44` + `full45` passed the full 49-action composition twice. `native-20260802-cutover-recovery5` repeated it on fresh GPU-rendered OMEN/i5 processes with the hash-identical candidate, 20/20 coverage, zero client/server native use or poison trips, clean save integrity, ownership contention, Gateway replay, and clean rejoin. The same window runtime-proved the session-scoped epoch across a real AM4 restart and rejected an old-session mutation. |
-| C9 | **Machine/artifact complete; subjective acceptance pending** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. The retained 2560×720 side-by-side clip covers both views; Derek's `smooth`/`rough`/`mixed` verdict remains open. |
+| C9 | **Machine complete; artifact INSUFFICIENT for the subjective verdict (2026-08-08)** | `native-20260802-c9-motion6`: both foreground-verified physical clients rendered the real remote player through 20 s motion legs in both role/direction combinations. Both ordinary observers completed with zero holds, gaps, resyncs, failures, native use, or poison trips; the injected 20-frame loss recovered by reliable resync in 0.895 s. **The retained clip cannot carry the verdict.** Its own receipt records `events 4` (OMEN) and `events 5` (i5) across the two 20 s panels — near-static views with a counter overlay, not observable motion. Derek declined to call it on that basis, and the entry below wrongly read as "one word outstanding" for six days. C9 now needs a live two-client window with real movement, or a re-shot clip that actually contains some. |
 | C10 | **Local functional gates accepted on AM4; P7 promotion and finalization remain** | `m7-c10a-20260802-r4` passed the 49-action aligned-release reducer; r6 closed `UseStamina`; r27/r28 accepted the selected saddle and repaired Karve; r34 accepted the actual-container transaction; and r36 accepted autonomous Lox authority. The r39 station review admits all 19 extractor-pinned station RPC names. Exact r41 now passes all 27 untagged mount/relevance checks after r39/r40 exposed and named its spawn, publisher, and native-owner-sweep defects. Both clients completed both directions and resume; server-owner publication, native sweep fencing, i5 leave/re-entry, native-zero, exact artifacts, and exact cleanup all passed. Other creature species remain explicit source breadth. P7 promotion, fallback deletion, and the post-deletion release remain. Earlier runs remain named falsifiers rather than claimed progress. |
 
 C0 also proved the unattended recovery edges needed by the later ladder: the harness
@@ -860,12 +860,19 @@ CRE-E0x material.
 - Produce one side-by-side clip rather than asking Derek to drive two clients. Derek
   reviews that retained clip once and answers `smooth`, `rough`, or `mixed`; this is
   not a live KVM gate and does not require a rerun.
+- **The clip only satisfies this if it contains observable motion.** The 2026-08-02
+  artifact did not, and the acceptance above has no check that would have caught it —
+  "produce one clip" was treated as done when a file existed. A motion clip whose panels
+  carry 4 and 5 motion events over 20 s is a file, not evidence. Any replacement must
+  state its per-panel event counts, and a reviewer must be able to see the remote player
+  move before a verdict is asked for.
 
 **Exit**
 
 - Movement correctness is verified by machine evidence, visible presentation has a
-  retained reviewable artifact, and Derek's one-word subjective verdict is recorded
-  with its actual reviewer.
+  retained artifact in which the remote player is actually seen moving, and Derek's
+  one-word subjective verdict is recorded with its actual reviewer. "Reviewable" means
+  a reviewer can reach a verdict from it — a file that exists is not the exit condition.
 
 **Cost:** 1–3 focused days.
 
@@ -880,9 +887,13 @@ CRE-E0x material.
 - The foreground-verified, 20.067 s side-by-side artifact is retained under
   `fieldlab/runs/motion-clips/native-20260802-c9-motion6/`; machine findings and artifact
   SHA-256 are recorded in `fieldlab/evidence/c9-motion-quality/README.md`.
-- The machine and artifact portions are closed; C9 itself remains open until Derek's
-  `smooth`/`rough`/`mixed` verdict is recorded. C10a engineering can proceed in parallel;
-  no Workbench/dashboard work is on this cutover path.
+- The machine portion is closed. **The artifact portion was wrongly recorded as closed and
+  is reopened 2026-08-08:** the retained clip's own receipt gives `events 4` / `events 5`
+  for the two 20 s panels, so there is nothing in it to judge. Derek declined to call it on
+  that basis at the time; the plan recorded "verdict outstanding" instead of "artifact
+  insufficient", which left six days of paperwork claiming C9 was one word from done.
+- C9 remains open on the artifact, not on the reviewer. C10a engineering can proceed in
+  parallel; no Workbench/dashboard work is on this cutover path.
 
 ### C10 — P7 promotion, fallback deletion, and final close
 
@@ -1468,23 +1479,28 @@ proof while the physical cell proves native peer enumeration and delivery to bot
 clients without pretending a third physical game client exists.
 C10b then has two bounded P7 reloads:
 paired-candidate promotion/reproof, followed by fallback deletion and the final
-post-deletion artifact/reproof. C9 still needs Derek's one-word retained-clip verdict.
+post-deletion artifact/reproof. C9 needs a motion artifact that actually shows motion
+before any verdict is possible — see the C9 row above.
 
 | Remaining unit | Count |
 | --- | ---: |
 | Untagged vehicle/mount plus third-recipient AoI/relevance generalization | 0 |
 | P7 candidate promotion and final no-fallback promotion | 2 reloads |
-| C9 subjective retained-clip verdict | 1 operator verdict |
+| C9 live two-client motion window, or a re-shot clip containing observable motion | 1 run |
+| C9 subjective verdict, blocked on the above | 1 operator verdict |
 
-C8, Wall 11, C9's machine/artifact run, P1 admission, release alignment, and r4's
-49-action physical reducer are retained boundaries and are not rerun by default. The
+C8, Wall 11, C9's machine run, P1 admission, release alignment, and r4's
+49-action physical reducer are retained boundaries and are not rerun by default.
+C9's *artifact* is explicitly NOT retained — it must be re-produced with observable
+motion, or replaced by a live window. The
 intended rhythm is: close one named boundary, run it for real, retain the receipt, update
 the landscape, then commit and replan.
 
 ## Immediate next build
 
-C0-C8 are complete; C9's machine/artifact run is retained with only the one-word
-subjective verdict open. C10a's admissions, release alignment, two classifications,
+C0-C8 are complete. C9's machine run is retained, but its artifact is reopened as of
+2026-08-08 — the retained clip shows no observable motion, so the subjective verdict is
+blocked on producing a usable artifact, not on the reviewer. C10a's admissions, release alignment, two classifications,
 and r6 `UseStamina` receipt remain retained. Exact r27 now closes the selected physical
 saddle canary in both rider directions with authoritative reclaim, epochs, attachment,
 stale fencing, and native-zero. The exact r27 ship rerun falsified a stale helm-user
