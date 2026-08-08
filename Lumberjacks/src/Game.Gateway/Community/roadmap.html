@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-08T05:48:58.480Z</span>
+        <span>Updated 2026-08-08T06:09:29.960Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260808054858-combat-and-the-quest-lane-verified-in-a-live-val">
+        <div class="journal"><article class="journal-entry" id="note-20260808060929-the-questlab-route-is-a-404-in-production-the-pu">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-08T06:09:29.960Z">2026-08-08T06:09:29.960Z</time>
+        <span class="pill note-kind">verification</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>The questlab route is a 404 in production, the publish lane is correctly blocked, and lj-workbench has no definition outside itself</h3>
+      <p><strong>Impact:</strong> Chasing the container env var for the tome mount turned up three things. (1) /questlab returns 404 on the public origin: the running image is lumberjacks-gateway:m31-workbench-20260729-r2, pinned since 2026-08-01, and predates the route entirely -- so publishing questlab.html to the mount fixes nothing, and the earlier claim that this needed only an env var and a container recreate was wrong. It needs a Gateway image cut and promote. (2) The catalog&#39;s nav has been linking to that 404 since the questlab nav entry shipped; adding it to NAV_ROUTES today caught it, and because verify-live is Gate 4 the publish script now fails closed rather than shipping a page that links to a 404. (3) docker inspect shows lj-workbench carries no com.docker.compose.* labels, and no compose file exists in baseline, lumberjacks or isolate -- it was started by a bare docker run, so the only definition of a live public container was the container itself. Full spec captured in the Publish-WorkbenchAssets.ps1 header.</p>
+      <details><summary>Verification (3)</summary><ul><li>curl against https://am4.tail8e749c.ts.net: questlab 404, workbench 200, health 200</li><li>workbench-verify-live --pre-publish: 69 checks, 1 failed -- the questlab route -- proving the NAV_ROUTES addition catches a real live defect rather than being decoration</li><li>docker inspect lj-workbench on homebase: no compose labels; image, entrypoint, ports, mount and all five env vars recorded in the script header</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260808054858-combat-and-the-quest-lane-verified-in-a-live-val">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
