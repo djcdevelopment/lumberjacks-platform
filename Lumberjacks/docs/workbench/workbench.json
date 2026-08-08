@@ -592,9 +592,9 @@
       "access": {
         "kind": "site-download",
         "href": "/workbench/downloads/quest-lab",
-        "sha256": "b39de9a6f83572c03b40762d6753a16e1c76aaa75536fdf14d1c6034ac25b31a",
-        "size_bytes": 74361,
-        "published_at": "2026-08-08T05:40:00Z"
+        "sha256": "cf77d9f6a42eeef2898b37c843f94eaa1ac028bc8941629d745f2a784376cde3",
+        "size_bytes": 74523,
+        "published_at": "2026-08-08T05:50:00Z"
       },
       "source": {
         "kind": "public-repo",
