@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-08T06:17:27.725Z</span>
+        <span>Updated 2026-08-08T06:26:52.904Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260808061727-gateway-image-m31-questlab-20260808-r1-cut-and-r">
+        <div class="journal"><article class="journal-entry" id="note-20260808062652-the-public-origin-gets-a-deploy-lane-in-isolate-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-08T06:26:52.904Z">2026-08-08T06:26:52.904Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>The public origin gets a deploy lane, in isolate where PD-8 says deployment tooling belongs</h3>
+      <p><strong>Impact:</strong> Promote-GatewayImage.ps1 cannot serve the host that actually serves the public origin: it targets P7&#39;s compose root, environment file and container name, and that VM has been terminated since 2026-07-25. isolate now carries tools/am4/Deploy-GatewayImage.ps1, matching Deploy-NetworkSense.ps1 beside it -- BatchMode ssh, hash the artifact before and after transit, fail closed on mismatch, prove readiness against the real thing, emit a JSON receipt. It recreates rather than restarts because lj-workbench was started by a bare docker run with no compose labels and no compose file anywhere, so every field of that definition is now a parameter defaulted to the captured production value. Rollback reads the previous image tag before removing anything and restores it if /health, /workbench and /questlab do not all answer 200; when /questlab is required it also proves X-QuestLab-Sha256 equals the mounted file&#39;s digest, so a pass means the mount is genuinely what is served. Two traps encoded: the Gateway reads a plain Urls key that beats ASPNETCORE_URLS and without it binds localhost inside the container while looking healthy, and Postgres errors on startup are normal for this container so readiness is proven over HTTP.</p>
+      <details><summary>Verification (3)</summary><ul><li>Dry run against the live host: reads lj-workbench&#39;s current image as the rollback target and prints the exact run command without touching anything</li><li>Parses clean under the PS 5.1 parser; pure ASCII and CRLF matching the sibling script, because an em dash in a double-quoted string is a parse error when 5.1 reads a BOM-less UTF-8 file as ANSI</li><li>Landed in isolate at 351aa58; baseline&#39;s stale pointer to Promote-GatewayImage.ps1 corrected in both START-HERE and the publish script</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260808061727-gateway-image-m31-questlab-20260808-r1-cut-and-r">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

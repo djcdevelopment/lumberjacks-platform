@@ -94,8 +94,11 @@ $dist = Join-Path $PSScriptRoot 'dist'
 #
 # !! /questlab IS A 404 IN PRODUCTION AS OF 2026-08-08, and publishing questlab.html to the
 # mount will NOT fix it. The running image predates the route entirely (see below), so the
-# mount has nothing reading it. This needs a Gateway image cut and promote --
-# infra/gcp/p7/scripts/New-GatewayReleaseCut.ps1 then Promote-GatewayImage.ps1 -- not a publish.
+# mount has nothing reading it. This needs a Gateway image cut and DEPLOY, not a publish:
+#   1. infra/gcp/p7/scripts/New-GatewayReleaseCut.ps1   (local build + release-identity gate)
+#   2. isolate: tools/am4/Deploy-GatewayImage.ps1        (ship to AM4, recreate, verify, roll back)
+# NOT Promote-GatewayImage.ps1 -- that one targets P7's compose root, environment file and
+# container name, none of which exist on AM4, and that VM has been terminated since 2026-07-25.
 # verify-live now checks /questlab and fails on it, which is why Gate 4 blocks this script today.
 # That is correct: the catalog's nav links to /questlab, so publishing would ship a live 404.
 $questlabPath = Join-Path $lumberjacks 'src\Game.Gateway\Community\questlab.html'
