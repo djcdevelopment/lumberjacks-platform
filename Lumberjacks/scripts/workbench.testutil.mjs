@@ -17,6 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const realScriptPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'workbench.mjs');
+const realAudiencesPath = path.resolve(path.dirname(realScriptPath), '..', '..', 'corpus', 'audiences.json');
 
 /// A fresh minimal catalog per call (mutating a shared object across tests would couple them).
 /// Every field exists to satisfy a specific validator; trim nothing without checking validate().
@@ -34,6 +35,8 @@ export function baseWorkbench() {
       rhythm: 'Replies land when the operator checks in.',
       forum_label: '#workbench forum',
       forum_href: 'https://discord.com/channels/1531911987074957442/1531926985314668635',
+      dispatches_label: 'Follow #dispatches',
+      dispatches_href: 'https://discord.com/channels/1531911987074957442/1535624779418181703',
       start_here_label: 'How this works — read me first',
       start_here_href: null,
       invite_label: 'Join the Discord',
@@ -79,6 +82,7 @@ export function baseWorkbench() {
     tools: [
       {
         id: 'sample-tool',
+        audiences: ['curious', 'developer', 'contributor'],
         name: 'Sample Tool',
         one_liner: 'Does exactly one thing, inside this test fixture.',
         status: 'live',
@@ -164,7 +168,9 @@ export function makeFixtureRepo({ workbench = baseWorkbench(), git: withGit = tr
   const linkedRoots = [];
   fs.mkdirSync(path.join(pkg, 'scripts'), { recursive: true });
   fs.mkdirSync(path.join(pkg, 'docs', 'workbench'), { recursive: true });
+  fs.mkdirSync(path.join(pkg, 'corpus'), { recursive: true });
   fs.copyFileSync(realScriptPath, path.join(pkg, 'scripts', 'workbench.mjs'));
+  fs.copyFileSync(realAudiencesPath, path.join(pkg, 'corpus', 'audiences.json'));
 
   const htmlRelative = 'src/Game.Gateway/Community/workbench.html';
 
@@ -234,6 +240,7 @@ export function makeFixtureRepo({ workbench = baseWorkbench(), git: withGit = tr
         'log', '-1', '--format=%H', '--',
         `${prefix}docs/workbench/workbench.json`,
         `${prefix}scripts/workbench.mjs`,
+        `${prefix}corpus/audiences.json`,
       ]).slice(0, 7);
     },
     dispose() {

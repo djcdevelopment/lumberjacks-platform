@@ -111,6 +111,21 @@
     .not-a-verdict > summary { cursor: pointer; color: var(--wood); font-weight: 700; outline: none; }
     .not-a-verdict > p { margin: 10px 0 0; }
 
+    /* Audience lenses: tailored tables of contents, never hidden content. */
+    .lens-jump { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; margin-bottom: 20px; }
+    .lens-jump a { padding: 7px 12px; border: 1px solid rgba(229, 178, 120, 0.28); border-radius: 999px; color: var(--wood); background: var(--wood-bg); font-family: var(--mono); font-size: 0.72rem; font-weight: 800; text-decoration: none; }
+    .lens-jump a:hover { border-color: var(--wood); color: #ffffff; }
+    .lens-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .lens { scroll-margin-top: 84px; display: flex; flex-direction: column; gap: 9px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; background: linear-gradient(165deg, rgba(22, 36, 44, 0.9), rgba(13, 20, 25, 0.96)); }
+    .lens:target { border-color: var(--wood); box-shadow: 0 0 0 3px var(--wood-bg); }
+    .lens-kicker { color: var(--wood); font-family: var(--mono); font-size: 0.7rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+    .lens h3 { color: #ffffff; font-size: 1.04rem; }
+    .lens p { margin: 0; color: var(--muted); font-size: 0.86rem; }
+    .lens-toc { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; margin-top: 3px; }
+    .lens-toc a { padding: 4px 8px; border-radius: 5px; background: rgba(56, 189, 248, 0.1); color: var(--blue); font-size: 0.75rem; text-decoration: none; }
+    .lens-more { margin-top: auto; padding-top: 5px; color: var(--wood); font-size: 0.78rem; font-weight: 700; }
+    .outside-lane { margin: 18px 0 0; padding: 13px 17px; border-left: 3px solid var(--violet); color: var(--muted); background: var(--violet-bg); border-radius: 0 9px 9px 0; }
+
     /* Tool Index Quick Bar */
     .tool-index { display: grid; gap: 7px; margin-bottom: 26px; }
     .index-row { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 84px); align-items: center; gap: 16px; padding: 11px 18px; border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid var(--line); border-radius: 11px; background: rgba(17, 27, 33, 0.75); backdrop-filter: blur(10px); color: var(--ink); text-decoration: none; transition: all 0.15s ease; }
@@ -248,6 +263,7 @@
     @media (max-width: 900px) {
       .section-head { grid-template-columns: 1fr; gap: 14px; }
       .tool-grid { grid-template-columns: 1fr; }
+      .lens-grid { grid-template-columns: 1fr; }
       .index-row { grid-template-columns: minmax(0, 150px) minmax(0, 1fr); row-gap: 6px; }
       .ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .ladder-step::after { display: none; }
@@ -310,16 +326,74 @@
         <p>This catalog is an invitation to run and own tools. It is not a judgment on anyone&#39;s past effort and it is not a verdict on anyone&#39;s burnout — volunteers already carried this community, and the work they did is why any of this exists. Nothing here is owed by anyone. A tool sitting unclaimed is a description of this catalog, never a mark against the people who came before.</p>
       </details>
       <div class="hero-actions">
-        <a class="hero-cta" href="#tools">Explore the 8 tools</a>
+        <a class="hero-cta" href="#audiences">Choose your view</a>
         <a class="hero-join" href="https://discord.gg/JCDaYQ68kN" target="_blank" rel="noreferrer">Join the Discord</a>
+        <a class="hero-join" href="https://discord.com/channels/1531911987074957442/1535624779418181703" target="_blank" rel="noreferrer">Follow #dispatches</a>
       </div>
       <p class="join-path">The path in: join → read <a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a> → post in a tool's thread. Those last two and the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a> are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span class="freshness">Preview rendered 2026-08-08 11:59 UTC with uncommitted changes</span>
+        <span class="freshness">Preview rendered 2026-08-08 12:28 UTC with uncommitted changes</span>
         <span>2 live · 1 dev-only · 5 local-only</span>
         <a href="#tools">14 first tasks open</a>
       </div>
     </div>
+
+    <section id="audiences">
+      <div class="wrap">
+        <div class="section-head"><div class="section-number">00 · YOUR VIEW</div><div><h2>Start with the question you brought.</h2><p class="section-copy">Each lens is a table of contents over the same underlying catalog. Pick more than one, or ignore them and explore everything; no record is hidden because it sits outside a chosen lane.</p></div></div>
+        <nav class="lens-jump" aria-label="Choose an audience lens"><a href="#lens-curious">Curious</a><a href="#lens-player-tester">Player / tester</a><a href="#lens-creator">Creator / GM</a><a href="#lens-moderator">Mod / community</a><a href="#lens-admin">Admin / operator</a><a href="#lens-modder">Modder</a><a href="#lens-developer">Developer</a><a href="#lens-contributor">Contributor</a></nav>
+    <div class="lens-grid"><article class="lens" id="lens-curious">
+      <div class="lens-kicker">Curious</div>
+      <h3>What is this, what is real today, and why might I care?</h3>
+      <p>Outcomes and honest boundaries first; machinery only when you ask for it.</p>
+      <nav class="lens-toc" aria-label="Just curious tools"><a href="#steward-view">ComfyStewardView</a><a href="#community-telemetry">Live Community Telemetry</a><a href="#mcp-mod-channel">MCP Mod Channel</a><a href="#camera-gallery">World Photography → Gallery Pipeline</a><a href="#quest-lab">Quest Lab Turnkey Package</a></nav>
+      <a class="lens-more" href="https://djcdevelopment.github.io/baseline/for/curious/">Stories, updates, and everything in this view →</a>
+    </article><article class="lens" id="lens-player-tester">
+      <div class="lens-kicker">Player / tester</div>
+      <h3>What can I try, and where does useful feedback go?</h3>
+      <p>Runnable experiences, access requirements, and a short path to reporting what happened.</p>
+      <nav class="lens-toc" aria-label="Player or tester tools"><a href="#quest-picker">Quest Picker + Absorption Engine</a><a href="#steam-join">Steam Self-Service Join</a><a href="#camera-gallery">World Photography → Gallery Pipeline</a><a href="#quest-lab">Quest Lab Turnkey Package</a></nav>
+      <a class="lens-more" href="https://djcdevelopment.github.io/baseline/for/player-tester/">Stories, updates, and everything in this view →</a>
+    </article><article class="lens" id="lens-creator">
+      <div class="lens-kicker">Creator / GM</div>
+      <h3>How can I make quests, stories, places, and player experiences?</h3>
+      <p>Creation workflows and visible results before implementation detail.</p>
+      <nav class="lens-toc" aria-label="Creator or GM tools"><a href="#quest-picker">Quest Picker + Absorption Engine</a><a href="#steward-view">ComfyStewardView</a><a href="#camera-gallery">World Photography → Gallery Pipeline</a><a href="#quest-submission-bridge">Quest Submission → Review Bridge</a><a href="#quest-lab">Quest Lab Turnkey Package</a></nav>
+      <a class="lens-more" href="https://djcdevelopment.github.io/baseline/for/creator/">Stories, updates, and everything in this view →</a>
+    </article><article class="lens" id="lens-moderator">
+      <div class="lens-kicker">Mod / community</div>
+      <h3>How does this reduce review work while keeping people in control?</h3>
+      <p>Queues, evidence, consent, privacy, and human decision points.</p>
+      <nav class="lens-toc" aria-label="Moderator or community lead tools"><a href="#quest-picker">Quest Picker + Absorption Engine</a><a href="#steward-view">ComfyStewardView</a><a href="#community-telemetry">Live Community Telemetry</a><a href="#quest-submission-bridge">Quest Submission → Review Bridge</a></nav>
+      <a class="lens-more" href="https://djcdevelopment.github.io/baseline/for/moderator/">Stories, updates, and everything in this view →</a>
+    </article><article class="lens" id="lens-admin">
+      <div class="lens-kicker">Admin / operator</div>
+      <h3>What runs, what does it cost, and how do I operate or recover it?</h3>
+      <p>Dependencies, operational truth, privacy boundaries, failure modes, and recovery paths.</p>
+      <nav class="lens-toc" aria-label="Admin or server operator tools"><a href="#quest-picker">Quest Picker + Absorption Engine</a><a href="#steward-view">ComfyStewardView</a><a href="#community-telemetry">Live Community Telemetry</a><a href="#steam-join">Steam Self-Service Join</a><a href="#camera-gallery">World Photography → Gallery Pipeline</a><a href="#quest-submission-bridge">Quest Submission → Review Bridge</a></nav>
+      <a class="lens-more" href="https://djcdevelopment.github.io/baseline/for/admin/">Stories, updates, and everything in this view →</a>
+    </article><article class="lens" id="lens-modder">
+      <div class="lens-kicker">Modder</div>
+      <h3>Where does this touch Valheim, BepInEx, Harmony, and game state?</h3>
+      <p>Game seams, event contracts, packaging boundaries, and reproducible test surfaces.</p>
+      <nav class="lens-toc" aria-label="Valheim modder tools"><a href="#mcp-mod-channel">MCP Mod Channel</a><a href="#camera-gallery">World Photography → Gallery Pipeline</a><a href="#quest-submission-bridge">Quest Submission → Review Bridge</a><a href="#quest-lab">Quest Lab Turnkey Package</a></nav>
+      <a class="lens-more" href="https://djcdevelopment.github.io/baseline/for/modder/">Stories, updates, and everything in this view →</a>
+    </article><article class="lens" id="lens-developer">
+      <div class="lens-kicker">Developer</div>
+      <h3>What are the contracts, APIs, source paths, and verification seams?</h3>
+      <p>Architecture and evidence with direct routes into code and deterministic artifacts.</p>
+      <nav class="lens-toc" aria-label="Developer or integrator tools"><a href="#quest-picker">Quest Picker + Absorption Engine</a><a href="#community-telemetry">Live Community Telemetry</a><a href="#steam-join">Steam Self-Service Join</a><a href="#mcp-mod-channel">MCP Mod Channel</a><a href="#camera-gallery">World Photography → Gallery Pipeline</a><a href="#quest-submission-bridge">Quest Submission → Review Bridge</a><a href="#quest-lab">Quest Lab Turnkey Package</a></nav>
+      <a class="lens-more" href="https://djcdevelopment.github.io/baseline/for/developer/">Stories, updates, and everything in this view →</a>
+    </article><article class="lens" id="lens-contributor">
+      <div class="lens-kicker">Contributor</div>
+      <h3>What is a useful first contribution, and what responsibility follows it?</h3>
+      <p>Bounded first tasks, ownership state, and explicit completion destinations.</p>
+      <nav class="lens-toc" aria-label="Contributor or future owner tools"><a href="#quest-picker">Quest Picker + Absorption Engine</a><a href="#steward-view">ComfyStewardView</a><a href="#community-telemetry">Live Community Telemetry</a><a href="#steam-join">Steam Self-Service Join</a><a href="#mcp-mod-channel">MCP Mod Channel</a><a href="#camera-gallery">World Photography → Gallery Pipeline</a><a href="#quest-submission-bridge">Quest Submission → Review Bridge</a><a href="#quest-lab">Quest Lab Turnkey Package</a></nav>
+      <a class="lens-more" href="https://djcdevelopment.github.io/baseline/for/contributor/">Stories, updates, and everything in this view →</a>
+    </article></div>
+    <p class="outside-lane">These are starting points, not access controls. <a href="#tools">Cross the lane and inspect all 8 tools.</a></p>
+      </div>
+    </section>
 
     <section id="tools">
       <div class="wrap">
@@ -484,7 +558,7 @@
     <details class="tool-detail">
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
-        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">ComfyStewardView repository and README</a></div>
+        <div class="tool-links"><strong>More docs</strong><a href="/steward/whitepaper.html">The Steward workflow whitepaper</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">ComfyStewardView repository and README</a></div>
         <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/ComfyStewardView" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/ComfyStewardView</a></div>
         <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 does not open commit access here — the card above says what it grants.</p>
         <p class="source-note">A standalone public repository, separate from baseline. Clone it and build.</p>

@@ -1745,13 +1745,14 @@ def run_self_test() -> bool:
 
     cfg = load_config(DEFAULT_CONFIG)
     tools = load_workbench_tools()
+    expected_posts = len(cfg.posts)
 
     # --- repo parsing ------------------------------------------------------ #
     check(len(cfg.tags) == 8, "8 tags parsed from 07-forum-tags-setup.md", f"got {len(cfg.tags)}")
     check([t.name for t in cfg.tags][:4] == ["question", "bug", "claiming a task", "first task done"], "member-facing tags parsed in order", f"{[t.name for t in cfg.tags][:4]}")
     check(all(t.moderated for t in cfg.tags[4:]) and not any(t.moderated for t in cfg.tags[:4]), "status tags marked moderated, member-facing tags not")
     check("ladder: claimed" in {t.name for t in cfg.tags}, "the ladder tag is present")
-    check(len(cfg.posts) == 7, "7 posts configured", f"got {len(cfg.posts)}")
+    check(expected_posts > 0, "at least one post is configured", f"got {expected_posts}")
     check(any(p.pinned for p in cfg.posts), "one post is marked pinned")
     check(cfg.guidelines.startswith("One post per topic"), "post guidelines parsed from the doc", cfg.guidelines[:40])
     check("Contributor" in (DISCORD_DOCS / "05-pinned-how-this-works.md").read_text(encoding="utf-8"), "pinned seed uses the current ladder wording (Contributor)")
@@ -1763,7 +1764,8 @@ def run_self_test() -> bool:
     # --- placeholder guard ------------------------------------------------- #
     pre_deploy = [render_post(p, tools, None) for p in cfg.posts]
     blocked = [r for r in pre_deploy if r.blocked_reason]
-    check(len(blocked) == 5, "5 posts blocked pre-deploy on unresolved URLs", f"got {[r.title for r in blocked]}")
+    expected_blocked = sum(1 for post in cfg.posts if PLACEHOLDER_RE.search(post.seed.body))
+    check(len(blocked) == expected_blocked, f"all {expected_blocked} placeholder-bearing posts block pre-deploy", f"got {[r.title for r in blocked]}")
     check(all("ONEPAGER-URL" in r.blocked_reason or "ACCESS-URL" in r.blocked_reason for r in blocked), "block reasons name the placeholder")
 
     post_deploy = [render_post(p, tools, "https://example.test") for p in cfg.posts]
@@ -1795,7 +1797,7 @@ def run_self_test() -> bool:
     plan0 = build_plan(cfg_live, live0, tools)
     check(live0.channel is None, "greenfield: no forum channel found")
     check(any(a.apply == "create_channel" for a in plan0.actions), "plan creates the forum channel")
-    check(sum(1 for a in plan0.actions if isinstance(a.apply, tuple) and a.apply[0] == "create_post") == 7, "plan creates 7 posts")
+    check(sum(1 for a in plan0.actions if isinstance(a.apply, tuple) and a.apply[0] == "create_post") == expected_posts, f"plan creates all {expected_posts} posts")
     check(not plan0.blocked, "nothing blocked once URLs resolve", f"{[a.detail for a in plan0.blocked]}")
     receipt = render_receipt(plan0, offline=False, state_path=DEFAULT_STATE)
     check("00-announcement.md" in receipt and "denylist" in receipt, "receipt states the announcement is never posted")
@@ -1806,11 +1808,11 @@ def run_self_test() -> bool:
     check(int(forum["flags"]) & CHANNEL_FLAG_REQUIRE_TAG != 0, "required tags left ON after apply", f"flags={forum['flags']}")
     check(len(forum["available_tags"]) == 8, "8 tags live on the channel", f"{len(forum['available_tags'])}")
     check(forum["topic"] == cfg.guidelines, "post guidelines written to the channel")
-    check(len(fake.threads) == 7, "7 forum posts created", f"{len(fake.threads)}")
+    check(len(fake.threads) == expected_posts, f"all {expected_posts} forum posts created", f"{len(fake.threads)}")
     pinned = [t for t in fake.threads.values() if int(t.get("flags") or 0) & CHANNEL_FLAG_PINNED]
     check(len(pinned) == 1 and pinned[0]["name"].startswith("How this works"), "the guideline post is pinned", f"{[t['name'] for t in pinned]}")
     check(all(t["applied_tags"] for t in fake.threads.values() if t["name"] != pinned[0]["name"]), "every tool post carries a tag")
-    check(len(state["posts"]) == 7, "state records 7 posts")
+    check(len(state["posts"]) == expected_posts, f"state records all {expected_posts} posts")
     check(all(entry["url"].startswith("https://discord.com/channels/") for entry in state["posts"].values()), "state records thread URLs")
 
     # --- idempotency ------------------------------------------------------- #

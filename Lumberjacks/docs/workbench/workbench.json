@@ -13,6 +13,8 @@
     "invite_label": "Join the Discord",
     "forum_href": "https://discord.com/channels/1531911987074957442/1531926985314668635",
     "forum_label": "#workbench forum",
+    "dispatches_href": "https://discord.com/channels/1531911987074957442/1535624779418181703",
+    "dispatches_label": "Follow #dispatches",
     "start_here_href": "https://discord.com/channels/1531911987074957442/1531926993442967654",
     "start_here_label": "How this works — read me first"
   },
@@ -56,6 +58,14 @@
   "tools": [
     {
       "id": "quest-picker",
+      "audiences": [
+        "creator",
+        "moderator",
+        "admin",
+        "player-tester",
+        "developer",
+        "contributor"
+      ],
       "name": "Quest Picker + Absorption Engine",
       "one_liner": "Turns a guild's real quest tracker into a single offline page where a player checks the quests they care about — and the game mod reads the result.",
       "status": "live",
@@ -132,6 +142,13 @@
     },
     {
       "id": "steward-view",
+      "audiences": [
+        "admin",
+        "moderator",
+        "creator",
+        "curious",
+        "contributor"
+      ],
       "name": "ComfyStewardView",
       "one_liner": "Reads a Valheim world file and answers the questions that stop being walkable once a server gets big: where is everyone building, and who owns this.",
       "status": "live",
@@ -160,6 +177,10 @@
         {
           "label": "The live hosted sample — frozen Comfy Era16 snapshot",
           "href": "/steward/"
+        },
+        {
+          "label": "The Steward workflow whitepaper",
+          "href": "/steward/whitepaper.html"
         },
         {
           "label": "ComfyStewardView repository and README",
@@ -204,6 +225,13 @@
     },
     {
       "id": "community-telemetry",
+      "audiences": [
+        "admin",
+        "developer",
+        "curious",
+        "moderator",
+        "contributor"
+      ],
       "name": "Live Community Telemetry",
       "one_liner": "An aggregates-only telemetry API with privacy tests that fail if a player ID, name, or position ever shows up — plus the whole stack, runnable on your machine.",
       "status": "local-only",
@@ -281,6 +309,12 @@
     },
     {
       "id": "steam-join",
+      "audiences": [
+        "player-tester",
+        "admin",
+        "developer",
+        "contributor"
+      ],
       "name": "Steam Self-Service Join",
       "one_liner": "An invite link, a Steam sign-in, and a mod-pack zip with your credentials already in it — no config file to hand-edit.",
       "status": "local-only",
@@ -357,6 +391,12 @@
     },
     {
       "id": "mcp-mod-channel",
+      "audiences": [
+        "modder",
+        "developer",
+        "curious",
+        "contributor"
+      ],
       "name": "MCP Mod Channel",
       "one_liner": "A localhost MCP server that talks to the running game mod: apply a config profile, run a bounded lab test, read back what happened.",
       "status": "dev-only",
@@ -419,6 +459,15 @@
     },
     {
       "id": "camera-gallery",
+      "audiences": [
+        "creator",
+        "curious",
+        "player-tester",
+        "admin",
+        "modder",
+        "developer",
+        "contributor"
+      ],
       "name": "World Photography → Gallery Pipeline",
       "one_liner": "Find every structure in a world save, place a camera at each one from its own geometry, and photograph them unattended into a ranked gallery.",
       "status": "local-only",
@@ -500,6 +549,14 @@
     },
     {
       "id": "quest-submission-bridge",
+      "audiences": [
+        "creator",
+        "moderator",
+        "admin",
+        "modder",
+        "developer",
+        "contributor"
+      ],
       "name": "Quest Submission → Review Bridge",
       "one_liner": "The back half of quest capture: package what a player did in-game, land it in a review inbox, and turn it into a record a GM can read.",
       "status": "local-only",
@@ -578,6 +635,14 @@
     },
     {
       "id": "quest-lab",
+      "audiences": [
+        "creator",
+        "modder",
+        "developer",
+        "curious",
+        "player-tester",
+        "contributor"
+      ],
       "name": "Quest Lab Turnkey Package",
       "one_liner": "An arcane tome in-game that teaches you exactly what quests are possible, letting you practice writing them before trying them out for real.",
       "status": "local-only",

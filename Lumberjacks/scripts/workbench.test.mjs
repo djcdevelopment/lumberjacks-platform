@@ -160,6 +160,26 @@ test('check refuses to vouch for provenance without a git checkout', (t) => {
   assert.match(checked.stderr, /check requires a git checkout/);
 });
 
+test('tool audiences must exist in the shared vocabulary', () => {
+  const workbench = baseWorkbench();
+  workbench.tools[0].audiences.push('future-role-that-does-not-exist');
+  assert.throws(
+    () => validate(workbench),
+    /audiences contains unknown shared audience IDs: future-role-that-does-not-exist/,
+  );
+});
+
+test('the rendered audience lens is a table of contents, while all tools remain visible', () => {
+  const workbench = baseWorkbench();
+  validate(workbench);
+  const html = render(workbench);
+  assert.match(html, /id="audiences"/);
+  assert.match(html, /id="lens-curious"/);
+  assert.match(html, /href="#sample-tool">Sample Tool<\/a>/);
+  assert.match(html, /Cross the lane and inspect all 1 tools/);
+  assert.match(html, /<article class="tool live" id="sample-tool">/);
+});
+
 // ---------------------------------------------------------------------------
 // Task completion and actionability (trust review §1–§2)
 // ---------------------------------------------------------------------------

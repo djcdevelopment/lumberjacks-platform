@@ -23,6 +23,14 @@ const workbenchRelative = 'docs/workbench/workbench.json';
 const outputRelative = 'src/Game.Gateway/Community/workbench.html';
 const workbenchPath = path.join(repoRoot, workbenchRelative);
 const outputPath = path.join(repoRoot, outputRelative);
+// In the monorepo the vocabulary is a sibling of Lumberjacks. Fixture repos keep a copy
+// inside the package so this generator can still be proven in isolation.
+const audienceCandidates = [
+  path.join(repoRoot, '..', 'corpus', 'audiences.json'),
+  path.join(repoRoot, 'corpus', 'audiences.json'),
+];
+const audiencesPath = audienceCandidates.find((candidate) => fs.existsSync(candidate)) ?? audienceCandidates[0];
+const audiencesRelative = path.relative(repoRoot, audiencesPath).split(path.sep).join('/');
 
 const statuses = new Set(['live', 'dev-only', 'local-only', 'recoverable-not-running']);
 const accessKinds = new Set(['site-download', 'public-repo', 'live-service', 'not-published']);
@@ -80,7 +88,7 @@ function formatUtc(iso) {
 /// The commit flow this implies is a pair: commit the inputs first, then render (the stamp
 /// names that fresh commit), then commit the regenerated HTML. HTML commits do not touch the
 /// inputs, so the stamp stays stable until the next input change.
-const provenanceInputs = [workbenchRelative, 'scripts/workbench.mjs'];
+const provenanceInputs = [workbenchRelative, 'scripts/workbench.mjs', audiencesRelative];
 
 // Both calls below are written against `cwd: repoRoot` and let git discover the repository
 // from there. Git hooks break that assumption, the same way roadmap.mjs already documents for
@@ -155,6 +163,30 @@ function requireStringArray(value, label, { allowEmpty = true } = {}) {
   if (!Array.isArray(value)) fail(`${label} must be an array`);
   if (!allowEmpty && value.length === 0) fail(`${label} must not be empty`);
   value.forEach((item, index) => requireString(item, `${label}[${index}]`));
+}
+
+function readAudiences() {
+  let doc;
+  try {
+    doc = JSON.parse(fs.readFileSync(audiencesPath, 'utf8'));
+  } catch (error) {
+    fail(`${audiencesRelative}: cannot read shared audience vocabulary: ${error.message}`);
+  }
+  if (doc.schema_version !== 1 || !Array.isArray(doc.roles) || doc.roles.length === 0) {
+    fail(`${audiencesRelative} must be schema version 1 with a non-empty roles array`);
+  }
+  const seen = new Set();
+  doc.roles.forEach((role, index) => {
+    const label = `${audiencesRelative}.roles[${index}]`;
+    requireObject(role, label);
+    requireString(role.id, `${label}.id`);
+    if (!/^[a-z][a-z0-9-]*$/.test(role.id)) fail(`${label}.id must be a lowercase slug: ${role.id}`);
+    if (seen.has(role.id)) fail(`${label}.id is duplicated: ${role.id}`);
+    seen.add(role.id);
+    for (const key of ['label', 'short_label', 'question', 'promise']) requireString(role[key], `${label}.${key}`);
+    if (!Number.isInteger(role.order)) fail(`${label}.order must be an integer`);
+  });
+  return { ...doc, roles: [...doc.roles].sort((a, b) => a.order - b.order) };
 }
 
 function requireObject(value, label) {
@@ -356,13 +388,20 @@ function computeTaskCounts(workbench) {
   return { present: actionable + blocked, actionable, blocked };
 }
 
-function validateTool(workbench, tool, index, seenIds) {
+function validateTool(workbench, tool, index, seenIds, audienceIds) {
   const label = `workbench.tools[${index}]`;
   requireObject(tool, label);
   requireString(tool.id, `${label}.id`);
   if (!/^[a-z0-9][a-z0-9-]*$/.test(tool.id)) fail(`${label}.id must be a lowercase slug: ${tool.id}`);
   if (seenIds.has(tool.id)) fail(`duplicate tool id ${tool.id}`);
   seenIds.add(tool.id);
+
+  requireStringArray(tool.audiences, `${label}.audiences`, { allowEmpty: false });
+  if (new Set(tool.audiences).size !== tool.audiences.length) fail(`${label}.audiences must not contain duplicates`);
+  const unknownAudiences = tool.audiences.filter((audience) => !audienceIds.has(audience));
+  if (unknownAudiences.length > 0) {
+    fail(`${label}.audiences contains unknown shared audience IDs: ${unknownAudiences.join(', ')}`);
+  }
 
   requireString(tool.name, `${label}.name`);
   requireString(tool.one_liner, `${label}.one_liner`);
@@ -430,7 +469,7 @@ function validateTool(workbench, tool, index, seenIds) {
   validateContribution(tool.contribution, `${label}.contribution`, tool.license);
 }
 
-function validate(workbench, rawText = '') {
+function validate(workbench, rawText = '', audienceDoc = readAudiences()) {
   if (workbench.schema_version !== 1) fail('workbench.schema_version must be 1');
   requireString(workbench.title, 'workbench.title');
   requireString(workbench.headline, 'workbench.headline');
@@ -453,6 +492,8 @@ function validate(workbench, rawText = '') {
   requireString(workbench.feedback.rhythm, 'workbench.feedback.rhythm');
   requireString(workbench.feedback.forum_label, 'workbench.feedback.forum_label');
   requireNullableLink(workbench.feedback.forum_href, 'workbench.feedback.forum_href');
+  requireString(workbench.feedback.dispatches_label, 'workbench.feedback.dispatches_label');
+  requireNullableLink(workbench.feedback.dispatches_href, 'workbench.feedback.dispatches_href');
   requireString(workbench.feedback.start_here_label, 'workbench.feedback.start_here_label');
   requireNullableLink(workbench.feedback.start_here_href, 'workbench.feedback.start_here_href');
   requireString(workbench.feedback.invite_label, 'workbench.feedback.invite_label');
@@ -469,7 +510,8 @@ function validate(workbench, rawText = '') {
 
   if (!Array.isArray(workbench.tools) || workbench.tools.length === 0) fail('workbench.tools must not be empty');
   const seenIds = new Set();
-  workbench.tools.forEach((tool, index) => validateTool(workbench, tool, index, seenIds));
+  const audienceIds = new Set(audienceDoc.roles.map((role) => role.id));
+  workbench.tools.forEach((tool, index) => validateTool(workbench, tool, index, seenIds, audienceIds));
 
   // Counts are computed, never typed. The headline may name the tool count as prose, but only
   // while it agrees with the data it sits beside; task counts may not be typed anywhere at all,
@@ -506,6 +548,7 @@ function validate(workbench, rawText = '') {
   // row renders no URL at all, so the five deliberate placeholders cannot trip this.
   const memberOnlyLinks = [
     workbench.feedback.forum_href,
+    workbench.feedback.dispatches_href,
     workbench.feedback.start_here_href,
     ...workbench.tools.map((tool) => tool.discussion.href),
   ].filter((href) => typeof href === 'string' && href.startsWith(memberOnlyDiscord));
@@ -861,6 +904,24 @@ function renderToolIndex(workbench, tools) {
   return `<nav class="tool-index" aria-label="All tools">${rows}</nav>`;
 }
 
+function renderAudienceLenses(workbench, audienceDoc) {
+  const cards = audienceDoc.roles.map((role) => {
+    const matches = workbench.tools.filter((tool) => tool.audiences.includes(role.id));
+    const toc = matches.map((tool) => `<a href="#${escapeHtml(tool.id)}">${escapeHtml(tool.name)}</a>`).join('');
+    return `<article class="lens" id="lens-${escapeHtml(role.id)}">
+      <div class="lens-kicker">${escapeHtml(role.short_label)}</div>
+      <h3>${escapeHtml(role.question)}</h3>
+      <p>${escapeHtml(role.promise)}</p>
+      <nav class="lens-toc" aria-label="${escapeHtml(role.label)} tools">${toc}</nav>
+      <a class="lens-more" href="https://djcdevelopment.github.io/baseline/for/${escapeHtml(role.id)}/">Stories, updates, and everything in this view →</a>
+    </article>`;
+  }).join('');
+  const jump = audienceDoc.roles.map((role) => `<a href="#lens-${escapeHtml(role.id)}">${escapeHtml(role.short_label)}</a>`).join('');
+  return `<nav class="lens-jump" aria-label="Choose an audience lens">${jump}</nav>
+    <div class="lens-grid">${cards}</div>
+    <p class="outside-lane">These are starting points, not access controls. <a href="#tools">Cross the lane and inspect all ${escapeHtml(String(workbench.tools.length))} tools.</a></p>`;
+}
+
 function statusSummary(tools) {
   const counts = new Map();
   for (const tool of tools) counts.set(tool.status, (counts.get(tool.status) ?? 0) + 1);
@@ -870,10 +931,11 @@ function statusSummary(tools) {
     .join(' · ');
 }
 
-function render(workbench) {
+function render(workbench, audienceDoc = readAudiences()) {
   const tools = workbench.tools.map((tool) => renderTool(workbench, tool)).join('\n');
   const ladder = renderLadder(workbench.ladder, workbench.owners_href);
   const toolIndex = renderToolIndex(workbench, workbench.tools);
+  const audienceLenses = renderAudienceLenses(workbench, audienceDoc);
   const freshness = provenance().text;
   const summary = statusSummary(workbench.tools);
   const counts = computeTaskCounts(workbench);
@@ -886,6 +948,9 @@ function render(workbench) {
   const invite = safeLink(workbench.feedback.invite_href)
     ? `<a class="hero-join" href="${escapeHtml(workbench.feedback.invite_href)}" target="_blank" rel="noreferrer">${escapeHtml(workbench.feedback.invite_label)}</a>`
     : `<span class="inert-link">${escapeHtml(workbench.feedback.invite_label)}</span>`;
+  const dispatches = safeLink(workbench.feedback.dispatches_href)
+    ? `<a class="hero-join" href="${escapeHtml(workbench.feedback.dispatches_href)}" target="_blank" rel="noreferrer">${escapeHtml(workbench.feedback.dispatches_label)}</a>`
+    : `<span class="inert-link">${escapeHtml(workbench.feedback.dispatches_label)}</span>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -999,6 +1064,21 @@ function render(workbench) {
     .not-a-verdict { max-width: 960px; margin: 8px 0 0; padding: 16px 20px; border-left: 4px solid var(--wood); border-radius: 0 12px 12px 0; background: rgba(229, 178, 120, 0.09); border-top: 1px solid rgba(229, 178, 120, 0.18); border-right: 1px solid rgba(229, 178, 120, 0.18); border-bottom: 1px solid rgba(229, 178, 120, 0.18); color: #ebe3d5; font-size: 0.94rem; }
     .not-a-verdict > summary { cursor: pointer; color: var(--wood); font-weight: 700; outline: none; }
     .not-a-verdict > p { margin: 10px 0 0; }
+
+    /* Audience lenses: tailored tables of contents, never hidden content. */
+    .lens-jump { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; margin-bottom: 20px; }
+    .lens-jump a { padding: 7px 12px; border: 1px solid rgba(229, 178, 120, 0.28); border-radius: 999px; color: var(--wood); background: var(--wood-bg); font-family: var(--mono); font-size: 0.72rem; font-weight: 800; text-decoration: none; }
+    .lens-jump a:hover { border-color: var(--wood); color: #ffffff; }
+    .lens-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .lens { scroll-margin-top: 84px; display: flex; flex-direction: column; gap: 9px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; background: linear-gradient(165deg, rgba(22, 36, 44, 0.9), rgba(13, 20, 25, 0.96)); }
+    .lens:target { border-color: var(--wood); box-shadow: 0 0 0 3px var(--wood-bg); }
+    .lens-kicker { color: var(--wood); font-family: var(--mono); font-size: 0.7rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+    .lens h3 { color: #ffffff; font-size: 1.04rem; }
+    .lens p { margin: 0; color: var(--muted); font-size: 0.86rem; }
+    .lens-toc { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; margin-top: 3px; }
+    .lens-toc a { padding: 4px 8px; border-radius: 5px; background: rgba(56, 189, 248, 0.1); color: var(--blue); font-size: 0.75rem; text-decoration: none; }
+    .lens-more { margin-top: auto; padding-top: 5px; color: var(--wood); font-size: 0.78rem; font-weight: 700; }
+    .outside-lane { margin: 18px 0 0; padding: 13px 17px; border-left: 3px solid var(--violet); color: var(--muted); background: var(--violet-bg); border-radius: 0 9px 9px 0; }
 
     /* Tool Index Quick Bar */
     .tool-index { display: grid; gap: 7px; margin-bottom: 26px; }
@@ -1137,6 +1217,7 @@ function render(workbench) {
     @media (max-width: 900px) {
       .section-head { grid-template-columns: 1fr; gap: 14px; }
       .tool-grid { grid-template-columns: 1fr; }
+      .lens-grid { grid-template-columns: 1fr; }
       .index-row { grid-template-columns: minmax(0, 150px) minmax(0, 1fr); row-gap: 6px; }
       .ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .ladder-step::after { display: none; }
@@ -1199,8 +1280,9 @@ function render(workbench) {
         <p>${escapeHtml(workbench.not_a_verdict)}</p>
       </details>
       <div class="hero-actions">
-        <a class="hero-cta" href="#tools">Explore the ${escapeHtml(String(workbench.tools.length))} tools</a>
+        <a class="hero-cta" href="#audiences">Choose your view</a>
         ${invite}
+        ${dispatches}
       </div>
       <p class="join-path">The path in: join → read ${startHere} → post in a tool's thread. Those last two and the ${forum} are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
@@ -1209,6 +1291,13 @@ function render(workbench) {
         <a href="#tools">${escapeHtml(String(counts.actionable))} first tasks open${counts.blocked > 0 ? ` · ${escapeHtml(String(counts.blocked))} blocked` : ''}</a>
       </div>
     </div>
+
+    <section id="audiences">
+      <div class="wrap">
+        <div class="section-head"><div class="section-number">00 · YOUR VIEW</div><div><h2>Start with the question you brought.</h2><p class="section-copy">Each lens is a table of contents over the same underlying catalog. Pick more than one, or ignore them and explore everything; no record is hidden because it sits outside a chosen lane.</p></div></div>
+        ${audienceLenses}
+      </div>
+    </section>
 
     <section id="tools">
       <div class="wrap">
@@ -1284,7 +1373,7 @@ function check(args) {
     fail(`${outputRelative} carries a published provenance stamp but the provenance inputs have uncommitted changes — commit the inputs and re-render, or render the preview honestly`);
   }
 
-  if (!actual.includes('id="ladder"') || !actual.includes('id="tools"') || !actual.includes('01 · THE TOOLS')) {
+  if (!actual.includes('id="audiences"') || !actual.includes('id="ladder"') || !actual.includes('id="tools"') || !actual.includes('01 · THE TOOLS')) {
     fail('generated workbench is missing a required section');
   }
   // The Gateway serves this file verbatim under a self-only CSP; a <script> or <link> would
