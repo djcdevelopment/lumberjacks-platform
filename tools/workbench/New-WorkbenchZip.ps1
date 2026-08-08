@@ -27,6 +27,8 @@ if (-not $OutDir) { $OutDir = Join-Path $PSScriptRoot 'dist' }
 $staging = Join-Path ([System.IO.Path]::GetTempPath()) ("wbzip-$Tool-" + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Path $staging | Out-Null
 Write-Host "staging: $staging"
+$packageVersion = $null
+$packageReleaseId = $null
 
 function Invoke-Python {
     param([string]$WorkDir, [string[]]$Arguments)
@@ -84,9 +86,19 @@ try {
         
         $readme = Join-Path $root 'network\mod\ComfyQuestLab\README.md'
         Copy-Item $readme -Destination $staging
-        
-        $config = "enabled = true`npanelShortcut = F6`nconsoleRows = 18`nverboseLogging = false`nobserveStamina = false`ngalleryPiecesPerFrame = 24`nblueprintPiecesPerFrame = 12`n"
-        [System.IO.File]::WriteAllText((Join-Path $staging 'djcdevelopment.valheim.comfyquestlab.cfg'), $config, (New-Object System.Text.UTF8Encoding($false)))
+
+        # Package the same reviewed config that developers and tests see. Generating a second
+        # copy here previously dropped BepInEx section headers and silently drifted as settings
+        # were added.
+        $config = Join-Path $root 'network\mod\ComfyQuestLab\djcdevelopment.valheim.comfyquestlab.cfg'
+        Copy-Item $config -Destination $staging
+
+        $pluginManifest = Get-Content (Join-Path $root 'network\mod\ComfyQuestLab\manifest.json') -Raw | ConvertFrom-Json
+        $packageVersion = [string]$pluginManifest.version_number
+        $pluginSource = Get-Content (Join-Path $root 'network\mod\ComfyQuestLab\ComfyQuestLab.cs') -Raw
+        $releaseMatch = [regex]::Match($pluginSource, 'public const string ReleaseId = "([^"]+)";')
+        if (-not $releaseMatch.Success) { throw 'Quest Lab ReleaseId was not found in ComfyQuestLab.cs' }
+        $packageReleaseId = $releaseMatch.Groups[1].Value
     }
 
     # manifest: relative path + sha256 + bytes for every staged file
@@ -102,8 +114,10 @@ try {
     $manifest = [ordered]@{
         tool     = $Tool
         built_at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-        files    = $entries
     }
+    if ($packageVersion) { $manifest['version'] = $packageVersion }
+    if ($packageReleaseId) { $manifest['release_id'] = $packageReleaseId }
+    $manifest['files'] = $entries
     $manifestJson = $manifest | ConvertTo-Json -Depth 5
     [System.IO.File]::WriteAllText((Join-Path $staging 'manifest.json'), $manifestJson, (New-Object System.Text.UTF8Encoding($false)))
 
