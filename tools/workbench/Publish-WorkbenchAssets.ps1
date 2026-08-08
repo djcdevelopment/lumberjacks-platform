@@ -92,13 +92,19 @@ $dist = Join-Path $PSScriptRoot 'dist'
 # tools/component-packets/render_quest_lab.py, which has no provenance stamp, so it carries no
 # Gate 0 equivalent; the SHA-256 chain below is what proves what was published.
 #
-# !! /questlab IS A 404 IN PRODUCTION AS OF 2026-08-08, and publishing questlab.html to the
-# mount will NOT fix it. The running image predates the route entirely (see below), so the
-# mount has nothing reading it. This needs a Gateway image cut and DEPLOY, not a publish:
-#   1. infra/gcp/p7/scripts/New-GatewayReleaseCut.ps1   (local build + release-identity gate)
-#   2. isolate: tools/am4/Deploy-GatewayImage.ps1        (ship to AM4, recreate, verify, roll back)
-# NOT Promote-GatewayImage.ps1 -- that one targets P7's compose root, environment file and
-# container name, none of which exist on AM4, and that VM has been terminated since 2026-07-25.
+# /questlab went live 2026-08-08. It took THREE things, and publishing was only the last:
+#   1. infra/gcp/p7/scripts/New-GatewayReleaseCut.ps1   (cut m31-questlab-20260808-r1; the image
+#      running until then was m31-workbench-20260729-r2, which predated the route)
+#   2. isolate: tools/am4/Deploy-GatewayImage.ps1        (ship to AM4 and recreate lj-workbench.
+#      NOT Promote-GatewayImage.ps1 -- that targets P7's compose root, environment file and
+#      container name, none of which exist on AM4, and that VM is terminated)
+#   3. THE CADDY ALLOWLIST on the AM4 host. This is the one that is invisible from this repo and
+#      cost the most time. Tailscale Funnel sends / to Caddy on :8190, and Caddy forwards a
+#      DELIBERATE ALLOWLIST of paths to the Gateway on :4000 -- everything unmatched gets an
+#      honest 404 rather than a proxy fall-through, because /ops/* must never be funneled.
+#      A new public route is invisible until its path joins that @public list, no matter what
+#      image is deployed or what is published here. The container answered /questlab correctly
+#      for twelve minutes while the origin still returned 404.
 # verify-live now checks /questlab and fails on it, which is why Gate 4 blocks this script today.
 # That is correct: the catalog's nav links to /questlab, so publishing would ship a live 404.
 $questlabPath = Join-Path $lumberjacks 'src\Game.Gateway\Community\questlab.html'

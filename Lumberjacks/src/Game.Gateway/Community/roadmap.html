@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-08T06:26:52.904Z</span>
+        <span>Updated 2026-08-08T06:35:49.436Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260808062652-the-public-origin-gets-a-deploy-lane-in-isolate-">
+        <div class="journal"><article class="journal-entry" id="note-20260808063549-the-quest-lab-is-live-tome-download-and-all-and-">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-08T06:35:49.436Z">2026-08-08T06:35:49.436Z</time>
+        <span class="pill note-kind">deployment</span>
+        <span>Lumberjacks</span>
+        <span>A7</span>
+      </div>
+      <h3>The Quest Lab is live: tome, download and all, and the last blocker was a Caddy allowlist nobody had written down</h3>
+      <p><strong>Impact:</strong> Cut m31-questlab-20260808-r1, shipped it to AM4 with the new isolate deploy lane, recreated lj-workbench on it, and published. The download streams 74949 bytes at d49a20db and /questlab serves the real tome from the mount with X-QuestLab-Sha256 equal to the committed file. THE ACTUAL BLOCKER was neither the image nor the publish: Tailscale Funnel sends / to Caddy on 8190, and Caddy forwards a deliberate allowlist of paths to the Gateway, answering an honest 404 for everything else so that /ops/* is never funneled. The container answered /questlab correctly for twelve minutes while the origin still 404d. Adding /questlab to the @public matcher and reloading was the fix; the boundary was re-checked afterwards and still holds, /ops/* 403 and unmatched 404. That Caddyfile is host-only config carrying bcrypt credentials, so only the mechanism is documented, in START-HERE, in the publish script header, and in the deploy lane README where somebody adding a route will actually look. Also learned: questlab.html and workbench.html are not baked into the image at all -- both have always been served from the mount, and the fallback page is what /questlab served in the gap.</p>
+      <details><summary>Verification (4)</summary><ul><li>verify-live post-publish PASS: 82 checks, 0 failed, including quest-lab download streams, size, digest and X-Download-Sha256</li><li>All ten public routes answer 200 through the funnel; /ops/anything still 403 and /nonsense still 404 after the allowlist change</li><li>Served /questlab digest equals the committed questlab.html; Start here, lab_target and all eight Worth knowing sections present; no fallback markers</li><li>Deploy receipt at captures/am4-gateway-deploy.json: archive hash verified remote-side before load, image digest matched local, rollback target recorded as m31-workbench-20260729-r2</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260808062652-the-public-origin-gets-a-deploy-lane-in-isolate-">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
