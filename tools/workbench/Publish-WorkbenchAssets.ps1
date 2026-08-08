@@ -42,16 +42,31 @@ param(
     #   restart      unless-stopped                  network bridge
     #   ports        4000/tcp -> 100.116.82.60:4000 and 127.0.0.1:4000
     #   mount        /srv/lumberjacks/roadmap -> /var/lib/lumberjacks/roadmap (read-only)
-    #   env          Urls=http://+:4000
+    #   env          Urls=http://+:4000              <-- BOTH of these are load-bearing
     #                ASPNETCORE_URLS=http://+:4000
     #                LUMBERJACKS_WORKBENCH_HTML=/var/lib/lumberjacks/roadmap/workbench.html
     #                LUMBERJACKS_WORKBENCH_DOWNLOADS_DIR=/var/lib/lumberjacks/roadmap
     #                LUMBERJACKS_ROADMAP_HTML=/var/lib/lumberjacks/roadmap/roadmap.html
     #
+    # DO NOT DROP `Urls`. Setting only ASPNETCORE_URLS is not enough: the app reads a plain `Urls`
+    # configuration key that wins, and without it the host binds "http://localhost:4000" INSIDE the
+    # container. The container then looks perfectly healthy -- status Up, "Now listening on"
+    # in the log, no errors -- and every request through the published port dies with an empty
+    # reply. Cost a rehearsal round on 2026-08-08 to find; set both.
+    #
+    # Postgres errors on startup are NORMAL for this container and not a fault to chase. It carries
+    # no connection string, so it retries localhost:5433 forever and serves the static community
+    # pages regardless. Production has always run this way.
+    #
     # A recreate to serve the tome from the mount would add
     # LUMBERJACKS_QUESTLAB_HTML=/var/lib/lumberjacks/roadmap/questlab.html -- but only ON TOP OF a
     # newer image, since this one has neither the /questlab route nor the env override that reads
     # that variable. The env var alone accomplishes nothing.
+    #
+    # Rehearsed locally 2026-08-08 against lumberjacks-gateway:m31-questlab-20260808-r1:
+    # /questlab answered 200, X-QuestLab-Sha256 equalled the mounted file's digest, and editing the
+    # mounted file changed the served digest with no restart. The mount contract holds on a real
+    # image; what is missing in production is only the image.
     #
     # These defaulted to comfy-p7:/mnt/comfy-p7/lumberjacks/roadmap until 2026-08-06, which
     # made the script verify against one host and upload to another: $PublicBaseUrl was
