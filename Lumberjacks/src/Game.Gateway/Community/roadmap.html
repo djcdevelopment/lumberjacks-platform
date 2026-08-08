@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-08T04:03:12.366Z</span>
+        <span>Updated 2026-08-08T04:38:29.364Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260808040312-root-caused-the-am4-black-screen-under-zdoredire">
+        <div class="journal"><article class="journal-entry" id="note-20260808043829-fix-the-gateway-refresh-dedup-that-issued-each-r">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-08T04:38:29.364Z">2026-08-08T04:38:29.364Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M4b · M7</span>
+      </div>
+      <h3>Fix the Gateway refresh dedup that issued each recipient&#39;s world exactly once, and verify it with a live populated join on AM4</h3>
+      <p><strong>Impact:</strong> ValheimZdoJournalService.RegisterInterest honoured interest.Refresh and then immediately negated it: HasPending skipped every object already queued for that recipient. A refresh is precisely the case where the client has thrown its inbound queue away -- ZdoJournalCutoverRunner.ResetClientEpochState drains it on a ZNet teardown -- while the recipient id is the logical peer id and survives that teardown. So the Gateway deduped the re-snapshot against deliveries the client could never receive, and the world was issued once and never again. Latent since 2026-07-30 and masked until the server widened to zdoRedirectPrefabs=* on 08-07: under the earlier scoped redirect the world still arrived over the native ZDO path, so the lost lane snapshot cost a few mushrooms rather than everything. The fix drops the recipient&#39;s pending queue when Refresh is set, before re-snapshotting. Safe because _nextSequence is per-recipient and tracked separately from _pending, so re-enqueued deliveries take fresh higher sequences and cannot collide with acks for the discarded ones. Cut as Gateway-only image m7-c10b-20260808-r43 admitting the frozen mod m7-c10b-20260807-r42, so no client mod was invalidated.</p>
+      <details><summary>Verification (1)</summary><ul><li>Three regression tests added and mutation-tested rather than merely run: with the one-line fix disabled, 2 of 3 fail (Expected 50 Actual 0 on the re-snapshot; re-snapshot reused sequence 1 where highest discarded was 10). The third passes either way by design, guarding against the fix widening into resend-everything. Full gateway suite 247 of 247 green. Live proof on AM4 with six cutover legs armed on both sides and zdoRedirectPrefabs=* -- the exact configuration that produced the black screen: canonical_delivery_progress reported banked=1024 inbound=962 delivery_seq=1024 where the broken run produced no delivery progress at all, and the client HUD moved from pieces 0 entities 0 zone 0:0 to pieces 667 zone 34:-1 with Black Forest terrain, runestones and vegetation rendered. Client log shows Starting music blackforest followed by TERRAIN_COMP awake across zones 34,-2 and 34,0. Not covered: two-client behaviour, since i5 was not joined for this run, so nothing here speaks to remote-player motion.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/evidence/am4-blackscreen-refresh-snapshot-20260808.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260808040312-root-caused-the-am4-black-screen-under-zdoredire">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

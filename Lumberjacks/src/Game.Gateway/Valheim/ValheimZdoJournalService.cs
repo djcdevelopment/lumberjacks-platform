@@ -345,6 +345,20 @@ public sealed class ValheimZdoJournalService
             var snapshots = 0;
             if (changed || interest.Refresh)
             {
+                // A refresh is the recipient declaring it threw its inbound queue away.
+                // The client does exactly that on a ZNet teardown
+                // (ZdoJournalCutoverRunner.ResetClientEpochState drains _clientInbound),
+                // but the recipient id is the logical peer id and survives the teardown —
+                // so without this, HasPending below dedups the re-snapshot against
+                // deliveries the client can never receive, and the world is issued once
+                // and never again. Under a scoped redirect that cost a few mushrooms;
+                // under zdoRedirectPrefabs=* the lane snapshot IS the world, so it
+                // presented as a permanent black screen (2026-08-08).
+                //
+                // Safe to drop: _nextSequence is per-recipient and tracked separately
+                // from _pending, so re-enqueued deliveries take fresh higher sequences
+                // and cannot collide with acks for the discarded ones.
+                if (interest.Refresh) _pending.Remove(recipientId);
                 foreach (var state in _objects.Values)
                 {
                     if (!Matches(interest, state)) continue;
