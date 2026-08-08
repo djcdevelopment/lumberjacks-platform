@@ -5,8 +5,28 @@
 #   redeemed enrollments survive a container recreate (the default path lives in
 #   the container filesystem and silently vanishes with it).
 # Compose with: docker compose -p lumberjacks-local -f docker-compose.yml -f docker-compose.enrollment-lab.yml up -d --no-deps gateway
+#
+# LUMBERJACKS_ENROLLMENT_PUBLIC_URL is now overridable, and the default is the
+# old hardcoded value, so nothing changes for a plain `up`. It was a literal,
+# which is what pinned the whole enrollment flow to one machine: PublicBaseUrl()
+# returns this string verbatim and builds both the invite link and the Steam
+# openid return_to/realm from it. A second PC could reach the gateway fine over
+# the tailnet and still be bounced to its own empty 127.0.0.1:4000 after the
+# Steam login -- so both accounts had to be logged in on the gateway host, and
+# Steam dislikes that much account swapping on one machine.
+#
+# Point it at a host both machines resolve (an override file, not this one --
+# `*.env` is gitignored and tailnet addresses are never committed):
+#     Lumberjacks/infra/docker/.env
+#     LUMBERJACKS_ENROLLMENT_PUBLIC_URL=http://<host>:4000
+#
+# Note LUMBERJACKS_PLAYER_GATEWAY_URL is deliberately NOT set here. Unset, the
+# code falls back to the request's own base URL, so the gateway address baked
+# into a client's config matches however that client actually reached the join
+# page. That is self-correcting; pinning it would re-create this same bug one
+# layer down.
 services:
   gateway:
     environment:
-      LUMBERJACKS_ENROLLMENT_PUBLIC_URL: "http://127.0.0.1:4000"
+      LUMBERJACKS_ENROLLMENT_PUBLIC_URL: "${LUMBERJACKS_ENROLLMENT_PUBLIC_URL:-http://127.0.0.1:4000}"
       LUMBERJACKS_ENROLLMENT_PATH: "/data/enrollment/invites.json"
