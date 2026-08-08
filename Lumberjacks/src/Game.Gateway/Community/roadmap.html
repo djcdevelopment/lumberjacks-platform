@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-08T04:38:29.364Z</span>
+        <span>Updated 2026-08-08T05:01:29.409Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260808043829-fix-the-gateway-refresh-dedup-that-issued-each-r">
+        <div class="journal"><article class="journal-entry" id="note-20260808050129-session-retro-2026-08-08-and-adr-0019-four-guard">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-08T05:01:29.409Z">2026-08-08T05:01:29.409Z</time>
+        <span class="pill note-kind">documentation</span>
+        <span>Lumberjacks</span>
+        <span>M4b · A7</span>
+      </div>
+      <h3>Session retro 2026-08-08 and ADR 0019: four guards in this repo were structurally incapable of failing</h3>
+      <p><strong>Impact:</strong> Retro for the isolate-boundary and AM4 black-screen session. The through-line is not the Gateway fix but that four independent guards had never been able to return a failure: an identity endpoint that hardcoded the value it was meant to discriminate, an API contract file no test read, a C9 acceptance criterion satisfied by a file existing, and a compose launch whose failure mode is exit 0 against blank-rooted world mounts. ADR 0019 turns that into a rule -- a guard is not accepted until it has been observed to fail, acceptance criteria state a property rather than an existence, contract files are read by a test or deleted, receipts carry negative controls, and commands whose failure mode is a zero exit get rendered before they are run. The retro is candid about operator error: a composition fired at a retained boundary the plan forbids, cutover legs disarmed to force a green join (a regression Derek had corrected an hour earlier), four gateway recomposes that silently downgraded a pinned release image, two false fix-did-not-work claims from measurement errors, and three attempts to extract a C9 verdict from an artifact Derek had already rejected.</p>
+      <details><summary>Verification (1)</summary><ul><li>Git range fe5b38fc..10323840, 7 commits, working tree clean. Role reads and candidate lessons drafted by gcp-gemini via HEARTH local_generate (1426 in / 1162 out, 23.4s), edit verdict minor-fixes -- factually faithful with no invented commits or numbers, rewritten for house voice and re-attributed per seat. All judgments, seat attributions, ADR wording and repo-coherent writes frontier. Last session&#39;s lessons audited for follow-through: L-2026-08-05-1 and -4 acted-on, -6 acted-on, -2 -3 -5 -7 pending, and -8 dropped-and-recurred which is what escalated into ADR 0019. Four memory files written and indexed; five open decisions appended to the fieldlab register.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>fieldlab/retro/SESSION-RETRO-2026-08-08.md</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260808043829-fix-the-gateway-refresh-dedup-that-issued-each-r">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
