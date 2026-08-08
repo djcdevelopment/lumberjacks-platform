@@ -59,7 +59,7 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 </nav></div></div>
 <div class="wrap">
 <h1>The Quest Lab Tome</h1>
-<p class="intro">This is the web-facing version of the in-game spellbook. It lists every spell the world genuinely answers to, categorized by rune school. Spells marked with a badge are ones this build can witness in-game today.</p>
+<p class="intro">This is the web-facing version of the in-game spellbook. It lists every spell the world genuinely answers to, categorized by rune school. An Integrated badge means the exact runtime patch exists; the verdict names stable creator vocabulary or an explicit diagnostic-only boundary.</p>
 <div class="start">
 <h2>Start here</h2>
 <a class="cta" href="/workbench/downloads/quest-lab">Download the Quest Lab</a>
@@ -75,11 +75,11 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 <li><strong>Press <kbd>F6</kbd> to open the lab panel.</strong>
 <p><kbd>F5</kbd> is Valheim&rsquo;s console, where you type commands. <kbd>F6</kbd> is the lab&rsquo;s own window. Two different keys, and mixing them up is the usual first stumble.</p></li>
 <li><strong>Edit <code>BepInEx/config/comfy-quest-lab/quests/starter.json</code>, then run <code>lab_reload</code>.</strong>
-<p>No restart. The <em>Quests</em> tab names what changed, what will fire, and what cannot &mdash; and shows the last kill the matcher was actually handed, which is how you find out why something did not fire.</p></li>
+<p>No restart. The <em>Quests</em> tab names what changed, what will fire, and what cannot &mdash; and shows the last event the matcher was actually handed, which is how you find out why something did not fire.</p></li>
 <li><strong>Need another target? <code>lab_target</code>.</strong>
 <p>Puts a fresh practice target in front of you &mdash; <code>lab_target harvest</code> for a tree, and so on for all eight schools. You should never be walking across the map looking for the thing your quest is about; that is what the gallery is for.</p></li>
 </ol>
-<p class="note"><strong>The starter file holds two quests that disagree on purpose.</strong> <code>first_blood</code> is armed: kill the Greyling standing under the combat monument and it fires &mdash; and <code>lab_target</code> puts a fresh one in front of you whenever you need another, so testing twice never means going to look for a second one. <code>punchwood</code> is not, and nothing errors to tell you &mdash; a <code>hit</code> trigger parses perfectly and can never fire, because only a creature kill can complete a quest today. All eight schools below are <em>hooked</em>, meaning the lab can show you every one of them. Exactly one can have a quest <em>bound</em> to it. Knowing which is which is the entire reason this tool exists, and the verdict on every row below is the honest answer.</p>
+<p class="note"><strong>The starter file holds two backward-compatible quests.</strong> <code>first_blood</code> is armed: kill the Greyling standing under the combat monument and it fires &mdash; and <code>lab_target</code> puts a fresh one in front of you whenever you need another, so testing twice never means going to look for a second one. <code>punchwood</code> is also armed: <code>hit</code> remains a compatibility alias for creature and resource damage. All eight schools feed the same shared evaluator. Low-level mutations can still be inspected under <code>questlab_profile diagnostic</code>, but those witnesses are structurally barred from completing quests.</p>
 <p class="note"><strong>Each school&rsquo;s rune is also its filter.</strong> The mark beside each heading is the same mark you click in the lab&rsquo;s console to show or hide that school &mdash; so learning the book teaches the console for free. One fight emits more rows than the window holds, which is why the filters matter.</p>
 </div>
 <div class="school">
@@ -91,52 +91,52 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 </div>
 <ul class="spell-list">
 <li class="spell">
-<div><span class="spell-name">a creature dies</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Character.OnDeath</span></div>
-<div class="spell-verdict verdict-today">a quest can be bound to this</div>
+<div><span class="spell-name">a blow being blocked</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Character.BlockAttack</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a creature is staggered</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Character.Stagger</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a blow blocked by something carrying a shield</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Humanoid.BlockAttack</span></div>
+<div class="spell-verdict verdict-today">bindable: attack_blocked</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking a living thing</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Character.Damage</span></div>
-<div class="spell-verdict ">the world speaks, but no quest is listening</div>
+<div><span class="spell-name">a creature dies</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Character.OnDeath</span></div>
+<div class="spell-verdict verdict-today">bindable: kill</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking a living thing, when the server carries the blow</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Character.RPC_Damage</span></div>
-<div class="spell-verdict ">the world speaks, but no quest is listening</div>
+<div><span class="spell-name">a creature is staggered</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Character.Stagger</span></div>
+<div class="spell-verdict verdict-today">bindable: character_staggered</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">you die</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.OnDeath</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a creature is staggered, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Character.RPC_Stagger</span></div>
+<div class="spell-verdict verdict-today">bindable: character_staggered</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a blow being blocked</span><br><span class="spell-true-name">Character.BlockAttack</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">health set outright, rather than damaged or healed</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Character.SetHealth</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a blow blocked by something carrying a shield</span><br><span class="spell-true-name">Humanoid.BlockAttack</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">something being healed</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Character.Heal</span></div>
+<div class="spell-verdict verdict-today">bindable: character_healed</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a creature is staggered, server-carried</span><br><span class="spell-true-name">Character.RPC_Stagger</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">something being healed, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Character.RPC_Heal</span></div>
+<div class="spell-verdict verdict-today">bindable: character_healed</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">health set outright, rather than damaged or healed</span><br><span class="spell-true-name">Character.SetHealth</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">stagger building up on a creature</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Character.AddStaggerDamage</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">something being healed</span><br><span class="spell-true-name">Character.Heal</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking a living thing</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Character.Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: damage_dealt</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">something being healed, server-carried</span><br><span class="spell-true-name">Character.RPC_Heal</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking a living thing, when the server carries the blow</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Character.RPC_Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: damage_dealt</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">stagger building up on a creature</span><br><span class="spell-true-name">Character.AddStaggerDamage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">you die</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.OnDeath</span></div>
+<div class="spell-verdict verdict-today">bindable: player_died</div>
 </li>
 </ul></div>
 <div class="school">
@@ -148,56 +148,56 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 </div>
 <ul class="spell-list">
 <li class="spell">
-<div><span class="spell-name">picking a berry, mushroom or flower</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Pickable.Interact</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a picked thing marked as taken</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Pickable.SetPicked</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking a bush, or other breakable scenery</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Destructible.Damage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a picked thing marked as taken, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Pickable.RPC_SetPicked</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking a fallen trunk</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">TreeLog.Damage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">picking a berry, mushroom or flower</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Pickable.Interact</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_picked</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking a standing tree</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">TreeBase.Damage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">something being picked, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Pickable.RPC_Pick</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_picked</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a picked thing marked as taken</span><br><span class="spell-true-name">Pickable.SetPicked</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking a bush, or other breakable scenery</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Destructible.Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_damaged</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a picked thing marked as taken, server-carried</span><br><span class="spell-true-name">Pickable.RPC_SetPicked</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking a fallen trunk</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">TreeLog.Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_damaged</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">something being picked, server-carried</span><br><span class="spell-true-name">Pickable.RPC_Pick</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking a fallen trunk, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">TreeLog.RPC_Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_damaged</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking a fallen trunk, server-carried</span><br><span class="spell-true-name">TreeLog.RPC_Damage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking a large rock or ore vein</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">MineRock5.Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_damaged</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking a large rock or ore vein</span><br><span class="spell-true-name">MineRock5.Damage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking a large rock, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">MineRock5.RPC_Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_damaged</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking a large rock, server-carried</span><br><span class="spell-true-name">MineRock5.RPC_Damage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking a rock or ore vein</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">MineRock.Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_damaged</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking a rock or ore vein</span><br><span class="spell-true-name">MineRock.Damage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking a standing tree</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">TreeBase.Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_damaged</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking a standing tree, server-carried</span><br><span class="spell-true-name">TreeBase.RPC_Damage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking a standing tree, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">TreeBase.RPC_Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_damaged</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">striking breakable scenery, server-carried</span><br><span class="spell-true-name">Destructible.RPC_Damage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">striking breakable scenery, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Destructible.RPC_Damage</span></div>
+<div class="spell-verdict verdict-today">bindable: resource_damaged</div>
 </li>
 </ul></div>
 <div class="school">
@@ -209,56 +209,56 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 </div>
 <ul class="spell-list">
 <li class="spell">
-<div><span class="spell-name">eating or drinking</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Humanoid.ConsumeItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">an item landing on the ground</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">ItemDrop.DropItem</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">emptying a chest</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Container.TakeAll</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">an item on the ground being taken</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">ItemDrop.Pickup</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">picking something up off the ground</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Humanoid.Pickup</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">anything at all entering your pack, including shuffles you did not cause</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Inventory.AddItem</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">putting something in your hands</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Humanoid.EquipItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">anything at all leaving your pack</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Inventory.RemoveItem</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">an item landing on the ground</span><br><span class="spell-true-name">ItemDrop.DropItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">claiming a dropped item before taking it</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">ItemDrop.RPC_RequestOwn</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">an item on the ground being taken</span><br><span class="spell-true-name">ItemDrop.Pickup</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">dropping something</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Humanoid.DropItem</span></div>
+<div class="spell-verdict verdict-today">bindable: item_dropped</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">anything at all entering your pack, including shuffles you did not cause</span><br><span class="spell-true-name">Inventory.AddItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">eating or drinking</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Humanoid.ConsumeItem</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">anything at all leaving your pack</span><br><span class="spell-true-name">Inventory.RemoveItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">eating or drinking, as a player</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.ConsumeItem</span></div>
+<div class="spell-verdict verdict-today">bindable: item_consumed</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">claiming a dropped item before taking it</span><br><span class="spell-true-name">ItemDrop.RPC_RequestOwn</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">emptying a chest</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Container.TakeAll</span></div>
+<div class="spell-verdict verdict-today">bindable: container_emptied</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">dropping something</span><br><span class="spell-true-name">Humanoid.DropItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">emptying a chest, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Container.RPC_RequestTakeAll</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">eating or drinking, as a player</span><br><span class="spell-true-name">Player.ConsumeItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">picking something up off the ground</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Humanoid.Pickup</span></div>
+<div class="spell-verdict verdict-today">bindable: item_picked_up</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">emptying a chest, server-carried</span><br><span class="spell-true-name">Container.RPC_RequestTakeAll</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">putting something away</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Humanoid.UnequipItem</span></div>
+<div class="spell-verdict verdict-today">bindable: item_unequipped</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">putting something away</span><br><span class="spell-true-name">Humanoid.UnequipItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">putting something in your hands</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Humanoid.EquipItem</span></div>
+<div class="spell-verdict verdict-today">bindable: item_equipped</div>
 </li>
 </ul></div>
 <div class="school">
@@ -270,40 +270,40 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 </div>
 <ul class="spell-list">
 <li class="spell">
-<div><span class="spell-name">a structure breaking</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">WearNTear.Destroy</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a structure being repaired</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">WearNTear.Repair</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">placing a piece of building</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.PlacePiece</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a structure being repaired, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">WearNTear.RPC_Repair</span></div>
+<div class="spell-verdict verdict-today">bindable: piece_repaired</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">repairing something with a hammer</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.Repair</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a structure being taken away</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">WearNTear.Remove</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">taking a piece back down</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.RemovePiece</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a structure being taken away, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">WearNTear.RPC_Remove</span></div>
+<div class="spell-verdict verdict-today">bindable: piece_removed</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a structure being repaired</span><br><span class="spell-true-name">WearNTear.Repair</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a structure breaking</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">WearNTear.Destroy</span></div>
+<div class="spell-verdict verdict-today">bindable: piece_destroyed</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a structure being repaired, server-carried</span><br><span class="spell-true-name">WearNTear.RPC_Repair</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a structure taking damage</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">WearNTear.ApplyDamage</span></div>
+<div class="spell-verdict verdict-today">bindable: piece_damaged</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a structure being taken away</span><br><span class="spell-true-name">WearNTear.Remove</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">placing a piece of building</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.PlacePiece</span></div>
+<div class="spell-verdict verdict-today">bindable: piece_placed</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a structure being taken away, server-carried</span><br><span class="spell-true-name">WearNTear.RPC_Remove</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">repairing something with a hammer</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.Repair</span></div>
+<div class="spell-verdict verdict-today">bindable: piece_repaired</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a structure taking damage</span><br><span class="spell-true-name">WearNTear.ApplyDamage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">taking a piece back down</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.RemovePiece</span></div>
+<div class="spell-verdict verdict-today">bindable: piece_removed</div>
 </li>
 </ul></div>
 <div class="school">
@@ -315,48 +315,48 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 </div>
 <ul class="spell-list">
 <li class="spell">
-<div><span class="spell-name">crafting something at a bench</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">InventoryGui.DoCrafting</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a smelter finishing something</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Smelter.Spawn</span></div>
+<div class="spell-verdict verdict-today">bindable: station_output_produced</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">feeding coal or wood to a smelter</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Smelter.OnAddFuel</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">crafting something at a bench</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">InventoryGui.DoCrafting</span></div>
+<div class="spell-verdict verdict-today">bindable: item_crafted</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">feeding ore to a smelter or kiln</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Smelter.OnAddOre</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">feeding a cooking station</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">CookingStation.RPC_AddFuel</span></div>
+<div class="spell-verdict verdict-today">bindable: station_fuel_added</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a smelter finishing something</span><br><span class="spell-true-name">Smelter.Spawn</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">feeding coal or wood to a smelter</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Smelter.OnAddFuel</span></div>
+<div class="spell-verdict verdict-today">bindable: station_fuel_added</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">feeding a cooking station</span><br><span class="spell-true-name">CookingStation.RPC_AddFuel</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">feeding ore to a smelter or kiln</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Smelter.OnAddOre</span></div>
+<div class="spell-verdict verdict-today">bindable: station_input_added</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">fuel reaching the smelter, server-carried</span><br><span class="spell-true-name">Smelter.RPC_AddFuel</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">fuel reaching the smelter, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Smelter.RPC_AddFuel</span></div>
+<div class="spell-verdict verdict-today">bindable: station_fuel_added</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">ore reaching the smelter, server-carried</span><br><span class="spell-true-name">Smelter.RPC_AddOre</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">ore reaching the smelter, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Smelter.RPC_AddOre</span></div>
+<div class="spell-verdict verdict-today">bindable: station_input_added</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">pressing the craft button</span><br><span class="spell-true-name">InventoryGui.OnCraftPressed</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">pressing the craft button</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">InventoryGui.OnCraftPressed</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">putting food on a cooking station</span><br><span class="spell-true-name">CookingStation.RPC_AddItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">putting food on a cooking station</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">CookingStation.RPC_AddItem</span></div>
+<div class="spell-verdict verdict-today">bindable: station_input_added</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">starting a fermenter</span><br><span class="spell-true-name">Fermenter.RPC_AddItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">starting a fermenter</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Fermenter.RPC_AddItem</span></div>
+<div class="spell-verdict verdict-today">bindable: station_input_added</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">taking cooked food off</span><br><span class="spell-true-name">CookingStation.RPC_RemoveDoneItem</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">taking cooked food off</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">CookingStation.RPC_RemoveDoneItem</span></div>
+<div class="spell-verdict verdict-today">bindable: station_output_collected</div>
 </li>
 </ul></div>
 <div class="school">
@@ -368,44 +368,44 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 </div>
 <ul class="spell-list">
 <li class="spell">
-<div><span class="spell-name">a skill going up</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Skills.RaiseSkill</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a skill going up</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Skills.RaiseSkill</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">spending stamina</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.UseStamina</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a skill going up, asked for by you</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.RaiseSkill</span></div>
+<div class="spell-verdict verdict-today">bindable: skill_raised</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">you die</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.OnDeath</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">regaining stamina</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.AddStamina</span></div>
+<div class="spell-verdict verdict-today">bindable: stamina_gained</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a skill going up, asked for by you</span><br><span class="spell-true-name">Player.RaiseSkill</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">skills being lost, as on death</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Skills.LowerAllSkills</span></div>
+<div class="spell-verdict verdict-today">bindable: skills_lowered</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">spending stamina</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.UseStamina</span></div>
+<div class="spell-verdict verdict-today">bindable: stamina_spent</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">you die</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.OnDeath</span></div>
+<div class="spell-verdict verdict-today">bindable: player_died</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">your maximum health changing</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.SetMaxHealth</span></div>
+<div class="spell-verdict verdict-today">bindable: max_health_changed</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">your skills taking the death penalty</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Skills.OnDeath</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
 <div><span class="spell-name">a skill raised by console command</span><br><span class="spell-true-name">Skills.CheatRaiseSkill</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div class="spell-verdict ">intentionally disabled</div>
 </li>
 <li class="spell">
 <div><span class="spell-name">asking what a skill stands at — a question, not something that happens</span><br><span class="spell-true-name">Skills.GetSkillLevel</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
-</li>
-<li class="spell">
-<div><span class="spell-name">regaining stamina</span><br><span class="spell-true-name">Player.AddStamina</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
-</li>
-<li class="spell">
-<div><span class="spell-name">skills being lost, as on death</span><br><span class="spell-true-name">Skills.LowerAllSkills</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
-</li>
-<li class="spell">
-<div><span class="spell-name">your maximum health changing</span><br><span class="spell-true-name">Player.SetMaxHealth</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
-</li>
-<li class="spell">
-<div><span class="spell-name">your skills taking the death penalty</span><br><span class="spell-true-name">Skills.OnDeath</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div class="spell-verdict ">intentionally disabled</div>
 </li>
 </ul></div>
 <div class="school">
@@ -417,24 +417,24 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 </div>
 <ul class="spell-list">
 <li class="spell">
-<div><span class="spell-name">the world recording something, as when a boss falls</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">ZoneSystem.SetGlobalKey</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">the world forgetting something</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">ZoneSystem.RemoveGlobalKey</span></div>
+<div class="spell-verdict verdict-today">bindable: global_key_removed</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">travelling by portal</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Player.TeleportTo</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">the world recording something, as when a boss falls</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">ZoneSystem.SetGlobalKey</span></div>
+<div class="spell-verdict verdict-today">bindable: global_key_set</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">the world recording something, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">ZoneSystem.RPC_SetGlobalKey</span></div>
+<div class="spell-verdict verdict-today">bindable: global_key_set</div>
+</li>
+<li class="spell">
+<div><span class="spell-name">travelling by portal</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Player.TeleportTo</span></div>
+<div class="spell-verdict verdict-today">bindable: player_teleported</div>
 </li>
 <li class="spell">
 <div><span class="spell-name">asking which biome a place is — a question, not something that happens</span><br><span class="spell-true-name">WorldGenerator.GetBiome</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
-</li>
-<li class="spell">
-<div><span class="spell-name">the world forgetting something</span><br><span class="spell-true-name">ZoneSystem.RemoveGlobalKey</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
-</li>
-<li class="spell">
-<div><span class="spell-name">the world recording something, server-carried</span><br><span class="spell-true-name">ZoneSystem.RPC_SetGlobalKey</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div class="spell-verdict ">intentionally disabled</div>
 </li>
 </ul></div>
 <div class="school">
@@ -446,24 +446,24 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 </div>
 <ul class="spell-list">
 <li class="spell">
-<div><span class="spell-name">writing on a sign</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Sign.SetText</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a message appearing in the chat window</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Chat.OnNewChatMessage</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">you saying something</span><span class="bound-badge">Witnessed</span><br><span class="spell-true-name">Chat.SendText</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">a message reaching everyone, server-carried</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Chat.RPC_ChatMessage</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a message appearing in the chat window</span><br><span class="spell-true-name">Chat.OnNewChatMessage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">something speaking aloud</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Talker.Say</span></div>
+<div class="spell-verdict ">diagnostic only — never bindable</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">a message reaching everyone, server-carried</span><br><span class="spell-true-name">Chat.RPC_ChatMessage</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">writing on a sign</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Sign.SetText</span></div>
+<div class="spell-verdict verdict-today">bindable: sign_written</div>
 </li>
 <li class="spell">
-<div><span class="spell-name">something speaking aloud</span><br><span class="spell-true-name">Talker.Say</span></div>
-<div class="spell-verdict ">no quest can be bound to this yet</div>
+<div><span class="spell-name">you saying something</span><span class="bound-badge">Integrated</span><br><span class="spell-true-name">Chat.SendText</span></div>
+<div class="spell-verdict verdict-today">bindable: chat_sent</div>
 </li>
 </ul></div>
 </div></body></html>

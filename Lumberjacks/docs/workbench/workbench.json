@@ -581,8 +581,8 @@
       "name": "Quest Lab Turnkey Package",
       "one_liner": "An arcane tome in-game that teaches you exactly what quests are possible, letting you practice writing them before trying them out for real.",
       "status": "local-only",
-      "status_detail": "A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. All 8 rune schools are hooked, and `lab_setup` also writes you a starter quest file you can edit and reload without restarting. Worth knowing before you start: only a creature kill can currently fire a quest, so a quest built on anything else parses cleanly and never fires. The lab exists to make that visible rather than let you find it the hard way. Verified in a live session on 2026-08-08: every combat seam fired in one fight and the seeded quest completed on the kill. Six of the eight schools are patched but have never been witnessed firing by anyone — being the first is one of the first tasks below.",
-      "what_it_does": "Draws an interactive console over the screen and hooks 28 game seams across all 8 schools, so you can see precisely what the game does when you act — and, on every row, whether a quest could actually be bound to it. Then you write a quest against it: edit a JSON file, run `lab_reload`, and watch it fire or be told plainly why it cannot.",
+      "status_detail": "A turnkey client-side mod. Install it, run `lab_setup` in the F5 console, and start learning. All 8 rune schools are hooked, and `lab_setup` also writes you a starter quest file you can edit and reload without restarting. The expansion routes all 34 safe canonical events through the exact evaluator shared with ComfyNetworkSense and prevents local/RPC or overload witnesses from double-completing a quest. Verified live so far: combat, harvest, gallery construction, and the seeded kill quest. The other six schools pass headless contract and game-assembly checks but still need bounded i5 live-suite receipts before they are described as witnessed.",
+      "what_it_does": "Draws an interactive console over the screen and covers all 86 practical atlas signatures across all 8 schools. Fifty-seven safe signatures normalize into 34 stable creator-facing quest events; low-level witnesses are visible only in a diagnostic profile and cannot bind quests. Edit a JSON file, run `lab_reload`, and watch the shared evaluator fire it or explain why it cannot.",
       "who_its_for": "Creators and leaders who want to learn how to write custom quests without guessing.",
       "time_to_first_result": "10 minutes. Download the zip, drop the DLL in your BepInEx/plugins folder, launch a private world, and run `lab_setup` in the F5 console. It builds you a practice ground and writes a starter quest aimed at something standing in it, so you are never hunting for the thing your quest is about — `lab_target` puts a fresh one in front of you whenever you need another.",
       "requires": [
@@ -624,7 +624,7 @@
           "id": "QL-1",
           "title": "Try it and verify one school",
           "size": "small",
-          "done_when": "Run the lab, try the actions for one school, and post in the thread whether the in-game events fired as the Tome predicted. Only harvest has ever been witnessed firing, so seven of the eight are unclaimed ground."
+            "done_when": "Run the lab, try the actions for one school, and post in the thread whether the in-game events fired as the Tome predicted. Combat and harvest have live receipts; the other six schools remain unclaimed ground until the i5 suite witnesses them."
         },
         {
           "id": "QL-2",

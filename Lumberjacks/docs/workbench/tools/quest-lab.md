@@ -9,14 +9,13 @@ A client-only BepInEx plugin, `network/mod/ComfyQuestLab`. Three surfaces, one
 window (`F6`):
 
 1. **What just happened** — a live console of what the game just did, one row per
-   event, each ending in the honest verdict: *a quest can be bound to this today*
-   / *the world speaks, but no quest is listening yet* / *nothing binds a quest to
-   this yet*. That third line is the reason the tool exists.
+   event, each ending in the honest verdict: a stable bindable event name, or
+   *diagnostic only — never bindable*. That boundary is the reason the tool exists.
 2. **Spellbook** — a page per rune school: what it covers, something to go and try,
    and the trap. Eight schools, and the same rune is the console's filter, so
    learning the book teaches the console for free.
 3. **Quests** — your own quest files, each with an armed verdict, why, its cooldown,
-   how many times it fired, and any advice. Plus the last kill the matcher was
+   how many times it fired, and any advice. Plus the last event the matcher was
    actually handed, which is how you find out why something didn't fire.
 
 `lab_setup` (typed into Valheim's own console, `F5`) raises a practice gallery —
@@ -67,17 +66,17 @@ The starter file holds two quests that disagree with each other on purpose:
 | | |
 | --- | --- |
 | `first_blood` — `kill` / `Greyling` | **armed.** Kill the Greyling under the combat monument. |
-| `punchwood` — `hit` / `tree_or_bush` | **not armed**, and nothing errors. |
+| `punchwood` — `hit` / `tree_or_bush` | **armed.** `hit` remains a compatibility alias for creature and resource damage. |
 
 Killed it already? `lab_target` puts a fresh one in front of you, and `lab_target <school>` does
 the same for any of the eight. You never have to go hunting for the thing your quest is about —
 that is the entire reason the gallery exists.
 
-That second one is the whole lesson. All eight schools are *hooked* — the lab can
-show you every one of them. But `QuestTriggerEvaluator` matches `kill` triggers
-only, so a `hit` quest parses perfectly, reports no problem, and can never fire.
-Exactly one school can have a quest *bound* to it today. The Quests tab names
-which, and why, per quest.
+All eight schools route stable creator events into the exact `QuestTriggerEvaluator`
+source shared with ComfyNetworkSense. The runtime covers all 86 practical atlas signatures:
+57 safe signatures normalize to 34 bindable events, while low-level witnesses appear only
+under the diagnostic profile and cannot complete a quest. Local/RPC and overload alternatives
+share an action key so one action cannot double-complete a zero-cooldown quest.
 
 **The name a quest matches on is not the prefab name.** The matcher compares against
 the creature's `m_name`, a localization token. For `Neck` the token contains the
@@ -88,14 +87,10 @@ so outright.
 
 ## What's rough
 
-- **Only harvest has been witnessed firing in a live session.** The other seven
-  categories are patched and the seam roster reports them hooked, but no event from
-  them has been seen with human eyes. The quest lane itself — the seed, a firing, a
-  reload diff — is **verified by unit tests against the real contract, not yet in
-  game**.
-- **One school can fire a quest.** Not a defect in the lab; it is the state of
-  `QuestTriggerEvaluator`, which the lab shares with the shipping mod rather than
-  reimplementing. Widening it is a change to the shipping contract.
+- **Combat and harvest have live receipts; six schools do not yet.** The expansion's
+  canonical routes pass headless contract tests and compile against the installed game
+  assembly, but inventory, building, crafting, progression, world, and social remain
+  built-not-witnessed until the bounded i5 suite exports receipts.
 - **`QuestViewLoader.Parse` throws on the first bad quest in a file**, so a file with
   three problems reports one. The lab says so rather than implying you are done.
 - **The parser is regex-based, not a JSON validator.** A trailing comma can silently
@@ -114,7 +109,7 @@ so outright.
 
 - **QL-1 — Try it and verify one school.** Done when: you run the lab, try the
   actions for one school, and post in the thread whether the in-game events fired as
-  the Tome predicted. Seven of the eight have never been witnessed by anyone; being
+  the Tome predicted. Six of the eight have never been witnessed by anyone; being
   the first is a real contribution.
 - **QL-2 — Author a quest that fires.** Done when: you edit `starter.json` into a
   quest of your own, `lab_reload` reports it armed, and you make it fire. Post the
