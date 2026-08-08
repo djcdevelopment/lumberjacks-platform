@@ -16,7 +16,8 @@ window (`F6`):
    stay hidden until requested. The same rune filters the live console.
 3. **Quests** — a school-colored grid of your quest files: rune, quest, event/target,
    armed state, and fire count at a glance. Expand one row for its source, evaluator
-   verdict, cooldown, and advice. The matcher input remains visible for missed triggers.
+   verdict, cooldown, and advice. Open the quest folder directly or click its path to
+   copy it. The matcher input remains visible for missed triggers.
 
 `lab_setup` (typed into Valheim's own console, `F5`) writes a starter quest file,
 safely removes any marked old build, raises a ground welcome camp, and builds a fresh
@@ -59,7 +60,8 @@ narrower than what is wired — see "What's rough".
    The panel owns the mouse while open; resize or move it once and the geometry is saved.
    Use `−` / `+` to persistently tune the whole grid between 65% and 200%, or click the
    percentage to return to 100%.
-6. Punch a tree. Read the event row and its colored **QUEST USE** verdict.
+6. Punch a tree. Read the event row and its colored **QUEST USE** verdict. Click the
+   blue event cell to copy the exact `trigger.event` ID.
 7. Open the **Quests** tab. Edit
    `BepInEx/config/comfy-quest-lab/quests/starter.json`, then run `lab_reload`.
 
@@ -91,10 +93,10 @@ so outright.
 
 ## What's rough
 
-- **The exact r12 presentation cut still needs its final live pass.** An exact-r4 OMEN
+- **The exact r13 presentation cut still needs its final live pass.** An exact-r4 OMEN
   suite already witnessed 8/8 schools and completed 8/8 ordinary example quests with
-  zero same-action doubles. r12 changes the zoomable panel and compact physical course,
-  so the final release claim waits for those suites and Derek's visual choice on r12.
+  zero same-action doubles. r13 changes the zoomable panel and compact physical course,
+  so the final release claim waits for those suites and Derek's visual choice on r13.
 - **`QuestViewLoader.Parse` throws on the first bad quest in a file**, so a file with
   three problems reports one. The lab says so rather than implying you are done.
 - **The parser is regex-based, not a JSON validator.** A trailing comma can silently
