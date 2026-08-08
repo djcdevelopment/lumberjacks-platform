@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-08T11:20:46.168Z</span>
+        <span>Updated 2026-08-08T11:33:13.316Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260808112046-quest-lab-normalizes-the-91-row-atlas-into-an-ex">
+        <div class="journal"><article class="journal-entry" id="note-20260808113313-the-shared-quest-contract-becomes-event-shaped-w">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-08T11:33:13.316Z">2026-08-08T11:33:13.316Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A4</span>
+      </div>
+      <h3>The shared quest contract becomes event-shaped without breaking schema-1 kill and hit quests</h3>
+      <p><strong>Impact:</strong> ComfyNetworkSense and Quest Lab now source-link one Unity-free QuestEvent envelope, generated 34-event catalog, additive scalar trigger.where parser, and generic QuestTriggerEvaluator.OnEvent path. OnCreatureKilled remains a compatibility wrapper, kill behavior is unchanged, and the published hit verb is preserved as an alias spanning damage_dealt and resource_damaged. A caller-supplied action key deduplicates local/RPC or overload witnesses independently of per-quest cooldown, including cooldown zero. Unknown and diagnostic-only events cannot bind. The runtime still forwards only the witnessed kill lane; contract capability is documented separately from in-game proof.</p>
+      <details><summary>Verification (1)</summary><ul><li>ComfyNetworkSense.Tests Release: 258 passed, 0 failed, including one test per safe event, schema-1 fixture compatibility, scalar where rejection boundaries, broad hit alias behavior, and zero-cooldown duplicate suppression; ComfyNetworkSense Release build: 0 warnings, 0 errors; ComfyQuestLab Release build: 0 warnings, 0 errors; capability generator --check confirms 91 rows / 90 signatures / 77 methods / 34 creator events; patch checker confirms 26 atlas integrations plus 2 support hooks resolve</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260808112046-quest-lab-normalizes-the-91-row-atlas-into-an-ex">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">
