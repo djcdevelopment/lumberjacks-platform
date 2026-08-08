@@ -18,11 +18,12 @@ window (`F6`):
    how many times it fired, and any advice. Plus the last event the matcher was
    actually handed, which is how you find out why something didn't fire.
 
-`lab_setup` (typed into Valheim's own console, `F5`) raises a practice gallery —
-eight rune monuments, a station under each, an armoury, ~620 pieces — and writes
-you a starter quest file. `lab_reload` re-reads your quest files without a restart
-and tells you what changed. `lab_target` puts a fresh practice target in front of
-you, so testing a quest twice never means going to look for a second one.
+`lab_setup` (typed into Valheim's own console, `F5`) writes a starter quest file,
+safely removes any marked old build, and raises a fresh compact black-marble course:
+eight rune monuments, 10 m halls, 9 m hub-to-station walks, and each target/tool at
+its point of use. `lab_reload` re-reads your quest files without a restart and tells
+you what changed. `lab_target` still puts a fresh practice target in front of you for
+quick one-offs.
 
 The web version of the spellbook is [`/questlab`](https://am4.tail8e749c.ts.net/questlab).
 
@@ -55,6 +56,8 @@ narrower than what is wired — see "What's rough".
 3. Launch a **private, single-player** world.
 4. Press `F5` (Valheim's console) and type `lab_setup`.
 5. Press `F6` (the lab's own panel). Different key — this is the usual first stumble.
+   The panel owns the mouse while open; use its `−` / `+` controls to persistently tune
+   the whole grid between 65% and 200% for windowed, 1080p, or 4K play.
 6. Punch a tree. Watch the row appear, and read its third line.
 7. Open the **Quests** tab. Edit
    `BepInEx/config/comfy-quest-lab/quests/starter.json`, then run `lab_reload`.
@@ -87,18 +90,18 @@ so outright.
 
 ## What's rough
 
-- **Combat and harvest have live receipts; six schools do not yet.** The expansion's
-  canonical routes pass headless contract tests and compile against the installed game
-  assembly, but inventory, building, crafting, progression, world, and social remain
-  built-not-witnessed until the bounded i5 suite exports receipts.
+- **The exact r8 presentation cut still needs its final live pass.** An exact-r4 OMEN
+  suite already witnessed 8/8 schools and completed 8/8 ordinary example quests with
+  zero same-action doubles. r8 changes the zoomable panel and compact physical course,
+  so the final release claim waits for those suites and Derek's visual choice on r8.
 - **`QuestViewLoader.Parse` throws on the first bad quest in a file**, so a file with
   three problems reports one. The lab says so rather than implying you are done.
 - **The parser is regex-based, not a JSON validator.** A trailing comma can silently
   drop a quest. The lab compares parsed count against `"quest_id"` occurrences and
   flags a disagreement, which catches most of it, but a malformed file can still
   surprise you.
-- **Item stands in the gallery stay bare.** `SetVisualItem` is a registered RPC, not
-  a callable method, so the gear is dropped on the floor beside them instead.
+- **Dropped course items are intentional.** The uncertain item-stand RPC is gone; tools,
+  arrows, materials, fuel, and food glint visibly beside the interaction that consumes them.
 - **`lab_reload` clears cooldowns**, unlike the shipping mod, where a 60 s cooldown
   persists for the session. Deliberate — waiting a minute to retest an edit is the
   flow `lab_reload` exists to protect — but it means the lab is *slightly* more
@@ -107,10 +110,9 @@ so outright.
 
 ## First tasks
 
-- **QL-1 — Try it and verify one school.** Done when: you run the lab, try the
-  actions for one school, and post in the thread whether the in-game events fired as
-  the Tome predicted. Six of the eight have never been witnessed by anyone; being
-  the first is a real contribution.
+- **QL-1 — Try the compact course.** Done when: you run `questlab_batch prepare
+  all-schools`, follow its short circuit, and post whether every station was obvious
+  without extra instructions. Event coverage is witnessed; creator usability is the test.
 - **QL-2 — Author a quest that fires.** Done when: you edit `starter.json` into a
   quest of your own, `lab_reload` reports it armed, and you make it fire. Post the
   file — a second worked example is worth more than any amount of documentation.

@@ -7,7 +7,8 @@ thread's opening post.*
 
 What it is: a mod for your own single-player world that shows you, live, what Valheim is actually
 doing — and whether a quest could fire on it. Drop one DLL in, type `lab_setup`, and it raises a
-practice ground for you: eight rune monuments, a station under each, an armoury. Punch a tree and
+compact black-marble course for you: eight rune monuments, wide halls, short spokes, and each
+target/tool beside the interaction that uses it. Punch a tree and
 you'll see a row appear with three lines. The third line is the whole point — it's the honest
 answer to "can I build a quest on what I just did?"
 
@@ -19,17 +20,15 @@ monument, and `lab_target` puts a fresh one in front of you whenever you need an
 of the eight schools. Testing a quest twice should not mean walking across the map to find a
 second thing to kill.
 
-Honest status: local-only, and there's one thing you should know before you spend an evening on
-it. All eight schools are **hooked** — the lab can show you every one of them. But exactly one of
-them can currently have a quest **bound** to it: a creature kill. A quest with a `hit` trigger
-parses perfectly, reports no error at all, and can never fire. That's not a bug in the lab, it's
-the state of the quest evaluator the lab shares with the live server mod — and making that visible
-instead of letting you discover it the hard way is why this thing exists. The starter file ships
-one of each so you can see the difference on your first launch.
+Honest status: local-only. All 86 practical atlas signatures are explicitly instrumented; 57 safe
+signatures normalize into 34 stable creator events that the lab and ComfyNetworkSense evaluate
+from the same source. Diagnostic-only mutations stay visible without ever completing a quest, and
+local/RPC or overload witnesses share an action identity so one action cannot double-complete a
+zero-cooldown quest. The starter's broad `hit` alias and ordinary `kill` trigger are both bindable.
 
-Also honest: only the harvest school has ever been *witnessed* firing in a live session. The other
-seven are patched and report as hooked, but nobody has actually watched one happen. That's what
-QL-1 is.
+An exact-r4 OMEN pass witnessed all eight schools and completed all eight example quests with zero
+same-action doubles. The current r8 presentation/course cut still needs the same machine-readable
+pass plus a final visual review; that is the honest remaining boundary.
 
 It runs entirely on your machine, sends nothing anywhere, does nothing at all on a dedicated
 server, and uninstalling it changes nothing about your game.
@@ -39,10 +38,9 @@ Get it: <ACCESS-URL>
 
 First things to try:
 
-- **QL-1** — Install it, run `lab_setup`, and pick one school that isn't harvest. Do the things
-  its Spellbook page tells you to do, and tell us whether the rows showed up as the Tome predicted.
-  Seven of the eight have never been seen by anyone; being the first person to witness one is a
-  real contribution and takes about ten minutes.
+- **QL-1** — Install it, run `questlab_batch prepare all-schools`, and follow the compact circuit.
+  Tell us whether the target, tool, and next action were obvious at every rune without somebody
+  coaching you. The event lane is witnessed; the creator experience is what this tests.
 - **QL-2** — Edit `starter.json` into a quest of your own and make it fire. Post the file. A
   second worked example is worth more than any amount of documentation, and it'll tell us fast
   whether the Quests tab explains itself or whether you had to guess.
@@ -62,4 +60,5 @@ What a useful reply looks like:
 - Your Valheim version, if a seam reported itself unavailable in `questlab_seams`.
 
 Two keys, because this catches nearly everyone: **F5** is Valheim's own console, where you type
-`lab_setup` and `lab_reload`. **F6** opens the lab's window.
+`lab_setup` and `lab_reload`. **F6** opens the lab's window and hands it the mouse. Use the visible
+`−` / `+` controls to persistently tune the whole panel from 65% to 200% for your resolution.
