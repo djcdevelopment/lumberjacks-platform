@@ -85,7 +85,7 @@ try {
         $readme = Join-Path $root 'network\mod\ComfyQuestLab\README.md'
         Copy-Item $readme -Destination $staging
         
-        $config = "enabled = true`npanelShortcut = F6`nconsoleRows = 18`nverboseLogging = false`nobserveStamina = false`nblueprintPiecesPerFrame = 12`n"
+        $config = "enabled = true`npanelShortcut = F6`nconsoleRows = 18`nverboseLogging = false`nobserveStamina = false`ngalleryPiecesPerFrame = 24`nblueprintPiecesPerFrame = 12`n"
         [System.IO.File]::WriteAllText((Join-Path $staging 'djcdevelopment.valheim.comfyquestlab.cfg'), $config, (New-Object System.Text.UTF8Encoding($false)))
     }
 
