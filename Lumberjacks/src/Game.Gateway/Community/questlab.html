@@ -87,9 +87,9 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 <div class="school">
 <div class="school-header"><svg viewBox="0 0 100 100" class="rune" aria-hidden="true"><line x1="50.0" y1="10.0" x2="50.0" y2="95.0" stroke="#ed7366" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="10.0" x2="15.0" y2="42.0" stroke="#ed7366" stroke-width="12" stroke-linecap="round"/><line x1="50.0" y1="10.0" x2="85.0" y2="42.0" stroke="#ed7366" stroke-width="12" stroke-linecap="round"/></svg><h2>Combat</h2></div>
 <div style="margin-bottom: 1.5rem">
-<p><strong>What it covers:</strong> Hitting things, and things dying. The only category with any ground a quest can stand on today — and the only place you can see all three verdicts side by side, which is the fastest way to understand what they mean.</p>
+<p><strong>What it covers:</strong> Hitting things, blocking, healing, staggering, and things dying. Each deliberate act has stable quest vocabulary; the lower-level witnesses that corroborate it remain visible only as diagnostics.</p>
 <p><strong>Go and try:</strong> Find a Greyling and hit it once, then finish it. You get two kinds of row: the hits, and the death.</p>
-<p class="watch"><strong>Worth knowing:</strong> The hits and the kill get DIFFERENT verdicts, and that is the whole lesson. The kill says a quest can fire on it. The hits say they emit an event that no quest trigger matches — real, visible, and unusable. If you want a quest that fires on a hit rather than a kill, nothing today will run it.</p>
+<p class="watch"><strong>Worth knowing:</strong> A hit and a kill are different creator events: damage_dealt and kill. Bind to the precise one when you can; the older hit spelling remains a compatibility alias for creature or resource damage. A local blow and its server-carried echo share one action identity, so one swing cannot complete a quest twice.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -146,7 +146,7 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 <div style="margin-bottom: 1.5rem">
 <p><strong>What it covers:</strong> Chopping trees, breaking bushes and rocks, picking berries. The first thing most people try, and the reason this lab exists: hitting a bush used to fire a quest, and the mod that could do it was retired.</p>
 <p><strong>Go and try:</strong> Punch a tree with bare fists, then punch a raspberry bush, then pick one. Three rows, and the third is a different shape from the first two.</p>
-<p class="watch"><strong>Worth knowing:</strong> A standing tree and a felled trunk are different things to the game, so they are different rows. And picking a berry is not damage at all — it is an interact. Nobody guesses that, and a quest written as though picking were hitting would never fire.</p>
+<p class="watch"><strong>Worth knowing:</strong> A standing tree and a felled trunk are different things to the game, so they are different rows. And picking a berry is not damage at all — it is an interact. Bind damage as resource_damaged and picking as resource_picked; the older hit alias still covers resource damage, but it does not mean picking.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -207,7 +207,7 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 <div style="margin-bottom: 1.5rem">
 <p><strong>What it covers:</strong> Picking things up, equipping them, eating them, emptying chests. The largest group of seams in the game and the noisiest, because the game moves items around constantly for reasons that have nothing to do with you.</p>
 <p><strong>Go and try:</strong> Drop something and pick it back up, then equip a weapon and eat food. Then open a chest and take everything.</p>
-<p class="watch"><strong>Worth knowing:</strong> The lab watches what you DID, not every time the item list changed. Adding an item internally happens on crafting, on stacking, on moving between chests — a quest built on that would fire constantly and mean nothing. It is left alone on purpose, and you can see it listed as available in the atlas if you disagree.</p>
+<p class="watch"><strong>Worth knowing:</strong> The lab watches what you DID, not every time the item list changed. Adding an item internally happens on crafting, on stacking, on moving between chests — a quest built on that would fire constantly and mean nothing. It is left diagnostic-only on purpose. Pickup, drop, equip, unequip, consume, and emptying a container are stable creator events and can each bind a quest.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -268,7 +268,7 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 <div style="margin-bottom: 1.5rem">
 <p><strong>What it covers:</strong> Placing pieces, repairing them, taking them down, and structures breaking. The category a settlement steward actually wants: build a longhouse, repair the dock, keep the walls up.</p>
 <p><strong>Go and try:</strong> Place a workbench, hit it with a hammer to repair it, then remove it. If something of yours is damaged, let it break and watch that row too.</p>
-<p class="watch"><strong>Worth knowing:</strong> Placing is something YOU do; breaking is something that HAPPENS. So breaking is reported whoever caused it, and the row says whether it was you. That distinction is what lets a 'defend the base' quest work at all.</p>
+<p class="watch"><strong>Worth knowing:</strong> Placing is something YOU do; breaking is something that HAPPENS. So breaking is reported whoever caused it, and the row says whether it was you. That distinction is what lets a 'defend the base' quest work at all. Placement, removal, repair, damage, and destruction have separate bindable names.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -313,7 +313,7 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 <div style="margin-bottom: 1.5rem">
 <p><strong>What it covers:</strong> Making things at a bench, and feeding the machines that make things — smelters, kilns, cooking stations. Two different acts that people tend to lump together.</p>
 <p><strong>Go and try:</strong> Craft anything at a workbench. Then put ore and coal into a smelter. Notice they are separate rows with separate names.</p>
-<p class="watch"><strong>Worth knowing:</strong> The craft is reported by the crafting WINDOW, not by your character. That is genuinely surprising and it is why searching for a 'player crafts' event turns up nothing and people conclude crafting cannot be tracked. It can.</p>
+<p class="watch"><strong>Worth knowing:</strong> The craft is reported by the crafting WINDOW, not by your character. That is genuinely surprising and it is why searching for a 'player crafts' event turns up nothing and people conclude crafting cannot be tracked. It can: the crafted item, station input, fuel, produced output, and collected output are separate bindable events.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -366,7 +366,7 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 <div style="margin-bottom: 1.5rem">
 <p><strong>What it covers:</strong> Skills going up, stamina being spent, and dying. The category people ask for by name and then cannot find, because the names they ask for do not exist.</p>
 <p><strong>Go and try:</strong> Swing an axe at a tree a few times until the skill-up message appears. You will see the skill row fire at the same moment.</p>
-<p class="watch"><strong>Worth knowing:</strong> There is an event for 'a skill went up'. There is no event for 'my skill is level 30' — that is a question you can ask, not something the game announces. A quest can fire on the first and cannot on the second, and that difference catches everybody once. Stamina is off by default. It fires when you run, so it buries everything.</p>
+<p class="watch"><strong>Worth knowing:</strong> There is an event for 'a skill went up'. There is no event for 'my skill is level 30' — that is a question you can ask, not something the game announces. A quest can fire on the first and cannot on the second, and that difference catches everybody once. Skill raises, skill loss, death, maximum-health changes, and stamina changes are bindable. Stamina observation is off by default because running can bury everything; enable it only for that experiment.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -415,7 +415,7 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 <div style="margin-bottom: 1.5rem">
 <p><strong>What it covers:</strong> Moving through the world, and the world itself changing state. Small, and it contains the most interesting seam nobody has used.</p>
 <p><strong>Go and try:</strong> Take a portal. If you are on a world where a boss has been killed, that already fired.</p>
-<p class="watch"><strong>Worth knowing:</strong> Valheim keeps a short list of world-wide flags — which bosses are dead, and so what the world allows. That is the nearest thing the game has to a server-wide event, which makes it the obvious foundation for a guild-scale quest, and nothing has ever built on it.</p>
+<p class="watch"><strong>Worth knowing:</strong> Valheim keeps a short list of world-wide flags — which bosses are dead, and so what the world allows. That is the nearest thing the game has to a server-wide event. Portal travel and global-key set/remove each have stable bindable names; asking which biome a coordinate occupies remains a query, not an event.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
@@ -444,7 +444,7 @@ code { font-family: var(--mono); font-size: .9rem; color: var(--wood); }
 <div style="margin-bottom: 1.5rem">
 <p><strong>What it covers:</strong> Talking, and writing on signs. The quietest category and the one with the most room, because it needs nothing from combat at all.</p>
 <p><strong>Go and try:</strong> Say something in chat, then place a sign and write on it.</p>
-<p class="watch"><strong>Worth knowing:</strong> A quest that completes when somebody writes a particular sign, or says a phrase somewhere specific, is entirely possible and nobody has written one. Community rituals tend to look far more like this than like killing things — which is worth remembering when the combat seams are the ones that work.</p>
+<p class="watch"><strong>Worth knowing:</strong> A quest that completes when somebody writes a particular sign, or says a phrase somewhere specific, is directly bindable through sign_written or chat_sent. Community rituals tend to look far more like this than like killing things — which is worth remembering. Messages merely received from somebody else stay diagnostic-only, so another player cannot complete your speaking quest for you.</p>
 </div>
 <ul class="spell-list">
 <li class="spell">
