@@ -7,8 +7,8 @@ thread's opening post.*
 
 What it is: a mod for your own single-player world that shows you, live, what Valheim is actually
 doing — and whether a quest could fire on it. Drop one DLL in, type `lab_setup`, and it raises a
-compact black-marble course for you: eight rune monuments, wide halls, short spokes, and each
-target/tool beside the interaction that uses it. Punch a tree and
+ground welcome camp and a canopy-clear black-marble course for you: eight rune monuments, wide
+halls, short spokes, mounted picnic food, and each target/tool beside the interaction that uses it. Punch a tree and
 you'll see a row appear with three lines. The third line is the whole point — it's the honest
 answer to "can I build a quest on what I just did?"
 
@@ -27,7 +27,7 @@ local/RPC or overload witnesses share an action identity so one action cannot do
 zero-cooldown quest. The starter's broad `hit` alias and ordinary `kill` trigger are both bindable.
 
 An exact-r4 OMEN pass witnessed all eight schools and completed all eight example quests with zero
-same-action doubles. The current r9 presentation/course cut still needs the same machine-readable
+same-action doubles. The current r10 presentation/course cut still needs the same machine-readable
 pass plus a final visual review; that is the honest remaining boundary.
 
 It runs entirely on your machine, sends nothing anywhere, does nothing at all on a dedicated
