@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-08T16:19:10.220Z</span>
+        <span>Updated 2026-08-08T16:32:35.389Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,22 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260808161910-quest-lab-r8-compresses-the-creator-course-and-a">
+        <div class="journal"><article class="journal-entry" id="note-20260808163235-quest-lab-r9-anchors-rebuilds-to-terrain-after-t">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-08T16:32:35.389Z">2026-08-08T16:32:35.389Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A4</span>
+      </div>
+      <h3>Quest Lab r9 anchors rebuilds to terrain after the fatal r8 portal stack</h3>
+      <p><strong>Impact:</strong> The exact-r8 OMEN reset proved that a zero marked-ZDO count can precede Unity collider retirement: the replacement deck stacked 18.1 m high and its ground portal caused a fatal fall. r9 samples terrain-only for the platform and return portal, refuses placement when terrain cannot be resolved, and gives retired GameObjects two quiescence frames before rebuilding so the reusable-site loop no longer trusts transient solids.</p>
+      <details><summary>Verification (1)</summary><ul><li>Exact-r8 receipt cleared 3,668 marked objects and raised 1,349 before exposing the 18.1 m stack; 282 shared .NET tests and 76 repository Python tests pass; ComfyQuestLab Release build has 0 warnings/errors; atlas, patch, Gallery, Tome, and roadmap generators/checks are current; exact-r9 OMEN lifecycle and visual witness follows after SHA-verified deploy.</li></ul></details>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260808161910-quest-lab-r8-compresses-the-creator-course-and-a">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

@@ -90,10 +90,10 @@ so outright.
 
 ## What's rough
 
-- **The exact r8 presentation cut still needs its final live pass.** An exact-r4 OMEN
+- **The exact r9 presentation cut still needs its final live pass.** An exact-r4 OMEN
   suite already witnessed 8/8 schools and completed 8/8 ordinary example quests with
-  zero same-action doubles. r8 changes the zoomable panel and compact physical course,
-  so the final release claim waits for those suites and Derek's visual choice on r8.
+  zero same-action doubles. r9 changes the zoomable panel and compact physical course,
+  so the final release claim waits for those suites and Derek's visual choice on r9.
 - **`QuestViewLoader.Parse` throws on the first bad quest in a file**, so a file with
   three problems reports one. The lab says so rather than implying you are done.
 - **The parser is regex-based, not a JSON validator.** A trailing comma can silently
