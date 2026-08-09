@@ -19,6 +19,13 @@ window (`F6`):
    verdict, cooldown, and advice. Open the quest folder directly or click its path to
    copy it. The matcher input remains visible for missed triggers.
 
+The first **Truth Lens** increment is also live. `questlab_gallery evidence
+[profile-or-build-id]` inspects a standing build without changing it and emits
+`comfy-questlab-gallery-truth/v1`: world bounds, loaded roof protection, explicit
+snow/weather risk, ceiling-fixture clearance, fresh-prefab versus live render samples,
+and deterministic named views for the camera pipeline. It reports causes and regression
+checks; it deliberately leaves final appearance to the human looking at the frame.
+
 `lab_setup` (typed into Valheim's own console, `F5`) writes a starter quest file,
 safely removes any marked old build, raises a ground welcome camp, and builds a fresh
 canopy-clear black-marble course: eight rune monuments, 10 m halls, 9 m hub-to-station
