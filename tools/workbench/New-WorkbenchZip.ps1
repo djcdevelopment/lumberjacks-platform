@@ -85,7 +85,29 @@ try {
         Copy-Item $dll -Destination $staging
         
         $readme = Join-Path $root 'network\mod\ComfyQuestLab\README.md'
-        Copy-Item $readme -Destination $staging
+        # The source README links across the repository. Rewrite every such link to either
+        # its bundled companion or the canonical public source so the extracted package is
+        # self-navigating instead of presenting dead ../../../ paths.
+        $packageReadme = Get-Content $readme -Raw
+        $readmeLinks = [ordered]@{
+            '../../../tools/questlab-sheets/Start-QuestLabSheets.ps1' = 'questlab-sheets/Start-QuestLabSheets.ps1'
+            '../../../tools/questlab-sheets/README.md' = 'questlab-sheets/README.md'
+            '../../../tools/component-packets/EVENT-ATLAS.md' = 'https://github.com/djcdevelopment/baseline/blob/main/tools/component-packets/EVENT-ATLAS.md'
+            '../../../tools/component-packets/samples/gallery-profiles.json' = 'https://github.com/djcdevelopment/baseline/blob/main/tools/component-packets/samples/gallery-profiles.json'
+            '../../../tools/i5/Invoke-I5QuestLabBatch.ps1' = 'https://github.com/djcdevelopment/baseline/blob/main/tools/i5/Invoke-I5QuestLabBatch.ps1'
+            '../../../tools/component-packets/quest-event-authoring.json' = 'https://github.com/djcdevelopment/baseline/blob/main/tools/component-packets/quest-event-authoring.json'
+            '../../../tools/quest-packs/README.md' = 'https://github.com/djcdevelopment/baseline/blob/main/tools/quest-packs/README.md'
+            '../../../docs/legal/LICENSING.md' = 'https://github.com/djcdevelopment/baseline/blob/main/docs/legal/LICENSING.md'
+            'Patches/HarvestPatches.cs' = 'https://github.com/djcdevelopment/baseline/blob/main/network/mod/ComfyQuestLab/Patches/HarvestPatches.cs'
+        }
+        foreach ($link in $readmeLinks.GetEnumerator()) {
+            $packageReadme = $packageReadme.Replace([string]$link.Key, [string]$link.Value)
+        }
+        if ($packageReadme.Contains('../../../')) { throw 'Quest Lab package README retains a repository-relative link' }
+        [System.IO.File]::WriteAllText(
+            (Join-Path $staging 'README.md'),
+            $packageReadme,
+            (New-Object System.Text.UTF8Encoding($false)))
 
         # Package the same reviewed config that developers and tests see. Generating a second
         # copy here previously dropped BepInEx section headers and silently drifted as settings
@@ -101,6 +123,35 @@ try {
         New-Item -ItemType Directory -Path $sheetsStage | Out-Null
         @('questlab_sheets.py', 'Start-QuestLabSheets.ps1', 'requirements-google.txt', 'README.md') | ForEach-Object {
             Copy-Item (Join-Path $sheetsSource $_) -Destination $sheetsStage
+        }
+
+        # Include the richer dependency-free parser as a separate, explicit allowlist. It
+        # adds filters plus JSON/CSV/XLSX/ZIP outputs without sharing credentials or state
+        # with the fixed-loopback Sheets companion.
+        $eventsSource = Join-Path $root 'tools\questlab-events'
+        $eventsStage = Join-Path $staging 'questlab-events'
+        New-Item -ItemType Directory -Path $eventsStage | Out-Null
+        @('questlab_events.py', 'README.md') | ForEach-Object {
+            Copy-Item (Join-Path $eventsSource $_) -Destination $eventsStage
+        }
+
+        @(
+            'questlab-sheets\Start-QuestLabSheets.ps1',
+            'questlab-sheets\README.md',
+            'questlab-events\README.md'
+        ) | ForEach-Object {
+            if (-not (Test-Path (Join-Path $staging $_))) {
+                throw "Quest Lab package README target is missing: $_"
+            }
+        }
+        [regex]::Matches(
+            $packageReadme,
+            '\]\((?!https?://|#)([^)#]+)(?:#[^)]*)?\)'
+        ) | ForEach-Object {
+            $relativeTarget = $_.Groups[1].Value -replace '/', '\'
+            if (-not (Test-Path (Join-Path $staging $relativeTarget))) {
+                throw "Quest Lab package README has a broken local link: $relativeTarget"
+            }
         }
 
         $pluginManifest = Get-Content (Join-Path $root 'network\mod\ComfyQuestLab\manifest.json') -Raw | ConvertFrom-Json
