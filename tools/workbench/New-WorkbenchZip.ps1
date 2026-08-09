@@ -93,6 +93,16 @@ try {
         $config = Join-Path $root 'network\mod\ComfyQuestLab\djcdevelopment.valheim.comfyquestlab.cfg'
         Copy-Item $config -Destination $staging
 
+        # The event parser/CSV path is dependency-free; Google remains an optional install.
+        # Copy an explicit file allowlist so local __pycache__, credentials, tokens, or receipts
+        # can never hitch a ride in the creator package.
+        $sheetsSource = Join-Path $root 'tools\questlab-sheets'
+        $sheetsStage = Join-Path $staging 'questlab-sheets'
+        New-Item -ItemType Directory -Path $sheetsStage | Out-Null
+        @('questlab_sheets.py', 'Start-QuestLabSheets.ps1', 'requirements-google.txt', 'README.md') | ForEach-Object {
+            Copy-Item (Join-Path $sheetsSource $_) -Destination $sheetsStage
+        }
+
         $pluginManifest = Get-Content (Join-Path $root 'network\mod\ComfyQuestLab\manifest.json') -Raw | ConvertFrom-Json
         $packageVersion = [string]$pluginManifest.version_number
         $pluginSource = Get-Content (Join-Path $root 'network\mod\ComfyQuestLab\ComfyQuestLab.cs') -Raw
