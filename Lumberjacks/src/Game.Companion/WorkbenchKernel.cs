@@ -768,6 +768,34 @@ static class WorkbenchEndpoints
             Results.Json(await service.ProjectionAsync(cancellationToken), Json.Options));
         app.MapGet("/api/v1/workbench/installation", (WorkbenchService service) => Results.Json(service.Installation, Json.Options));
         app.MapGet("/api/v1/workbench/security", (WorkbenchService service) => Results.Ok(new { schema_version = 1, browser_token = service.BrowserToken() }));
+        app.MapGet("/quest-studio", () => Results.Text(QuestStudioPage.Html, "text/html", Encoding.UTF8));
+        app.MapGet("/api/v1/workbench/quest-studio/project", (QuestStudioService studio) => Results.Json(studio.Read(), Json.Options));
+        app.MapGet("/api/v1/workbench/quest-studio/events", (QuestStudioService studio) => Results.Json(studio.Events(), Json.Options));
+        app.MapGet("/api/v1/workbench/quest-studio/receipts", (QuestStudioService studio) => Results.Json(studio.Receipts(), Json.Options));
+        app.MapGet("/api/v1/workbench/quest-studio/history", (QuestStudioService studio) => Results.Json(studio.History(), Json.Options));
+        app.MapGet("/api/v1/workbench/quest-studio/diff", (string? from, string? to, QuestStudioService studio) =>
+        {
+            var result = studio.Diff(from, to);
+            return result.Ok ? Results.Ok(result) : Results.BadRequest(result);
+        });
+        app.MapPost("/api/v1/workbench/quest-studio/save", (HttpRequest request, QuestStudioProject? body, WorkbenchService service, QuestStudioService studio) =>
+        {
+            if (!service.BrowserMutationAllowed(request)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+            var result = studio.Save(body);
+            return result.Ok ? Results.Ok(result) : Results.BadRequest(result);
+        });
+        app.MapPost("/api/v1/workbench/quest-studio/certify", (HttpRequest request, QuestStudioProject? body, WorkbenchService service, QuestStudioService studio) =>
+        {
+            if (!service.BrowserMutationAllowed(request)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+            var result = studio.Certify(body);
+            return result.Ok ? Results.Ok(result) : Results.BadRequest(result);
+        });
+        app.MapPost("/api/v1/workbench/quest-studio/publish-project", async (HttpRequest request, QuestStudioProject? body, WorkbenchService service, QuestStudioService studio, CancellationToken cancellationToken) =>
+        {
+            if (!service.BrowserMutationAllowed(request)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+            var result = await studio.PublishAsync(body, cancellationToken);
+            return result.Ok ? Results.Ok(result) : Results.BadRequest(result);
+        });
         app.MapGet("/api/v1/workbench/capabilities", (WorkbenchService service) => Results.Json(service.Capabilities(), Json.Options));
         app.MapGet("/api/v1/workbench/topology", (WorkbenchService service) => Results.Json(service.Topology(), Json.Options));
         app.MapGet("/api/v1/workbench/jobs", (WorkbenchJobStore jobs) => Results.Json(new { schema_version = 1, jobs = jobs.List() }, Json.Options));
@@ -800,6 +828,13 @@ static class WorkbenchEndpoints
             if (!service.BrowserMutationAllowed(request)) return Results.StatusCode(StatusCodes.Status403Forbidden);
             var result = service.Claim(body?.Label);
             return result.Ok ? Results.Ok(result.Value) : Results.BadRequest(new { error = result.Error });
+        });
+        app.MapPost("/api/v1/workbench/quest-studio/publish", async (HttpRequest request, WorkbenchService service, QuestPackPublisher publisher, CancellationToken cancellationToken) =>
+        {
+            if (!service.BrowserMutationAllowed(request)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+            var filename = request.Headers["X-Questpack-Filename"].ToString();
+            var receipt = await publisher.PublishAsync(request.Body, filename, cancellationToken);
+            return receipt.Ok ? Results.Ok(receipt) : Results.BadRequest(receipt);
         });
         app.MapPost("/api/v1/workbench/capabilities/{capabilityId}/jobs", (string capabilityId, HttpRequest request, WorkbenchJobRequest? body, WorkbenchService service) =>
         {

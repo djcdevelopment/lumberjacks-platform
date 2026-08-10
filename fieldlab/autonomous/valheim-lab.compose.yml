@@ -58,6 +58,11 @@ services:
       CROSSPLAY: ${CROSSPLAY:-false}
       BEPINEX: "true"
       BACKUPS: ${BACKUPS:-true}
+      # Lab world is test data: keep a daily safety net, not an hourly one.
+      # Default was 3600s, which cut a 593 MB zip every hour (41 GB by 2026-08-10).
+      BACKUPS_INTERVAL: ${BACKUPS_INTERVAL:-86400}
+      BACKUPS_MAX_AGE: ${BACKUPS_MAX_AGE:-3}
+      BACKUPS_IF_IDLE: ${BACKUPS_IF_IDLE:-false}
       UPDATE_IF_IDLE: "true"
       RESTART_IF_IDLE: "true"
     volumes:

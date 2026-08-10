@@ -15,5 +15,8 @@ services:
       CROSSPLAY: "false"
       BEPINEX: "true"
       BACKUPS: "true"
+      BACKUPS_INTERVAL: "86400"
+      BACKUPS_MAX_AGE: "3"
+      BACKUPS_IF_IDLE: "false"
       UPDATE_IF_IDLE: "true"
       RESTART_IF_IDLE: "true"

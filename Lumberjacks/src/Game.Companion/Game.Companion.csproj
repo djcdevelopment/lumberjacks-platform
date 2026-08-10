@@ -9,4 +9,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Game.Companion.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\network\mod\ComfyQuestContracts\ComfyQuestContracts.csproj" />
+  </ItemGroup>
 </Project>

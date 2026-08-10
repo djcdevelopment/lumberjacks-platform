@@ -15,7 +15,7 @@ static class WorkbenchPage
 <body>
   <h1>Lumberjacks Workbench</h1>
   <p class="muted">The local Docker workbench: source position, milestone hierarchy, live lanes, and recoverable evidence.</p>
-  <div class="links"><a class="btn" href="/">Local status</a><a class="btn" href="/trace">Live trace</a><a class="btn" href="/community">Community</a><a class="btn" href="/roadmap">Roadmap</a></div>
+  <div class="links"><a class="btn" href="/">Local status</a><a class="btn" href="/quest-studio">Quest Studio</a><a class="btn" href="/trace">Live trace</a><a class="btn" href="/community">Community</a><a class="btn" href="/roadmap">Roadmap</a></div>
 
   <section class="card hero"><h2 id="goal">Loading active goal...</h2><p id="objective" class="muted">Loading source and objective.</p><p class="source" id="source">Source unknown</p></section>
 
