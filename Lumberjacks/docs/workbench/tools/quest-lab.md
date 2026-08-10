@@ -19,12 +19,27 @@ window (`F6`):
    verdict, cooldown, and advice. Open the quest folder directly or click its path to
    copy it. The matcher input remains visible for missed triggers.
 
+The first **Truth Lens** increment is also live. `questlab_gallery evidence
+[profile-or-build-id]` inspects a standing build without changing it and emits
+`comfy-questlab-gallery-truth/v1`: world bounds, loaded roof protection, explicit
+snow/weather risk, ceiling-fixture clearance, fresh-prefab versus live render samples,
+and deterministic named views for the camera pipeline. It reports causes and regression
+checks; it deliberately leaves final appearance to the human looking at the frame.
+
 `lab_setup` (typed into Valheim's own console, `F5`) writes a starter quest file,
 safely removes any marked old build, raises a ground welcome camp, and builds a fresh
 canopy-clear black-marble course: eight rune monuments, 10 m halls, 9 m hub-to-station
 walks, and each target/tool at its point of use. `lab_reload` re-reads your quest files and tells
 you what changed. `lab_target` still puts a fresh practice target in front of you for
 quick one-offs.
+
+The blueprint lane also supports build-by-example authoring. `questlab_blueprint capture
+<name> <radius> mine` copies only the local player's pieces in a hard-capped 1–40 m sphere;
+using `lab` instead copies only existing Quest Lab-marked pieces. It writes a community
+PlanBuild file and deterministic hashed sidecar, preserving reviewed sign, item-stand, and
+Quest Lab light/glow metadata. `inspect` proves the pair agrees before the source is cleared,
+and `diff` compares a rebuilt selection independent of world position. Capture itself is
+read-only; replay remains marked and selectively clearable.
 
 The web version of the spellbook is [`/questlab`](https://am4.tail8e749c.ts.net/questlab).
 
@@ -34,11 +49,12 @@ The web version of the spellbook is [`/questlab`](https://am4.tail8e749c.ts.net/
 the lab reads it and tells you the truth about it. Turn-in still belongs to the
 guild's Discord bot and the shipping mod's evidence flow.
 
-**Not the shipping mod.** It never changes the game — every hook is a postfix that
-reads and records, and a postfix that throws is swallowed, because a patch that
-throws takes Valheim's damage path with it. It does nothing at all on a dedicated
-server (detected in `Awake`, before a single patch is applied). Uninstall it and
-nothing about your game changes.
+**Not the shipping mod.** Passive observation never changes the game: every hook is a
+postfix that reads and records, and a postfix that throws is swallowed. Typed Gallery,
+blueprint-build, and suite-prepare commands are the explicit private-world exceptions; their
+objects are durably marked and selectively clearable. Capture reads the chosen bounded
+selection without modifying it. The plugin does nothing at all on a dedicated server
+(detected in `Awake`, before a single patch is applied).
 
 **It does not read the shipping mod's quest file.** Its own quests live under
 `comfy-quest-lab/quests/`, and it never touches `comfy-network-sense/`.
