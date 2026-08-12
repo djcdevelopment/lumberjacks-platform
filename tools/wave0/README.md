@@ -8,7 +8,7 @@ provide. They do not replace the final apply/observe gate.
 tools\wave0\Test-Wave0SyntheticMotion.ps1 -OutputJson captures\wave0-synthetic-motion.json
 
 # Runtime release/readiness alignment across P7, OMEN, and i5
-tools\i5\Test-Wave0Readiness.ps1 -SummaryOnly -OutputJson captures\wave0-readiness.json
+Lumberjacks\tools\companion\Test-Wave0Readiness.ps1 -SummaryOnly -OutputJson captures\wave0-readiness.json
 
 # Public roadmap freshness against live P7 release truth
 tools\wave0\Test-Wave0RoadmapFreshness.ps1 -OutputJson captures\wave0-roadmap-freshness.json

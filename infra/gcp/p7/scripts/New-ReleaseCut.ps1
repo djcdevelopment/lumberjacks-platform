@@ -32,6 +32,14 @@
 
 .PARAMETER ArtifactBoundaryReceiptPath
   Optional JSON receipt path for the source-plus-DLL boundary result.
+
+.PARAMETER ModArtifact
+  Optional path to an already-built, frozen ComfyNetworkSense.dll. When supplied, this cut
+  bypasses the network/mod source-tree pin: it does not rewrite ComfyNetworkSense.cs and does
+  not rebuild the mod (steps 1-2 below), and instead hash-verifies the given artifact and reads
+  its baked release id back, same as the source-tree path would have. Omitted (the default),
+  behavior is byte-for-byte identical to before: rewrite the source const, force-rebuild, read
+  the id back out of the freshly built bin/Release DLL.
 #>
 [CmdletBinding()]
 param(
@@ -41,6 +49,7 @@ param(
   [ValidateSet('candidate', 'final')]
   [string] $ArtifactStage = 'final',
   [string] $ArtifactBoundaryReceiptPath = '',
+  [string] $ModArtifact = '',
   [switch] $WhatIf
 )
 
@@ -65,24 +74,41 @@ if ($ReleaseId -notmatch '^m\d+-[a-z0-9]+-\d{8}-r\d+$') {
 }
 if ($ReleaseId -eq 'dev') { throw "'dev' is the uncut sentinel and cannot be cut as a release." }
 
+$usingModArtifact = -not [string]::IsNullOrWhiteSpace($ModArtifact)
 $modProject  = Join-Path $ComfyRoot 'network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj'
 $modSource   = Join-Path $ComfyRoot 'network\mod\ComfyNetworkSense\ComfyNetworkSense.cs'
-$modDll      = Join-Path $ComfyRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
+$modDll      = if ($usingModArtifact) {
+  (Resolve-Path -LiteralPath $ModArtifact -ErrorAction Stop).Path
+} else {
+  Join-Path $ComfyRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
+}
 $gatewayProj = Join-Path $LumberjacksRoot 'src\Game.Gateway\Game.Gateway.csproj'
 
-foreach ($p in @($modProject, $modSource, $gatewayProj)) {
+# -ModArtifact bypasses the source-tree pin: the mod source file is not read, edited, or
+# rebuilt, so it is not required to exist. modProject/gatewayProj still are -- the artifact
+# boundary verifier (step 3) and the Gateway image build (step 3c) still run against this repo.
+$requiredPaths = @($modProject, $gatewayProj)
+if (-not $usingModArtifact) { $requiredPaths += $modSource }
+foreach ($p in $requiredPaths) {
   if (!(Test-Path -LiteralPath $p)) { throw "missing: $p" }
 }
 
 # --- 1. the mod: the const is the only place it can live (GenerateAssemblyInfo=false) -----------
-$src = Get-Content -LiteralPath $modSource -Raw -Encoding UTF8
-$pattern = '(public const string ReleaseId = ")([^"]*)(";)'
-if ($src -notmatch $pattern) { throw "could not find the ReleaseId const in $modSource" }
-$current = [regex]::Match($src, $pattern).Groups[2].Value
-Write-Host "mod ReleaseId : $current -> $ReleaseId"
+if ($usingModArtifact) {
+  Write-Host "mod ReleaseId : (source-tree pin bypassed; using -ModArtifact)"
+  Write-Host "mod artifact  : $modDll"
+  $modArtifactHash = (Get-FileHash -LiteralPath $modDll -Algorithm SHA256).Hash.ToLowerInvariant()
+  Write-Host ("mod artifact sha256: {0}" -f $modArtifactHash)
+} else {
+  $src = Get-Content -LiteralPath $modSource -Raw -Encoding UTF8
+  $pattern = '(public const string ReleaseId = ")([^"]*)(";)'
+  if ($src -notmatch $pattern) { throw "could not find the ReleaseId const in $modSource" }
+  $current = [regex]::Match($src, $pattern).Groups[2].Value
+  Write-Host "mod ReleaseId : $current -> $ReleaseId"
+}
 Write-Host "artifact stage: $ArtifactStage"
 
-if (-not $WhatIf) {
+if (-not $WhatIf -and -not $usingModArtifact) {
   # -NoNewline + the file's own bytes: this repo pins network/mod/**/*.cs to LF (see
   # network/mod/.gitattributes) because the mod DLL's hash is line-ending sensitive and the SHIPPED
   # artifact was built from LF. Set-Content would rewrite every line ending and silently change the
@@ -92,7 +118,7 @@ if (-not $WhatIf) {
 }
 
 # --- 2. build both, each from the same $ReleaseId ------------------------------------------------
-if (-not $WhatIf) {
+if (-not $WhatIf -and -not $usingModArtifact) {
   Write-Host "`nbuilding mod (net48, forced Release rebuild)..."
   # A cut must not ship anything until the identity check has passed. The project now requires
   # ComfyCopyToPlugins=true for its optional local copy; this script never sets it and also points
@@ -107,6 +133,9 @@ if (-not $WhatIf) {
   # The Gateway bin/Release output is advisory only and never ships. The canonical Docker build
   # below compiles and tests the solution before publishing the actual image, so do not spend a
   # second build producing an artifact that the release gate deliberately ignores.
+  Write-Host '  Gateway compilation and tests run as part of the authoritative Docker image build.'
+} elseif (-not $WhatIf -and $usingModArtifact) {
+  Write-Host "`nskipping mod rebuild: using frozen artifact $modDll"
   Write-Host '  Gateway compilation and tests run as part of the authoritative Docker image build.'
 }
 

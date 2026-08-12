@@ -104,7 +104,7 @@ New-Item -ItemType Directory -Force -Path $fixturesRoot, $autoWaitFixturesRoot, 
 $steps = @()
 $steps += Invoke-Step `
     -Name 'readiness' `
-    -Script (Join-Path $repoRoot 'tools/i5/Test-Wave0Readiness.ps1') `
+    -Script (Join-Path $repoRoot 'Lumberjacks/tools/companion/Test-Wave0Readiness.ps1') `
     -Arguments @('-SummaryOnly', '-OutputJson', $readinessPath)
 
 $steps += Invoke-Step `

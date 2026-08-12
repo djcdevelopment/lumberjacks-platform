@@ -47,6 +47,11 @@ param(
 
     [string] $CaptureOutput = '',
 
+    # Already does what the repo-split plan calls -ModDll: supplying it skips the in-place
+    # ComfyNetworkSense build (Refresh-Payload below) and stages this artifact instead,
+    # hash-logged via Copy-Verified. -ModDll is an alias so a future release-artifact caller
+    # can name it that way without changing behavior; omitted, current behavior is unchanged.
+    [Alias('ModDll')]
     [string] $DllPath = '',
 
     [switch] $AllowUnseeded,

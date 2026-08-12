@@ -28,12 +28,12 @@ function New-Check {
 }
 
 $capture = Read-Text 'tools\i5\Start-TwoClientCapture.ps1'
-$startCompanion = Read-Text 'tools\i5\Start-I5Companion.ps1'
-$syncCompanion = Read-Text 'tools\i5\Sync-I5Companion.ps1'
+$startCompanion = Read-Text 'Lumberjacks\tools\companion\Start-I5Companion.ps1'
+$syncCompanion = Read-Text 'Lumberjacks\tools\companion\Sync-I5Companion.ps1'
 $installI5 = Read-Text 'tools\i5\Install-I5LatestModpack.ps1'
 $motion = Read-Text 'tools\i5\Start-TwoClientMotionTest.ps1'
 $roles = Read-Text 'tools\i5\Set-TwoClientApplyRoles.ps1'
-$readiness = Read-Text 'tools\i5\Test-Wave0Readiness.ps1'
+$readiness = Read-Text 'Lumberjacks\tools\companion\Test-Wave0Readiness.ps1'
 $alignment = Read-Text 'tools\i5\Test-AlphaReleaseAlignment.ps1'
 $live = Read-Text 'tools\wave0\Start-Wave0LiveGate.ps1'
 $wait = Read-Text 'tools\wave0\Wait-Wave0LiveGate.ps1'

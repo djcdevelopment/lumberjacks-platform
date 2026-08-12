@@ -252,7 +252,7 @@ if (-not $SkipSynthetic) {
 
 if (-not $SkipReadiness) {
     $readiness = Invoke-JsonScript `
-        -ScriptPath (Join-Path $repoRoot 'tools\i5\Test-Wave0Readiness.ps1') `
+        -ScriptPath (Join-Path $repoRoot 'Lumberjacks\tools\companion\Test-Wave0Readiness.ps1') `
         -Arguments @('-SummaryOnly', '-OutputJson', $readinessPath)
     $receipt.non_human_gates.readiness = [ordered]@{
         exit_code = $readiness.exit_code

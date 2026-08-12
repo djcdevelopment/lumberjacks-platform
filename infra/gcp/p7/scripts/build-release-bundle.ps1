@@ -6,7 +6,11 @@ param(
   [string] $OutputRoot,
   [Parameter(Mandatory = $true)]
   [string] $BaselineRepo,
+  # $ModDllPath is already artifact-mode -- it is always an explicit path, hash-checked below
+  # against the manifest, never built here. The alias only gives it the same -ModArtifact name
+  # the other p7 scripts use.
   [Parameter(Mandatory = $true)]
+  [Alias('ModArtifact')]
   [string] $ModDllPath,
   [Parameter(Mandatory = $true)]
   [string] $GatewayImage,
@@ -15,7 +19,13 @@ param(
   [Parameter(Mandatory = $true)]
   [string] $ProgressionImage,
   [Parameter(Mandatory = $true)]
-  [string] $OperatorApiImage
+  [string] $OperatorApiImage,
+  # The one remaining source-tree pin in this script (below: the ComfyNetworkSense.csproj
+  # snapshot copied into the bundle's source/ folder) assumes $BaselineRepo/network/mod is
+  # checked out alongside this script. Omitted (empty, the default), behavior is unchanged.
+  # Provided, it points the snapshot at an already-extracted networksense checkout/artifact
+  # instead of reaching into $BaselineRepo for it.
+  [string] $ModCsprojPath = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -77,7 +87,12 @@ Copy-Item -LiteralPath $ModDllPath -Destination (Join-Path $bundleFull 'mod/Comf
 Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Dockerfile') -Destination (Join-Path $bundleFull 'source/Dockerfile')
 Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Directory.Build.props') -Destination (Join-Path $bundleFull 'source/Directory.Build.props')
 Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Directory.Packages.props') -Destination (Join-Path $bundleFull 'source/Directory.Packages.props')
-Copy-Item -LiteralPath (Join-Path $baselineFull 'network/mod/ComfyNetworkSense/ComfyNetworkSense.csproj') -Destination (Join-Path $bundleFull 'source/ComfyNetworkSense.csproj')
+$modCsprojSource = if ([string]::IsNullOrWhiteSpace($ModCsprojPath)) {
+  Join-Path $baselineFull 'network/mod/ComfyNetworkSense/ComfyNetworkSense.csproj'
+} else {
+  (Resolve-Path -LiteralPath $ModCsprojPath).Path
+}
+Copy-Item -LiteralPath $modCsprojSource -Destination (Join-Path $bundleFull 'source/ComfyNetworkSense.csproj')
 docker save --output (Join-Path $bundleFull 'gateway/gateway.oci.tar') $GatewayImage
 if ($LASTEXITCODE -ne 0) { Fail 'docker save failed (gateway)' }
 foreach ($svc in $otherServices.Keys) {

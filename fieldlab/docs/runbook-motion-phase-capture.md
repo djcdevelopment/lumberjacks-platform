@@ -14,7 +14,7 @@ role, and the first noticeable correction.
 ## Preflight
 
 ```powershell
-.\tools\i5\Test-Wave0Readiness.ps1 -SummaryOnly
+.\Lumberjacks\tools\companion\Test-Wave0Readiness.ps1 -SummaryOnly
 ```
 
 Stop if either Companion is unreadable, the releases disagree, the motion lane is

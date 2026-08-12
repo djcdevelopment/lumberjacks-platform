@@ -10,13 +10,21 @@ prints its SHA-256 + size (the values workbench.json's access block needs).
 
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\workbench\New-WorkbenchZip.ps1 -Tool quest-picker
+
+.NOTES
+Not yet split by -Tool branch: the quest-lab and quest-picker branches (and
+recipes/quest-catalogs, which quest-picker reads) are the comfy-quest lanes and are slated to
+migrate into that repo at extraction, leaving telemetry-starter here. -RepoBlobBase exists so
+the quest-lab README rewrite below can be retargeted ahead of that split without changing
+today's behavior (default is this repo).
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet('quest-picker', 'telemetry-starter', 'quest-lab')]
     [string]$Tool,
-    [string]$OutDir
+    [string]$OutDir,
+    [string]$RepoBlobBase = 'https://github.com/djcdevelopment/baseline/blob/main/'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -92,13 +100,13 @@ try {
         $readmeLinks = [ordered]@{
             '../../../tools/questlab-sheets/Start-QuestLabSheets.ps1' = 'questlab-sheets/Start-QuestLabSheets.ps1'
             '../../../tools/questlab-sheets/README.md' = 'questlab-sheets/README.md'
-            '../../../tools/component-packets/EVENT-ATLAS.md' = 'https://github.com/djcdevelopment/baseline/blob/main/tools/component-packets/EVENT-ATLAS.md'
-            '../../../tools/component-packets/samples/gallery-profiles.json' = 'https://github.com/djcdevelopment/baseline/blob/main/tools/component-packets/samples/gallery-profiles.json'
-            '../../../tools/i5/Invoke-I5QuestLabBatch.ps1' = 'https://github.com/djcdevelopment/baseline/blob/main/tools/i5/Invoke-I5QuestLabBatch.ps1'
-            '../../../tools/component-packets/quest-event-authoring.json' = 'https://github.com/djcdevelopment/baseline/blob/main/tools/component-packets/quest-event-authoring.json'
-            '../../../tools/quest-packs/README.md' = 'https://github.com/djcdevelopment/baseline/blob/main/tools/quest-packs/README.md'
-            '../../../docs/legal/LICENSING.md' = 'https://github.com/djcdevelopment/baseline/blob/main/docs/legal/LICENSING.md'
-            'Patches/HarvestPatches.cs' = 'https://github.com/djcdevelopment/baseline/blob/main/network/mod/ComfyQuestLab/Patches/HarvestPatches.cs'
+            '../../../tools/component-packets/EVENT-ATLAS.md' = "${RepoBlobBase}tools/component-packets/EVENT-ATLAS.md"
+            '../../../tools/component-packets/samples/gallery-profiles.json' = "${RepoBlobBase}tools/component-packets/samples/gallery-profiles.json"
+            '../../../tools/i5/Invoke-I5QuestLabBatch.ps1' = "${RepoBlobBase}tools/i5/Invoke-I5QuestLabBatch.ps1"
+            '../../../tools/component-packets/quest-event-authoring.json' = "${RepoBlobBase}tools/component-packets/quest-event-authoring.json"
+            '../../../tools/quest-packs/README.md' = "${RepoBlobBase}tools/quest-packs/README.md"
+            '../../../docs/legal/LICENSING.md' = "${RepoBlobBase}docs/legal/LICENSING.md"
+            'Patches/HarvestPatches.cs' = "${RepoBlobBase}network/mod/ComfyQuestLab/Patches/HarvestPatches.cs"
         }
         foreach ($link in $readmeLinks.GetEnumerator()) {
             $packageReadme = $packageReadme.Replace([string]$link.Key, [string]$link.Value)

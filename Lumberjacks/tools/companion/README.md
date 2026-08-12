@@ -245,6 +245,22 @@ same shape for operator archives, but private GitHub URLs are not the tester pat
 "which Companion zip do I download?", use that file first; if it points at an older release, publish
 a new bootstrap or commit the corrected pointer.
 
+## i5 lane companion scripts (arrived 2026-08-11)
+
+`Sync-I5Companion.ps1`, `Start-I5Companion.ps1`, and `Test-Wave0Readiness.ps1` moved here from
+[`tools/i5/`](../../../tools/i5/README.md) — they are the Companion's i5 lane (start/rebuild the
+Docker-backed Companion on the i5 laptop, sync its build context, and read a Wave 0 readiness
+receipt across P7/OMEN/i5), not the mod deploy lane, which stays in `tools/i5/`
+(`Deploy-ToI5.ps1`, `Test-I5Link.ps1`, etc.). `Sync-I5Companion.ps1` still shells out to
+`tools/i5/Deploy-ToI5.ps1` for the verified copy/SHA-256 lane; its path hop now resolves through
+this script's repo root instead of a same-directory `$PSScriptRoot` join.
+
+```powershell
+.\tools\companion\Start-I5Companion.ps1
+.\tools\companion\Sync-I5Companion.ps1
+.\tools\companion\Test-Wave0Readiness.ps1 -SummaryOnly
+```
+
 ## Current scope
 
 - Client-pulled package checks and installs use the existing installed enrollment credential.

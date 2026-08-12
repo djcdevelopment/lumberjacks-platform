@@ -1,8 +1,14 @@
+# -ArtifactPath already IS artifact-mode: given a path, it skips the in-place `dotnet build`
+# (see below) and deploys that frozen DLL instead, hash-verified against -ExpectedSha256 /
+# -ExpectedRelease. -ModArtifact is an alias for release-integrity naming parity with the other
+# p7 scripts' artifact params; omitted (the default empty string), behavior is unchanged
+# (source-tree build, as before).
 [CmdletBinding()]
 param(
   [string] $SshTarget = "comfy-p7",
   [string] $Container = "comfy-lumberjacks-p7-valheim-server-1",
   [string] $Project,
+  [Alias('ModArtifact')]
   [string] $ArtifactPath = '',
   [string] $ExpectedSha256 = '',
   [string] $ExpectedRelease = '',
