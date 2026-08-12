@@ -13,5 +13,8 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.16.0" />
+    <!-- Cross-repo boundary package (comfy-quest owns it); 0.1.0-local resolves from the root
+         nuget.config local-contracts feed until Phase 3 repins to a published NuGet.org version. -->
+    <PackageVersion Include="Comfy.Quest.Contracts" Version="0.1.0-local" />
   </ItemGroup>
 </Project>

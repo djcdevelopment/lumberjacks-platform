@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>disable</Nullable>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- Comfy.Transport.Contracts packing: unlike Comfy.Quest.Contracts, these 5 files (the routed-RPC
+       admission table plus the 4 Zdo/vehicle relevance policies) ARE compiled into this project's own
+       lib/netstandard2.0 output below (the SDK default glob picks them up from Valheim/ and
+       Policies/) — Game.Contracts and authority-lab want the real compiled types via a normal
+       in-repo ProjectReference. They are ALSO packed as contentFiles (buildAction=Compile) so
+       ComfyNetworkSense and its Tests can compile the IDENTICAL source straight into their own
+       single BepInEx/test DLL via a contentFiles-only PackageReference (IncludeAssets="contentFiles"
+       ExcludeAssets="compile;runtime" — no assembly reference, so no "type exists in both" collision
+       with the source they compile in directly). Namespaces stay as authored: ValheimRoutedRpcAdmissions
+       is Lumberjacks.Contracts.Valheim; the 4 policy files stay ComfyNetworkSense (renaming is a later,
+       out-of-scope refactor per the repo-split plan). -->
+  <PropertyGroup>
+    <PackageId>Comfy.Transport.Contracts</PackageId>
+    <Version>0.1.0-local</Version>
+    <Authors>djcdevelopment</Authors>
+    <Description>Routed-RPC admission table and Zdo/vehicle relevance policies shared byte-for-byte between ComfyNetworkSense, Game.Contracts/Game.Gateway, and authority-lab.</Description>
+    <ContentTargetFolders>contentFiles</ContentTargetFolders>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="Valheim\*.cs"
+          Pack="true"
+          PackagePath="contentFiles\cs\any\Valheim\%(Filename)%(Extension)"
+          BuildAction="Compile"
+          CopyToOutput="false" />
+    <None Include="Policies\*.cs"
+          Pack="true"
+          PackagePath="contentFiles\cs\any\Policies\%(Filename)%(Extension)"
+          BuildAction="Compile"
+          CopyToOutput="false" />
+  </ItemGroup>
+</Project>

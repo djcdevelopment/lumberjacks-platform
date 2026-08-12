@@ -8,9 +8,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\Lumberjacks\src\Game.Gateway\Game.Gateway.csproj" />
-    <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\ZdoIntegrationContract.cs" Link="Policies\ZdoIntegrationContract.cs" />
-    <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\ZdoBandPolicy.cs" Link="Policies\ZdoBandPolicy.cs" />
-    <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\ZdoFanoutPolicy.cs" Link="Policies\ZdoFanoutPolicy.cs" />
-    <Compile Include="..\..\..\..\network\mod\ComfyNetworkSense\Core\Services\VehicleSnapshotRelevanceSet.cs" Link="Policies\VehicleSnapshotRelevanceSet.cs" />
+    <!-- The 4 policy files moved to Lumberjacks/src/Comfy.Transport.Contracts/Policies/ and ship as
+         the Comfy.Transport.Contracts package; authority-lab lands in the same repo as the package
+         home (lumberjacks-platform), so a ProjectReference replaces the old file links. -->
+    <ProjectReference Include="..\..\..\..\Lumberjacks\src\Comfy.Transport.Contracts\Comfy.Transport.Contracts.csproj" />
   </ItemGroup>
 </Project>

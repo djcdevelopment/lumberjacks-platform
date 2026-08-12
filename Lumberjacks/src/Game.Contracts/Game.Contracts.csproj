@@ -4,4 +4,11 @@
     <TargetFramework></TargetFramework>
     <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
   </PropertyGroup>
+  <!-- ValheimRoutedRpcAdmissions.cs (used by Game.Gateway/WebSocket/MessageRouter.cs) moved to
+       Lumberjacks/src/Comfy.Transport.Contracts/ and left this project's own glob. In-repo
+       consumer, so a normal ProjectReference (not the mod's contentFiles-only package shape) —
+       netstandard2.0 -> net9.0/net8.0 is a supported reference direction. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Comfy.Transport.Contracts\Comfy.Transport.Contracts.csproj" />
+  </ItemGroup>
 </Project>
