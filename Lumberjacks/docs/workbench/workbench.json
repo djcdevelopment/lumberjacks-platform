@@ -422,16 +422,11 @@
         "published_at": null
       },
       "source": {
-        "kind": "public-repo",
-        "href": "https://github.com/djcdevelopment/isolate",
-        "note": "Public and readable now — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot also exists in the comfy repo."
+        "kind": "private-until-claimed",
+        "href": null,
+        "note": "The owning isolate repository is private today; an older snapshot exists in the public comfy archive."
       },
-      "docs": [
-        {
-          "label": "Command contract — network/mcp/contracts/commands.json",
-          "href": "https://github.com/djcdevelopment/isolate/blob/main/contracts/commands.json"
-        }
-      ],
+      "docs": [],
       "discussion": {
         "label": "MCP mod channel thread",
         "href": "https://discord.com/channels/1531911987074957442/1532310779402129438"
