@@ -16,5 +16,8 @@
     <!-- Cross-repo boundary package (comfy-quest owns it); 0.1.0-local resolves from the root
          nuget.config local-contracts feed until Phase 3 repins to a published NuGet.org version. -->
     <PackageVersion Include="Comfy.Quest.Contracts" Version="0.1.0-local" />
+    <!-- Quest Studio carve (finding F4): Comfy.Quest.Studio, packed from
+         Lumberjacks/src/Quest.Studio into the same local-contracts feed. -->
+    <PackageVersion Include="Comfy.Quest.Studio" Version="0.1.0-local" />
   </ItemGroup>
 </Project>

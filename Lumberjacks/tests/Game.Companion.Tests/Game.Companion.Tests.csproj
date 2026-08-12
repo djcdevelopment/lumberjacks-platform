@@ -5,6 +5,11 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Game.Companion\Game.Companion.csproj" />
+    <!-- Quest Studio carve (finding F4): QuestStudioService/QuestPackPublisher/QuestStudioProject
+         now live in Comfy.Quest.Studio. ProjectReference (not the packed nupkg) so tests build
+         straight from source in this in-repo phase; Quest.Studio grants
+         InternalsVisibleTo("Game.Companion.Tests") for its internal record types. -->
+    <ProjectReference Include="..\..\src\Quest.Studio\Quest.Studio.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

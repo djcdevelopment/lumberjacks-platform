@@ -14,5 +14,9 @@
          (ExcludeAssets="contentFiles" — Companion needs ExperienceContract/QuestPackContent/etc,
          not the mod's single-DLL ModGlue source). -->
     <PackageReference Include="Comfy.Quest.Contracts" ExcludeAssets="contentFiles" />
+    <!-- Quest Studio carve (finding F4): Comfy.Quest.Studio, carved from this project into
+         Lumberjacks/src/Quest.Studio. Companion stays the host — it implements
+         IQuestStudioHost (see QuestStudioHostAdapter.cs) and calls QuestStudioEndpoints.Map. -->
+    <PackageReference Include="Comfy.Quest.Studio" />
   </ItemGroup>
 </Project>

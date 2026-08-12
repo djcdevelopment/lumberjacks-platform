@@ -1,6 +1,6 @@
 using System.IO.Compression;
 using System.Text;
-using Lumberjacks.Companion;
+using Comfy.Quest.Studio;
 using Xunit;
 
 namespace Game.Companion.Tests;
@@ -8,20 +8,17 @@ namespace Game.Companion.Tests;
 public sealed class QuestPackPublisherTests : IDisposable
 {
     readonly string _root = Path.Combine(Path.GetTempPath(), "quest-publish-test-" + Guid.NewGuid().ToString("N"));
-    readonly string? _prior;
 
     public QuestPackPublisherTests()
     {
-        _prior = Environment.GetEnvironmentVariable("LUMBERJACKS_VALHEIM_PATH");
         Directory.CreateDirectory(_root);
         File.WriteAllBytes(Path.Combine(_root, "valheim.exe"), []);
-        Environment.SetEnvironmentVariable("LUMBERJACKS_VALHEIM_PATH", _root);
     }
 
     [Fact]
     public async Task PublishesCertifiedPackAtomicallyAndIsIdempotent()
     {
-        var publisher = new QuestPackPublisher(new ValheimLocator());
+        var publisher = new QuestPackPublisher(Host(_root));
         await using var first = Pack("1.0.0", "Skal!");
         var receipt = await publisher.PublishAsync(first, "demo-1.0.0.questpack", default);
         Assert.True(receipt.Ok);
@@ -38,7 +35,7 @@ public sealed class QuestPackPublisherTests : IDisposable
     [Fact]
     public async Task RejectsTraversalAndMalformedContent()
     {
-        var publisher = new QuestPackPublisher(new ValheimLocator());
+        var publisher = new QuestPackPublisher(Host(_root));
         await using var valid = Pack("1.0.0", "Skal!");
         Assert.Equal("filename_invalid", (await publisher.PublishAsync(valid, "../escape.questpack", default)).Error);
         await using var malformed = new MemoryStream(Encoding.UTF8.GetBytes("not a zip"));
@@ -49,7 +46,7 @@ public sealed class QuestPackPublisherTests : IDisposable
     [Fact]
     public async Task SameVersionDifferentContentFailsClosed()
     {
-        var publisher = new QuestPackPublisher(new ValheimLocator());
+        var publisher = new QuestPackPublisher(Host(_root));
         await using var first = Pack("1.0.0", "Skal!");
         Assert.True((await publisher.PublishAsync(first, "a.questpack", default)).Ok);
         await using var collision = Pack("1.0.0", "Hail!");
@@ -60,13 +57,16 @@ public sealed class QuestPackPublisherTests : IDisposable
     [Fact]
     public async Task MissingValheimReturnsManualCopyFallback()
     {
-        Environment.SetEnvironmentVariable("LUMBERJACKS_VALHEIM_PATH", Path.Combine(_root, "missing"));
-        var publisher = new QuestPackPublisher(new ValheimLocator());
+        // Host.FindValheim() returning null is the contract for "not found" (mirrors
+        // ValheimLocator.Find() returning null when valheim.exe isn't present).
+        var publisher = new QuestPackPublisher(Host(null));
         await using var pack = Pack("1.0.0", "Skal!");
         var result = await publisher.PublishAsync(pack, "demo.questpack", default);
         Assert.Equal("valheim_not_found", result.Error);
         Assert.True(result.ManualCopyAvailable);
     }
+
+    TestQuestStudioHost Host(string? valheimPath) => new() { StateDirectory = _root, ValheimPath = valheimPath };
 
     static MemoryStream Pack(string version, string message)
     {
@@ -84,7 +84,6 @@ public sealed class QuestPackPublisherTests : IDisposable
 
     public void Dispose()
     {
-        Environment.SetEnvironmentVariable("LUMBERJACKS_VALHEIM_PATH", _prior);
         if (Directory.Exists(_root)) Directory.Delete(_root, true);
     }
 }

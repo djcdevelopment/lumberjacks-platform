@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Comfy.Quest.Studio;
 using Lumberjacks.Companion;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,10 +15,11 @@ builder.Services.AddSingleton<QuestPackPublisher>();
 builder.Services.AddSingleton<ModpackInstaller>();
 builder.Services.AddHttpClient<TransportTruthCaptureService>(client => client.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddSingleton<WorkbenchStore>();
-builder.Services.AddSingleton<QuestStudioService>();
 builder.Services.AddSingleton<WorkbenchJobStore>();
 builder.Services.AddSingleton<WorkbenchRegistry>();
 builder.Services.AddSingleton<WorkbenchService>();
+builder.Services.AddSingleton<IQuestStudioHost, CompanionQuestStudioHost>();
+builder.Services.AddSingleton<QuestStudioService>();
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
@@ -32,6 +34,7 @@ app.Use(async (context, next) =>
 });
 
 WorkbenchEndpoints.Map(app);
+QuestStudioEndpoints.Map(app, app.Services.GetRequiredService<IQuestStudioHost>());
 
 app.MapGet("/health", () => Results.Ok(new { ok = true, service = "lumberjacks-companion" }));
 app.MapGet("/api/v0/companion/status", (CompanionStateStore state, ValheimLocator locator) =>

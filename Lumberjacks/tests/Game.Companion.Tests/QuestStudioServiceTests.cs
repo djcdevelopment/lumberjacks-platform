@@ -1,4 +1,4 @@
-using Lumberjacks.Companion;
+using Comfy.Quest.Studio;
 using ComfyQuestContracts;
 using System.Text.Json;
 using Xunit;
@@ -8,14 +8,11 @@ namespace Game.Companion.Tests;
 public sealed class QuestStudioServiceTests : IDisposable
 {
     readonly string _root = Path.Combine(Path.GetTempPath(), "quest-studio-test-" + Guid.NewGuid().ToString("N"));
-    readonly Dictionary<string,string?> _prior = new();
 
     public QuestStudioServiceTests()
     {
         Directory.CreateDirectory(_root);
         File.WriteAllBytes(Path.Combine(_root, "valheim.exe"), []);
-        Set("LUMBERJACKS_VALHEIM_PATH", _root);
-        Set("LUMBERJACKS_COMPANION_DATA", Path.Combine(_root, "data"));
     }
 
     [Fact] public void StarterCertifiesThroughSharedContract()
@@ -75,11 +72,9 @@ public sealed class QuestStudioServiceTests : IDisposable
 
     QuestStudioService Create()
     {
-        var state = new CompanionStateStore();
-        var workbench = new WorkbenchStore(state);
-        var locator = new ValheimLocator();
-        return new QuestStudioService(workbench, new QuestPackPublisher(locator), locator);
+        var host = new TestQuestStudioHost { StateDirectory = _root, ValheimPath = _root };
+        return new QuestStudioService(host, new QuestPackPublisher(host));
     }
-    void Set(string key,string value){_prior[key]=Environment.GetEnvironmentVariable(key);Environment.SetEnvironmentVariable(key,value);}
-    public void Dispose(){foreach(var p in _prior)Environment.SetEnvironmentVariable(p.Key,p.Value);if(Directory.Exists(_root))Directory.Delete(_root,true);}
+
+    public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
 }
