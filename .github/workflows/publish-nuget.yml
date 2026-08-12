@@ -16,8 +16,14 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     environment: nuget-production
+    permissions:
+      contents: read
+      # Trusted Publishing: the job mints a short-lived OIDC token and trades it
+      # at nuget.org for an API key that lives one hour. No long-lived secret is
+      # stored anywhere, so there is nothing to rotate or leak.
+      id-token: write
     env:
-      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      NUGET_USER: ${{ vars.NUGET_USER }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,8 +46,8 @@ jobs:
             echo "This first-publication lane accepts only nuget-v0.1.0; got $GITHUB_REF_NAME" >&2
             exit 1
           fi
-          if [[ -z "${NUGET_API_KEY// }" ]]; then
-            echo "NUGET_API_KEY is not configured" >&2
+          if [[ -z "${NUGET_USER// }" ]]; then
+            echo "Repository variable NUGET_USER is not set — it must be the nuget.org profile name (not an email) that owns the Trusted Publishing policy" >&2
             exit 1
           fi
           tag_commit="$(git rev-parse "refs/tags/$GITHUB_REF_NAME^{commit}")"
@@ -79,11 +85,17 @@ jobs:
             --commit ${{ github.sha }} \
             --source-root Lumberjacks/src/Comfy.Transport.Contracts
 
+      - name: NuGet login (OIDC, key valid one hour)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ vars.NUGET_USER }}
+
       - name: Publish once
         run: |
           dotnet nuget push artifacts/nuget/local/Comfy.Transport.Contracts.${{ steps.version.outputs.value }}.nupkg \
             --source https://api.nuget.org/v3/index.json \
-            --api-key "$NUGET_API_KEY"
+            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
 
       - name: Poll NuGet.org and validate the served package
         run: |
