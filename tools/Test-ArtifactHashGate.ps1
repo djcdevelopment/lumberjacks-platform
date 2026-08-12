@@ -27,3 +27,8 @@ if ($exitCode -eq 0 -or ($output -join "`n") -notmatch 'hash mismatch') {
     ObservedExit = $exitCode
     Verdict = 'passed'
 } | ConvertTo-Json -Compress
+
+# The deliberately rejected child process leaves LASTEXITCODE set to 1. GitHub's
+# pwsh runner otherwise propagates that expected child failure as this guard's own
+# process exit code even though the negative proof passed.
+exit 0

@@ -73,7 +73,9 @@ jobs:
       - run: npm run workbench:check
 
   python:
-    runs-on: ubuntu-latest
+    # The guest-package suite exercises Windows PowerShell installers and
+    # Windows-shaped Valheim layouts. Run it on the platform it validates.
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
