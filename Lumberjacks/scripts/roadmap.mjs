@@ -114,8 +114,8 @@ const isoDayPattern = /^\d{4}-\d{2}-\d{2}$/;
 // which exists at BOTH the root and inside this package and so resolves to the wrong
 // one. A partial copy of the package does not carry docs/decisions/, which is exactly
 // the case where verify_by paths cannot be adjudicated and must not be failed.
-const gitRoot = [path.resolve(repoRoot, '..'), repoRoot]
-  .find((root) => fs.existsSync(path.join(root, 'docs/decisions/README.md'))) ?? null;
+const checkoutRoot = path.resolve(repoRoot, '..');
+const gitRoot = fs.existsSync(path.join(checkoutRoot, 'BOUNDARY.md')) ? checkoutRoot : null;
 
 function requireFocusArray(value, label, milestoneIds, updatedAt) {
   if (!Array.isArray(value)) fail(`${label} must be an array`);
@@ -167,11 +167,12 @@ function requireFocusArray(value, label, milestoneIds, updatedAt) {
       // checkout the package IS the root (see the staged-gate tests), so accept either
       // rather than failing on a layout difference.
       const looksLikePath = /^[\w.@-]+(?:\/[\w.@-]+)+$/.test(source);
+      const isPlatformPath = /^(?:Lumberjacks\/|fieldlab\/(?:docs|scripts|autonomous|scenarios|routes|experiments\/m7|MULTIPLAYER-|NETCODE-|PORTAL-|plan-native-)|infra\/gcp\/p7\/|tools\/(?:p7|wave0|workbench|authority-lab|guest-package)\/)/.test(source);
       // Pointers are written relative to the git root. Only adjudicate when that root
       // is positively identified: the package gets copied into temp fixtures and
       // standalone checkouts where the wider tree is legitimately absent, and a guard
       // that fires on a layout instead of on a mistake teaches people to ignore it.
-      if (looksLikePath && gitRoot && !fs.existsSync(path.join(gitRoot, source))) {
+      if (looksLikePath && isPlatformPath && gitRoot && !fs.existsSync(path.join(gitRoot, source))) {
         fail(`${at}.verify_by names a path that does not exist: ${source}`);
       }
     });
@@ -1183,7 +1184,7 @@ function render(roadmap, notes) {
     <div class="footer-links">${links}</div>
     <div>Update milestone truth and add a journal entry in the same commit as the work it describes.</div>
     <div class="generated">Generated deterministically from ${escapeHtml(roadmapRelative)} + ${escapeHtml(notesRelative)} · do not hand-edit this file.</div>
-    <nav class="baseline-provenance" aria-label="Project provenance"><a href="https://github.com/djcdevelopment/baseline" target="_blank" rel="noreferrer">Baseline</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/Lumberjacks" target="_blank" rel="noreferrer">Lumberjacks</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy" target="_blank" rel="noreferrer">Comfy</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline/blob/main/docs/legal/LICENSING.md" target="_blank" rel="noreferrer">license details</a></nav>
+    <nav class="baseline-provenance" aria-label="Project provenance"><a href="https://github.com/djcdevelopment/lumberjacks-platform" target="_blank" rel="noreferrer">lumberjacks-platform</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline" target="_blank" rel="noreferrer">baseline evidence and index</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/lumberjacks-platform/blob/main/LICENSE" target="_blank" rel="noreferrer">license details</a></nav>
   </footer>
 </body>
 </html>

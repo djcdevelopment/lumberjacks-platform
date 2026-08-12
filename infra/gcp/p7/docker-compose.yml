@@ -1,4 +1,4 @@
-name: comfy-lumberjacks-p7
+name: lumberjacks-p7
 
 x-lumberjacks-telemetry: &lumberjacks-telemetry
   GOOGLE_CLOUD_PROJECT: "${GOOGLE_CLOUD_PROJECT:?GOOGLE_CLOUD_PROJECT must be set}"

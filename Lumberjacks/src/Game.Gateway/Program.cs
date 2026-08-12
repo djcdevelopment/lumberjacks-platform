@@ -200,6 +200,18 @@ var app = builder.Build();
 }
 
 app.MapServiceDefaults();
+app.MapGet("/identity", () => Results.Ok(new
+{
+    schema = "comfy-repo-identity/v1",
+    repository = "djcdevelopment/lumberjacks-platform",
+    service = "lumberjacks-gateway",
+    revision = Environment.GetEnvironmentVariable("LUMBERJACKS_SOURCE_REVISION")
+        ?? Environment.GetEnvironmentVariable("GITHUB_SHA")
+        ?? "unknown",
+    release = Environment.GetEnvironmentVariable("LUMBERJACKS_VERSION")
+        ?? ValheimReleaseIdentity.ExpectedModRelease
+        ?? "unknown",
+}));
 app.UseMiddleware<BoundaryRequestMiddleware>();
 app.UseRateLimiter();
 // Install IHttpWebSocketFeature before the access gate inspects IsWebSocketRequest. Reversing

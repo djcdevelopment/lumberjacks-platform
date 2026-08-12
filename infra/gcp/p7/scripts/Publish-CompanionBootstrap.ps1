@@ -9,6 +9,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $lumberjacksRoot = Join-Path $repoRoot 'Lumberjacks'
 $builder = Join-Path $lumberjacksRoot 'tools\companion\New-CompanionBootstrap.ps1'
 if (-not (Test-Path -LiteralPath $builder)) { throw "Companion bootstrap builder not found: $builder" }

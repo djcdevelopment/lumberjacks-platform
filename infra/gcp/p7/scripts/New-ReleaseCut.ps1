@@ -1,325 +1,106 @@
 <#
 .SYNOPSIS
-  Cuts a mod+Gateway release: sets the release id ONCE, builds both sides from it, and refuses to
-  hand back artifacts that disagree about which release they are.
+Build a Gateway/service image set that admits one frozen networksense release.
 
 .DESCRIPTION
-  M1 risk 9 wants both sides to derive their release identity from one record. They cannot share a
-  mechanism: the Gateway takes an MSBuild property (LumberjacksExpectedModRelease) baked as
-  AssemblyMetadata, while the mod sets GenerateAssemblyInfo=false and so carries a const projected
-  into AssemblyMetadata by its AssemblyInfo.cs. Two mechanisms means two places a cut must touch.
-
-  A cut that sets one and forgets the other ships a Gateway that rejects the very mod it shipped
-  with. That is worse than the drift the release gate exists to catch: the gate would be doing its
-  job, loudly, against its own release, and nobody would find out until a volunteer could not join.
-  It is also invisible to review - both diffs look right in isolation.
-
-  So this script is the record. The id is typed once, here, and the last thing it does is read the
-  id back OUT of both compiled artifacts and compare them. Not the source, not the build log - the
-  DLLs. If they disagree, the cut fails and nothing ships.
-
-.PARAMETER ReleaseId
-  e.g. m1-clean-20260717-r2. Convention: <milestone>-clean-<yyyymmdd>-r<n>.
-
-.PARAMETER WhatIf
-  Print what would change; touch nothing.
-
-.PARAMETER ArtifactStage
-  Semantic artifact boundary to enforce after the mod rebuild. The default is
-  final because the next and all post-cutover coupled releases must contain no
-  migration fallback controls. Use candidate only when deliberately reproducing
-  the retained pre-deletion C10b candidate.
-
-.PARAMETER ArtifactBoundaryReceiptPath
-  Optional JSON receipt path for the source-plus-DLL boundary result.
-
-.PARAMETER ModArtifact
-  Optional path to an already-built, frozen ComfyNetworkSense.dll. When supplied, this cut
-  bypasses the network/mod source-tree pin: it does not rewrite ComfyNetworkSense.cs and does
-  not rebuild the mod (steps 1-2 below), and instead hash-verifies the given artifact and reads
-  its baked release id back, same as the source-tree path would have. Omitted (the default),
-  behavior is byte-for-byte identical to before: rewrite the source const, force-rebuild, read
-  the id back out of the freshly built bin/Release DLL.
+The mod is an immutable cross-repository input. This command never edits or
+builds mod source; it verifies the supplied DLL's baked release identity, then
+builds and verifies the platform images against that identity.
 #>
 [CmdletBinding()]
 param(
   [Parameter(Mandatory)][string] $ReleaseId,
-  [string] $ComfyRoot = '',
+  [Parameter(Mandatory)][Alias('ModDll')][string] $ModArtifact,
+  [Parameter(Mandatory)][string] $ExpectedSha256,
   [string] $LumberjacksRoot = '',
-  [ValidateSet('candidate', 'final')]
-  [string] $ArtifactStage = 'final',
+  [ValidateSet('candidate', 'final')][string] $ArtifactStage = 'final',
   [string] $ArtifactBoundaryReceiptPath = '',
-  [string] $ModArtifact = '',
   [switch] $WhatIf
 )
 
 $ErrorActionPreference = 'Stop'
-if ([string]::IsNullOrWhiteSpace($ComfyRoot)) {
-  $ComfyRoot = [IO.Path]::GetFullPath(
-      (Join-Path $PSScriptRoot '..\..\..\..'))
-} else {
-  $ComfyRoot = [IO.Path]::GetFullPath($ComfyRoot)
-}
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
+
 if ([string]::IsNullOrWhiteSpace($LumberjacksRoot)) {
-  $LumberjacksRoot = Join-Path $ComfyRoot 'Lumberjacks'
+  $LumberjacksRoot = Join-Path $repoRoot 'Lumberjacks'
 } else {
   $LumberjacksRoot = [IO.Path]::GetFullPath($LumberjacksRoot)
 }
-
-# <milestone>-clean-<date>-r<n>. Enforced because this string becomes an artifact's identity: it
-# lands in the manifest, in two DLLs, and in the gate that decides admission. A typo here is a
-# release nobody can name later.
 if ($ReleaseId -notmatch '^m\d+-[a-z0-9]+-\d{8}-r\d+$') {
-  throw "ReleaseId '$ReleaseId' does not match <milestone>-<label>-<yyyymmdd>-r<n>, e.g. m1-clean-20260717-r2"
+  throw "ReleaseId '$ReleaseId' does not match <milestone>-<label>-<yyyymmdd>-r<n>."
 }
-if ($ReleaseId -eq 'dev') { throw "'dev' is the uncut sentinel and cannot be cut as a release." }
-
-$usingModArtifact = -not [string]::IsNullOrWhiteSpace($ModArtifact)
-$modProject  = Join-Path $ComfyRoot 'network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj'
-$modSource   = Join-Path $ComfyRoot 'network\mod\ComfyNetworkSense\ComfyNetworkSense.cs'
-$modDll      = if ($usingModArtifact) {
-  (Resolve-Path -LiteralPath $ModArtifact -ErrorAction Stop).Path
-} else {
-  Join-Path $ComfyRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
+if ($ExpectedSha256 -notmatch '^[0-9a-fA-F]{64}$') {
+  throw 'ExpectedSha256 must be 64 hexadecimal characters.'
 }
-$gatewayProj = Join-Path $LumberjacksRoot 'src\Game.Gateway\Game.Gateway.csproj'
-
-# -ModArtifact bypasses the source-tree pin: the mod source file is not read, edited, or
-# rebuilt, so it is not required to exist. modProject/gatewayProj still are -- the artifact
-# boundary verifier (step 3) and the Gateway image build (step 3c) still run against this repo.
-$requiredPaths = @($modProject, $gatewayProj)
-if (-not $usingModArtifact) { $requiredPaths += $modSource }
-foreach ($p in $requiredPaths) {
-  if (!(Test-Path -LiteralPath $p)) { throw "missing: $p" }
+$modDll = (Resolve-Path -LiteralPath $ModArtifact -ErrorAction Stop).Path
+$actualHash = (Get-FileHash -LiteralPath $modDll -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualHash -ne $ExpectedSha256.ToLowerInvariant()) {
+  throw "mod artifact hash mismatch: expected=$ExpectedSha256 actual=$actualHash"
 }
 
-# --- 1. the mod: the const is the only place it can live (GenerateAssemblyInfo=false) -----------
-if ($usingModArtifact) {
-  Write-Host "mod ReleaseId : (source-tree pin bypassed; using -ModArtifact)"
-  Write-Host "mod artifact  : $modDll"
-  $modArtifactHash = (Get-FileHash -LiteralPath $modDll -Algorithm SHA256).Hash.ToLowerInvariant()
-  Write-Host ("mod artifact sha256: {0}" -f $modArtifactHash)
-} else {
-  $src = Get-Content -LiteralPath $modSource -Raw -Encoding UTF8
-  $pattern = '(public const string ReleaseId = ")([^"]*)(";)'
-  if ($src -notmatch $pattern) { throw "could not find the ReleaseId const in $modSource" }
-  $current = [regex]::Match($src, $pattern).Groups[2].Value
-  Write-Host "mod ReleaseId : $current -> $ReleaseId"
-}
-Write-Host "artifact stage: $ArtifactStage"
-
-if (-not $WhatIf -and -not $usingModArtifact) {
-  # -NoNewline + the file's own bytes: this repo pins network/mod/**/*.cs to LF (see
-  # network/mod/.gitattributes) because the mod DLL's hash is line-ending sensitive and the SHIPPED
-  # artifact was built from LF. Set-Content would rewrite every line ending and silently change the
-  # hash of the thing being cut.
-  $updated = [regex]::Replace($src, $pattern, "`${1}$ReleaseId`${3}")
-  [IO.File]::WriteAllText($modSource, $updated, (New-Object Text.UTF8Encoding($false)))
-}
-
-# --- 2. build both, each from the same $ReleaseId ------------------------------------------------
-if (-not $WhatIf -and -not $usingModArtifact) {
-  Write-Host "`nbuilding mod (net48, forced Release rebuild)..."
-  # A cut must not ship anything until the identity check has passed. The project now requires
-  # ComfyCopyToPlugins=true for its optional local copy; this script never sets it and also points
-  # PluginOutputPath at a nonexistent location so both copy guards remain shut.
-  # A normal incremental build has previously returned green while leaving an
-  # older DLL in bin/Release. Release identity alone cannot catch that when the
-  # stale DLL already carries the new id, so coupled cuts always force Rebuild.
-  & dotnet build $modProject -c Release -t:Rebuild -v quiet --nologo `
-      -p:PluginOutputPath=C:\__comfy_cut_no_plugin_copy__
-  if ($LASTEXITCODE -ne 0) { throw 'mod build failed' }
-
-  # The Gateway bin/Release output is advisory only and never ships. The canonical Docker build
-  # below compiles and tests the solution before publishing the actual image, so do not spend a
-  # second build producing an artifact that the release gate deliberately ignores.
-  Write-Host '  Gateway compilation and tests run as part of the authoritative Docker image build.'
-} elseif (-not $WhatIf -and $usingModArtifact) {
-  Write-Host "`nskipping mod rebuild: using frozen artifact $modDll"
-  Write-Host '  Gateway compilation and tests run as part of the authoritative Docker image build.'
-}
-
-# --- 3. THE CHECK: ask the ARTIFACTS, not the source --------------------------------------------
-# Reading source back would only prove the regex worked. Reading the build log would only prove a
-# flag was passed. The question is what the artifacts actually carry, because that is what ships and
-# what the gate compares at runtime.
-#
-# The metadata reader lives in lib/ReleaseIdentity.ps1, shared with Test-GatewayImageRelease.ps1.
-# Two readers of the same value is how a release gate ends up with two answers and a preference for
-# the convenient one; there is exactly one implementation, and both callers use it. (It also carries
-# the Windows PowerShell 5.1 note about why the assemblies are vendored rather than loaded from the
-# GAC - read it before "simplifying" that.)
 $releaseIdentityLib = Join-Path $PSScriptRoot 'lib\ReleaseIdentity.ps1'
-if (!(Test-Path -LiteralPath $releaseIdentityLib)) {
-  # Same reasoning as the reader's own load-loudly rule: a cut that cannot verify what it built must
-  # stop, not continue and report success it never established.
-  throw "missing metadata reader: $releaseIdentityLib"
-}
 . $releaseIdentityLib
-
-if (-not $WhatIf) {
-  # --- 3a. the mod side: unchanged, and still authoritative --------------------------------------
-  # The mod ships as this very DLL - it is copied to clients as-is - so reading it here is reading
-  # the shipped artifact. Nothing about the Gateway problem below applies to it.
-  $modBaked = Get-AssemblyMetadataValue -DllPath $modDll -Key 'LumberjacksModReleaseId'
-
-  Write-Host "`n--- what the MOD artifact says ---"
-  Write-Host ("  mod ComfyNetworkSense.dll : {0}" -f $modBaked)
-
-  if ($modBaked -ne $ReleaseId) {
-    Write-Host "  FAIL: mod DLL says '$modBaked', cut is '$ReleaseId'" -ForegroundColor Red
-    throw 'release identity check failed; nothing from this cut should ship'
-  }
-  Write-Host "  OK: mod artifact carries '$ReleaseId'" -ForegroundColor Green
-
-  # Release identity proves which cut the DLL claims. The artifact-boundary
-  # gate proves what semantic escape hatches it still contains. It compares
-  # production source with the compiled bytes, which also catches a stale
-  # incremental artifact before the expensive Gateway image build begins.
-  $artifactBoundaryVerifier = Join-Path $ComfyRoot `
-      'tools\p7\Test-C10bArtifactFallbackBoundary.ps1'
-  if (!(Test-Path -LiteralPath $artifactBoundaryVerifier)) {
-    throw "missing artifact boundary verifier: $artifactBoundaryVerifier"
-  }
-  $artifactBoundaryArguments = @(
-    '-NoProfile',
-    '-ExecutionPolicy', 'Bypass',
-    '-File', $artifactBoundaryVerifier,
-    '-Stage', $ArtifactStage,
-    '-SourceRoot', (Split-Path -Parent $modProject),
-    '-DllPath', $modDll,
-    '-ExpectedReleaseId', $ReleaseId)
-  if (-not [string]::IsNullOrWhiteSpace($ArtifactBoundaryReceiptPath)) {
-    $artifactBoundaryArguments += @(
-      '-OutputPath', [IO.Path]::GetFullPath($ArtifactBoundaryReceiptPath))
-  }
-  $artifactBoundaryOutput = @(
-    & powershell.exe @artifactBoundaryArguments
-  )
-  $artifactBoundaryExit = $LASTEXITCODE
-  $artifactBoundaryOutput | Write-Host
-  if ($artifactBoundaryExit -ne 0) {
-    throw "mod artifact failed the '$ArtifactStage' fallback boundary; no image was built"
-  }
-  Write-Host "  OK: mod artifact passed the '$ArtifactStage' fallback boundary" `
-      -ForegroundColor Green
-
-  # --- 3b. the gateway's bin/Release DLL: ADVISORY ONLY, NOT A GATE ------------------------------
-  # This read used to be the Gateway's release check, and it was checking the wrong object. The
-  # Gateway does not ship as a loose DLL; it ships as a Docker image. bin/Release is a local publish
-  # that never leaves this machine, and it was green while the IMAGE carried no release attribute at
-  # all - because the Dockerfile published the Gateway without the property, and "dev" maps to null,
-  # and null DISABLES the gate. A passing check on an object nobody deploys is worse than no check:
-  # it is a gate that reports armed while being off.
-  #
-  # It is kept only because a disagreement here is a useful early hint that the local build and the
-  # image were made from different inputs. It CANNOT fail the cut. The image below decides.
-  $gatewayDll = Get-ChildItem -Path (Join-Path $LumberjacksRoot 'src\Game.Gateway\bin\Release') `
-      -Filter 'Game.Gateway.dll' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-
-  Write-Host "`n--- gateway bin/Release (ADVISORY - not the gate, this DLL never ships) ---"
-  if (-not $gatewayDll) {
-    Write-Host '  advisory: no bin/Release DLL found; skipping (this does not affect the cut).'
-  } else {
-    $gatewayLocalBaked = Get-AssemblyMetadataValue -DllPath $gatewayDll.FullName -Key 'LumberjacksExpectedModRelease'
-    Write-Host ("  local Game.Gateway.dll : {0}" -f $gatewayLocalBaked)
-    if ($gatewayLocalBaked -ne $ReleaseId) {
-      Write-Host "  advisory only: local DLL says '$gatewayLocalBaked', cut is '$ReleaseId'." -ForegroundColor Yellow
-      Write-Host '  NOT failing the cut on this - bin/Release is not what ships. The image check decides.' -ForegroundColor Yellow
-    }
-  }
-
-  # --- 3c. THE GATEWAY GATE: the IMAGE ------------------------------------------------------------
-  # Build the artifact that actually ships, with the release args, and read the id back out of it.
-  # LUMBERJACKS_REQUIRE_RELEASE=1 additionally makes the Dockerfile refuse to produce an image at all
-  # for an empty/'dev'/malformed id, so this fails at build time rather than verification time when
-  # the id is wrong in an obvious way.
-  $imageTag = "lumberjacks-gateway:$ReleaseId"
-  Write-Host "`nbuilding gateway IMAGE $imageTag (this is the artifact that ships)..." -ForegroundColor Cyan
-
-  Push-Location $LumberjacksRoot
-  try {
-    # No 2>&1: docker writes progress to stderr, and in WinPS 5.1 merging a native command's stderr
-    # into the success stream makes every progress line an ErrorRecord, which under
-    # $ErrorActionPreference='Stop' aborts a healthy build.
-    & docker build --target gateway -t $imageTag `
-        --build-arg "LUMBERJACKS_EXPECTED_MOD_RELEASE=$ReleaseId" `
-        --build-arg 'LUMBERJACKS_REQUIRE_RELEASE=1' `
-        .
-    if ($LASTEXITCODE -ne 0) { throw "gateway image build failed (exit $LASTEXITCODE); nothing from this cut should ship" }
-  }
-  finally { Pop-Location }
-
-  Write-Host "`n--- what the gateway IMAGE says (AUTHORITATIVE) ---"
-  $verifier = Join-Path $PSScriptRoot 'Test-GatewayImageRelease.ps1'
-  if (!(Test-Path -LiteralPath $verifier)) { throw "missing verifier: $verifier" }
-
-  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $verifier `
-      -Image $imageTag -ExpectedRelease $ReleaseId
-  if ($LASTEXITCODE -ne 0) {
-    Write-Host "  FAIL: the gateway IMAGE does not admit '$ReleaseId'." -ForegroundColor Red
-    Write-Host '        THE TWO SIDES DISAGREE - this gateway would reject this mod.' -ForegroundColor Red
-    throw 'release identity check failed; nothing from this cut should ship'
-  }
-
-  Write-Host "`n  OK: the mod artifact and the gateway IMAGE both carry '$ReleaseId'" -ForegroundColor Green
-  Write-Host "  gateway image: $imageTag" -ForegroundColor Green
-
-  # --- 4. the other three services: build + tag, no gate --------------------------------------
-  # eventlog/progression/operatorapi have no cross-artifact identity to admit - nothing else
-  # needs to agree with them the way the Gateway needs to agree with the mod - so their release
-  # discipline is build+hash+pin, not build+hash+pin+admission-check. Same $ReleaseId tag, purely
-  # so one release id still names all five images; build-release-bundle.ps1 records the digests.
-  Push-Location $LumberjacksRoot
-  try {
-    foreach ($svc in @('eventlog', 'progression', 'operatorapi')) {
-      $svcTag = "lumberjacks-${svc}:$ReleaseId"
-      Write-Host "`nbuilding $svc IMAGE $svcTag ..." -ForegroundColor Cyan
-      & docker build --target $svc -t $svcTag .
-      if ($LASTEXITCODE -ne 0) { throw "$svc image build failed (exit $LASTEXITCODE); nothing from this cut should ship" }
-      Write-Host "  OK: $svcTag" -ForegroundColor Green
-    }
-  }
-  finally { Pop-Location }
+$modBaked = Get-AssemblyMetadataValue -DllPath $modDll -Key 'LumberjacksModReleaseId'
+if ($modBaked -ne $ReleaseId) {
+  throw "mod artifact release mismatch: expected=$ReleaseId actual=$modBaked"
 }
 
-Write-Host @"
+if ($ArtifactBoundaryReceiptPath) {
+  $receipt = [ordered]@{
+    schema = 'lumberjacks-artifact-boundary/v1'
+    stage = $ArtifactStage
+    producer = 'djcdevelopment/networksense'
+    release_id = $modBaked
+    sha256 = $actualHash
+    bytes = (Get-Item -LiteralPath $modDll).Length
+  }
+  $receiptDir = Split-Path -Parent $ArtifactBoundaryReceiptPath
+  if ($receiptDir) { New-Item -ItemType Directory -Force -Path $receiptDir | Out-Null }
+  [IO.File]::WriteAllText(
+    [IO.Path]::GetFullPath($ArtifactBoundaryReceiptPath),
+    ($receipt | ConvertTo-Json -Depth 5),
+    (New-Object Text.UTF8Encoding($false)))
+}
 
-Next, and NOT done by this script:
-  1. Retain the '$ArtifactStage' artifact-boundary receipt and commit the mod ReleaseId change
-     (it is a source edit and belongs in the release commit).
-  2. build-release-bundle.ps1 / capture-release-manifest.ps1 -> record '$ReleaseId' + artifact hashes.
-     Record the gateway IMAGE (lumberjacks-gateway:$ReleaseId) as the gateway artifact. bin/Release
-     is not an artifact; it is a local build output that never ships. Also record
-     lumberjacks-eventlog:$ReleaseId, lumberjacks-progression:$ReleaseId, and
-     lumberjacks-operatorapi:$ReleaseId, built above alongside the gateway.
-  3. validate-release-bundle.ps1, then run-promotion-drill.ps1.
-  4. Deploy: deploy-network-sense.ps1 (mod) and re-pin all five images built above.
-  5. Only then flip StrictReleaseEnabled on the window - it must stay OFF until the cut has landed
-     everywhere, because a mod predating mod_release_id sends nothing and absence rejects.
+if ($WhatIf) {
+  [pscustomobject]@{ ReleaseId = $ReleaseId; ModSha256 = $actualHash; Stage = $ArtifactStage; Verdict = 'would_build' }
+  exit 0
+}
 
-The gateway's release identity is gated on the IMAGE, by Test-GatewayImageRelease.ps1 reading
-/app/Game.Gateway.dll out of it. The bin/Release read this script still prints is ADVISORY and
-cannot fail the cut: that DLL never ships, and checking it is how a disabled gate passed review.
-Re-verify any gateway image at any time with:
-  .\Test-GatewayImageRelease.ps1 -Image lumberjacks-gateway:$ReleaseId -ExpectedRelease $ReleaseId
+$imageTag = "lumberjacks-gateway:$ReleaseId"
+$platformRevision = [string](& git -C $repoRoot rev-parse HEAD)
+if ($LASTEXITCODE -ne 0 -or $platformRevision.Trim() -notmatch '^[0-9a-f]{40}$') {
+  throw 'Could not resolve the platform source revision for the image identity.'
+}
+$platformRevision = $platformRevision.Trim()
+Push-Location $LumberjacksRoot
+try {
+  & docker build --target gateway -t $imageTag `
+      --build-arg "LUMBERJACKS_EXPECTED_MOD_RELEASE=$ReleaseId" `
+      --build-arg "LUMBERJACKS_SOURCE_REVISION=$platformRevision" `
+      --build-arg 'LUMBERJACKS_REQUIRE_RELEASE=1' .
+  if ($LASTEXITCODE -ne 0) { throw 'gateway image build failed' }
 
-GATEWAY-ONLY CUTS DO NOT USE THIS SCRIPT. Use New-GatewayReleaseCut.ps1 instead. This script rewrites
-ComfyNetworkSense.cs and rebuilds the mod, which for a Gateway-only promotion would invalidate the
-frozen mod artifact and every guest package pinned to it. New-GatewayReleaseCut.ps1 keeps the two
-identities apart - a new image_release_id admitting the unchanged admitted_mod_release - and leaves
-the mod alone:
-  .\New-GatewayReleaseCut.ps1 -ImageReleaseId m4-clean-20260719-r1 -AdmittedModRelease $ReleaseId
+  foreach ($service in @('eventlog', 'progression', 'operatorapi')) {
+    $tag = "lumberjacks-${service}:$ReleaseId"
+    & docker build --target $service -t $tag .
+    if ($LASTEXITCODE -ne 0) { throw "$service image build failed" }
+  }
+}
+finally { Pop-Location }
 
-Rebuild-to-verify (plan risk 12): ROOT CAUSE FOUND 2026-07-18. The .NET 8 SDK's implicit
-source-control tasks embed the git HEAD sha in the portable PDB (only when origin is a recognized
-host like github; a local-path clone embeds nothing), and the PDB checksum rides in the DLL's
-debug directory. So the DLL's identity bytes change on EVERY COMMIT with unchanged source, and a
-local clone can never match this tree - that was the whole clone-vs-worktree mystery. Proven:
--p:EnableSourceControlManagerQueries=false makes a clone and this tree build byte-identical DLLs.
-Consequence for cuts as ordered today (build, THEN commit): the shipped DLL embeds the sha of the
-release commit's PARENT, so no checkout of the release commit can ever rebuild it. The fix is a
-decision, not code here: pin the queries off in the csproj (hash = source alone, loses embedded
-provenance), or reorder to commit-first-build-second (keeps provenance, rebuild needs same origin
-URL). Until one is chosen these hashes attest what this machine built at this exact HEAD.
-"@
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
+    (Join-Path $PSScriptRoot 'Test-GatewayImageRelease.ps1') `
+    -Image $imageTag -ExpectedRelease $ReleaseId
+if ($LASTEXITCODE -ne 0) { throw 'gateway image release verification failed' }
+
+[pscustomobject]@{
+  Schema = 'lumberjacks-release-cut/v1'
+  ReleaseId = $ReleaseId
+  ModSha256 = $actualHash
+  GatewayImage = $imageTag
+  Stage = $ArtifactStage
+  Verdict = 'passed'
+}

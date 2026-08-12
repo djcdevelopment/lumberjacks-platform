@@ -74,6 +74,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $scriptRoot '..\..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 
 function Fail([string] $Message) { throw "Promotion drill failed: $Message" }
 function Hash([string] $Path) { return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant() }

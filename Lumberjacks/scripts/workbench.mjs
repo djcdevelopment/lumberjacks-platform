@@ -25,11 +25,7 @@ const workbenchPath = path.join(repoRoot, workbenchRelative);
 const outputPath = path.join(repoRoot, outputRelative);
 // In the monorepo the vocabulary is a sibling of Lumberjacks. Fixture repos keep a copy
 // inside the package so this generator can still be proven in isolation.
-const audienceCandidates = [
-  path.join(repoRoot, '..', 'corpus', 'audiences.json'),
-  path.join(repoRoot, 'corpus', 'audiences.json'),
-];
-const audiencesPath = audienceCandidates.find((candidate) => fs.existsSync(candidate)) ?? audienceCandidates[0];
+const audiencesPath = path.join(repoRoot, 'docs', 'workbench', 'audiences.json');
 const audiencesRelative = path.relative(repoRoot, audiencesPath).split(path.sep).join('/');
 
 const statuses = new Set(['live', 'dev-only', 'local-only', 'recoverable-not-running']);
@@ -852,7 +848,7 @@ function linkOwners(escaped, ownersHref) {
 
 /// Same argument for the licence file: six cards end "see LICENSING.md." and a named document
 /// must be reachable. One stored href — the same one the footer's "license details" uses.
-const licensingHref = 'https://github.com/djcdevelopment/baseline/blob/main/docs/legal/LICENSING.md';
+const licensingHref = 'https://github.com/djcdevelopment/lumberjacks-platform/blob/main/LICENSE';
 
 function linkLicensing(escaped) {
   return escaped.replaceAll(
@@ -1320,7 +1316,7 @@ function render(workbench, audienceDoc = readAudiences()) {
     <p class="print-note">Printed copy: each card's <strong>How it works, in detail</strong> and <strong>Source, privacy &amp; licence</strong> sections are collapsed and do not print — no stylesheet can force them open. Expand them in a browser to read them. Everything a decision rests on prints: the status and what it means, what you will need, download digests, the first tasks, where recoverable pieces are, and what stage 3 grants for that tool.</p>
     <div>If a card on this page is wrong, that is the most useful bug report you can file — the whole point is that the status matches reality.</div>
     <div class="generated">Generated deterministically from ${escapeHtml(workbenchRelative)} · do not hand-edit this file.</div>
-    <nav class="baseline-provenance" aria-label="Project provenance"><a href="https://github.com/djcdevelopment/baseline" target="_blank" rel="noreferrer">Baseline</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/Lumberjacks" target="_blank" rel="noreferrer">Lumberjacks</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy" target="_blank" rel="noreferrer">Comfy</a><span aria-hidden="true"> · </span><a href="${escapeHtml(licensingHref)}" target="_blank" rel="noreferrer">license details</a></nav>
+    <nav class="baseline-provenance" aria-label="Project provenance"><a href="https://github.com/djcdevelopment/lumberjacks-platform" target="_blank" rel="noreferrer">lumberjacks-platform</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/baseline" target="_blank" rel="noreferrer">baseline evidence and index</a><span aria-hidden="true"> · </span><a href="${escapeHtml(licensingHref)}" target="_blank" rel="noreferrer">license details</a></nav>
   </footer>
 </body>
 </html>

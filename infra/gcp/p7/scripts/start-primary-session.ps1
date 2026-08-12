@@ -6,6 +6,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 
 & "$PSScriptRoot\start-gateway-tunnel.ps1" | Out-Null
 

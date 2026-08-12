@@ -90,7 +90,7 @@ function Resolve-Ffmpeg([string] $Explicit) {
 function Resolve-OutputDirectory([string] $Requested) {
     if ($Requested) { return $Requested }
     $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-    $candidate = Join-Path $repoRoot 'fieldlab\runs\motion-clips'
+    $candidate = Join-Path $repoRoot 'captures\motion-clips'
     # The i5 has no repo checkout; fall back to its deploy staging root.
     if (Test-Path -LiteralPath (Split-Path -Parent $candidate)) { return $candidate }
     return 'C:\deploy\baseline\motion-clips'

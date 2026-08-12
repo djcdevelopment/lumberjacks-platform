@@ -51,6 +51,8 @@ $ErrorActionPreference = 'Stop'
 $ToolRoot = $PSScriptRoot
 $LumberjacksRoot = Resolve-Path (Join-Path $ToolRoot '..\..')
 $RepoRoot = Resolve-Path (Join-Path $ToolRoot '..\..\..')
+. (Join-Path $RepoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $RepoRoot | Out-Null
 $ComposeFile = Resolve-Path (Join-Path $ToolRoot 'docker-compose.yml')
 $ValheimComposeFile = Resolve-Path (Join-Path $ToolRoot 'docker-compose.valheim.yml')
 $RunnerScript = Resolve-Path (Join-Path $ToolRoot 'Start-WorkbenchHostRunner.ps1')

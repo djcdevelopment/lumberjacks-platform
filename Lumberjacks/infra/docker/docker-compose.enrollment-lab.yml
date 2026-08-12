@@ -25,6 +25,8 @@
 # into a client's config matches however that client actually reached the join
 # page. That is self-correcting; pinning it would re-create this same bug one
 # layer down.
+name: lumberjacks-enrollment-lab
+
 services:
   gateway:
     environment:

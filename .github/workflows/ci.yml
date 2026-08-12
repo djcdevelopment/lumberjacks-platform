@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  guards:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Assert repository identity
+        shell: pwsh
+        run: ./tools/Assert-RepoIdentity.ps1
+      - name: State-changing entrypoint identity coverage (G2)
+        shell: pwsh
+        run: ./tools/Test-IdentityGuardCoverage.ps1 -SelfTest
+      - name: No source reach-ins (G1)
+        shell: pwsh
+        run: ./tools/Test-NoReachIn.ps1 -SelfTest
+      - name: Stable compose project names (G3)
+        shell: pwsh
+        run: ./tools/Test-ComposeProjectNames.ps1 -SelfTest
+      - name: Service identity contract (G4)
+        shell: pwsh
+        run: ./tools/Test-ServiceIdentity.ps1 -SelfTest
+      - name: Mod artifact hash gate (G6)
+        shell: pwsh
+        run: ./tools/Test-ArtifactHashGate.ps1
+
+  dotnet:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Build
+        run: dotnet build Lumberjacks/Game.sln -c Release
+      - name: Test
+        run: dotnet test Lumberjacks/Game.sln -c Release --no-build --logger "console;verbosity=minimal"
+      - name: Authority lab
+        run: dotnet test tools/authority-lab/tests/AuthorityLab.Tests/AuthorityLab.Tests.csproj -c Release --logger "console;verbosity=minimal"
+
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gateway and full solution verify image
+        run: docker build --target verify -f Lumberjacks/Dockerfile Lumberjacks
+      - name: Standalone Companion image
+        run: docker build -f Lumberjacks/src/Game.Companion/Dockerfile Lumberjacks
+
+  roadmap-workbench:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Lumberjacks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Lumberjacks/package-lock.json
+      - run: npm ci
+      - run: npm run roadmap:test
+      - run: npm run roadmap:check
+      - run: npm run workbench:check
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests

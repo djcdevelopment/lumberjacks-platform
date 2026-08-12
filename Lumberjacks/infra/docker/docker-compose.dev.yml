@@ -1,6 +1,8 @@
 # Development compose — uses host Postgres (already running on 5433)
 # Usage: docker compose -f infra/docker/docker-compose.dev.yml up --build
 
+name: lumberjacks-dev
+
 services:
   gateway:
     build:

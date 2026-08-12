@@ -2,7 +2,7 @@
   "schema_version": 2,
   "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
   "headline": "M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY",
-  "updated_at": "2026-08-12T07:22:59.840Z",
+  "updated_at": "2026-08-12T08:41:38.080Z",
   "overall_status": "active",
   "platform_readiness": "not_ready",
   "active_milestone": "M1",
@@ -1137,19 +1137,19 @@
   "links": [
     {
       "label": "Full volunteer platform plan",
-      "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/network/valheim-volunteer-platform-plan.md"
+      "href": "https://github.com/djcdevelopment/lumberjacks-platform/blob/main/Lumberjacks/docs/network/valheim-volunteer-platform-plan.md"
     },
     {
       "label": "P7 network overview",
-      "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/network/valheim-lumberjacks-p7-overview.md"
+      "href": "https://github.com/djcdevelopment/lumberjacks-platform/blob/main/Lumberjacks/docs/network/valheim-lumberjacks-p7-overview.md"
     },
     {
       "label": "Network evidence index",
-      "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/network/evidence-index.md"
+      "href": "https://github.com/djcdevelopment/lumberjacks-platform/blob/main/Lumberjacks/docs/network/evidence-index.md"
     },
     {
       "label": "FieldLab",
-      "href": "https://github.com/djcdevelopment/baseline/tree/main/fieldlab"
+      "href": "https://github.com/djcdevelopment/lumberjacks-platform/tree/main/fieldlab"
     }
   ]
 }

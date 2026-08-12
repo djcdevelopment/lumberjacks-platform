@@ -26,7 +26,7 @@ export function baseWorkbench() {
     schema_version: 1,
     title: 'Comfy × Valheim — Fixture Workbench',
     headline: 'One tool. A fixture catalog exercised by the generator’s own tests.',
-    owners_href: 'https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/OWNERS.md',
+    owners_href: 'https://github.com/djcdevelopment/lumberjacks-platform/blob/main/Lumberjacks/docs/workbench/OWNERS.md',
     honesty_statement: 'Every status here is a tested claim.',
     not_a_verdict_summary: 'This fixture is not a verdict on anything.',
     not_a_verdict: 'A fixture catalog exercised by tests; nothing described here ships anywhere.',

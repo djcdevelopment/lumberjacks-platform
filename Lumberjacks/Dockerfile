@@ -2,11 +2,15 @@
 # Build stage: compiles all projects from the solution
 # Runtime stages: one per service, copies only the needed binaries
 
+ARG LUMBERJACKS_SOURCE_REVISION=unknown
+
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS source
 WORKDIR /src
 
 # Copy solution and project files first for layer caching
-COPY Game.sln Directory.Build.props Directory.Packages.props ./
+COPY Game.sln Directory.Build.props Directory.Packages.props nuget.config ./
+COPY packages-local/ packages-local/
+COPY src/Comfy.Transport.Contracts/Comfy.Transport.Contracts.csproj src/Comfy.Transport.Contracts/
 COPY src/Game.Contracts/Game.Contracts.csproj src/Game.Contracts/
 COPY src/Game.Persistence/Game.Persistence.csproj src/Game.Persistence/
 COPY src/Game.ServiceDefaults/Game.ServiceDefaults.csproj src/Game.ServiceDefaults/
@@ -79,9 +83,11 @@ RUN dotnet publish src/Game.Gateway -c Release -o /app/gateway --no-restore \
 
 # --- Runtime images ---
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS gateway
+ARG LUMBERJACKS_SOURCE_REVISION
 WORKDIR /app
 COPY --from=build /app/gateway .
 ENV ASPNETCORE_URLS=http://+:4000
+ENV LUMBERJACKS_SOURCE_REVISION=${LUMBERJACKS_SOURCE_REVISION}
 EXPOSE 4000
 ENTRYPOINT ["dotnet", "Game.Gateway.dll"]
 
@@ -116,9 +122,11 @@ EXPOSE 4004
 ENTRYPOINT ["dotnet", "Game.OperatorApi.dll"]
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS companion
+ARG LUMBERJACKS_SOURCE_REVISION
 WORKDIR /app
 COPY --from=build /app/companion .
 ENV ASPNETCORE_URLS=http://+:8080
 ENV LUMBERJACKS_COMPANION_DATA=/data
+ENV LUMBERJACKS_COMPANION_SOURCE_REVISION=${LUMBERJACKS_SOURCE_REVISION}
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "Lumberjacks.Companion.dll"]

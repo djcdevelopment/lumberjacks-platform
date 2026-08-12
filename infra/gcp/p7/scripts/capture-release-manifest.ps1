@@ -1,17 +1,14 @@
 [CmdletBinding()]
 param(
   [string] $SshTarget = 'comfy-p7',
-  [string] $ManifestPath = (Join-Path ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))) 'fieldlab\runs\releases\p7-primary-v1-20260715.json'),
+  [string] $ManifestPath = (Join-Path ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))) 'captures\releases\p7-primary-v1-20260715.json'),
   # $LocalDll already is artifact-mode (an explicit path, defaulting to the local install); the
   # alias only gives it the same -ModArtifact name the other p7 scripts use.
   [Alias('ModArtifact')]
   [string] $LocalDll = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim\BepInEx\plugins\ComfyNetworkSense.dll',
   [string] $LocalConfig = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim\BepInEx\config\djcdevelopment.valheim.comfynetworksense.cfg',
-  # Bypasses the network/mod/ComfyNetworkSense source-tree pin below (the `git -C $sourceRoot`
-  # read) when a caller already knows the source revision an artifact was built from -- e.g. a
-  # networksense release manifest, once that tree is no longer checked out alongside this
-  # script. Omitted (empty, the default), behavior is unchanged: read HEAD from the local tree.
-  [string] $ModSourceRevision = ''
+  [Parameter(Mandatory)]
+  [string] $ModSourceRevision
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,12 +20,8 @@ function Hash-File([string] $Path) {
 # Repo-relative, so the recorded source revision is this checkout's, not a
 # retired pre-cutover one that still happens to exist on disk.
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
-$sourceRoot = Join-Path $repoRoot 'network\mod\ComfyNetworkSense'
-$sourceRevision = if (-not [string]::IsNullOrWhiteSpace($ModSourceRevision)) {
-  $ModSourceRevision
-} else {
-  (& git -C $sourceRoot rev-parse HEAD 2>$null | Out-String).Trim()
-}
+$sourceRevision = $ModSourceRevision.Trim()
+if ($sourceRevision -notmatch '^[0-9a-f]{40}$') { throw 'ModSourceRevision must be a full commit SHA.' }
 $localAssembly = [Reflection.AssemblyName]::GetAssemblyName($LocalDll)
 $remoteHashes = ssh $SshTarget @"
 set -eu

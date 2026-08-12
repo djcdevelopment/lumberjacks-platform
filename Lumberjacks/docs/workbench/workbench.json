@@ -2,7 +2,7 @@
   "schema_version": 1,
   "title": "Comfy × Valheim — Community Workbench",
   "headline": "Eight tools. What each one actually does today, what it costs you to run it, and exactly how to take one over.",
-  "owners_href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/OWNERS.md",
+  "owners_href": "https://github.com/djcdevelopment/lumberjacks-platform/blob/main/Lumberjacks/docs/workbench/OWNERS.md",
   "honesty_statement": "Every status below is what the thing actually does today.",
   "not_a_verdict_summary": "Volunteers carried this community. An unclaimed tool is not a verdict on anyone.",
   "not_a_verdict": "This catalog is an invitation to run and own tools. It is not a judgment on anyone's past effort and it is not a verdict on anyone's burnout — volunteers already carried this community, and the work they did is why any of this exists. Nothing here is owed by anyone. A tool sitting unclaimed is a description of this catalog, never a mark against the people who came before.",
@@ -253,7 +253,7 @@
       },
       "source": {
         "kind": "public-repo",
-        "href": "https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/tools/omen-dashboard",
+        "href": "https://github.com/djcdevelopment/lumberjacks-platform/tree/main/Lumberjacks/tools/omen-dashboard",
         "note": "Public and readable now: Lumberjacks/infra/docker/docker-compose.yml for the stack, Lumberjacks/tools/omen-dashboard/ for the operator viewer."
       },
       "docs": [
@@ -263,11 +263,11 @@
         },
         {
           "label": "Telemetry v0 API reference — Lumberjacks/docs/api/telemetry-v0.md",
-          "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/api/telemetry-v0.md"
+          "href": "https://github.com/djcdevelopment/lumberjacks-platform/blob/main/Lumberjacks/docs/api/telemetry-v0.md"
         },
         {
           "label": "Viewing the surfaces — Lumberjacks/docs/dashboard/viewing-the-surfaces.md",
-          "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/dashboard/viewing-the-surfaces.md"
+          "href": "https://github.com/djcdevelopment/lumberjacks-platform/blob/main/Lumberjacks/docs/dashboard/viewing-the-surfaces.md"
         }
       ],
       "discussion": {
@@ -335,13 +335,13 @@
       },
       "source": {
         "kind": "public-repo",
-        "href": "https://github.com/djcdevelopment/baseline/tree/main/Lumberjacks/src/Game.Gateway/Valheim",
+        "href": "https://github.com/djcdevelopment/lumberjacks-platform/tree/main/Lumberjacks/src/Game.Gateway/Valheim",
         "note": "Public and readable now — SteamEnrollmentEndpoints, SteamEnrollmentService, EnrollmentPages, ModpackReleaseCatalog, with real test suites, plus the operator runbook at infra/gcp/p7/VOLUNTEER-ENDPOINT.md."
       },
       "docs": [
         {
           "label": "What the flow does, and what is not wired up yet",
-          "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/tools/steam-join.md"
+          "href": "https://github.com/djcdevelopment/lumberjacks-platform/blob/main/Lumberjacks/docs/workbench/tools/steam-join.md"
         },
         {
           "label": "Volunteer roadmap — the M2 and M5 gates this sits behind",
@@ -349,7 +349,7 @@
         },
         {
           "label": "Operator runbook — infra/gcp/p7/VOLUNTEER-ENDPOINT.md",
-          "href": "https://github.com/djcdevelopment/baseline/blob/main/infra/gcp/p7/VOLUNTEER-ENDPOINT.md"
+          "href": "https://github.com/djcdevelopment/lumberjacks-platform/blob/main/infra/gcp/p7/VOLUNTEER-ENDPOINT.md"
         }
       ],
       "discussion": {
@@ -419,13 +419,13 @@
       },
       "source": {
         "kind": "public-repo",
-        "href": "https://github.com/djcdevelopment/baseline/tree/main/network/mcp",
+        "href": "https://github.com/djcdevelopment/isolate",
         "note": "Public and readable now — the comfy_gateway kernel plus the valheim toolsurface, contracts/commands.json, and 6 tests. An older snapshot also exists in the comfy repo."
       },
       "docs": [
         {
           "label": "Command contract — network/mcp/contracts/commands.json",
-          "href": "https://github.com/djcdevelopment/baseline/blob/main/network/mcp/contracts/commands.json"
+          "href": "https://github.com/djcdevelopment/isolate/blob/main/contracts/commands.json"
         }
       ],
       "discussion": {
@@ -578,7 +578,7 @@
       },
       "source": {
         "kind": "public-repo",
-        "href": "https://github.com/djcdevelopment/baseline/tree/main/tools/quest-bridge",
+        "href": "https://github.com/djcdevelopment/comfy-quest/tree/main/tools/quest-bridge",
         "note": "The ported bridge is in this repo at tools/quest-bridge/, with its design recorded in fieldlab/docs/adr/0018-quest-proof-is-the-eventlog-row.md. The retired ComfyControlSurface originals stay byte-exact and unwired at recipes/quest-submission-bridge/ as raw material."
       },
       "docs": [
@@ -596,11 +596,11 @@
         },
         {
           "label": "The design decision (ADR 0018 — the proof is the EventLog row)",
-          "href": "https://github.com/djcdevelopment/baseline/blob/main/fieldlab/docs/adr/0018-quest-proof-is-the-eventlog-row.md"
+          "href": "https://github.com/djcdevelopment/lumberjacks-platform/blob/main/fieldlab/docs/adr/0018-quest-proof-is-the-eventlog-row.md"
         },
         {
           "label": "Ported bridge (tools/quest-bridge/)",
-          "href": "https://github.com/djcdevelopment/baseline/tree/main/tools/quest-bridge"
+          "href": "https://github.com/djcdevelopment/comfy-quest/tree/main/tools/quest-bridge"
         }
       ],
       "discussion": {
@@ -663,7 +663,7 @@
       },
       "source": {
         "kind": "public-repo",
-        "href": "https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab",
+        "href": "https://github.com/djcdevelopment/comfy-quest/tree/main/network/mod/ComfyQuestLab",
         "note": "A client-only BepInEx plugin."
       },
       "docs": [
@@ -673,11 +673,11 @@
         },
         {
           "label": "One-pager (what it is, what's rough)",
-          "href": "https://github.com/djcdevelopment/baseline/blob/main/Lumberjacks/docs/workbench/tools/quest-lab.md"
+          "href": "https://github.com/djcdevelopment/lumberjacks-platform/blob/main/Lumberjacks/docs/workbench/tools/quest-lab.md"
         },
         {
           "label": "Source Code",
-          "href": "https://github.com/djcdevelopment/baseline/tree/main/network/mod/ComfyQuestLab"
+          "href": "https://github.com/djcdevelopment/comfy-quest/tree/main/network/mod/ComfyQuestLab"
         }
       ],
       "discussion": {

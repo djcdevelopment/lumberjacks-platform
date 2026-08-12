@@ -1,45 +1,31 @@
-# -ArtifactPath already IS artifact-mode: given a path, it skips the in-place `dotnet build`
-# (see below) and deploys that frozen DLL instead, hash-verified against -ExpectedSha256 /
-# -ExpectedRelease. -ModArtifact is an alias for release-integrity naming parity with the other
-# p7 scripts' artifact params; omitted (the default empty string), behavior is unchanged
-# (source-tree build, as before).
+# Deploys only a frozen networksense release artifact. The platform never
+# builds a sibling repository's source as a fallback.
 [CmdletBinding()]
 param(
   [string] $SshTarget = "comfy-p7",
   [string] $Container = "comfy-lumberjacks-p7-valheim-server-1",
-  [string] $Project,
+  [Parameter(Mandatory)]
   [Alias('ModArtifact')]
-  [string] $ArtifactPath = '',
+  [string] $ArtifactPath,
   [string] $ExpectedSha256 = '',
   [string] $ExpectedRelease = '',
-  [string] $Configuration = "Release",
   [int] $ReadyTimeoutSeconds = 360,
-  [string] $ManifestPath
+  [string] $ManifestPath,
+  [string] $ModSourceRevision = ''
 )
 
 $ErrorActionPreference = "Stop"
-if ([string]::IsNullOrWhiteSpace($Project)) {
-  $Project = Join-Path $PSScriptRoot "..\..\..\..\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj"
-}
-$projectPath = [IO.Path]::GetFullPath($Project)
-$projectDir = Split-Path $projectPath
-$dll = if ([string]::IsNullOrWhiteSpace($ArtifactPath)) {
-  Join-Path $projectDir "bin\$Configuration\ComfyNetworkSense.dll"
-} else {
-  (Resolve-Path -LiteralPath $ArtifactPath -ErrorAction Stop).Path
-}
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
+$dll = (Resolve-Path -LiteralPath $ArtifactPath -ErrorAction Stop).Path
 $remoteDll = "/tmp/ComfyNetworkSense-deploy.dll"
 $runtimeDll = "/opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll"
 $fallbackDll = "/mnt/comfy-p7/valheim/config/bepinex/plugins/ComfyNetworkSense.dll"
 $hostConfig = "/mnt/comfy-p7/valheim/config/bepinex/djcdevelopment.valheim.comfynetworksense.cfg"
 $startedUtc = (Get-Date).ToUniversalTime().ToString("o")
 
-if ([string]::IsNullOrWhiteSpace($ArtifactPath)) {
-  dotnet build $projectPath -c $Configuration
-  if ($LASTEXITCODE -ne 0 -or !(Test-Path $dll)) {
-    throw "ComfyNetworkSense build failed or did not produce $dll"
-  }
-} elseif (!(Test-Path -LiteralPath $dll -PathType Leaf)) {
+if (!(Test-Path -LiteralPath $dll -PathType Leaf)) {
   throw "Frozen ComfyNetworkSense artifact does not exist: $dll"
 }
 
@@ -177,14 +163,17 @@ if ($metadataExit -ne 0) { throw "Deployment metadata fallback reconciliation fa
   Sha256 = $actualHash
   Version = $pluginVersion
   Release = $artifactRelease
-  FrozenArtifact = -not [string]::IsNullOrWhiteSpace($ArtifactPath)
+  FrozenArtifact = $true
   BackupPath = $backupRoot
   ModReady = $modReady
   ServerReady = $serverReady
 }
 
 if ($ManifestPath) {
-  $sourceRevision = (& git -C $projectDir rev-parse HEAD 2>$null | Out-String).Trim()
+  if ($ModSourceRevision -notmatch '^[0-9a-f]{40}$') {
+    throw '-ManifestPath requires a full -ModSourceRevision from the networksense release manifest.'
+  }
+  $sourceRevision = $ModSourceRevision
   $assemblyInputs = @(
     "C:\Program Files (x86)\Steam\steamapps\common\Valheim\BepInEx\core\BepInEx.dll",
     "C:\Program Files (x86)\Steam\steamapps\common\Valheim\valheim_Data\Managed\assembly_valheim.dll",

@@ -20,7 +20,7 @@ INSTALLER = ROOT / "tools" / "guest-package" / "Install-ComfyGuest.ps1"
 UNINSTALLER = ROOT / "tools" / "guest-package" / "Uninstall-ComfyGuest.ps1"
 
 # The tooling is exercised against a synthetic release, not against a real cut. Real
-# release bundles live under fieldlab/runs/releases/, which .gitignore keeps out of the
+# release bundles live under captures/releases/, which .gitignore keeps out of the
 # repo, so pinning the tests to one made every fresh checkout red for want of a machine-
 # local build artifact. Nothing in tools/guest-package/ parses the DLL -- each script only
 # hashes it, copies it, or compares its hash to the manifest -- so stand-in bytes exercise
@@ -103,7 +103,7 @@ class GuestPackageTests(unittest.TestCase):
         return self._ps(GENERATOR, "-ManifestPath", FIXTURE_MANIFEST, "-BundleRoot", self.bundle, "-InputsPath", FIXTURE_INPUTS, "-OutputRoot", output_root)
 
     def _render(self, *args):
-        return subprocess.run([PYTHON, str(ROOT / "tools" / "render_guest_guide.py"), *map(str, args)], capture_output=True, text=True)
+        return subprocess.run([PYTHON, str(ROOT / "tools" / "guest-package" / "render_guest_guide.py"), *map(str, args)], capture_output=True, text=True)
 
     def _preflight(self, *args):
         result = self._ps(PREFLIGHT, "-PackageRoot", self.package, "-ValheimPath", self.valheim, *args)
@@ -226,14 +226,14 @@ class GuestPackageTests(unittest.TestCase):
 class SealedReleaseTests(unittest.TestCase):
     """Supply-chain check on the real cut, which only this machine can answer.
 
-    The sealed bundle is a build artifact: .gitignore keeps fieldlab/runs/ out of the
+    The sealed bundle is a build artifact: .gitignore keeps captures/ out of the
     repo, so a clone cannot carry the bytes and no fixture can stand in for them --
     verifying a binary you do not have is not possible. Everything about the *tooling*
     is covered unconditionally by GuestPackageTests above; this pair only asserts that
     the sealed artifact on disk still matches the manifest that ships beside it.
     """
 
-    @unittest.skipUnless(SEALED_PRESENT, f"sealed release {SEALED_RELEASE_ID} is not on this machine: restore the bundle to fieldlab/runs/releases/ to run this check (build artifacts are gitignored and never distributed with the repo)")
+    @unittest.skipUnless(SEALED_PRESENT, f"sealed release {SEALED_RELEASE_ID} is not on this machine: restore the bundle to captures/releases/ to run this check (build artifacts are gitignored and never distributed with the repo)")
     def test_sealed_dll_matches_its_release_manifest(self):
         manifest = json.loads(SEALED_MANIFEST.read_text(encoding="utf-8-sig"))
         self.assertEqual(manifest["release_id"], SEALED_RELEASE_ID)
@@ -243,7 +243,7 @@ class SealedReleaseTests(unittest.TestCase):
             "sealed DLL no longer matches the clean_build_sha256 recorded in its release manifest",
         )
 
-    @unittest.skipUnless(SEALED_PRESENT, f"sealed release {SEALED_RELEASE_ID} is not on this machine: restore the bundle to fieldlab/runs/releases/ to run this check (build artifacts are gitignored and never distributed with the repo)")
+    @unittest.skipUnless(SEALED_PRESENT, f"sealed release {SEALED_RELEASE_ID} is not on this machine: restore the bundle to captures/releases/ to run this check (build artifacts are gitignored and never distributed with the repo)")
     def test_committed_inputs_still_describe_the_sealed_release(self):
         inputs = json.loads((ROOT / "tools" / "guest-package" / "guest-package-inputs.json").read_text(encoding="utf-8-sig"))
         manifest = json.loads(SEALED_MANIFEST.read_text(encoding="utf-8-sig"))

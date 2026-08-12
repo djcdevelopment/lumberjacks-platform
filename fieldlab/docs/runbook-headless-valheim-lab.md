@@ -39,10 +39,10 @@ the lane; physical OMEN/i5 installs are not modified.
 
 ## Lifecycle
 
-From `C:\\work\\baseline`:
+From the `lumberjacks-platform` repository root:
 
 ```powershell
-# Build and stage the current DLL; optionally add an explicit lab config with -ConfigPath.
+# Stage an exact networksense release DLL; optionally add an explicit lab config with -ConfigPath.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\fieldlab\\scripts\\Invoke-HeadlessValheimLab.ps1 -Client 01 -Action refresh
 
 # Re-check all prerequisites immediately before the run.
@@ -100,7 +100,7 @@ working tree. Point the scenario at an exact clean artifact instead:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\fieldlab\scripts\Invoke-HeadlessValheimScenario.ps1 `
   -Action start `
   -Clients '01,02' `
-  -DllPath C:\work\baseline\artifacts\cre-e06-4120497-clean\out\ComfyNetworkSense.dll
+  -DllPath C:\path\to\verified-networksense-release\ComfyNetworkSense.dll
 ```
 
 An explicit `-DllPath` skips the worktree build. Refresh SHA-256 verifies the copy,

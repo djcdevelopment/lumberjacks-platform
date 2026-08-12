@@ -37,6 +37,14 @@ WorkbenchEndpoints.Map(app);
 QuestStudioEndpoints.Map(app, app.Services.GetRequiredService<IQuestStudioHost>());
 
 app.MapGet("/health", () => Results.Ok(new { ok = true, service = "lumberjacks-companion" }));
+app.MapGet("/identity", () => Results.Ok(new
+{
+    schema = "comfy-repo-identity/v1",
+    repository = "djcdevelopment/lumberjacks-platform",
+    service = "lumberjacks-companion",
+    revision = CompanionVersion.SourceRevision,
+    release = CompanionVersion.BootstrapRelease,
+}));
 app.MapGet("/api/v0/companion/status", (CompanionStateStore state, ValheimLocator locator) =>
 {
     var install = locator.Find();
@@ -1029,9 +1037,13 @@ sealed class ModpackInstaller(CompanionStateStore stateStore, ValheimLocator loc
                 var temporary = plan.Target + ".lumberjacks-" + Guid.NewGuid().ToString("N") + ".tmp";
                 try
                 {
-                    await using var source = plan.Entry.Open();
-                    await using var destination = File.Create(temporary);
-                    await source.CopyToAsync(destination, cancellationToken);
+                    // The destination handle must be fully closed before the rename:
+                    // Windows refuses to move a file that still has an open handle.
+                    await using (var source = plan.Entry.Open())
+                    await using (var destination = File.Create(temporary))
+                    {
+                        await source.CopyToAsync(destination, cancellationToken);
+                    }
                     File.Move(temporary, plan.Target, true);
                 }
                 finally

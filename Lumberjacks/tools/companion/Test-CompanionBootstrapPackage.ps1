@@ -47,6 +47,9 @@ try {
     $requiredStatic = @(
         'Directory.Build.props',
         'Directory.Packages.props',
+        'nuget.config',
+        'packages-local\Comfy.Quest.Contracts.0.1.0-local.nupkg',
+        'packages-local\Comfy.Quest.Studio.0.1.0-local.nupkg',
         'src\Game.Companion\Program.cs',
         'src\Game.Companion\CompanionPage.cs',
         'src\Game.Companion\Dockerfile',
@@ -56,7 +59,7 @@ try {
         'tools\companion\Start-WorkbenchHostRunner.ps1',
         'tools\companion\bootstrap\Start-LumberjacksCompanion.cmd',
         'tools\companion\bootstrap\Start-LumberjacksCompanion.ps1',
-        'tools\i5\Test-I5Link.ps1',
+        'tools\companion\Deploy-ToI5.ps1',
         'tools\workbench\Test-WorkbenchZipPrivacy.ps1',
         'tools\workbench\Test-WorkbenchSupportExport.ps1',
         'tools\workbench\Test-WorkbenchProfileBoundary.ps1',

@@ -254,35 +254,12 @@ function Invoke-RunnerChildProcess {
 function Invoke-DockerModBuild {
     param([string]$JobId)
     $buildSource = Get-LocalSourceIdentity
-    if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot 'network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj'))) {
-        return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; required = 'source_checkout' }; reason = 'source_checkout_required' }
-    }
-    if (-not (Test-Path -LiteralPath $ValheimPath)) {
-        return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; required = 'valheim_install'; path = $ValheimPath }; reason = 'valheim_install_missing' }
-    }
-    $assemblyPath = Join-Path $ValheimPath 'valheim_Data\Managed\assembly_valheim.dll'
-    if (-not (Test-Path -LiteralPath $assemblyPath)) {
-        return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; required = 'assembly_valheim.dll'; path = $assemblyPath }; reason = 'valheim_assembly_missing' }
-    }
-    $dll = Join-Path $RepoRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
-    $args = @(
-        'run', '--rm',
-        '--mount', "type=bind,source=$RepoRoot,destination=/src",
-        '--mount', "type=bind,source=$ValheimPath,destination=/valheim,readonly",
-        '--workdir', '/src/network/mod/ComfyNetworkSense',
-        'mcr.microsoft.com/dotnet/sdk:9.0',
-        'dotnet', 'build', 'ComfyNetworkSense.csproj', '-c', 'Release',
-        '-p:ValheimDir=/valheim', '-p:PluginOutputPath=/tmp/no-plugin-copy', '-p:ComfyCopyToPlugins=false'
-    )
-    $output = @(& docker @args 2>&1 | ForEach-Object { $_.ToString() })
-    if ($LASTEXITCODE -ne 0) {
-        return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; build_source = $buildSource; output_tail = @($output | Select-Object -Last 80) }; reason = 'container_build_failed' }
-    }
+    $dll = Join-Path $RepoRoot 'artifacts\mod\ComfyNetworkSense.dll'
     if (-not (Test-Path -LiteralPath $dll)) {
-        return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; build_source = $buildSource; output_tail = @($output | Select-Object -Last 80) }; reason = 'build_artifact_missing' }
+        return @{ verdict = 'failed'; result = @{ capability = 'build.mod.release'; required = 'verified_networksense_release'; path = $dll }; reason = 'release_artifact_missing' }
     }
     $hash = (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
-    return @{ verdict = 'passed'; result = @{ capability = 'build.mod.release'; artifact_name = 'ComfyNetworkSense.dll'; artifact_sha256 = $hash; plugin_copy = $false; valheim_mount = 'readonly'; host_sdk_required = $false; build_source = $buildSource; output_tail = @($output | Select-Object -Last 30) }; reason = 'container_build_verified' }
+    return @{ verdict = 'passed'; result = @{ capability = 'build.mod.release'; artifact_name = 'ComfyNetworkSense.dll'; artifact_sha256 = $hash; producer = 'djcdevelopment/networksense'; build_source = $buildSource }; reason = 'release_artifact_verified' }
 }
 
 function Invoke-CompanionCapture {
@@ -484,11 +461,13 @@ function Invoke-RenderedC6 {
     if ($missing.Count -gt 0) {
         return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; missing_nodes = $missing; node_states = $nodeStates }; reason = 'rendered_prelive_dependency_missing' }
     }
-    $i5Link = Join-Path $RepoRoot 'tools\i5\Test-I5Link.ps1'
-    if (-not (Test-Path -LiteralPath $i5Link)) { return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; required = 'source_checkout' }; reason = 'source_checkout_required' } }
+    $networkSenseTools = [string]$env:NETWORKSENSE_TOOLS_ROOT
+    if ([string]::IsNullOrWhiteSpace($networkSenseTools)) { return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; required = 'NETWORKSENSE_TOOLS_ROOT release bundle' }; reason = 'release_tool_bundle_required' } }
+    $i5Link = Join-Path $networkSenseTools 'Test-I5Link.ps1'
+    if (-not (Test-Path -LiteralPath $i5Link)) { return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; required = 'verified networksense operator-tool bundle' }; reason = 'release_tool_bundle_required' } }
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $i5Link | Out-Null
     if ($LASTEXITCODE -ne 0) { return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; i5 = 'offline_or_preflight_failed' }; reason = 'rendered_prelive_i5_failed' } }
-    $dllPath = Join-Path $RepoRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
+    $dllPath = Join-Path $RepoRoot 'artifacts\mod\ComfyNetworkSense.dll'
     if (-not (Test-Path -LiteralPath $dllPath)) { return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; required = 'built_mod_artifact' }; reason = 'rendered_prelive_dll_missing' } }
     $dllHash = (Get-FileHash -LiteralPath $dllPath -Algorithm SHA256).Hash.ToLowerInvariant()
     $runId = "workbench-$((Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss'))-$($JobId.Substring($JobId.Length - 8))"
@@ -508,7 +487,8 @@ function Invoke-RenderedC6 {
         '-RunId', (Quote-ProcessArgument $runId),
         '-ScenarioPath', (Quote-ProcessArgument $scenario),
         '-EvidenceRoot', (Quote-ProcessArgument $evidence),
-        '-EnableMotionAuthorityCutover', '-WaitSeconds', '900'
+        '-EnableMotionAuthorityCutover', '-WaitSeconds', '900',
+        '-NetworkSenseTools', (Quote-ProcessArgument $networkSenseTools)
     )
     if ($orchestratorExit -ne 0) { return @{ verdict = 'failed'; result = @{ capability = 'build.rendered.c6-role-reversal'; run_id = $runId; evidence_root = $evidence }; reason = 'rendered_role_reversal_failed' } }
     return @{ state = 'waiting_human'; result = @{ capability = 'build.rendered.c6-role-reversal'; run_id = $runId; evidence_root_name = Split-Path -Leaf $evidence; dll_sha256 = $dllHash; prelive = @{ required_nodes = $requiredNodes; i5 = 'passed'; source_revision = $localSource.source_revision; source_branch = $localSource.source_branch; image = $source.image; image_id = ([string]$imageId).Trim(); lab_runtime_provenance = $provenanceReceipt }; human_observation = 'required_after_machine_run' }; reason = 'rendered_role_reversal_complete' }
@@ -530,7 +510,7 @@ function Invoke-Job {
             default { @{ verdict = 'failed'; result = @{ capability = $Job.capability_id }; reason = 'capability_handler_not_implemented' } }
         }
         if ($outcome.result -and $outcome.result.artifact_name -and $outcome.result.artifact_sha256) {
-            $artifactPath = if ($outcome.result.artifact_name -eq 'ComfyNetworkSense.dll') { Join-Path $RepoRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll' } else { Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) ('Lumberjacks\Workbench\exports\' + $outcome.result.artifact_name) }
+            $artifactPath = if ($outcome.result.artifact_name -eq 'ComfyNetworkSense.dll') { Join-Path $RepoRoot 'artifacts\mod\ComfyNetworkSense.dll' } else { Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) ('Lumberjacks\Workbench\exports\' + $outcome.result.artifact_name) }
             $size = if (Test-Path -LiteralPath $artifactPath) { (Get-Item -LiteralPath $artifactPath).Length } else { 0 }
             Send-Artifact $Job.job_id $outcome.result.artifact_name $outcome.result.artifact_sha256 $size $(if ($Job.capability_id -eq 'recover.support.export') { 'public_safe' } else { 'private_local' })
         }

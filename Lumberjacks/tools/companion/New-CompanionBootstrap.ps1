@@ -19,6 +19,8 @@ $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $PSScriptRoot 'dist' }
 $lumberjacksRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $repoRoot = Split-Path -Parent $lumberjacksRoot
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $packageVerifier = Join-Path $PSScriptRoot 'Test-CompanionBootstrapPackage.ps1'
 $safeRelease = $ReleaseId -replace '[^A-Za-z0-9._-]', '-'
 if ([string]::IsNullOrWhiteSpace($safeRelease)) { throw 'ReleaseId must contain letters or numbers.' }
@@ -30,9 +32,10 @@ $packagePath = Join-Path $OutputDirectory $packageName
 
 try {
     New-Item -ItemType Directory -Force -Path $bundleRoot, $OutputDirectory | Out-Null
-    foreach ($file in 'Directory.Build.props', 'Directory.Packages.props') {
+    foreach ($file in 'Directory.Build.props', 'Directory.Packages.props', 'nuget.config') {
         Copy-Item -LiteralPath (Join-Path $lumberjacksRoot $file) -Destination $bundleRoot
     }
+    Copy-Item -LiteralPath (Join-Path $lumberjacksRoot 'packages-local') -Destination $bundleRoot -Recurse
     $bundleSource = Join-Path $bundleRoot 'src'
     New-Item -ItemType Directory -Force -Path $bundleSource | Out-Null
     Copy-Item -LiteralPath (Join-Path $lumberjacksRoot 'src\Game.Companion') -Destination $bundleSource -Recurse
@@ -52,13 +55,11 @@ try {
     $bundleRepoTools = Join-Path $bundleRoot 'tools'
     New-Item -ItemType Directory -Force -Path $bundleRepoTools | Out-Null
     Copy-Item -LiteralPath (Join-Path $repoRoot 'tools\wave0') -Destination $bundleRepoTools -Recurse
-    # The i5 README is an operator-local lane record and intentionally contains
-    # machine-specific enrollment details. The distributable needs the runnable
-    # scripts, not that private documentation.
-    $bundleI5Tools = Join-Path $bundleRepoTools 'i5'
-    New-Item -ItemType Directory -Force -Path $bundleI5Tools | Out-Null
-    Get-ChildItem -LiteralPath (Join-Path $repoRoot 'tools\i5') -File -Filter '*.ps1' |
-        ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $bundleI5Tools }
+    # The Companion's platform-owned i5 lane is self-contained; generic mod
+    # deployment remains in networksense and is not bundled here.
+    foreach ($file in 'Deploy-ToI5.ps1', 'Start-I5Companion.ps1', 'Sync-I5Companion.ps1', 'Test-Wave0Readiness.ps1') {
+        Copy-Item -LiteralPath (Join-Path $lumberjacksRoot "tools\companion\$file") -Destination $bundleTools
+    }
     $bundleWorkbenchTools = Join-Path $bundleRepoTools 'workbench'
     New-Item -ItemType Directory -Force -Path $bundleWorkbenchTools | Out-Null
     foreach ($file in 'Test-WorkbenchZipPrivacy.ps1', 'Test-WorkbenchSupportExport.ps1', 'Test-WorkbenchProfileBoundary.ps1', 'Test-WorkbenchMcpIdentity.ps1') {

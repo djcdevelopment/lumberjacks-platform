@@ -1,4 +1,4 @@
-name: comfy-valheim-lab
+name: lumberjacks-fieldlab
 
 x-steam-client: &steam-client
   image: ${STEAM_HEADLESS_IMAGE:-josh5/steam-headless:debian}
@@ -70,10 +70,9 @@ services:
       - ${AUTONOMOUS_ROOT}/state/server/data:/opt/valheim
 
   comfy-gateway:
-    image: ${COMFY_GATEWAY_IMAGE:-ghcr.io/community-valheim-tools/comfy-gateway:latest}
-    build:
-      context: ${COMFY_ROOT}/network/mcp
-      dockerfile: Dockerfile
+    # The Dev MCP is owned and built by isolate. This harness consumes its
+    # published image; it never builds or bind-mounts a sibling source tree.
+    image: ${COMFY_GATEWAY_IMAGE:-ghcr.io/djcdevelopment/comfy-gateway:latest}
     restart: unless-stopped
     ports:
       - "${COMFY_GATEWAY_PORT:-8720}:8720"
@@ -98,7 +97,7 @@ services:
       COMFY_VALHEIM_NOTES: /workspace/network/mcp/var/valheim-dev-notes.jsonl
     volumes:
       - ${AUTONOMOUS_ROOT}/state:/lab/state
-      - ${COMFY_ROOT}/network/mcp/var:/workspace/network/mcp/var
+      - mcp-var:/workspace/network/mcp/var
       - "${OMEN_VALHEIM_DIR:-C:/Program Files (x86)/Steam/steamapps/common/Valheim}/BepInEx/config:/lab/omen-config"
       - "${OMEN_VALHEIM_DIR:-C:/Program Files (x86)/Steam/steamapps/common/Valheim}/BepInEx/LogOutput.log:/lab/omen-log/LogOutput.log:ro"
     command:
@@ -158,3 +157,6 @@ services:
       - ${AUTONOMOUS_ROOT}/state/client-shared:/mnt/comfy:ro
       - ${AUTONOMOUS_ROOT}/state/client04/home:/home/default
       - ${AUTONOMOUS_ROOT}/state/client04/games:/mnt/games
+
+volumes:
+  mcp-var:

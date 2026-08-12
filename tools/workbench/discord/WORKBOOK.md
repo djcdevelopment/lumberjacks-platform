@@ -3,7 +3,7 @@
 Derek's steps, in order. Everything else is already built and committed. Full reference:
 [`09-discord-bot-setup.md`](../../../Lumberjacks/docs/workbench/discord/09-discord-bot-setup.md).
 
-Run commands from the repo root (`C:\work\baseline`). Everything here is **Windows
+Run commands from the `lumberjacks-platform` repo root. Everything here is **Windows
 PowerShell 5.1** — `&&` is a parser error in this shell, so each command stands alone.
 
 ---

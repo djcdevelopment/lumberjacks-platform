@@ -56,6 +56,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 
 if ([string]::IsNullOrWhiteSpace($RequestId)) {
     $RequestId = 'runtime-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss') +

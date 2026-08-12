@@ -40,6 +40,8 @@ $composeProject = 'comfy-lumberjacks-p7'
 $postgresContainer = 'comfy-lumberjacks-p7-postgres-1'
 $valheimContainer = 'comfy-lumberjacks-p7-valheim-server-1'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $unitPath = Join-Path $repoRoot 'infra\gcp\p7\comfy-lumberjacks-p7.service'
 $unitSha256 =
     (Get-FileHash -LiteralPath $unitPath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -58,7 +60,7 @@ if ($Action -eq 'preflight' -and $Execute) {
 }
 if ($Action -eq 'run' -and [string]::IsNullOrWhiteSpace($OutputPath)) {
     $OutputPath = Join-Path $repoRoot `
-        "fieldlab\runs\p7-boot-determinism\$RunId\acceptance.json"
+        "captures\p7-boot-determinism\$RunId\acceptance.json"
 }
 if ($Action -eq 'run') {
     # The first remote capture intentionally happens before any boot fix is

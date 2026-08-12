@@ -9,7 +9,8 @@ Wait-Job timeouts and timeout evidence in their receipts.
 #>
 [CmdletBinding()]
 param(
-    [string]$OutputJson = 'captures/wave0-bounded-command-contracts.json'
+    [string]$OutputJson = 'captures/wave0-bounded-command-contracts.json',
+    [Parameter(Mandatory)][string]$NetworkSenseTools
 )
 
 $ErrorActionPreference = 'Stop'
@@ -27,14 +28,18 @@ function New-Check {
     [ordered]@{ name = $Name; ok = $Ok; detail = $Detail }
 }
 
-$capture = Read-Text 'tools\i5\Start-TwoClientCapture.ps1'
+$networkSenseRoot = (Resolve-Path -LiteralPath $NetworkSenseTools -ErrorAction Stop).Path
+function Read-NetworkSenseTool([string]$Name) {
+    Get-Content -LiteralPath (Join-Path $networkSenseRoot $Name) -Raw
+}
+$capture = Read-NetworkSenseTool 'Start-TwoClientCapture.ps1'
 $startCompanion = Read-Text 'Lumberjacks\tools\companion\Start-I5Companion.ps1'
 $syncCompanion = Read-Text 'Lumberjacks\tools\companion\Sync-I5Companion.ps1'
-$installI5 = Read-Text 'tools\i5\Install-I5LatestModpack.ps1'
-$motion = Read-Text 'tools\i5\Start-TwoClientMotionTest.ps1'
-$roles = Read-Text 'tools\i5\Set-TwoClientApplyRoles.ps1'
+$installI5 = Read-NetworkSenseTool 'Install-I5LatestModpack.ps1'
+$motion = Read-NetworkSenseTool 'Start-TwoClientMotionTest.ps1'
+$roles = Read-NetworkSenseTool 'Set-TwoClientApplyRoles.ps1'
 $readiness = Read-Text 'Lumberjacks\tools\companion\Test-Wave0Readiness.ps1'
-$alignment = Read-Text 'tools\i5\Test-AlphaReleaseAlignment.ps1'
+$alignment = Read-NetworkSenseTool 'Test-AlphaReleaseAlignment.ps1'
 $live = Read-Text 'tools\wave0\Start-Wave0LiveGate.ps1'
 $wait = Read-Text 'tools\wave0\Wait-Wave0LiveGate.ps1'
 $freshness = Read-Text 'tools\wave0\Test-Wave0RoadmapFreshness.ps1'

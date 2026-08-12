@@ -27,7 +27,7 @@ $ProgressPreference = 'SilentlyContinue'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
-    $OutputDirectory = Join-Path $repoRoot "fieldlab\runs\motion-phase\$stamp"
+    $OutputDirectory = Join-Path $repoRoot "captures\motion-phase\$stamp"
 }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 

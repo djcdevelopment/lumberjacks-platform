@@ -56,6 +56,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 
 # <milestone>-<label>-<yyyymmdd>-r<n>, enforced on BOTH ids because both become an artifact's
 # identity: one names the image, the other is compiled into it and decides who may join.
@@ -84,6 +87,11 @@ $verifier = Join-Path $PSScriptRoot 'Test-GatewayImageRelease.ps1'
 if (!(Test-Path -LiteralPath $verifier)) { throw "missing verifier: $verifier" }
 
 $imageTag = "lumberjacks-gateway:$ImageReleaseId"
+$platformRevision = [string](& git -C $repoRoot rev-parse HEAD)
+if ($LASTEXITCODE -ne 0 -or $platformRevision.Trim() -notmatch '^[0-9a-f]{40}$') {
+  throw 'Could not resolve the platform source revision for the image identity.'
+}
+$platformRevision = $platformRevision.Trim()
 
 Write-Host '=====================================================================' -ForegroundColor Cyan
 Write-Host ' Gateway-only release cut' -ForegroundColor Cyan
@@ -112,6 +120,7 @@ try {
   # under $ErrorActionPreference='Stop' aborts a perfectly healthy build.
   & docker build --target gateway -t $imageTag `
       --build-arg "LUMBERJACKS_EXPECTED_MOD_RELEASE=$AdmittedModRelease" `
+      --build-arg "LUMBERJACKS_SOURCE_REVISION=$platformRevision" `
       --build-arg 'LUMBERJACKS_REQUIRE_RELEASE=1' `
       .
   if ($LASTEXITCODE -ne 0) { throw "gateway image build failed (exit $LASTEXITCODE); nothing from this cut should ship" }

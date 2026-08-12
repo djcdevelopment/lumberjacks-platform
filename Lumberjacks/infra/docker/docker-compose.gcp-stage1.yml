@@ -1,5 +1,7 @@
 # Gate 1 override for the single-VM Google Cloud parity experiment.
 # Requires Docker Compose 2.24.4 or later for !override and !reset.
+name: lumberjacks-gcp-stage1
+
 x-telemetry: &telemetry
   GOOGLE_CLOUD_PROJECT: "${GOOGLE_CLOUD_PROJECT:?GOOGLE_CLOUD_PROJECT must be set}"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://host.docker.internal:4317"

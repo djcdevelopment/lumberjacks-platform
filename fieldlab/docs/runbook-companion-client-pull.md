@@ -8,7 +8,7 @@ changes from Gateway image releases.
 Native Windows is the normal operator/tester path:
 
 ```powershell
-cd C:\work\baseline\Lumberjacks
+cd .\Lumberjacks
 dotnet run --project src\Game.Companion --urls http://127.0.0.1:8080
 Start-Process http://127.0.0.1:8080
 ```
@@ -50,7 +50,7 @@ The normal tester package is a generic zip, not a copied plugin folder and not a
 configuration bundle. Build it from the repository:
 
 ```powershell
-cd C:\work\baseline\Lumberjacks
+cd .\Lumberjacks
 .\tools\companion\New-CompanionBootstrap.ps1 -ReleaseId companion-20260723-r1
 ```
 
@@ -107,7 +107,7 @@ indefinitely; the i5 is a roaming optional test client.
 2. Run:
 
 ```powershell
-& C:\work\baseline\infra\gcp\p7\scripts\Publish-Modpack.ps1 `
+.\infra\gcp\p7\scripts\Publish-Modpack.ps1 `
   -ReleaseId m18-companion-20260723-r1 `
   -ModRelease m18-companion-20260723-r1 `
   -PackagePath C:\path\to\Comfy-P7-Alpha-Mods.zip

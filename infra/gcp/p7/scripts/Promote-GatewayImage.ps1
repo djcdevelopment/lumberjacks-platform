@@ -31,6 +31,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $scriptRoot '..\..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $verifier = Join-Path $scriptRoot 'Test-GatewayImageRelease.ps1'
 if (!(Test-Path -LiteralPath $verifier -PathType Leaf)) { throw "missing verifier: $verifier" }
 

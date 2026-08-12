@@ -5,7 +5,8 @@ param(
   [Parameter(Mandatory = $true)]
   [string] $OutputRoot,
   [Parameter(Mandatory = $true)]
-  [string] $BaselineRepo,
+  [Alias('BaselineRepo')]
+  [string] $PlatformRepo,
   # $ModDllPath is already artifact-mode -- it is always an explicit path, hash-checked below
   # against the manifest, never built here. The alias only gives it the same -ModArtifact name
   # the other p7 scripts use.
@@ -20,12 +21,7 @@ param(
   [string] $ProgressionImage,
   [Parameter(Mandatory = $true)]
   [string] $OperatorApiImage,
-  # The one remaining source-tree pin in this script (below: the ComfyNetworkSense.csproj
-  # snapshot copied into the bundle's source/ folder) assumes $BaselineRepo/network/mod is
-  # checked out alongside this script. Omitted (empty, the default), behavior is unchanged.
-  # Provided, it points the snapshot at an already-extracted networksense checkout/artifact
-  # instead of reaching into $BaselineRepo for it.
-  [string] $ModCsprojPath = ''
+  [string] $ModSourceRevision = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,12 +40,14 @@ $releaseId = [string]$manifest.release_id
 if ([string]::IsNullOrWhiteSpace($releaseId)) { Fail 'manifest release_id missing' }
 $target = (Resolve-Path -LiteralPath $OutputRoot -ErrorAction SilentlyContinue)
 if ($target) { Fail "refusing to overwrite existing bundle: $OutputRoot" }
-$baselineFull = (Resolve-Path -LiteralPath $BaselineRepo).Path
+$platformFull = (Resolve-Path -LiteralPath $PlatformRepo).Path
 $manifestFull = (Resolve-Path -LiteralPath $ManifestPath).Path
 
-$dirty = Invoke-Git $baselineFull @('status', '--porcelain', '--untracked-files=all')
-if ($dirty) { Fail 'baseline checkout is dirty' }
-if ((Invoke-Git $baselineFull @('rev-parse', 'HEAD')) -ne $manifest.source.baseline_commit) { Fail 'baseline HEAD does not match the manifest' }
+$dirty = Invoke-Git $platformFull @('status', '--porcelain', '--untracked-files=all')
+if ($dirty) { Fail 'platform checkout is dirty' }
+$recordedPlatformCommit = if ($manifest.source.platform_commit) { $manifest.source.platform_commit } else { $manifest.source.baseline_commit }
+if ((Invoke-Git $platformFull @('rev-parse', 'HEAD')) -ne $recordedPlatformCommit) { Fail 'platform HEAD does not match the manifest' }
+if ($ModSourceRevision -and $ModSourceRevision -notmatch '^[0-9a-f]{40}$') { Fail 'ModSourceRevision must be a full commit SHA' }
 
 $expectedMod = ([string]$manifest.mod.clean_build_sha256).ToLowerInvariant()
 if ((Hash $ModDllPath) -ne $expectedMod) { Fail 'mod DLL does not match manifest' }
@@ -84,15 +82,9 @@ $bundleFull = (Resolve-Path -LiteralPath $OutputRoot).Path
 New-Item -ItemType Directory -Path (Join-Path $bundleFull 'mod'), (Join-Path $bundleFull 'gateway'), (Join-Path $bundleFull 'eventlog'), (Join-Path $bundleFull 'progression'), (Join-Path $bundleFull 'operatorapi'), (Join-Path $bundleFull 'source') | Out-Null
 Copy-Item -LiteralPath $ManifestPath -Destination (Join-Path $bundleFull 'manifest.json')
 Copy-Item -LiteralPath $ModDllPath -Destination (Join-Path $bundleFull 'mod/ComfyNetworkSense.dll')
-Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Dockerfile') -Destination (Join-Path $bundleFull 'source/Dockerfile')
-Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Directory.Build.props') -Destination (Join-Path $bundleFull 'source/Directory.Build.props')
-Copy-Item -LiteralPath (Join-Path $baselineFull 'Lumberjacks/Directory.Packages.props') -Destination (Join-Path $bundleFull 'source/Directory.Packages.props')
-$modCsprojSource = if ([string]::IsNullOrWhiteSpace($ModCsprojPath)) {
-  Join-Path $baselineFull 'network/mod/ComfyNetworkSense/ComfyNetworkSense.csproj'
-} else {
-  (Resolve-Path -LiteralPath $ModCsprojPath).Path
-}
-Copy-Item -LiteralPath $modCsprojSource -Destination (Join-Path $bundleFull 'source/ComfyNetworkSense.csproj')
+Copy-Item -LiteralPath (Join-Path $platformFull 'Lumberjacks/Dockerfile') -Destination (Join-Path $bundleFull 'source/Dockerfile')
+Copy-Item -LiteralPath (Join-Path $platformFull 'Lumberjacks/Directory.Build.props') -Destination (Join-Path $bundleFull 'source/Directory.Build.props')
+Copy-Item -LiteralPath (Join-Path $platformFull 'Lumberjacks/Directory.Packages.props') -Destination (Join-Path $bundleFull 'source/Directory.Packages.props')
 docker save --output (Join-Path $bundleFull 'gateway/gateway.oci.tar') $GatewayImage
 if ($LASTEXITCODE -ne 0) { Fail 'docker save failed (gateway)' }
 foreach ($svc in $otherServices.Keys) {
@@ -108,6 +100,7 @@ Get-ChildItem -LiteralPath $bundleFull -File -Recurse | Where-Object { $_.Name -
 $index = [ordered]@{
   schema = 'comfy-p7-bundle/v1'
   release_id = $releaseId
+  mod_source_revision = $ModSourceRevision
   created_utc = (Get-Date).ToUniversalTime().ToString('o')
   manifest_sha256 = Hash (Join-Path $bundleFull 'manifest.json')
   files = $fileEntries

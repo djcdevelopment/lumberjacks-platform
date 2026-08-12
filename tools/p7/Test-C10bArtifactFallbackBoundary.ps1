@@ -21,9 +21,11 @@ param(
     [ValidateSet('candidate', 'final')]
     [string] $Stage = 'candidate',
 
-    [string] $SourceRoot = '',
+    [Parameter(Mandatory)]
+    [string] $SourceRoot,
 
-    [string] $DllPath = '',
+    [Parameter(Mandatory)]
+    [string] $DllPath,
 
     [string] $ExpectedReleaseId = 'm7-c10a-20260802-r41',
 
@@ -32,12 +34,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-if ([string]::IsNullOrWhiteSpace($SourceRoot)) {
-    $SourceRoot = Join-Path $repoRoot 'network\mod\ComfyNetworkSense'
-}
-if ([string]::IsNullOrWhiteSpace($DllPath)) {
-    $DllPath = Join-Path $SourceRoot 'bin\Release\ComfyNetworkSense.dll'
-}
 if ([string]::IsNullOrWhiteSpace($ExpectedReleaseId) -or
     $ExpectedReleaseId.Length -gt 80 -or
     $ExpectedReleaseId -notmatch '^[A-Za-z0-9._-]+$') {

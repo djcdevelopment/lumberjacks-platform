@@ -23,7 +23,7 @@ from collections import Counter
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-RUNS_ROOT = REPO / "fieldlab/runs/native-valheim"
+RUNS_ROOT = REPO / "captures/native-valheim"
 DEFAULT_RUNS = ["native-20260731-c8-full44", "native-20260731-c8-full45"]
 CLIENTS = ["omen", "i5"]
 

@@ -23,10 +23,13 @@ param(
 
     [string]$Label = 'transport-truth',
 
-    [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\runs\transport-truth')
+    [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\..\captures\transport-truth')
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 
 function New-SafeName([string]$Value) {
     $safe = $Value -replace '[^A-Za-z0-9._-]', '-'

@@ -4,7 +4,7 @@ Sync the Docker-backed Lumberjacks Companion source/runtime inputs to i5 and sta
 
 .DESCRIPTION
 This is the one-command i5 lane for Companion development. It copies the minimal build context
-needed by tools/companion/docker-compose.yml into C:\deploy\baseline\i5-companion on the i5,
+needed by tools/companion/docker-compose.yml into C:\deploy\lumberjacks-platform\i5-companion on the i5,
 verifies SHA-256 on every copied file through Deploy-ToI5.ps1, then starts the Companion with
 Start-I5Companion.ps1.
 
@@ -12,6 +12,7 @@ The script intentionally does not copy the whole repository. It syncs:
 
 - Lumberjacks/Directory.Build.props
 - Lumberjacks/Directory.Packages.props
+- Lumberjacks/nuget.config and interim packages-local feed
 - Lumberjacks/src/Game.Companion/**
 - Lumberjacks/tools/companion/docker-compose.yml
 - Lumberjacks/tools/companion/docker-compose.valheim.yml
@@ -19,12 +20,12 @@ The script intentionally does not copy the whole repository. It syncs:
 - Lumberjacks/tools/companion/latest-bootstrap.json
 
 Before copying Game.Companion, it removes only the prior remote
-C:\deploy\baseline\i5-companion\src\Game.Companion directory, after validating that the resolved
+C:\deploy\lumberjacks-platform\i5-companion\src\Game.Companion directory, after validating that the resolved
 target remains below the configured RemoteRoot. This prevents stale source files from surviving a
 rename/delete while keeping cleanup scoped to the staging checkout.
 
 .PARAMETER RemoteRoot
-The baseline staging checkout on the i5.
+The lumberjacks-platform staging checkout on the i5.
 
 .PARAMETER NoStart
 Copy and verify files, but do not restart the i5 Companion.
@@ -40,11 +41,11 @@ its profile-aware default.
 Print the deploy operations without copying, cleanup, or starting.
 
 .EXAMPLE
-.\tools\i5\Sync-I5Companion.ps1
+.\Lumberjacks\tools\companion\Sync-I5Companion.ps1
 #>
 [CmdletBinding()]
 param(
-    [string]$RemoteRoot = 'C:\deploy\baseline\i5-companion',
+    [string]$RemoteRoot = 'C:\deploy\lumberjacks-platform\i5-companion',
     [ValidateSet('Explore','Admin','Dev','Lab','Production')]
     [string]$Profile = 'Explore',
     [ValidateRange(1024,65535)]
@@ -56,15 +57,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# This script lives in Lumberjacks/tools/companion; both hops are shorter from here than they
-# were from tools/i5 (two hops to repo root, then back down into Lumberjacks). LumberjacksRoot
-# is now a direct two-hop parent; Deploy-ToI5.ps1 stays in the networksense-bound tools/i5, so
-# it is resolved through RepoRoot instead of $PSScriptRoot.
 $LumberjacksRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $RepoRoot = Resolve-Path (Join-Path $LumberjacksRoot '..')
-$DeployScript = Join-Path $RepoRoot 'tools\i5\Deploy-ToI5.ps1'
+$DeployScript = Join-Path $PSScriptRoot 'Deploy-ToI5.ps1'
 $StartScript = Join-Path $PSScriptRoot 'Start-I5Companion.ps1'
 $SshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', 'i5')
+. (Join-Path $RepoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $RepoRoot | Out-Null
 
 function RemotePath {
     param([string]$Path)
@@ -117,8 +116,13 @@ $plan = @(
     [pscustomobject]@{
         Path = @(
             (Join-Path $LumberjacksRoot 'Directory.Build.props'),
-            (Join-Path $LumberjacksRoot 'Directory.Packages.props')
+            (Join-Path $LumberjacksRoot 'Directory.Packages.props'),
+            (Join-Path $LumberjacksRoot 'nuget.config')
         )
+        Dest = $remoteRootSlash
+    },
+    [pscustomobject]@{
+        Path = @((Join-Path $LumberjacksRoot 'packages-local'))
         Dest = $remoteRootSlash
     },
     [pscustomobject]@{

@@ -8,7 +8,7 @@
 # decision record.
 #
 # Install with:  git config core.hooksPath .githooks
-# Bypass once (and say why in the commit message):  git commit --no-verify
+# Do not bypass this hook; fix the note or generated artifact and retry.
 
 set -e
 

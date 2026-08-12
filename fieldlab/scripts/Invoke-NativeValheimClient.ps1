@@ -118,8 +118,10 @@ $script:LabConfigChanged = $false
 $script:LabConfigBackup = $null
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 if ([string]::IsNullOrWhiteSpace($EvidenceRoot)) {
-    $EvidenceRoot = Join-Path $repoRoot 'fieldlab\runs\native-valheim'
+    $EvidenceRoot = Join-Path $repoRoot 'captures\native-valheim'
 }
 if ([string]::IsNullOrWhiteSpace($PendingRequestPath)) {
     $PendingRequestPath = Join-Path $PSScriptRoot 'pending-native-valheim.json'

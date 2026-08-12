@@ -34,12 +34,16 @@ param(
 
     [string] $OutputPath = '',
 
+    [string] $NetworkSenseTools = '',
+
     [ValidateRange(300, 1800)]
     [int] $WaitSeconds = 1200
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 if ($Action -eq 'run' -and [string]::IsNullOrWhiteSpace($RunId)) {
     $RunId = 'native-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss') +
         "-c10b-p7-$ArtifactStage"
@@ -50,7 +54,7 @@ if (-not [string]::IsNullOrWhiteSpace($RunId) -and
 }
 if ([string]::IsNullOrWhiteSpace($DllPath)) {
     $DllPath = Join-Path $repoRoot `
-        'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
+        'artifacts\mod\ComfyNetworkSense.dll'
 }
 $dll = (Resolve-Path -LiteralPath $DllPath -ErrorAction Stop).Path
 $expectedHash = $ExpectedModSha256.Trim().ToLowerInvariant()
@@ -66,20 +70,14 @@ $artifactRelease = Get-AssemblyMetadataValue `
     -Key 'LumberjacksModReleaseId'
 $actualHash =
     (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
-$artifactBoundaryVerifier = Join-Path $repoRoot `
-    'tools\p7\Test-C10bArtifactFallbackBoundary.ps1'
-$artifactBoundaryOutput = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass `
-    -File $artifactBoundaryVerifier `
-    -Stage $ArtifactStage `
-    -DllPath $dll `
-    -ExpectedReleaseId $ReleaseId)
-$artifactBoundaryVerified = $LASTEXITCODE -eq 0
-if (-not $artifactBoundaryVerified) {
-    $artifactBoundaryOutput | Write-Host
-    throw "The '$ArtifactStage' artifact boundary failed before any external P7 preflight."
+$artifactBoundaryVerified = $actualHash -eq $expectedHash -and $artifactRelease -eq $ReleaseId
+$artifactBoundary = [pscustomobject]@{
+    schema = 'lumberjacks-artifact-boundary/v1'
+    producer = 'djcdevelopment/networksense'
+    stage = $ArtifactStage
+    release_id = $artifactRelease
+    sha256 = $actualHash
 }
-$artifactBoundary =
-    ($artifactBoundaryOutput -join [Environment]::NewLine) | ConvertFrom-Json
 $gatewayVerifier = Join-Path $repoRoot `
     'infra\gcp\p7\scripts\Test-GatewayImageRelease.ps1'
 
@@ -134,8 +132,13 @@ if (-not [string]::IsNullOrWhiteSpace($BootReceiptPath)) {
         $bootReceipt.checks.retry_recovery_passed -eq $true
 }
 
-$i5Output = @(& (Join-Path $repoRoot 'tools\i5\Test-I5Link.ps1'))
-$i5Ready = $LASTEXITCODE -eq 0
+$i5Ready = $false
+$i5Output = @('networksense operator-tool bundle not supplied')
+if (-not [string]::IsNullOrWhiteSpace($NetworkSenseTools)) {
+    $i5Link = Join-Path ((Resolve-Path -LiteralPath $NetworkSenseTools -ErrorAction Stop).Path) 'Test-I5Link.ps1'
+    $i5Output = @(& $i5Link)
+    $i5Ready = $LASTEXITCODE -eq 0
+}
 
 $remote = [ordered]@{
     inspected = $false
@@ -285,7 +288,7 @@ if ($Action -eq 'preflight') {
 if ($failed.Count -gt 0) {
     throw "C10b P7 '$ArtifactStage' proof refused because the fail-closed preflight is not green."
 }
-$runRoot = Join-Path $repoRoot 'fieldlab\runs\native-valheim'
+$runRoot = Join-Path $repoRoot 'captures\native-valheim'
 $scenarioPath = Join-Path (Join-Path $runRoot $RunId) 'scenario-input.json'
 & (Join-Path $repoRoot 'fieldlab\scripts\New-NativeValheimCutoverScenario.ps1') `
     -RunId $RunId `
@@ -307,6 +310,7 @@ $scenarioPath = Join-Path (Join-Path $runRoot $RunId) 'scenario-input.json'
     -OmenGatewayUrl $p7GatewayUrl `
     -I5GatewayUrl $p7GatewayUrl `
     -DllPath $dll `
+    -NetworkSenseTools $NetworkSenseTools `
     -EvidenceRoot $runRoot `
     -WaitSeconds $WaitSeconds `
     -EnableC8Composition `

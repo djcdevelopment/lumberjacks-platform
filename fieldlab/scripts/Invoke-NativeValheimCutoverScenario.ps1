@@ -73,6 +73,10 @@ param(
 
     [string] $DllPath = '',
 
+    # A downloaded networksense operator-tool bundle. There is deliberately
+    # no sibling-checkout default in the sovereign platform repository.
+    [string] $NetworkSenseTools = '',
+
     [string] $EvidenceRoot = '',
 
     [ValidateRange(60, 1800)]
@@ -143,8 +147,10 @@ if ([string]::IsNullOrWhiteSpace($I5EnrollmentId) -ne
     throw 'I5EnrollmentId and I5ClientAccessKey must be supplied together.'
 }
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $clientHarness = Join-Path $PSScriptRoot 'Invoke-NativeValheimClient.ps1'
-$i5Tools = Join-Path $repoRoot 'tools\i5'
+$i5Tools = $null
 $usesMigrationControls = $ArtifactStage -eq 'candidate'
 
 if ($EnableNativeZeroComposition -or $EnableC8Composition) {
@@ -164,10 +170,10 @@ if ($EnableC8Composition) {
 }
 
 if ([string]::IsNullOrWhiteSpace($DllPath)) {
-    $DllPath = Join-Path $repoRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
+    $DllPath = Join-Path $repoRoot 'artifacts\mod\ComfyNetworkSense.dll'
 }
 if ([string]::IsNullOrWhiteSpace($EvidenceRoot)) {
-    $EvidenceRoot = Join-Path $repoRoot 'fieldlab\runs\native-valheim'
+    $EvidenceRoot = Join-Path $repoRoot 'captures\native-valheim'
 }
 if ($RunId.Length -gt 80 -or $RunId -notmatch '^[A-Za-z0-9._-]+$') {
     throw "RunId must be an 80-character-or-shorter safe token: $RunId"
@@ -262,9 +268,9 @@ if ($EnableC8Composition -and $scenarioDocument.profile -ne 'c8') {
     throw '-EnableC8Composition requires a profile=c8 scenario manifest.'
 }
 $scenarioName = Split-Path -Leaf $scenario
-$remoteScenarioDirectory = 'C:/deploy/baseline/fieldlab/scenarios'
+$remoteScenarioDirectory = 'C:/deploy/lumberjacks-platform/fieldlab/scenarios'
 $remoteScenarioPath = "$remoteScenarioDirectory/$scenarioName"
-$remoteEvidenceRoot = 'C:/deploy/baseline/fieldlab/runs/native-valheim'
+$remoteEvidenceRoot = 'C:/deploy/lumberjacks-platform/captures/native-valheim'
 $runDirectory = Join-Path $EvidenceRoot $RunId
 $serverEvidenceRoot = "$ServerBepInExConfigRoot/comfy-network-sense"
 $serverRemotePluginPath =
@@ -287,7 +293,7 @@ function Invoke-RemoteGatewayJson([string] $Method, [string] $Path) {
     if (-not $UseRemoteGateway) {
         return Invoke-RestMethod -Method $Method -Uri "$OmenGatewayUrl$Path"
     }
-    if ($Path -notmatch '^/valheim/[A-Za-z0-9._/-]+$') {
+    if ($Path -notmatch '^/(?:identity|valheim/[A-Za-z0-9._/-]+)$') {
         throw "Unsafe remote Gateway path: $Path"
     }
     $command = "curl --fail --silent --show-error -X $Method 'http://127.0.0.1:4000$Path'"
@@ -417,6 +423,16 @@ if ($PlanOnly) {
     $runtimeControlPlan | ConvertTo-Json -Depth 8
     if ($runtimeControlPlan.result -ne 'passed') { exit 2 }
     return
+}
+
+if ([string]::IsNullOrWhiteSpace($NetworkSenseTools)) {
+    throw 'Live two-client execution requires -NetworkSenseTools from a verified networksense release bundle.'
+}
+$i5Tools = (Resolve-Path -LiteralPath $NetworkSenseTools -ErrorAction Stop).Path
+foreach ($requiredTool in @('Test-I5Link.ps1', 'Deploy-ToI5.ps1')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $i5Tools $requiredTool) -PathType Leaf)) {
+        throw "NetworkSense tool bundle is missing $requiredTool"
+    }
 }
 
 function Write-JsonAtomic([string] $Path, [object] $Value) {
@@ -1308,6 +1324,13 @@ try {
             $gatewayContainerImageId.Trim() -ne $gatewayExpectedImageId.Trim()) {
             throw "Running Gateway bytes do not match '$GatewayImage': expected=$gatewayExpectedImageId actual=$gatewayContainerImageId"
         }
+        $gatewayRepositoryIdentity = Invoke-RemoteGatewayJson -Method Get -Path '/identity'
+        if ([string]$gatewayRepositoryIdentity.schema -ne 'comfy-repo-identity/v1' -or
+            [string]$gatewayRepositoryIdentity.repository -ne 'djcdevelopment/lumberjacks-platform' -or
+            [string]::IsNullOrWhiteSpace([string]$gatewayRepositoryIdentity.revision) -or
+            [string]$gatewayRepositoryIdentity.revision -eq 'unknown') {
+            throw "Gateway repository identity preflight failed: $($gatewayRepositoryIdentity | ConvertTo-Json -Compress). No client was launched."
+        }
         $gatewayImageReceipt = [ordered]@{
             schema_version = 1
             receipt_type = 'native_cutover_gateway_image_provenance'
@@ -1319,6 +1342,7 @@ try {
             expected_image_id = $gatewayExpectedImageId.Trim()
             running_container = $gatewayRunningContainer
             running_image_id = $gatewayContainerImageId.Trim()
+            repository_identity = $gatewayRepositoryIdentity
             deployment = $gatewayDeployment
             server_ssh_target = $ServerSshTarget
             exact_image_match = $true
@@ -1624,7 +1648,7 @@ try {
     }
 
     & scp -r `
-        "i5:C:/deploy/baseline/fieldlab/runs/native-valheim/$RunId/i5" `
+        "i5:C:/deploy/lumberjacks-platform/captures/native-valheim/$RunId/i5" `
         "$runDirectory\"
     if ($LASTEXITCODE -ne 0) { throw 'i5 evidence retrieval failed.' }
     if ($EnableDirectControlCutover) {

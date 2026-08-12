@@ -39,10 +39,10 @@ $clientHarness = Join-Path $PSScriptRoot 'Invoke-NativeValheimClient.ps1'
 $serverControl = Join-Path $PSScriptRoot 'Invoke-ValheimServerRuntimeControl.ps1'
 if ([string]::IsNullOrWhiteSpace($DllPath)) {
     $DllPath = Join-Path $repoRoot `
-        'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
+        'artifacts\mod\ComfyNetworkSense.dll'
 }
 if ([string]::IsNullOrWhiteSpace($EvidenceRoot)) {
-    $EvidenceRoot = Join-Path $repoRoot 'fieldlab\runs\native-valheim'
+    $EvidenceRoot = Join-Path $repoRoot 'captures\native-valheim'
 }
 if ($BaseRunId.Length -gt 36 -or
     $BaseRunId -notmatch '^[A-Za-z0-9._-]+$') {

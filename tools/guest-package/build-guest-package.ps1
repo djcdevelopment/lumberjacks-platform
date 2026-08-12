@@ -1,6 +1,6 @@
 param(
-    [string]$ManifestPath = (Join-Path $PSScriptRoot '..\..\fieldlab\runs\releases\m1-clean-20260717-r1.json'),
-    [string]$BundleRoot = (Join-Path $PSScriptRoot '..\..\fieldlab\runs\releases\m1-clean-20260717-r1'),
+    [string]$ManifestPath = (Join-Path $PSScriptRoot '..\..\captures\releases\m1-clean-20260717-r1.json'),
+    [string]$BundleRoot = (Join-Path $PSScriptRoot '..\..\captures\releases\m1-clean-20260717-r1'),
     [string]$OutputRoot = (Join-Path $PSScriptRoot '..\..\fieldlab\handoffs\guest-client-pack\comfy-guest-m1-clean-20260717-r1'),
     [string]$InputsPath = (Join-Path $PSScriptRoot 'guest-package-inputs.json'),
     [switch]$NoZip
@@ -55,9 +55,9 @@ if (!$pythonExe) {
     if ($python -and (Test-PythonCommand $python.Source @())) { $pythonExe = $python.Source; $pythonArgs = @() }
 }
 if (!$pythonExe) { throw 'Python 3 was not found; install Python or expose a working py.exe/python.exe on PATH.' }
-$guide = & $pythonExe @pythonArgs (Join-Path $PSScriptRoot '..\render_guest_guide.py') --manifest $manifestPath --inputs $inputsPath --output (Join-Path $OutputRoot 'GUEST-GUIDE.md')
+$guide = & $pythonExe @pythonArgs (Join-Path $PSScriptRoot 'render_guest_guide.py') --manifest $manifestPath --inputs $inputsPath --output (Join-Path $OutputRoot 'GUEST-GUIDE.md')
 if ($LASTEXITCODE -ne 0) { Fail 'guide renderer failed' }
-$guide = & $pythonExe @pythonArgs (Join-Path $PSScriptRoot '..\render_guest_guide.py') --manifest $manifestPath --inputs $inputsPath --output (Join-Path $OutputRoot 'GUEST-GUIDE.md') --drift-scan
+$guide = & $pythonExe @pythonArgs (Join-Path $PSScriptRoot 'render_guest_guide.py') --manifest $manifestPath --inputs $inputsPath --output (Join-Path $OutputRoot 'GUEST-GUIDE.md') --drift-scan
 if ($LASTEXITCODE -ne 0) { Fail 'guide drift scan failed' }
 $captured = [DateTime]::Parse([string]$manifest.captured_utc).ToUniversalTime().ToString('o')
 $entries = @()

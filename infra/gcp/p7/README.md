@@ -13,7 +13,9 @@ this line of work; it is superseded as the current state but not as history.
 P7 runs the real `ComfyEra16` Valheim world and Lumberjacks authority services on
 GCP. OMEN is the rendered client and operator workstation.
 
-Canonical evidence (paths are relative to this repo, `C:\work\baseline`):
+Historical acceptance evidence remains indexed in the
+[`baseline`](https://github.com/djcdevelopment/baseline) repository. The paths
+below name that evidence archive and are not platform runtime inputs:
 
 - `Lumberjacks/docs/roadmap/m5-v3-acceptance-receipt.json` — current acceptance sample
 - `Lumberjacks/docs/roadmap/m5-v3-reprovision-receipt.json` — what changed on the VM
@@ -152,9 +154,9 @@ Copy `terraform.tfvars.example` to ignored `terraform.tfvars`, set the project,
 operator, OMEN CIDR, and pilot port, then review before applying:
 
 ```powershell
-terraform -chdir=C:\work\baseline\infra\gcp\p7 init
-terraform -chdir=C:\work\baseline\infra\gcp\p7 plan
-terraform -chdir=C:\work\baseline\infra\gcp\p7 apply
+terraform -chdir=infra\gcp\p7 init
+terraform -chdir=infra\gcp\p7 plan
+terraform -chdir=infra\gcp\p7 apply
 ```
 
 Secrets belong only in `/etc/comfy-p7/environment` with mode `0600`, never Terraform
@@ -181,18 +183,14 @@ print it wholesale.
 ### 3. Test the code
 
 ```powershell
-Set-Location C:\work\baseline\Lumberjacks
+Set-Location .\Lumberjacks
 & C:\work\dotnet9\dotnet.exe test `
-  tests\Game.Gateway.Tests\Game.Gateway.Tests.csproj
-
-dotnet build `
-  C:\work\baseline\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj `
-  -c Release
+  Game.sln -c Release
 ```
 
-Victory snapshot: 46 Gateway tests pass; the mod builds with zero warnings and errors.
-The Gateway suite currently emits pre-existing Entity Framework version-conflict
-warnings.
+The platform does not build mod source. Obtain `ComfyNetworkSense.dll` plus its
+manifest and SHA-256 from a `networksense` release. The Gateway suite currently
+emits pre-existing Entity Framework version-conflict warnings.
 
 ### 4. Deploy ComfyNetworkSense
 
@@ -200,9 +198,10 @@ Close local Valheim before copying the OMEN DLL. Deploy the server DLL with guar
 backup, restart, readiness, runtime hash, and cold-start hash checks:
 
 ```powershell
-& C:\work\baseline\infra\gcp\p7\scripts\deploy-network-sense.ps1 `
-  -ManifestPath `
-    C:\work\baseline\fieldlab\runs\releases\p7-primary-v1-0.5.31-clean.json
+.\infra\gcp\p7\scripts\deploy-network-sense.ps1 `
+  -ArtifactPath C:\path\to\ComfyNetworkSense.dll `
+  -ExpectedSha256 <64-hex-release-hash> `
+  -ExpectedRelease <baked-release-id>
 ```
 
 Server paths:
@@ -234,7 +233,7 @@ to the VM and do not run `docker compose build` on P7 for normal alpha UI/API ch
 Cut and verify the image locally:
 
 ```powershell
-& C:\work\baseline\infra\gcp\p7\scripts\New-GatewayReleaseCut.ps1 `
+.\infra\gcp\p7\scripts\New-GatewayReleaseCut.ps1 `
   -ImageReleaseId m19-boundarytrace-20260723-r1 `
   -AdmittedModRelease m15-hudrecover-20260723-r1
 ```
@@ -242,7 +241,7 @@ Cut and verify the image locally:
 Then promote the already-verified image to P7:
 
 ```powershell
-& C:\work\baseline\infra\gcp\p7\scripts\Promote-GatewayImage.ps1 `
+.\infra\gcp\p7\scripts\Promote-GatewayImage.ps1 `
   -Image lumberjacks-gateway:m19-boundarytrace-20260723-r1 `
   -AdmittedModRelease m15-hudrecover-20260723-r1
 ```
@@ -262,7 +261,7 @@ that this image-promotion lane replaces.
 ### 6. Enroll the player
 
 ```powershell
-& C:\work\baseline\infra\gcp\p7\scripts\new-player-invite.ps1
+.\infra\gcp\p7\scripts\new-player-invite.ps1
 ```
 
 The script authenticates locally on GCP over SSH and returns a one-use, 24-hour URL.
@@ -287,7 +286,7 @@ test. Also verify disk space and both server DLL hashes.
 ### 8. Launch without a tunnel
 
 ```powershell
-& C:\work\baseline\infra\gcp\p7\scripts\start-direct-session.ps1
+.\infra\gcp\p7\scripts\start-direct-session.ps1
 ```
 
 This health-checks the direct Gateway and launches Valheim with
@@ -341,7 +340,7 @@ Then start `admin-web` with `API_TARGET=http://127.0.0.1:14004`.
 The mod rolls back by restoring its backed-up DLL pair:
 
 ```powershell
-& C:\work\baseline\infra\gcp\p7\scripts\rollback-network-sense.ps1 `
+.\infra\gcp\p7\scripts\rollback-network-sense.ps1 `
   -BackupPath /mnt/comfy-p7/backups/comfynetworksense/<timestamp>
 ```
 
@@ -350,7 +349,7 @@ of the promotion drill, which re-pins the historical image already on the VM, br
 it up with `--no-build`, and verifies both `/health` and the exact image id:
 
 ```powershell
-& C:\work\baseline\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
+.\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
   -BundleRoot <bundle> -Execute `
   -RollbackImageId <sha256:...> -RollbackModSha256 <sha256> `
   -RollbackModBackupPath /mnt/comfy-p7/backups/comfynetworksense/<timestamp>

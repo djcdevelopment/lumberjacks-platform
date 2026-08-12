@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "roles": [
+    {
+      "id": "curious",
+      "label": "Just curious",
+      "short_label": "Curious",
+      "question": "What is this, what is real today, and why might I care?",
+      "promise": "Outcomes and honest boundaries first; machinery only when you ask for it.",
+      "order": 10
+    },
+    {
+      "id": "player-tester",
+      "label": "Player or tester",
+      "short_label": "Player / tester",
+      "question": "What can I try, and where does useful feedback go?",
+      "promise": "Runnable experiences, access requirements, and a short path to reporting what happened.",
+      "order": 20
+    },
+    {
+      "id": "creator",
+      "label": "Creator or GM",
+      "short_label": "Creator / GM",
+      "question": "How can I make quests, stories, places, and player experiences?",
+      "promise": "Creation workflows and visible results before implementation detail.",
+      "order": 30
+    },
+    {
+      "id": "moderator",
+      "label": "Moderator or community lead",
+      "short_label": "Mod / community",
+      "question": "How does this reduce review work while keeping people in control?",
+      "promise": "Queues, evidence, consent, privacy, and human decision points.",
+      "order": 40
+    },
+    {
+      "id": "admin",
+      "label": "Admin or server operator",
+      "short_label": "Admin / operator",
+      "question": "What runs, what does it cost, and how do I operate or recover it?",
+      "promise": "Dependencies, operational truth, privacy boundaries, failure modes, and recovery paths.",
+      "order": 50
+    },
+    {
+      "id": "modder",
+      "label": "Valheim modder",
+      "short_label": "Modder",
+      "question": "Where does this touch Valheim, BepInEx, Harmony, and game state?",
+      "promise": "Game seams, event contracts, packaging boundaries, and reproducible test surfaces.",
+      "order": 60
+    },
+    {
+      "id": "developer",
+      "label": "Developer or integrator",
+      "short_label": "Developer",
+      "question": "What are the contracts, APIs, source paths, and verification seams?",
+      "promise": "Architecture and evidence with direct routes into code and deterministic artifacts.",
+      "order": 70
+    },
+    {
+      "id": "contributor",
+      "label": "Contributor or future owner",
+      "short_label": "Contributor",
+      "question": "What is a useful first contribution, and what responsibility follows it?",
+      "promise": "Bounded first tasks, ownership state, and explicit completion destinations.",
+      "order": 80
+    }
+  ]
+}

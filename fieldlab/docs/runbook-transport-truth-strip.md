@@ -23,8 +23,8 @@ The current P7 result is a Lumberjacks ZDO-delivery cutover, not a full netcode 
 On OMEN, start the Gateway tunnel and loopback dashboard:
 
 ```powershell
-& C:\work\baseline\infra\gcp\p7\scripts\gateway-tunnel.ps1 -Action start
-docker compose -f C:\work\baseline\Lumberjacks\tools\omen-dashboard\docker-compose.yml up -d
+.\infra\gcp\p7\scripts\gateway-tunnel.ps1 -Action start
+docker compose -f .\Lumberjacks\tools\omen-dashboard\docker-compose.yml up -d
 Start-Process http://127.0.0.1:8080/community
 ```
 
@@ -90,7 +90,7 @@ result card.
 For longer operator-driven captures, use the PowerShell fallback from OMEN:
 
 ```powershell
-& C:\work\baseline\fieldlab\scripts\Capture-TransportTruth.ps1 `
+.\fieldlab\scripts\Capture-TransportTruth.ps1 `
   -DurationSeconds 120 `
   -IntervalSeconds 5 `
   -Label two-client-motion
@@ -99,8 +99,8 @@ For longer operator-driven captures, use the PowerShell fallback from OMEN:
 Both paths sample the same live surfaces as the Companion home page. The PowerShell fallback writes:
 
 ```text
-fieldlab\runs\transport-truth\<timestamp>-<label>\samples.jsonl
-fieldlab\runs\transport-truth\<timestamp>-<label>\summary.json
+captures\transport-truth\<timestamp>-<label>\samples.jsonl
+captures\transport-truth\<timestamp>-<label>\summary.json
 ```
 
 Use the summary fields first: `verdict`, `final_current_read`, `max_peers`,

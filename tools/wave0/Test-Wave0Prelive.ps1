@@ -31,6 +31,7 @@ This script does not move players. It is safe to run while no clients are joined
 [CmdletBinding()]
 param(
     [string]$OutputDirectory = '',
+    [Parameter(Mandatory)][string]$NetworkSenseTools,
     [switch]$SkipSyntheticInNoClientGate
 )
 
@@ -160,7 +161,7 @@ $steps += Invoke-Step `
 $steps += Invoke-Step `
     -Name 'bounded-command-contracts' `
     -Script (Join-Path $repoRoot 'tools/wave0/Test-Wave0BoundedCommandContracts.ps1') `
-    -Arguments @('-OutputJson', $boundedCommandContractsPath)
+    -Arguments @('-OutputJson', $boundedCommandContractsPath, '-NetworkSenseTools', $NetworkSenseTools)
 
 $steps += Invoke-Step `
     -Name 'companion-rollback-contract' `
@@ -179,7 +180,8 @@ $steps += Invoke-Step `
 
 $noClientArgs = @(
     '-DesiredApplyClient', 'omen',
-    '-OutputJson', (Join-Path $noClientRoot 'result.json')
+    '-OutputJson', (Join-Path $noClientRoot 'result.json'),
+    '-NetworkSenseTools', $NetworkSenseTools
 )
 if ($SkipSyntheticInNoClientGate) { $noClientArgs += '-SkipSynthetic' }
 $steps += Invoke-Step `
@@ -189,7 +191,7 @@ $steps += Invoke-Step `
 
 $steps += Invoke-Step `
     -Name 'bundle-lane-smoke' `
-    -Script (Join-Path $repoRoot 'tools/i5/Start-TwoClientCapture.ps1') `
+    -Script (Join-Path $NetworkSenseTools 'Start-TwoClientCapture.ps1') `
     -Arguments @(
         '-DurationSeconds', '5',
         '-IntervalSeconds', '1',

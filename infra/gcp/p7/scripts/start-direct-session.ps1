@@ -8,6 +8,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 if (!(Test-Path $Steam)) { throw "Steam executable not found at $Steam" }
 if (!(Test-Path $Valheim)) { throw "Valheim executable not found at $Valheim" }
 

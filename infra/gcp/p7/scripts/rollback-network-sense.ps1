@@ -7,6 +7,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $runtimeDll = '/opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll'
 $fallbackDll = '/mnt/comfy-p7/valheim/config/bepinex/plugins/ComfyNetworkSense.dll'
 $hostConfig = '/mnt/comfy-p7/valheim/config/bepinex/djcdevelopment.valheim.comfynetworksense.cfg'

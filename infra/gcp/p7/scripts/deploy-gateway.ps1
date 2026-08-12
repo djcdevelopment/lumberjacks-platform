@@ -2,7 +2,7 @@
 param(
   [string] $SshTarget = 'comfy-p7',
   # Derived from this script's own location, never a fixed checkout root. The
-  # retired C:\work\lumberjacks still exists on disk holding pre-cutover source,
+  # retired pre-cutover checkouts may still exist on disk,
   # so an absolute default would tar and ship stale files without ever failing —
   # and the hash check below would pass, because it hashes what it shipped.
   [string] $LocalRoot = (Join-Path ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))) 'Lumberjacks'),
@@ -17,6 +17,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $localRootPath = [IO.Path]::GetFullPath($LocalRoot)
 $backupStamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
 $backupRoot = "/mnt/comfy-p7/backups/gateway/$backupStamp"

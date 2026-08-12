@@ -2,7 +2,7 @@
 
 This lane drives the two physical Windows Valheim clients against the AM4 development
 server without putting an operator in the game loop. It retains one correlated run
-directory under `fieldlab/runs/native-valheim/`.
+directory under `captures/native-valheim/`.
 
 The scenario manifest is data, not a keyboard macro. The client mod accepts only its
 fixed bounded action types, validates every bound in-process, and correlates the
@@ -10,13 +10,14 @@ manifest with an expiring native-autotest request.
 
 ## Preconditions
 
-- Run from the unified `C:\work\baseline` checkout.
+- Run from the `lumberjacks-platform` repository root.
 - AM4's native Linux Docker server and the local Lumberjacks Gateway are healthy.
 - The server address is reachable from both physical clients.
 - OMEN has an interactive Steam session with its seeded character.
 - i5 is reachable through the existing BatchMode SSH lane and has its one-time Steam
   login and character seed.
-- Build `ComfyNetworkSense` in Release before invoking the composition.
+- Supply an exact, hash-verified `ComfyNetworkSense.dll` from a `networksense`
+  release; this repository never builds mod source.
 - The BepInEx console must stay DISABLED on both physical clients
   (`[Logging.Console] Enabled = false`). A console window freezes the whole client the
   moment anything clicks into it (Windows QuickEdit selection blocks the console
@@ -34,7 +35,7 @@ resume, rejoin, and shutdown:
 
 ```powershell
 $runId = 'native-YYYYMMDD-c0-example'
-$scenario = "fieldlab\runs\native-valheim\$runId\scenario.json"
+$scenario = "captures\native-valheim\$runId\scenario.json"
 fieldlab\scripts\New-NativeValheimCutoverScenario.ps1 `
     -RunId $runId `
     -OutputPath $scenario `
@@ -116,9 +117,9 @@ After copying the server ledger and BepInEx/runtime receipts into the run direct
 
 ```powershell
 fieldlab\scripts\Write-NativeNetworkCutoverSummary.ps1 `
-    -RunDirectory "fieldlab\runs\native-valheim\$runId" `
+    -RunDirectory "captures\native-valheim\$runId" `
     -RunId $runId `
-    -PoisonRunDirectory 'fieldlab\runs\native-valheim\<poison-run>' `
+    -PoisonRunDirectory 'captures\native-valheim\<poison-run>' `
     -PoisonRunId '<poison-run>'
 ```
 
@@ -135,7 +136,7 @@ For C1, reduce the accepted run separately:
 
 ```powershell
 fieldlab\scripts\Write-LumberjacksSessionCutoverSummary.ps1 `
-    -RunDirectory "fieldlab\runs\native-valheim\$runId" `
+    -RunDirectory "captures\native-valheim\$runId" `
     -RunId $runId
 ```
 
@@ -146,7 +147,7 @@ For C2a:
 
 ```powershell
 fieldlab\scripts\Write-DirectControlCutoverSummary.ps1 `
-    -RunDirectory "fieldlab\runs\native-valheim\$runId" `
+    -RunDirectory "captures\native-valheim\$runId" `
     -RunId $runId
 ```
 
@@ -159,7 +160,7 @@ For C2b:
 
 ```powershell
 fieldlab\scripts\Write-RoutedRpcCutoverSummary.ps1 `
-    -RunDirectory "fieldlab\runs\native-valheim\$runId" `
+    -RunDirectory "captures\native-valheim\$runId" `
     -RunId $runId
 ```
 

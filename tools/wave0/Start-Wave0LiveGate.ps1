@@ -47,6 +47,8 @@ param(
 
     [string]$MockRolePreflightJson,
 
+    [string]$NetworkSenseTools = '',
+
     [switch]$StopAfterRolePreflight,
 
     [switch]$SkipSynthetic,
@@ -61,6 +63,17 @@ $ProgressPreference = 'SilentlyContinue'
 $httpTimeoutSeconds = 15
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
+function Get-NetworkSenseTool([string]$Name) {
+    if ([string]::IsNullOrWhiteSpace($NetworkSenseTools)) {
+        throw "Wave 0 live execution requires -NetworkSenseTools from a verified networksense release bundle ($Name)."
+    }
+    $root = (Resolve-Path -LiteralPath $NetworkSenseTools -ErrorAction Stop).Path
+    $tool = Join-Path $root $Name
+    if (-not (Test-Path -LiteralPath $tool -PathType Leaf)) { throw "networksense tool bundle is missing $Name" }
+    return $tool
+}
 $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss')
 $safeLabel = ($Label -replace '[^A-Za-z0-9._-]', '-').Trim('-')
 if ([string]::IsNullOrWhiteSpace($safeLabel)) { $safeLabel = 'wave0-live-gate' }
@@ -299,7 +312,7 @@ if ($peerCount -lt 2) {
 
 if ($DesiredApplyClient -ne 'preserve' -and -not $MockRolePreflightJson) {
     $applyRole = Invoke-JsonScript `
-        -ScriptPath (Join-Path $repoRoot 'tools\i5\Set-TwoClientApplyRoles.ps1') `
+        -ScriptPath (Get-NetworkSenseTool 'Set-TwoClientApplyRoles.ps1') `
         -Arguments @('-ApplyClient', $DesiredApplyClient, '-Id', $runId, '-OutputJson', $applyRolePath)
     $receipt.apply_role_command = [ordered]@{
         exit_code = $applyRole.exit_code
@@ -333,7 +346,7 @@ if (-not $SkipRolePreflight) {
             '-OutputJson', $rolePreflightPath
         )
         $rolePreflight = Invoke-JsonScript `
-            -ScriptPath (Join-Path $repoRoot 'tools\i5\Start-TwoClientCapture.ps1') `
+            -ScriptPath (Get-NetworkSenseTool 'Start-TwoClientCapture.ps1') `
             -Arguments $rolePreflightArgs
         $rolePreflightReceipt = Get-JsonFile $rolePreflightPath
     }
@@ -388,14 +401,14 @@ $captureArgs = @(
 
 $captureJob = Start-Job -ScriptBlock {
     param($RepoRoot, $Args)
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot 'tools\i5\Start-TwoClientCapture.ps1') @Args
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Get-NetworkSenseTool 'Start-TwoClientCapture.ps1') @Args
     if ($LASTEXITCODE -ne 0) { throw "capture command failed with exit code $LASTEXITCODE" }
 } -ArgumentList $repoRoot, $captureArgs
 
 if ($WarmupSeconds -gt 0) { Start-Sleep -Seconds $WarmupSeconds }
 
 $motion = Invoke-JsonScript `
-    -ScriptPath (Join-Path $repoRoot 'tools\i5\Start-TwoClientMotionTest.ps1') `
+    -ScriptPath (Get-NetworkSenseTool 'Start-TwoClientMotionTest.ps1') `
     -Arguments @('-Pattern', $Pattern, '-DurationSeconds', [string]$MotionDurationSeconds, '-Id', $runId, '-OutputJson', $motionPath)
 $receipt.motion_command = [ordered]@{
     exit_code = $motion.exit_code

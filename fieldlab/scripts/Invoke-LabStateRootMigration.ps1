@@ -42,6 +42,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $autonomousRoot = Join-Path $repoRoot 'fieldlab\autonomous'
 $targetStateRoot = Join-Path $autonomousRoot 'state'
 $composeFile = Join-Path $autonomousRoot 'valheim-lab.compose.yml'

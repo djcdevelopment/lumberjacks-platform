@@ -1,3 +1,5 @@
+name: lumberjacks-companion
+
 services:
   companion:
     init: true
@@ -38,10 +40,9 @@ services:
       - "${LUMBERJACKS_VALHEIM_HOST_PATH:-C:/Program Files (x86)/Steam/steamapps/common/Valheim}:/valheim:ro"
 
   dev-mcp:
-    image: "${COMFY_WORKBENCH_MCP_IMAGE:-lumberjacks-companion-dev-mcp:local}"
-    build:
-      context: ../../../network/mcp
-      dockerfile: Dockerfile
+    # isolate owns this image. Dev/Lab profiles consume the artifact and do
+    # not build or mount an MCP sibling checkout.
+    image: "${COMFY_WORKBENCH_MCP_IMAGE:-ghcr.io/djcdevelopment/comfy-gateway:latest}"
     profiles: ["dev", "lab"]
     restart: unless-stopped
     ports:
@@ -61,7 +62,7 @@ services:
       COMFY_VALHEIM_NOTES: /workspace/network/mcp/var/valheim-dev-notes.jsonl
     volumes:
       - companion-data:/data:ro
-      - "${LUMBERJACKS_WORKBENCH_REPO_ROOT:-../../../}/network/mcp/var:/workspace/network/mcp/var"
+      - mcp-var:/workspace/network/mcp/var
     command:
       - --host
       - 0.0.0.0
@@ -76,3 +77,4 @@ services:
 
 volumes:
   companion-data:
+  mcp-var:

@@ -1,3 +1,5 @@
+name: lumberjacks-omen-dashboard
+
 services:
   dashboard:
     image: nginx:1.27-alpine

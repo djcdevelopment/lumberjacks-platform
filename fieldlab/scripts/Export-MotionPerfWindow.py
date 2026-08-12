@@ -26,7 +26,8 @@ from pathlib import Path
 DEFAULT_TELEMETRY = Path(
     r"C:\Program Files (x86)\Steam\steamapps\common\Valheim"
     r"\BepInEx\config\comfy-network-sense")
-RUNS_ROOT = Path(r"C:\work\baseline\fieldlab\runs\native-valheim")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_RUNS_ROOT = REPO_ROOT / "captures" / "native-valheim"
 PERF_FILES = ("perf-hitches.jsonl", "perf-sections.jsonl")
 # Valheim's own session lifecycle (respawn, menu load, PlayFab auth) brackets
 # the scenario; widen slightly so those bounding stalls stay in the slice and
@@ -64,8 +65,8 @@ def run_window(run_dir: Path, client: str, run_id: str):
     return min(stamps) - PAD, max(stamps) + PAD
 
 
-def export(run_id: str, client: str, telemetry: Path) -> dict:
-    run_dir = RUNS_ROOT / run_id
+def export(run_id: str, client: str, telemetry: Path, runs_root: Path) -> dict:
+    run_dir = runs_root / run_id
     if not run_dir.is_dir():
         raise SystemExit(f"no such run directory: {run_dir}")
 
@@ -114,14 +115,20 @@ def main() -> int:
     ap.add_argument("run_ids", nargs="+")
     ap.add_argument("--client", default="omen")
     ap.add_argument("--telemetry", default=str(DEFAULT_TELEMETRY))
+    ap.add_argument(
+        "--runs-root",
+        default=str(DEFAULT_RUNS_ROOT),
+        help="platform-local capture root (default: captures/native-valheim)",
+    )
     args = ap.parse_args()
 
     telemetry = Path(args.telemetry)
     if not telemetry.is_dir():
         raise SystemExit(f"telemetry directory not found: {telemetry}")
 
+    runs_root = Path(args.runs_root)
     for run_id in args.run_ids:
-        export(run_id, args.client, telemetry)
+        export(run_id, args.client, telemetry, runs_root)
     return 0
 
 

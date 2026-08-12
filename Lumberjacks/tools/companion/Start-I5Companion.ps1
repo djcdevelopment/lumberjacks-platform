@@ -11,7 +11,7 @@ creates a read-only dashboard: it cannot see /valheim, cannot find the ComfyNetw
 and cannot perform client-pull mod updates.
 
 .PARAMETER RemoteRoot
-The baseline staging checkout on the i5.
+The lumberjacks-platform staging checkout on the i5.
 
 .PARAMETER ValheimPath
 The Windows Valheim install path on the i5.
@@ -22,11 +22,11 @@ tailnet; other profiles retain the public release Gateway default. An explicit
 value overrides the profile default.
 
 .EXAMPLE
-.\tools\i5\Start-I5Companion.ps1
+.\Lumberjacks\tools\companion\Start-I5Companion.ps1
 #>
 [CmdletBinding()]
 param(
-    [string]$RemoteRoot = 'C:\deploy\baseline\i5-companion',
+    [string]$RemoteRoot = 'C:\deploy\lumberjacks-platform\i5-companion',
     [string]$ValheimPath = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim',
     [ValidateSet('Explore','Admin','Dev','Lab','Production')]
     [string]$Profile = 'Explore',
@@ -36,6 +36,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $sshOptions = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8')
 $sshAlias = 'i5'
 $sshArgs = $sshOptions + $sshAlias
@@ -242,7 +245,7 @@ $escaped = $remote.
     Replace('__MCP_PORT__', [string]$McpPort).
     Replace('__GATEWAY_URL__', $selectedGatewayUrl.Replace("'", "''"))
 
-$remoteScriptDir = 'C:/deploy/baseline'
+$remoteScriptDir = 'C:/deploy/lumberjacks-platform'
 $remoteScript = "$remoteScriptDir/Start-I5Companion.remote.ps1"
 $mkRemoteScriptDir = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("New-Item -ItemType Directory -Force -Path '$remoteScriptDir' | Out-Null"))
 ssh @sshArgs "powershell.exe -NoProfile -EncodedCommand $mkRemoteScriptDir"

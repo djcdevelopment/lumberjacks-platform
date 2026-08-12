@@ -47,10 +47,6 @@ param(
 
     [string] $CaptureOutput = '',
 
-    # Already does what the repo-split plan calls -ModDll: supplying it skips the in-place
-    # ComfyNetworkSense build (Refresh-Payload below) and stages this artifact instead,
-    # hash-logged via Copy-Verified. -ModDll is an alias so a future release-artifact caller
-    # can name it that way without changing behavior; omitted, current behavior is unchanged.
     [Alias('ModDll')]
     [string] $DllPath = '',
 
@@ -61,12 +57,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $composeFile = Join-Path $repoRoot 'fieldlab\autonomous\valheim-lab.compose.yml'
 $defaultEnv = Join-Path $repoRoot 'fieldlab\autonomous\valheim-lab.env'
 $exampleEnv = Join-Path $repoRoot 'fieldlab\autonomous\valheim-lab.env.example'
 $sharedRoot = Join-Path $repoRoot 'fieldlab\autonomous\state\client-shared'
 $dllSource = if ([string]::IsNullOrWhiteSpace($DllPath)) {
-    Join-Path $repoRoot 'network\mod\ComfyNetworkSense\bin\Release\ComfyNetworkSense.dll'
+    Join-Path $repoRoot 'artifacts\mod\ComfyNetworkSense.dll'
 } elseif ([IO.Path]::IsPathRooted($DllPath)) {
     [IO.Path]::GetFullPath($DllPath)
 } else {
@@ -101,12 +99,8 @@ function Copy-Verified([string] $Source, [string] $Target) {
 }
 
 function Refresh-Payload {
-    if (-not $NoBuild -and [string]::IsNullOrWhiteSpace($DllPath)) {
-        Push-Location $repoRoot
-        try {
-            & dotnet build '.\network\mod\ComfyNetworkSense\ComfyNetworkSense.csproj' -c Release
-            if ($LASTEXITCODE -ne 0) { throw 'ComfyNetworkSense build failed' }
-        } finally { Pop-Location }
+    if (-not $NoBuild) {
+        Write-Verbose '-NoBuild is retained for compatibility; the sovereign harness never builds the mod.'
     }
     Copy-Verified $dllSource (Join-Path $sharedRoot 'plugins\ComfyNetworkSense.dll')
     if ($ConfigPath) {
@@ -115,7 +109,7 @@ function Refresh-Payload {
     } else {
         Write-Host 'no config staged; disposable clients use their existing/default config'
     }
-    $routeSource = Join-Path $repoRoot 'network\mod\ComfyNetworkSense\bin\Release\teleport-route.tsv'
+    $routeSource = Join-Path $repoRoot 'artifacts\mod\teleport-route.tsv'
     if (Test-Path -LiteralPath $routeSource -PathType Leaf) {
         Copy-Verified $routeSource (Join-Path $sharedRoot 'comfy-network-sense\teleport-route.tsv')
     }

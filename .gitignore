@@ -1,0 +1,27 @@
+# Generated dependencies and build outputs
+node_modules/
+bin/
+obj/
+__pycache__/
+*.py[cod]
+
+# Test and coverage outputs
+TestResults/
+coverage/
+.pytest_cache/
+
+# Local runtime and operator state
+captures/
+artifacts/
+.tmp/
+.env
+.env.*
+!.env.example
+*.log
+
+# Editor and OS metadata
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

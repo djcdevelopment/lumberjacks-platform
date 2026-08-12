@@ -1773,7 +1773,7 @@ def run_self_test() -> bool:
     qp = next(r for r in post_deploy if r.spec.key == "quest-picker")
     check("https://example.test/workbench#quest-picker" in qp.body, "one-pager URL derived from the catalog anchor")
     mc = next(r for r in post_deploy if r.spec.key == "mcp-mod-channel")
-    check("https://github.com/djcdevelopment/baseline/tree/main/network/mcp" in mc.body, "a not-published tool's access URL falls back to its public source href")
+    check("https://github.com/djcdevelopment/isolate" in mc.body, "a not-published tool's access URL falls back to its owning repo")
     check("https://example.test/workbench/downloads/quest-picker" in qp.body, "access URL derived from workbench.json access.href")
     check(not PLACEHOLDER_RE.search(qp.body), "no placeholder survives substitution")
 
