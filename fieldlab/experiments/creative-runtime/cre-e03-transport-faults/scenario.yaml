@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "experiment_id": "cre-e03-transport-faults",
+  "scenario_id": "motion-sequence-faults-v1",
+  "seed": 412,
+  "plane": "runtime",
+  "duration_seconds": 10,
+  "actors": [
+    { "id": "source_a", "trajectory": "fault_sequence" },
+    { "id": "source_wrap", "trajectory": "wrap_sequence" },
+    { "id": "source_reconnect", "trajectory": "reconnect_sequence" },
+    { "id": "target_b", "trajectory": "stationary" }
+  ],
+  "objects": {
+    "generator": "motion_fault_vectors",
+    "count": 14,
+    "classes": ["transient_presentation"]
+  },
+  "policy": {
+    "name": "motion-sequence-half-range-v1",
+    "near_meters": 30,
+    "outer_meters": 64,
+    "mid_hz": 5
+  },
+  "driver": "gateway",
+  "stop_rules": [
+    "duplicate_relayed",
+    "old_sequence_relayed",
+    "fresh_sequence_blocked",
+    "sequence_wrap_failed",
+    "detached_udp_token_relayed"
+  ]
+}

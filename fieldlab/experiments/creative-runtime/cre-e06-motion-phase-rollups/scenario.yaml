@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "experiment_id": "cre-e06-motion-phase-rollups",
+  "scenario_id": "current-client-motion-phases-v1",
+  "seed": 415,
+  "plane": "runtime",
+  "duration_seconds": 60,
+  "actors": [
+    { "id": "apply_client", "trajectory": "stationary_observer" },
+    { "id": "source_client", "trajectory": "straight_then_stutter" }
+  ],
+  "objects": {
+    "generator": "live_motion_rollup",
+    "count": 1,
+    "classes": ["transient_presentation"]
+  },
+  "policy": {
+    "name": "observe-current-chase-latest-v1",
+    "near_meters": 30,
+    "outer_meters": 64,
+    "mid_hz": 5
+  },
+  "driver": "companion",
+  "synthetic_baseline": {
+    "command": "fieldlab/experiments/creative-runtime/cre-e06-motion-phase-rollups/Test-BundleAdapter.ps1",
+    "success_fixture_received_samples": 40,
+    "rejection_fixture": "missing_i5_bundle"
+  },
+  "stop_rules": [
+    "local_motion_missing",
+    "phase_measurements_disabled",
+    "counter_reset_without_receipt",
+    "client_disconnected"
+  ],
+  "parameters": {
+    "capture_interval_seconds": 1,
+    "source_rate_hz": 20,
+    "freshness_ms": 500,
+    "interframe_displacement_threshold_mm": 50
+  }
+}

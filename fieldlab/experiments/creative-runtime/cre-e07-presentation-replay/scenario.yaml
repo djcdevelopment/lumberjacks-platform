@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "experiment_id": "cre-e07-presentation-replay",
+  "scenario_id": "chase-latest-vs-buffered-v1",
+  "seed": 416,
+  "plane": "runtime",
+  "duration_seconds": 3,
+  "actors": [
+    { "id": "straight", "trajectory": "straight_north" },
+    { "id": "stutter", "trajectory": "stutter_north" },
+    { "id": "stop_start", "trajectory": "stop_start" },
+    { "id": "turn", "trajectory": "turn_90" },
+    { "id": "circle", "trajectory": "circle" },
+    { "id": "teleport", "trajectory": "teleport" }
+  ],
+  "objects": {
+    "generator": "motion_presentation_replay",
+    "count": 60,
+    "classes": ["transient_presentation"]
+  },
+  "policy": {
+    "name": "presentation-replay-v1",
+    "near_meters": 30,
+    "outer_meters": 64,
+    "mid_hz": 5
+  },
+  "driver": "pure",
+  "stop_rules": [
+    "non_finite_output",
+    "final_sequence_not_consumed",
+    "interpolation_extrapolated",
+    "teleport_discontinuity_unguarded"
+  ],
+  "parameters": {
+    "sample_count": 40,
+    "source_interval_ms": 50,
+    "frame_rate_hz": 60,
+    "freshness_ms": 500,
+    "convergence_rate": 18,
+    "interpolation_delays_ms": [50, 100, 150, 200],
+    "base_latency_ms": 40,
+    "discontinuity_meters": 5,
+    "large_step_meters": 0.75
+  }
+}

@@ -4,7 +4,8 @@
 
 - .NET 9 Gateway, services, contracts, simulation, and Companion under `Lumberjacks/`.
 - `Comfy.Transport.Contracts`, P7 infrastructure, and production compose/env templates.
-- The live FieldLab harness, scenarios, routes, authority inputs, and roadmap journal.
+- The live FieldLab harness, scenarios, routes, executable experiment inputs,
+  decision queue, FieldLab ADRs/automation skills, and roadmap journal.
 - Authority-lab, P7, Wave 0, guest-package, and telemetry Workbench tooling.
 
 ## Does not own
@@ -12,7 +13,8 @@
 - Client telemetry mod, HUD, Owner Score, or generic mod deploy lanes: `networksense`.
 - Quest Lab, Runtime, Contracts, Studio, or quest packages: `comfy-quest`.
 - Dev/Lab MCP implementation: `isolate`.
-- Historical evidence/runs/integration/status and architecture index: `baseline`.
+- Historical evidence and experiment run outputs, integration/status snapshots,
+  retrospectives, and the cross-repository architecture index: `baseline`.
 
 ## Artifact contracts
 

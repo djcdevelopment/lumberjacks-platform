@@ -10,10 +10,23 @@ if (!$ReceiptPath) { $ReceiptPath = Join-Path $bep 'comfy-guest-install.json' }
 if (!(Test-Path -LiteralPath $ReceiptPath -PathType Leaf)) { throw 'comfy guest install receipt is missing' }
 $receipt = Get-Content -LiteralPath $ReceiptPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $receiptFull = (Resolve-Path -LiteralPath $ReceiptPath).Path
-$bepFull = (Resolve-Path -LiteralPath $bep).Path
+$bepFull = (Resolve-Path -LiteralPath $bep).Path.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
 foreach ($file in @($receipt.files)) {
     $path = [string]$file.path
-    $full = [IO.Path]::GetFullPath($path)
+    # Resolve existing receipt targets before checking containment. A receipt may
+    # spell the temp/profile root with its Windows 8.3 alias while Resolve-Path on
+    # BepInEx expands the same directory; comparing those raw spellings rejects a
+    # legitimate uninstall. Missing targets are still checked through their
+    # canonical existing parent, so traversal outside BepInEx remains refused.
+    if (Test-Path -LiteralPath $path) {
+        $full = (Resolve-Path -LiteralPath $path).Path
+    } else {
+        $parentPath = Split-Path -Parent ([IO.Path]::GetFullPath($path))
+        if (!$parentPath -or !(Test-Path -LiteralPath $parentPath -PathType Container)) {
+            throw ('receipt path parent does not exist: ' + $path)
+        }
+        $full = Join-Path (Resolve-Path -LiteralPath $parentPath).Path (Split-Path -Leaf $path)
+    }
     if (!$full.StartsWith($bepFull + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw ('receipt path escapes BepInEx: ' + $path) }
     $backup = [string]$file.backup
     $isConfig = ([string]$full).EndsWith('djcdevelopment.valheim.comfynetworksense.cfg', [StringComparison]::OrdinalIgnoreCase)

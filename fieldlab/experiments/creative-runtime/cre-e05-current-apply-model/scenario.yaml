@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "experiment_id": "cre-e05-current-apply-model",
+  "scenario_id": "late-update-amplification-v1",
+  "seed": 414,
+  "plane": "runtime",
+  "duration_seconds": 1,
+  "actors": [
+    { "id": "client_renderer", "trajectory": "stationary" }
+  ],
+  "objects": {
+    "generator": "frame_rate_entity_matrix",
+    "count": 12,
+    "classes": ["transient_presentation"]
+  },
+  "policy": {
+    "name": "current-late-update-model-v1",
+    "near_meters": 30,
+    "outer_meters": 64,
+    "mid_hz": 5
+  },
+  "driver": "pure",
+  "stop_rules": [
+    "apply_rate_not_frame_bound",
+    "entity_scaling_not_linear",
+    "send_interval_convergence_drifted"
+  ],
+  "parameters": {
+    "snapshot_rate_hz": 20,
+    "freshness_ms": 500,
+    "convergence_rate": 18
+  }
+}

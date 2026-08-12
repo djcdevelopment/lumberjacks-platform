@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "experiment_id": "cre-e08-adaptive-presentation-replay",
+  "scenario_id": "relative-transit-bracket-floor-v2",
+  "seed": 417,
+  "plane": "runtime",
+  "duration_seconds": 3,
+  "actors": [
+    { "id": "straight", "trajectory": "straight_north" },
+    { "id": "stutter", "trajectory": "stutter_north" },
+    { "id": "stop_start", "trajectory": "stop_start" },
+    { "id": "turn", "trajectory": "turn_90" },
+    { "id": "circle", "trajectory": "circle" },
+    { "id": "teleport", "trajectory": "teleport" }
+  ],
+  "objects": {
+    "generator": "adaptive_motion_presentation_replay",
+    "count": 180,
+    "classes": ["transient_presentation"]
+  },
+  "policy": {
+    "name": "relative-transit-bracket-floor-v2",
+    "near_meters": 30,
+    "outer_meters": 64,
+    "mid_hz": 5
+  },
+  "driver": "pure",
+  "stop_rules": [
+    "non_finite_output",
+    "final_sequence_not_consumed",
+    "interpolation_extrapolated",
+    "adaptive_delay_out_of_bounds",
+    "teleport_discontinuity_unguarded"
+  ],
+  "parameters": {
+    "sample_count": 40,
+    "source_interval_ms": 50,
+    "frame_rate_hz": 60,
+    "freshness_ms": 500,
+    "convergence_rate": 18,
+    "fixed_control_delays_ms": [50, 100, 150, 200],
+    "base_latency_ms": 40,
+    "adaptive_minimum_delay_ms": 100,
+    "adaptive_maximum_delay_ms": 200,
+    "adaptive_decay_ms_per_second": 25,
+    "discontinuity_meters": 5,
+    "large_step_meters": 0.75
+  }
+}

@@ -16,6 +16,20 @@ function Copy-Stamped([string]$Source, [string]$Destination) {
     Copy-Item -LiteralPath $Source -Destination $Destination -Force
 }
 
+# Walk from the package root and carry the relative name alongside each file.
+# Deriving it with FullName.Substring($OutputRoot.Length) is not safe on Windows:
+# one side may use an expanded profile path while the other uses its 8.3 alias
+# (RUNNER~1 on hosted runners), leaking the tail of the output directory into
+# guest-index.json. This traversal never compares two spellings of the root.
+function Get-PackageFiles([string]$Directory, [string]$Prefix = '') {
+    foreach ($file in @(Get-ChildItem -LiteralPath $Directory -File | Sort-Object Name)) {
+        [pscustomobject]@{ File = $file; RelativePath = $Prefix + $file.Name }
+    }
+    foreach ($child in @(Get-ChildItem -LiteralPath $Directory -Directory | Sort-Object Name)) {
+        Get-PackageFiles -Directory $child.FullName -Prefix ($Prefix + $child.Name + '/')
+    }
+}
+
 $manifestPath = (Resolve-Path -LiteralPath $ManifestPath).Path
 $bundleRoot = (Resolve-Path -LiteralPath $BundleRoot).Path
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -61,9 +75,8 @@ $guide = & $pythonExe @pythonArgs (Join-Path $PSScriptRoot 'render_guest_guide.p
 if ($LASTEXITCODE -ne 0) { Fail 'guide drift scan failed' }
 $captured = [DateTime]::Parse([string]$manifest.captured_utc).ToUniversalTime().ToString('o')
 $entries = @()
-Get-ChildItem -LiteralPath $OutputRoot -File -Recurse | Where-Object { $_.Name -ne 'guest-index.json' } | ForEach-Object {
-    $relative = $_.FullName.Substring($OutputRoot.Length + 1).Replace('\','/')
-    $entries += [ordered]@{ path = $relative; sha256 = Get-ComfySha256 $_.FullName; bytes = $_.Length }
+Get-PackageFiles -Directory $OutputRoot | Where-Object { $_.RelativePath -ne 'guest-index.json' } | ForEach-Object {
+    $entries += [ordered]@{ path = $_.RelativePath; sha256 = Get-ComfySha256 $_.File.FullName; bytes = $_.File.Length }
 }
 $entries = @($entries | Sort-Object path)
 $index = [ordered]@{ schema = 'comfy-guest-package/v1'; release_id = $releaseId; created_utc = $captured; manifest_sha256 = Get-ComfySha256 (Join-Path $OutputRoot 'manifest.json'); dll_release_identity = 'manifest-only; assembly metadata absent in sealed cut'; files = $entries }
@@ -77,11 +90,10 @@ if (!$NoZip) {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [IO.Compression.ZipFile]::Open($zipPath, [IO.Compression.ZipArchiveMode]::Create)
     try {
-        foreach ($entry in @(Get-ChildItem -LiteralPath $OutputRoot -File -Recurse | Sort-Object FullName)) {
-            $relative = $entry.FullName.Substring($OutputRoot.Length + 1).Replace('\','/')
-            $ze = $zip.CreateEntry($relative, [IO.Compression.CompressionLevel]::Optimal)
+        foreach ($entry in @(Get-PackageFiles -Directory $OutputRoot | Sort-Object RelativePath)) {
+            $ze = $zip.CreateEntry($entry.RelativePath, [IO.Compression.CompressionLevel]::Optimal)
             $ze.LastWriteTime = [DateTimeOffset]::Parse($captured)
-            $stream = $ze.Open(); try { $bytes = [IO.File]::ReadAllBytes($entry.FullName); $stream.Write($bytes,0,$bytes.Length) } finally { $stream.Dispose() }
+            $stream = $ze.Open(); try { $bytes = [IO.File]::ReadAllBytes($entry.File.FullName); $stream.Write($bytes,0,$bytes.Length) } finally { $stream.Dispose() }
         }
     } finally { $zip.Dispose() }
 }

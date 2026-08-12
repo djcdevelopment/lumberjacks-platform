@@ -22,6 +22,7 @@ $entrypoints = @(
     'fieldlab/scripts/Invoke-LabStateRootMigration.ps1',
     'fieldlab/scripts/Invoke-NativeValheimClient.ps1',
     'fieldlab/scripts/Invoke-ValheimServerRuntimeControl.ps1',
+    'fieldlab/experiments/creative-runtime/cre-e06-motion-phase-rollups/Test-BundleAdapter.ps1',
     'tools/p7/Invoke-C10bCandidateProof.ps1',
     'tools/p7/Invoke-C10bPairPromotion.ps1',
     'tools/p7/Invoke-P7BootDeterminism.ps1',

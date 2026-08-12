@@ -93,6 +93,7 @@ class GuestPackageTests(unittest.TestCase):
     def tearDown(self):
         self.server.shutdown()
         self.thread.join(timeout=3)
+        self.server.server_close()
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _ps(self, script, *args):
@@ -118,6 +119,9 @@ class GuestPackageTests(unittest.TestCase):
         second = self.tmp / "second"
         self._build(second)
         self.assertEqual((self.package / "guest-index.json").read_bytes(), (second / "guest-index.json").read_bytes())
+        index = json.loads((self.package / "guest-index.json").read_text(encoding="utf-8"))
+        self.assertIn("ComfyNetworkSense.dll", {entry["path"] for entry in index["files"]})
+        self.assertTrue(all(not Path(entry["path"]).is_absolute() for entry in index["files"]))
         self.assertEqual(hashlib.sha256((self.package / "ComfyNetworkSense.dll").read_bytes()).hexdigest(), EXPECTED_DLL)
         self.assertFalse((self.package / "gateway" / "gateway.oci.tar").exists())
         self.assertFalse((self.package / "source").exists())

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "experiment_id": "cre-e04-presentation-consumer",
+  "scenario_id": "transient-consumer-bursts-v1",
+  "seed": 413,
+  "plane": "runtime",
+  "duration_seconds": 2,
+  "actors": [
+    { "id": "source_a", "trajectory": "clean_burst_gap_reorder_stall" },
+    { "id": "source_b", "trajectory": "clean_burst_gap_stall" },
+    { "id": "target", "trajectory": "stationary" }
+  ],
+  "objects": {
+    "generator": "presentation_arrival_vectors",
+    "count": 20,
+    "classes": ["transient_presentation"]
+  },
+  "policy": {
+    "name": "latest-wins-expiry-v1",
+    "near_meters": 30,
+    "outer_meters": 64,
+    "mid_hz": 5
+  },
+  "driver": "pure",
+  "stop_rules": [
+    "final_state_regressed",
+    "expired_sample_applied",
+    "coalescing_increased_apply_work",
+    "fresh_recovery_blocked"
+  ],
+  "parameters": {
+    "drain_interval_ms": 50,
+    "expiry_ms": 120,
+    "eligible_recipients": 3
+  }
+}

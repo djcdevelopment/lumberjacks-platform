@@ -9,6 +9,15 @@
 The source tag maps to filtered commit
 `93a2513ca424be24eb3e500cf1f12df5abd26d97` before the sovereign scaffold.
 
+An ownership audit after the mechanical filter restored 24 executable FieldLab
+experiment inputs that were omitted by its narrow `experiments/m7` path list:
+23 non-run files under `fieldlab/experiments/creative-runtime/` and
+`fieldlab/experiments/patchload-ab/patchload-lab.cfg`. Their bytes match the
+immutable source tag except the state-changing CRE-E06 fixture runner, which was
+adapted only to add this repository's identity guard. No `runs/` output moved.
+The platform also received and adapted FieldLab's active retro skill; historical
+retros remain in baseline.
+
 ## Filter invocations
 
 ```text

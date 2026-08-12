@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "experiment_id": "cre-e01-runtime-envelope",
+  "scenario_id": "combat-budget-bands-v1",
+  "seed": 410,
+  "plane": "runtime",
+  "duration_seconds": 3,
+  "actors": [
+    { "id": "server_host", "trajectory": "stationary" }
+  ],
+  "objects": {
+    "generator": "combat_pressure_bands",
+    "count": 32,
+    "classes": ["critical_world_mutation", "transient_presentation"]
+  },
+  "policy": {
+    "name": "combat-budget-v1",
+    "near_meters": 30,
+    "outer_meters": 64,
+    "mid_hz": 5
+  },
+  "driver": "pure",
+  "stop_rules": [
+    "critical_work_degraded",
+    "negative_budget",
+    "unbounded_deferred_queue",
+    "transport_semantic_mismatch"
+  ],
+  "parameters": {
+    "green_budget_units": 100,
+    "amber_budget_units": 70,
+    "red_budget_units": 50,
+    "green_presentation_count": 4,
+    "amber_presentation_count": 10,
+    "red_presentation_count": 18,
+    "deferred_capacity": 4
+  }
+}
