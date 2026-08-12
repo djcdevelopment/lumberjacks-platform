@@ -51,7 +51,9 @@ function Merge-ComfyBepInExSection {
     $newline = if ($Text.Contains("`r`n")) { "`r`n" } else { "`n" }
     $header = '[' + $Section + ']'
     $lines = [Collections.Generic.List[string]]::new()
-    foreach ($line in ($Text -split "`r?`n", -1)) { [void]$lines.Add($line) }
+    # Regex.Split preserves the terminal empty field without relying on the
+    # version-sensitive negative Max-substrings semantics of PowerShell -split.
+    foreach ($line in [regex]::Split($Text, '\r?\n')) { [void]$lines.Add($line) }
     $start = -1; $end = $lines.Count
     for ($i = 0; $i -lt $lines.Count; $i++) {
         if ($lines[$i].Trim() -eq $header) { $start = $i; break }
@@ -85,7 +87,7 @@ function Remove-ComfyBepInExKeys {
     )
     $newline = if ($Text.Contains("`r`n")) { "`r`n" } else { "`n" }
     $lines = [Collections.Generic.List[string]]::new()
-    foreach ($line in ($Text -split "`r?`n", -1)) { [void]$lines.Add($line) }
+    foreach ($line in [regex]::Split($Text, '\r?\n')) { [void]$lines.Add($line) }
     $keySet = @{}
     foreach ($key in $Keys) { $keySet[[string]$key] = $true }
 

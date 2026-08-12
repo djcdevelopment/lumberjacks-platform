@@ -140,6 +140,7 @@ class GuestPackageTests(unittest.TestCase):
         before_third = third.read_bytes()
         self._ps(INSTALLER, "-BootstrapUrl", self._bootstrap(), "-ValheimPath", self.valheim, "-PackageRoot", self.package)
         text = config.read_text(encoding="utf-8")
+        self.assertEqual(text.count("[Lumberjacks]"), 1)
         self.assertIn("zdoAuthoritativeConsumerEnabled=true", text)
         self.assertIn("[General]\nfoo=bar", text)
         self.assertIn("[Automation]\nsentinel=true", text)
