@@ -18,7 +18,7 @@ public sealed class ValheimHandshakeReleaseTests
 {
     private const string Window = "i5-release";
     private const string Expected = "m1-clean-20260717-r1";
-    private const string SteamId = "76561198088711642";
+    private const string SteamId = "76561198000000042";
 
     [Fact]
     public void Disabled_ByDefault_SoTodaysFrozenModStillJoins()

@@ -19,7 +19,7 @@ public sealed class ValheimHandshakeSeatTests
     private static readonly DateTime T0 = new(2026, 7, 16, 12, 0, 0, DateTimeKind.Utc);
 
     // Seats key on host_name (the socket's Steam identity), not uid — see the _seats comment.
-    private const string HolderSteamId = "76561198088711642";
+    private const string HolderSteamId = "76561198000000042";
     private const string RivalSteamId = "76561190000000001";
 
     [Fact]

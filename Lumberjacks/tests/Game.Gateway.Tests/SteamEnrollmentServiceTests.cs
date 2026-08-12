@@ -430,7 +430,7 @@ public sealed class SteamEnrollmentServiceTests : IDisposable
     /// Mirrors the shape the production P7 store is in: several redeemed v1
     /// invites for one player, deliberately not in EnrolledUtc order.
     /// </summary>
-    const string DuplicateSteamId = "76561198088711642";
+    const string DuplicateSteamId = "76561198000000042";
 
     void WriteV1StoreWithDuplicateSteamId()
     {

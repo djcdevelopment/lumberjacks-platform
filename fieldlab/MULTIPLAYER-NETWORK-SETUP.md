@@ -25,7 +25,7 @@ Related: [HANDOFF-PLAYER-ON-NETWORK-AM4-SERVER](handoffs/HANDOFF-PLAYER-ON-NETWO
 - **Steam accounts — mind the near-collision (it caused real doc conflicts):** account
   **`waryfool`** carries persona **Zephar410** (associated with am4/server side); account
   **`floooooobcakes`** carries persona **wary.fool** (character `Durracktu`, SteamID
-  `76561198088711642`). **To put wary.fool on OMEN, log OMEN's Steam into `floooooobcakes`.**
+  `76561198000000042`). **To put wary.fool on OMEN, log OMEN's Steam into `floooooobcakes`.**
   One license per account, single-session each.
 - Server container: `comfy-valheim-server-am4-valheim-server-1`,
   image `ghcr.io/community-valheim-tools/valheim-server`, compose at `~/comfy-valheim-lab/server-compose.yml`.

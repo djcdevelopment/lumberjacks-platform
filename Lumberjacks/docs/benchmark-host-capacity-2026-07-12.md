@@ -35,7 +35,7 @@ economics or wishful thinking.
 |---|---|---|---|---|
 | Cloud | GCP `n2-highmem-8`, 8 vCPU | 64 GB | rented experiment VM (us-west1) | **$0.52/hr** list (~$380/mo), trial credits |
 | AM4 | Ryzen 9 5900X, 12C/24T | 30 GB | dedicated-ish local worker | **sunk** (power) |
-| OMEN | Core Ultra 9 285K, 24C | 128 GB | fleet **coordinator** (Ollama + HEARTH + Hyper-V host); measured via WSL2/Docker Desktop | **sunk** (power) |
+| OMEN | Core Ultra 9 285K, 24C | 128 GB | fleet **coordinator** (local model runtime + operator tooling + Hyper-V host); measured via WSL2/Docker Desktop | **sunk** (power) |
 
 ## Results
 
@@ -116,8 +116,8 @@ real local inference job ran continuously — llama.cpp (SYCL) serving Qwen3-30B
 resident on AM4's GPUs (**2× Intel Battlemage dGPU** — a hardware correction: the box is
 not NVIDIA), ~80 tok/s in back-to-back generations for the whole sweep. Local execution
 was verified by package power (RAPL: ~26 W idle → ~118–120 W plateau, back to ~26 W
-within 20 s of killing the loop) — necessary because HEARTH can route inference to cloud
-backends, which would silently invalidate the probe.
+within 20 s of killing the loop) — necessary because the operator's routing lane can send
+inference to cloud backends, which would silently invalidate the probe.
 
 | Bots | Idle (fresh baseline) | GPU-loaded |
 |---|---|---|

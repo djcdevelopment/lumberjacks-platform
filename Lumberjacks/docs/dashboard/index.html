@@ -497,7 +497,7 @@ Live                 Safety                History              Trust
         <ul style="font-size:14px;margin-bottom:0">
           <li><b>Do it inline</b> when the tool-use of batching/sending/retrieving exceeds the cost of just doing it.</li>
           <li><b>Spawn a subagent</b> for fan-out reads, isolated slices, and parallelizable build/verify work. Sonnet for mechanical, Opus for judgment-heavy slices.</li>
-          <li><b>Offload to HEARTH</b> (local MCP door, :8710, ~35 tools, Ollama up) for lightweight generation and git-shaped chores — keep it warm, prefer it for cheap local work.</li>
+          <li><b>Offload to a cheap model</b> for lightweight generation and git-shaped chores. The operator's local routing lane is deliberately outside this repo; nothing here depends on it.</li>
         </ul>
       </div>
       <div class="panel">
@@ -515,7 +515,7 @@ Live                 Safety                History              Trust
     <ol>
       <li><b>Ground</b> — confirm the signal’s real source against §03; never build on a metric that isn’t emitted.</li>
       <li><b>Slice</b> — smallest shippable increment that adds one legible signal end-to-end.</li>
-      <li><b>Delegate</b> — pick inline / subagent / HEARTH per the policy above.</li>
+      <li><b>Delegate</b> — pick inline / subagent / cheap-model offload per the policy above.</li>
       <li><b>Verify</b> — exercise the actual surface (metric flowing, widget rendering), not just tests.</li>
       <li><b>Record</b> — update this document (§03 grade + changelog) and tag evidence with provenance.</li>
     </ol>

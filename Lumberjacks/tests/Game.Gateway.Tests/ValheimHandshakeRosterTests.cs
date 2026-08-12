@@ -10,7 +10,7 @@ namespace Game.Gateway.Tests;
 /// and Steam-authenticated. `uid` is a client-supplied session id and is NOT a SteamID (plan §5.3);
 /// an earlier revision of the plan concluded from that alone that no Steam identity reached the
 /// Gateway, and deferred this gate to stage 3. It was wrong, and the live capture
-/// (`host=76561198088711642`) is what settles it.
+/// (`host=76561198000000042`) is what settles it.
 ///
 /// The gate defaults OFF: a frozen mod treats a reject as a reject, so a roster miss locks the sole
 /// volunteer out of their own server.
@@ -18,7 +18,7 @@ namespace Game.Gateway.Tests;
 public sealed class ValheimHandshakeRosterTests
 {
     private const string Window = "i5-roster";
-    private const string EnrolledSteamId = "76561198088711642"; // the real OMEN account, i5 capture
+    private const string EnrolledSteamId = "76561198000000042"; // redacted stand-in for the captured account
     private const string StrangerSteamId = "76561190000000001";
 
     private static Func<string?, ValheimRosterVerdict> Roster(
@@ -135,7 +135,7 @@ public sealed class ValheimHandshakeRosterTests
     }
 
     /// <summary>HostName carries the bare SteamID64 exactly as the live capture shows it — no
-    /// prefix, no decoration (am4-server-log-decisions.txt: <c>host=76561198088711642</c>).</summary>
+    /// prefix, no decoration (am4-server-log-decisions.txt: <c>host=76561198000000042</c>).</summary>
     private static ValheimPeerInfoSubmission Submission(string steamId) => new()
     {
         WindowId = Window,

@@ -65,7 +65,7 @@ public sealed record ValheimHandshakeServerContext
     /// (<c>VerifySessionTicket(ticket, zSteamSocket.GetPeerID())</c>, :882) — so it is
     /// server-derived and Steam-authenticated, unlike <c>Uid</c>, which is a client-supplied
     /// <c>ZDOMan.GetSessionID()</c> and not a SteamID at all (plan §5.3). Live capture confirms
-    /// the wire value is a bare SteamID64: <c>host=76561198088711642</c>
+    /// the wire value is a bare SteamID64: <c>host=76561198000000042</c>
     /// (fieldlab/evidence/i5-handshake-live/am4-server-log-decisions.txt).
     ///
     /// Valid only while crossplay is off, which is a standing assumption (I6): the PlayFab branch

@@ -63,12 +63,12 @@ contributors, experimentation, and learning — not just operations.
    (`scripts/load-test-dual-channel.js`) rather than growing a second in-game load path
    that would drift from it.
 6. **Delegation policy for the build.** Cheap text chores (summaries, table formatting,
-   boilerplate drafts, log digestion) offload to **Gemini Flash/Pro via HEARTH**
-   (door verified healthy and both backends live-probed this date; call surface:
-   `HearthClient().call_sync("local_generate", ..., backend="gcp-gemini"|"gcp-gemini-pro")`
-   from the commandcenter venv). Code-editing judgment stays with Claude agents;
-   HEARTH-routed generation is never a local-GPU load source (see the Gemini-trap rule
-   in the benchmark doc's Follow-up A).
+   boilerplate drafts, log digestion) offload to a cheap hosted model; code-editing
+   judgment stays with the primary agent. Whatever runs the delegation must not become
+   a local-GPU load source, or it contaminates the very measurements this doc exists to
+   take (see the Gemini-trap rule in the benchmark doc's Follow-up A). The delegation
+   mechanism is operator-local and deliberately not a dependency of anything here —
+   every lane in this repo runs without it.
 
 ## Phase 1 (in build) — replication-policy experiment rig
 

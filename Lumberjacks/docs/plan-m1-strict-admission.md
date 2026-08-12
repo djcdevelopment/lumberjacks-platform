@@ -255,7 +255,7 @@ surfaces:
 3. **Resolved — the `uid` is not a SteamID64, but `host_name` IS.** PeerInfo field 1
    is `GetUID()` = `ZDOMan.GetSessionID()` (`NETCODE-HANDSHAKE-CONTRACT.md:69`,
    `:1787`), a per-game-session long. Proven live: client SteamID
-   `76561198088711642` decoded as `uid=1167002880`
+   `76561198000000042` decoded as `uid=1167002880`
    (`fieldlab/evidence/i5-handshake-live/ANALYSIS.md`).
    **An earlier revision of this entry drew the wrong conclusion from that** — it
    said the roster key does not exist on the wire and moved identity admission to
@@ -266,7 +266,7 @@ surfaces:
    (`VerifySessionTicket(ticket, zSteamSocket.GetPeerID())`, `:882`), so it is
    server-derived and Steam-authenticated rather than client-asserted, and the mod
    already forwards it (`HandshakeResponderPatches.cs:47`). The live capture is a
-   bare SteamID64: `host=76561198088711642`
+   bare SteamID64: `host=76561198000000042`
    (`fieldlab/evidence/i5-handshake-live/am4-server-log-decisions.txt`). So the
    roster gate is buildable **Gateway-only and live** — it is, `StrictRosterEnabled`,
    default off (§7). Caveats: valid only while crossplay is off (I6), since the
@@ -445,7 +445,7 @@ surfaces:
     at all, and stage 3 already opens the mod.
 
 11. **CLOSED on P7 — 2026-07-17, verified on a real cold boot.** Both halves pass. The
-    store is `schema_version: 2` with four enrollments for `76561198088711642`: exactly
+    store is `schema_version: 2` with four enrollments for `76561198000000042`: exactly
     **one Active** (`9a3fc0e730ab`, the newest by `EnrolledUtc`, 2026-07-16T17:41:06) and
     three Revoked, each `superseded_by_migration`. `CollapseDuplicateSteamIds` did what it
     was written to do and the one-active-per-SteamID invariant holds against real data.
@@ -460,7 +460,7 @@ surfaces:
     several redeemed invites for one SteamID migrated them all active at once —
     the exact state `RedeemLocked` refuses to create
     (`SteamEnrollmentService.cs:72`). Not theoretical: the P7 store holds ≥3
-    enrollments for `76561198088711642`. Stage 1 shipped to P7 in
+    enrollments for `76561198000000042`. Stage 1 shipped to P7 in
     `m1-clean-20260717-r1` (2026-07-17), so the migration has now executed against
     the real store; cold-start health passed, but the collapse outcome has not been
     inspected on the VM.
@@ -699,7 +699,7 @@ with the VM up, all passing:
 - **Risk 11 closed** (above): the migration collapsed correctly and the live client holds the
   surviving credential.
 - **The roster answers correctly.** Verified against the *real* store on throwaway windows, so
-  the live window was never touched: enrolled `76561198088711642` → accept; stranger
+  the live window was never touched: enrolled `76561198000000042` → accept; stranger
   `76561190000000001` → reject, code 8, `not_enrolled`; and — the part that makes it
   conclusive — the same stranger on a **non-strict** window → accept, proving the rejection
   comes from `StrictRosterEnabled` and not from some other gate.
@@ -710,8 +710,8 @@ with the VM up, all passing:
   `p7-primary-v1` window as of 2026-07-17. The synthetic probes above were not the last word:
   at `14:02:23.453Z`, fourteen minutes after the flip, Derek joined for real and the window
   recorded a third exchange — **accept**. Server log:
-  `Got connection SteamID 76561198088711642` → `[handshake] ACCEPT (Lumberjacks-decided)
-  window=p7-primary-v1 uid=1110941871 player=Durracktu host=76561198088711642` → `AddPeer`.
+  `Got connection SteamID 76561198000000042` → `[handshake] ACCEPT (Lumberjacks-decided)
+  window=p7-primary-v1 uid=1110941871 player=Durracktu host=76561198000000042` → `AddPeer`.
   Window counters `accepted=2 rejected=1 by_code={8:1}`: two probes and the join, on a window
   that was already strict.
   So the precondition — "verify the roster answers correctly against real joins, then flip" —
@@ -720,7 +720,7 @@ with the VM up, all passing:
   the probes agreed first; it is not the order to repeat.
   **What this proves beyond the gate itself:** the join was decided by the **frozen 0.5.31 mod**
   (`94a3843e`), armed at `http://gateway:4000`, with no mod cut. Vanilla read
-  `host=76561198088711642` off the socket and the Gateway answered from the real enrollment
+  `host=76561198000000042` off the socket and the Gateway answered from the real enrollment
   store. §5.3's correction is now evidenced live rather than argued from a capture — the earlier
   revision that deferred the roster to stage 3 on the belief that no Steam identity reached the
   Gateway was wrong, and this is the proof.
