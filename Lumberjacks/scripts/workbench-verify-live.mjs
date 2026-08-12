@@ -75,10 +75,9 @@ const INVITE_WARN_DAYS = 14;
 // none of which were verified, while /join and /health are verified and are not in the nav.
 // /questlab is added here now that it is publishable (2026-08-07) — before that the served page
 // could only change with a Gateway image, so a live check told you about the image, not the tree.
-// /questpicker and /steward stay OUT deliberately: no route for either exists in this repo's
-// Gateway source, so whatever serves them is outside this repo and asserting on it here would be
-// verifying somebody else's deploy. That gap is real and belongs in its own pass.
-const NAV_ROUTES = ['/workbench', '/community', '/roadmap', '/questlab', '/networksense', '/events', '/testing', '/join', '/health'];
+// /steward stays OUT deliberately because it is hosted by a separate service. /questpicker is
+// Gateway-owned and must stay in this sweep so a linked 404 can never silently return.
+const NAV_ROUTES = ['/workbench', '/community', '/roadmap', '/questlab', '/questpicker', '/networksense', '/events', '/testing', '/join', '/health'];
 const FOOTER_GITHUB_LINKS = [
   'https://github.com/djcdevelopment/baseline',
   'https://github.com/djcdevelopment/Lumberjacks',

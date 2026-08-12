@@ -69,7 +69,7 @@
       "name": "Quest Picker + Absorption Engine",
       "one_liner": "Turns a guild's real quest tracker into a single offline page where a player checks the quests they care about — and the game mod reads the result.",
       "status": "live",
-      "status_detail": "Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. The download below is a cold-start kit with a synthetic sample guild — verified to run from a fresh folder with nothing but Python and openpyxl.",
+      "status_detail": "Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. A hosted synthetic sample is available at /questpicker; the download below is the same verified sample plus its cold-start kit.",
       "what_it_does": "Python (standard library, plus openpyxl for .xlsx sources) harvests real guild quest trackers into one JSON catalog per guild. render_quest_picker.py folds a catalog into a single self-contained file:// HTML page with no server and no network calls. A player opens that page, checks the quests they want, and saves a personal quest-view.json that the game mod reads at runtime.",
       "who_its_for": "Guild stewards and GMs who already keep a quest tracker and want it to reach players in-game instead of dying in a spreadsheet tab.",
       "time_to_first_result": "about 10 minutes",
@@ -81,27 +81,31 @@
       "access": {
         "kind": "site-download",
         "href": "/workbench/downloads/quest-picker",
-        "sha256": "d0b53016cbce5febb6f35d24b581a2112298f3650d48cf3190e44ece7ac4b65a",
-        "size_bytes": 36335,
-        "published_at": "2026-07-29T01:12:00Z"
+        "sha256": "f61d0e62e297888eeaedb501af4b9a3fc2d39cc668ab78c65c794ca1afd90a49",
+        "size_bytes": 47495,
+        "published_at": "2026-08-12T16:10:35Z"
       },
       "source": {
         "kind": "public-repo",
-        "href": "https://github.com/djcdevelopment/comfy/tree/main/recipes/quest-catalogs",
-        "note": "The same code lives in this repo at recipes/quest-catalogs/ and is byte-identical to the public copy."
+        "href": "https://github.com/djcdevelopment/comfy-quest/tree/main/recipes/quest-catalogs",
+        "note": "The sovereign comfy-quest repository owns the picker, its recipes, and the exact release imported here."
       },
       "docs": [
         {
+          "label": "Try the hosted synthetic sample",
+          "href": "/questpicker"
+        },
+        {
           "label": "Catalog schema (schema.md)",
-          "href": "https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/schema.md"
+          "href": "https://github.com/djcdevelopment/comfy-quest/blob/main/recipes/quest-catalogs/schema.md"
         },
         {
           "label": "Personal quest-view schema (quest-view-schema.md)",
-          "href": "https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/quest-view-schema.md"
+          "href": "https://github.com/djcdevelopment/comfy-quest/blob/main/recipes/quest-catalogs/quest-view-schema.md"
         },
         {
           "label": "Source config seam (sources.json)",
-          "href": "https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/sources.json"
+          "href": "https://github.com/djcdevelopment/comfy-quest/blob/main/recipes/quest-catalogs/sources.json"
         }
       ],
       "discussion": {
@@ -657,9 +661,9 @@
       "access": {
         "kind": "site-download",
         "href": "/workbench/downloads/quest-lab",
-        "sha256": "d49a20dbf3408eaf64edd281c550b457839b18e076c99ac2b546a3aa2d748b9e",
-        "size_bytes": 74949,
-        "published_at": "2026-08-08T06:05:00Z"
+        "sha256": "302e98c88dfe9336b6096a7e01e8910cae86a2820e57a946eddd545526d66ce8",
+        "size_bytes": 266352,
+        "published_at": "2026-08-12T16:10:35Z"
       },
       "source": {
         "kind": "public-repo",

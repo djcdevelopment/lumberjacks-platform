@@ -332,7 +332,7 @@
       </div>
       <p class="join-path">The path in: join → read <a href="https://discord.com/channels/1531911987074957442/1531926993442967654" target="_blank" rel="noreferrer">How this works — read me first</a> → post in a tool's thread. Those last two and the <a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">#workbench forum</a> are <strong>member-only</strong> Discord links; they will not open until you have joined.</p>
       <div class="hero-meta">
-        <span class="freshness">Published from 7bc1ad8 · 2026-08-12 08:45 UTC</span>
+        <span class="freshness">Preview rendered 2026-08-12 16:13 UTC with uncommitted changes</span>
         <span>2 live · 1 dev-only · 5 local-only</span>
         <a href="#tools">14 first tasks open</a>
       </div>
@@ -445,18 +445,18 @@
       <span class="pill live">LIVE</span>
     </div>
     <p class="one-liner">Turns a guild&#39;s real quest tracker into a single offline page where a player checks the quests they care about — and the game mod reads the result.</p>
-    <div class="status-detail live"><strong>What that status actually means</strong>Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. The download below is a cold-start kit with a synthetic sample guild — verified to run from a fresh folder with nothing but Python and openpyxl.</div>
+    <div class="status-detail live"><strong>What that status actually means</strong>Runs today against real guild tracker exports: the harvest, the validator, and the picker all work end to end, and the mod reads the quest-view.json the picker saves. A hosted synthetic sample is available at /questpicker; the download below is the same verified sample plus its cold-start kit.</div>
     <p class="tool-audience"><strong>For</strong>Guild stewards and GMs who already keep a quest tracker and want it to reach players in-game instead of dying in a spreadsheet tab.</p>
     <div class="tool-action">
       <span class="first-result"><em>First result</em>about 10 minutes</span>
       <a class="access-button site-download" href="/workbench/downloads/quest-picker" aria-label="Download Quest Picker + Absorption Engine">Download</a>
     </div>
     <div class="access-verify">
-      <div class="access-detail"><span>SHA-256</span><code>d0b53016cbce5febb6f35d24b581a2112298f3650d48cf3190e44ece7ac4b65a</code></div>
-      <div class="access-detail"><span>Size</span><code>35.5 KB</code></div>
-      <div class="access-detail"><span>Published</span><code>2026-07-29T01:12:00Z</code></div>
+      <div class="access-detail"><span>SHA-256</span><code>f61d0e62e297888eeaedb501af4b9a3fc2d39cc668ab78c65c794ca1afd90a49</code></div>
+      <div class="access-detail"><span>Size</span><code>46.4 KB</code></div>
+      <div class="access-detail"><span>Published</span><code>2026-08-12T16:10:35Z</code></div>
     </div>
-    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/schema.md" target="_blank" rel="noreferrer">Catalog schema (schema.md)</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531977720790257866" target="_blank" rel="noreferrer">Quest Picker thread</a></span></div>
+    <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="/questpicker">Try the hosted synthetic sample</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531977720790257866" target="_blank" rel="noreferrer">Quest Picker thread</a></span></div>
     <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>Python 3</li><li>openpyxl (only for .xlsx sources)</li><li>A browser — the picker is a local file:// page, not a service</li></ul></div>
     <details class="tool-detail">
       <summary>How it works, in detail</summary>
@@ -495,10 +495,10 @@
     <details class="tool-detail">
       <summary>Source, privacy &amp; licence</summary>
       <div class="tool-detail-body">
-        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/quest-view-schema.md" target="_blank" rel="noreferrer">Personal quest-view schema (quest-view-schema.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy/blob/main/recipes/quest-catalogs/sources.json" target="_blank" rel="noreferrer">Source config seam (sources.json)</a></div>
-        <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy/tree/main/recipes/quest-catalogs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy/tree/main/recipes/quest-catalogs</a></div>
+        <div class="tool-links"><strong>More docs</strong><a href="https://github.com/djcdevelopment/comfy-quest/blob/main/recipes/quest-catalogs/schema.md" target="_blank" rel="noreferrer">Catalog schema (schema.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy-quest/blob/main/recipes/quest-catalogs/quest-view-schema.md" target="_blank" rel="noreferrer">Personal quest-view schema (quest-view-schema.md)</a><span aria-hidden="true"> · </span><a href="https://github.com/djcdevelopment/comfy-quest/blob/main/recipes/quest-catalogs/sources.json" target="_blank" rel="noreferrer">Source config seam (sources.json)</a></div>
+        <div class="tool-links"><strong>Source</strong><a href="https://github.com/djcdevelopment/comfy-quest/tree/main/recipes/quest-catalogs" target="_blank" rel="noreferrer">https://github.com/djcdevelopment/comfy-quest/tree/main/recipes/quest-catalogs</a></div>
         <p class="access-policy">Nothing here is gated — the source is readable now. Ladder stage 3 opens commit access for this tool.</p>
-        <p class="source-note">The same code lives in this repo at recipes/quest-catalogs/ and is byte-identical to the public copy.</p>
+        <p class="source-note">The sovereign comfy-quest repository owns the picker, its recipes, and the exact release imported here.</p>
         <div class="tool-footnotes">
           <div class="privacy"><strong>Privacy</strong>Harvested catalogs from a live guild tracker contain member names. The published sample uses synthetic data only — do not commit a real harvested catalog.</div>
           <div class="license"><strong>License</strong>BUSL-1.1 in this repo (community-steward safe harbor, converting to AGPL-3.0-only; see <a href="https://github.com/djcdevelopment/lumberjacks-platform/blob/main/LICENSE" target="_blank" rel="noreferrer">LICENSING.md</a>). The byte-identical copies in the public comfy archive carry that repo&#39;s MIT license.</div>
@@ -885,9 +885,9 @@
       <a class="access-button site-download" href="/workbench/downloads/quest-lab" aria-label="Download Quest Lab Turnkey Package">Download</a>
     </div>
     <div class="access-verify">
-      <div class="access-detail"><span>SHA-256</span><code>d49a20dbf3408eaf64edd281c550b457839b18e076c99ac2b546a3aa2d748b9e</code></div>
-      <div class="access-detail"><span>Size</span><code>73.2 KB</code></div>
-      <div class="access-detail"><span>Published</span><code>2026-08-08T06:05:00Z</code></div>
+      <div class="access-detail"><span>SHA-256</span><code>302e98c88dfe9336b6096a7e01e8910cae86a2820e57a946eddd545526d66ce8</code></div>
+      <div class="access-detail"><span>Size</span><code>260.1 KB</code></div>
+      <div class="access-detail"><span>Published</span><code>2026-08-12T16:10:35Z</code></div>
     </div>
     <div class="tool-link-row"><span class="tool-link"><em>Docs</em><a href="/questlab">The Web Tome (Learn what&#39;s possible)</a></span><span class="tool-link"><em>Discuss</em><a href="https://discord.com/channels/1531911987074957442/1531926985314668635" target="_blank" rel="noreferrer">Quest Lab thread</a></span></div>
     <div class="requires"><strong>You will need</strong><ul class="requires-list"><li>A private Valheim world</li><li>BepInEx installed on your client</li></ul></div>

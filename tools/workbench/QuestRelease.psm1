@@ -22,7 +22,7 @@ $script:QuestReleaseFileNames = @(
 $script:QuestDestinations = [ordered]@{
     'questlab.html' = 'Lumberjacks/src/Game.Gateway/Community/questlab.html'
     'quest-lab.zip' = 'tools/workbench/dist/quest-lab.zip'
-    'quest-picker.html' = 'tools/workbench/dist/quest-picker.html'
+    'quest-picker.html' = 'Lumberjacks/src/Game.Gateway/Community/quest-picker.html'
     'quest-picker.zip' = 'tools/workbench/dist/quest-picker.zip'
 }
 $script:QuestManifestDestination = 'Lumberjacks/docs/workbench/quest-release.manifest.json'

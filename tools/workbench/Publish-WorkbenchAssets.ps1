@@ -108,6 +108,7 @@ $dist = Join-Path $PSScriptRoot 'dist'
 # verify-live now checks /questlab and fails on it, which is why Gate 4 blocks this script today.
 # That is correct: the catalog's nav links to /questlab, so publishing would ship a live 404.
 $questlabPath = Join-Path $lumberjacks 'src\Game.Gateway\Community\questlab.html'
+$questpickerPath = Join-Path $lumberjacks 'src\Game.Gateway\Community\quest-picker.html'
 
 # tool id (the /workbench/downloads/{id} route) -> zip file in dist/
 $zipMap = [ordered]@{
@@ -219,9 +220,11 @@ $pointerLocal = Join-Path ([System.IO.Path]::GetTempPath()) 'workbench-tools.jso
 [System.IO.File]::WriteAllText($pointerLocal, $pointerJson, [System.Text.UTF8Encoding]::new($false))
 
 if (-not (Test-Path $questlabPath)) { throw "questlab.html missing at $questlabPath - run python tools\component-packets\render_quest_lab.py first" }
+if (-not (Test-Path $questpickerPath)) { throw "quest-picker.html missing at $questpickerPath - import a published comfy-quest release first" }
 
 $htmlHash = (Get-FileHash -LiteralPath $htmlPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $questlabHash = (Get-FileHash -LiteralPath $questlabPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$questpickerHash = (Get-FileHash -LiteralPath $questpickerPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $stamp = [guid]::NewGuid().ToString('N').Substring(0, 8)
 
 # upload everything to /tmp first
@@ -229,6 +232,8 @@ $stamp = [guid]::NewGuid().ToString('N').Substring(0, 8)
 if ($LASTEXITCODE -ne 0) { throw 'workbench.html upload failed' }
 & scp $questlabPath "${SshTarget}:/tmp/questlab-$stamp.html"
 if ($LASTEXITCODE -ne 0) { throw 'questlab.html upload failed' }
+& scp $questpickerPath "${SshTarget}:/tmp/questpicker-$stamp.html"
+if ($LASTEXITCODE -ne 0) { throw 'quest-picker.html upload failed' }
 & scp $pointerLocal "${SshTarget}:/tmp/workbench-tools-$stamp.json"
 if ($LASTEXITCODE -ne 0) { throw 'tools.json upload failed' }
 $zipArgs = @()
@@ -242,12 +247,14 @@ foreach ($id in $zipMap.Keys) {
 
 $remoteScript = @'
 set -euo pipefail
-root="$1"; stamp="$2"; html_hash="$3"; questlab_hash="$4"; shift 4
+root="$1"; stamp="$2"; html_hash="$3"; questlab_hash="$4"; questpicker_hash="$5"; shift 5
 mkdir -p "$root"
 actual="$(sha256sum "/tmp/workbench-$stamp.html" | awk '{print $1}')"
 test "$actual" = "$html_hash"
 actual="$(sha256sum "/tmp/questlab-$stamp.html" | awk '{print $1}')"
 test "$actual" = "$questlab_hash"
+actual="$(sha256sum "/tmp/questpicker-$stamp.html" | awk '{print $1}')"
+test "$actual" = "$questpicker_hash"
 for pair in "$@"; do
   name="${pair%%=*}"; expected="${pair##*=}"
   actual="$(sha256sum "/tmp/workbench-zip-$stamp-$name" | awk '{print $1}')"
@@ -259,10 +266,12 @@ install -m 0644 "/tmp/workbench-$stamp.html" "$root/workbench.html.tmp"
 mv -f "$root/workbench.html.tmp" "$root/workbench.html"
 install -m 0644 "/tmp/questlab-$stamp.html" "$root/questlab.html.tmp"
 mv -f "$root/questlab.html.tmp" "$root/questlab.html"
+install -m 0644 "/tmp/questpicker-$stamp.html" "$root/quest-picker.html.tmp"
+mv -f "$root/quest-picker.html.tmp" "$root/quest-picker.html"
 install -m 0644 "/tmp/workbench-tools-$stamp.json" "$root/tools.json.tmp"
 mv -f "$root/tools.json.tmp" "$root/tools.json"
-rm -f "/tmp/workbench-$stamp.html" "/tmp/questlab-$stamp.html" "/tmp/workbench-tools-$stamp.json"
-printf 'published workbench %s questlab %s\n' "$html_hash" "$questlab_hash"
+rm -f "/tmp/workbench-$stamp.html" "/tmp/questlab-$stamp.html" "/tmp/questpicker-$stamp.html" "/tmp/workbench-tools-$stamp.json"
+printf 'published workbench %s questlab %s questpicker %s\n' "$html_hash" "$questlab_hash" "$questpicker_hash"
 '@
 # Normalise CRLF before encoding, exactly as Promote-GatewayImage.ps1 does. A here-string picks up
 # whatever line endings the .ps1 was checked out with, and git hands Windows clones CRLF — so the
@@ -270,7 +279,7 @@ printf 'published workbench %s questlab %s\n' "$html_hash" "$questlab_hash"
 # dies after the uploads. Whether this script worked depended on the checkout, not on the code.
 $encoded = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(($remoteScript -replace "`r`n", "`n")))
 $argLine = ($zipArgs | ForEach-Object { "'$_'" }) -join ' '
-& ssh $SshTarget "echo $encoded | base64 -d | sudo bash -s -- '$RemoteRoot' '$stamp' '$htmlHash' '$questlabHash' $argLine"
+& ssh $SshTarget "echo $encoded | base64 -d | sudo bash -s -- '$RemoteRoot' '$stamp' '$htmlHash' '$questlabHash' '$questpickerHash' $argLine"
 if ($LASTEXITCODE -ne 0) { throw 'remote publish failed' }
 
 # Post-publish verification: the full pass, now that the upload is what the origin serves —
@@ -284,6 +293,7 @@ try {
 [pscustomobject]@{
     workbench_html_sha256 = $htmlHash
     questlab_html_sha256  = $questlabHash
+    questpicker_html_sha256 = $questpickerHash
     tools                 = $pointerTools | ForEach-Object { "$($_.id) $($_.sha256.Substring(0,12))..." }
     remote_root           = $RemoteRoot
     verified              = "verify-live post-publish PASS against $PublicBaseUrl (receipt: captures/workbench-verify-live.json)"

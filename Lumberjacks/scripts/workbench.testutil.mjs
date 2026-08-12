@@ -17,7 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const realScriptPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'workbench.mjs');
-const realAudiencesPath = path.resolve(path.dirname(realScriptPath), '..', '..', 'corpus', 'audiences.json');
+const realAudiencesPath = path.resolve(path.dirname(realScriptPath), '..', 'docs', 'workbench', 'audiences.json');
 
 /// A fresh minimal catalog per call (mutating a shared object across tests would couple them).
 /// Every field exists to satisfy a specific validator; trim nothing without checking validate().
@@ -168,9 +168,9 @@ export function makeFixtureRepo({ workbench = baseWorkbench(), git: withGit = tr
   const linkedRoots = [];
   fs.mkdirSync(path.join(pkg, 'scripts'), { recursive: true });
   fs.mkdirSync(path.join(pkg, 'docs', 'workbench'), { recursive: true });
-  fs.mkdirSync(path.join(pkg, 'corpus'), { recursive: true });
+  fs.mkdirSync(path.join(pkg, 'docs', 'workbench'), { recursive: true });
   fs.copyFileSync(realScriptPath, path.join(pkg, 'scripts', 'workbench.mjs'));
-  fs.copyFileSync(realAudiencesPath, path.join(pkg, 'corpus', 'audiences.json'));
+  fs.copyFileSync(realAudiencesPath, path.join(pkg, 'docs', 'workbench', 'audiences.json'));
 
   const htmlRelative = 'src/Game.Gateway/Community/workbench.html';
 
@@ -240,7 +240,7 @@ export function makeFixtureRepo({ workbench = baseWorkbench(), git: withGit = tr
         'log', '-1', '--format=%H', '--',
         `${prefix}docs/workbench/workbench.json`,
         `${prefix}scripts/workbench.mjs`,
-        `${prefix}corpus/audiences.json`,
+        `${prefix}docs/workbench/audiences.json`,
       ]).slice(0, 7);
     },
     dispose() {

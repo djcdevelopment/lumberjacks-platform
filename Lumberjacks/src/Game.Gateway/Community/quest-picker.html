@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comfy Quest Picker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Spectral:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0d0a; --panel: #1a1510; --panel2: rgba(0,0,0,.25);
+    --gold: #e3b457; --gold-dim: rgba(224,178,78,.16); --gold-line: rgba(224,178,78,.14);
+    --text: #efe4cf; --mid: #a89878; --dim: #7c7059; --faint: #6f6350;
+    --green: #84c46e; --slayers: #d1543a; --rangers: #8bb84e;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+         display: flex; flex-direction: column; }
+  input, select, button { font-family: inherit; }
+  .scroll::-webkit-scrollbar { width: 9px; height: 9px; }
+  .scroll::-webkit-scrollbar-track { background: transparent; }
+  .scroll::-webkit-scrollbar-thumb { background: rgba(224,178,78,.22); border-radius: 5px; }
+  .scroll::-webkit-scrollbar-thumb:hover { background: rgba(224,178,78,.4); }
+
+  header { display: flex; align-items: center; justify-content: space-between;
+           padding: 15px 20px; border-bottom: 1px solid rgba(224,178,78,.16);
+           background: rgba(0,0,0,.2); }
+  header .title { font-family: 'Cinzel', Georgia, serif; font-size: 19px; font-weight: 600;
+                  color: var(--gold); letter-spacing: .5px; }
+  .trackpill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px;
+               border-radius: 20px; background: rgba(255,255,255,.03);
+               border: 1px solid rgba(224,178,78,.15); color: #8b7d64;
+               font-size: 12.5px; font-weight: 700; }
+  .trackpill.on { background: rgba(132,196,110,.14); border-color: rgba(132,196,110,.4); color: #9fd68a; }
+  .trackpill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+  .trackpill.on .dot { background: var(--green); }
+
+  main { flex: 1; display: flex; min-height: 0; background: var(--panel); }
+
+  .rail { width: 262px; flex: none; border-right: 1px solid rgba(224,178,78,.12);
+          padding: 18px 18px 24px; overflow-y: auto; background: rgba(0,0,0,.15); }
+  .searchwrap { position: relative; margin-bottom: 20px; }
+  .searchwrap .glyph { position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+                       color: var(--faint); font-size: 13px; }
+  .searchwrap input { width: 100%; padding: 9px 10px 9px 30px; border-radius: 8px;
+                      border: 1px solid rgba(224,178,78,.22); background: rgba(0,0,0,.3);
+                      color: var(--text); font-size: 13px; outline: none; }
+  .searchwrap input::placeholder { color: var(--faint); }
+  .facet { margin-bottom: 18px; }
+  .facet .ftitle { color: #8b7d64; font-size: 10.5px; font-weight: 700; letter-spacing: 1px;
+                   text-transform: uppercase; margin-bottom: 9px; }
+  .facet .fchips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px;
+          border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600;
+          background: rgba(255,255,255,.02); border: 1px solid rgba(224,178,78,.18);
+          color: var(--mid); transition: background .12s, border-color .12s, color .12s; }
+  .chip .cdot { width: 8px; height: 8px; border-radius: 50%; opacity: .55; }
+  .chip.on { background: var(--gold-dim); border-color: var(--gold); color: #f0c96a; }
+  .chip.on .cdot { opacity: 1; }
+
+  .content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+             padding: 13px 18px; border-bottom: 1px solid rgba(224,178,78,.12); flex-wrap: wrap; }
+  .toolbar .left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .count { color: var(--text); font-size: 13.5px; font-weight: 600; }
+  .count b { color: var(--gold); font-size: 16px; }
+  .activechip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px;
+                border-radius: 6px; cursor: pointer; font-size: 11.5px; font-weight: 600;
+                background: rgba(224,178,78,.13); border: 1px solid rgba(224,178,78,.33);
+                color: #f0c96a; }
+  .activechip .x { opacity: .7; font-size: 13px; }
+  .clearall { background: none; border: none; cursor: pointer; color: var(--dim);
+              font-size: 11.5px; text-decoration: underline; }
+  .clearall:hover { color: var(--gold); }
+  .sortwrap { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 11.5px; }
+  .sortwrap select { background: rgba(0,0,0,.3); color: var(--text);
+                     border: 1px solid rgba(224,178,78,.22); border-radius: 7px;
+                     padding: 6px 9px; font-size: 12.5px; outline: none; cursor: pointer; }
+
+  .list { flex: 1; overflow-y: auto; }
+  .qrow { display: grid; grid-template-columns: 22px minmax(220px, 1fr) auto; gap: 14px;
+          align-items: center; padding: 11px 18px; cursor: pointer;
+          border-bottom: 1px solid rgba(224,178,78,.07); border-left: 3px solid transparent;
+          transition: background .12s; }
+  .qrow:hover { background: rgba(224,178,78,.055); }
+  .qrow.on { background: rgba(224,178,78,.045); }
+  .qrow.on.g-slayers { border-left-color: var(--slayers); }
+  .qrow.on.g-rangers { border-left-color: var(--rangers); }
+  .qrow.on.g-other { border-left-color: var(--gold); }
+  .qname { font-family: 'Spectral', Georgia, serif; font-size: 15.5px; font-weight: 600;
+           color: var(--text); line-height: 1.15; }
+  .qname .note { color: var(--dim); font-size: 11.5px; font-weight: 400; margin-left: 6px; }
+  .qsub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  .pills { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+          border-radius: 7px; font-size: 11.5px; white-space: nowrap;
+          background: var(--gold-dim); border: 1px solid rgba(224,178,78,.3); color: #f0c96a; }
+  .pill.muted { background: rgba(255,255,255,.03); border-color: rgba(224,178,78,.16); color: var(--mid); }
+  .pill.reward { background: rgba(95,155,196,.12); border-color: rgba(95,155,196,.4); color: #9cc4e0; }
+  .pill.trig { background: rgba(132,196,110,.12); border-color: rgba(132,196,110,.4); color: #9fd68a; }
+  .check { width: 18px; height: 18px; flex: none; cursor: pointer; padding: 0; border-radius: 5px;
+           border: 2px solid rgba(224,178,78,.35); background: transparent; color: var(--panel);
+           display: flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1; }
+  .qrow.on .check { border-color: var(--gold); background: var(--gold); }
+  .qdetail { grid-column: 1 / -1; padding: 4px 4px 6px 36px; }
+  .qreq { white-space: pre-wrap; font-size: 13px; color: var(--text);
+          padding-left: 10px; border-left: 2px solid rgba(224,178,78,.3); }
+  .qmeta { white-space: pre-wrap; font-size: 12px; color: var(--dim); margin-top: 6px; padding-left: 10px; }
+  .empty { flex: 1; display: flex; align-items: center; justify-content: center;
+           color: var(--faint); font-size: 14px; }
+
+  footer { display: flex; align-items: center; gap: 14px; padding: 13px 20px; flex-wrap: wrap;
+           border-top: 1px solid rgba(224,178,78,.16); background: var(--panel2); }
+  footer label { display: inline-flex; align-items: center; gap: 8px; color: var(--mid);
+                 font-size: 12.5px; font-weight: 600; }
+  footer label .opt { color: var(--faint); font-weight: 400; }
+  footer input { padding: 8px 11px; border-radius: 8px; border: 1px solid rgba(224,178,78,.22);
+                 background: rgba(0,0,0,.3); color: var(--text); font-size: 12.5px;
+                 outline: none; width: 150px; }
+  footer input::placeholder { color: var(--faint); }
+  .savebtn { margin-left: auto; padding: 9px 20px; border-radius: 8px; border: none;
+             font-size: 13px; font-weight: 700; cursor: pointer;
+             background: var(--gold); color: var(--panel); transition: filter .12s; }
+  .savebtn:not(:disabled):hover { filter: brightness(1.1); }
+  .savebtn:disabled { background: rgba(224,178,78,.18); color: var(--faint); cursor: not-allowed; }
+  .hint { flex-basis: 100%; color: var(--dim); font-size: 12px; }
+  .hint b { color: var(--mid); }
+  #savednote { color: var(--green); font-size: 12.5px; }
+  .gateway-topbar { position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,.08); background: rgba(11,16,19,.92); backdrop-filter: blur(14px); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; }
+  .gateway-topbar .topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 20px; max-width: 1400px; margin: 0 auto; }
+  .gateway-topbar .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; color: #fff; }
+  .gateway-topbar .mark { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; background: rgba(255,255,255,.1); font-size: 12px; }
+  .gateway-topbar nav { display: flex; gap: 16px; overflow-x: auto; }
+  .gateway-topbar nav a { color: rgba(255,255,255,.7); text-decoration: none; white-space: nowrap; }
+  .gateway-topbar nav a:hover { color: #fff; }
+  .gateway-topbar nav a[aria-current="page"] { color: #fff; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="gateway-topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand"><span class="mark">LJ</span><span>Valheim volunteer roadmap</span></div>
+    <nav aria-label="Gateway surfaces">
+      <a href="/roadmap">Roadmap</a>
+      <a href="/community">Community</a>
+      <a href="/workbench">Workbench</a>
+      <a href="/questpicker" aria-current="page">Quest Picker</a>
+      <a href="/steward">Steward</a>
+      <a href="/questlab">Quest Lab</a>
+      <a href="/networksense">NetworkSense</a>
+      <a href="/events">Events</a>
+      <a href="/testing">Testing</a>
+    </nav>
+  </div>
+</div>
+<header>
+  <div class="title">Comfy Quest Picker</div>
+  <div class="trackpill" id="trackpill"><span class="dot"></span><span id="trackcount">0 tracked</span></div>
+</header>
+<main>
+  <nav class="rail scroll">
+    <div class="searchwrap">
+      <span class="glyph">&#8981;</span>
+      <input type="search" id="search" placeholder="Search quests, rewards&#8230;">
+    </div>
+    <div class="facet"><div class="ftitle">Guild</div><div class="fchips" id="f-guilds"></div></div>
+    <div class="facet"><div class="ftitle">Category</div><div class="fchips" id="f-cats"></div></div>
+    <div class="facet"><div class="ftitle">Proof type</div><div class="fchips" id="f-proofs"></div></div>
+    <div class="facet"><div class="ftitle">Status</div><div class="fchips" id="f-status"></div></div>
+  </nav>
+  <section class="content">
+    <div class="toolbar">
+      <div class="left">
+        <span class="count"><b id="count">0</b> <span id="countlabel">quests</span></span>
+        <span id="activechips" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"></span>
+      </div>
+      <div class="sortwrap">Sort
+        <select id="sort">
+          <option value="guild">Guild &amp; category</option>
+          <option value="name">Name (A&#8211;Z)</option>
+          <option value="shots">Evidence (most first)</option>
+          <option value="tracked">Tracked first</option>
+        </select>
+      </div>
+    </div>
+    <div class="list scroll" id="list"></div>
+  </section>
+</main>
+<footer>
+  <label>Character <input type="text" id="player" placeholder="Valheim name"></label>
+  <label>Discord <span class="opt">(optional)</span> <input type="text" id="discord" placeholder="username"></label>
+  <span id="savednote"></span>
+  <button class="savebtn" id="save" disabled>Save quest-view.json</button>
+  <div class="hint">Drop the saved file into <b>Valheim/BepInEx/config/comfy-network-sense/quest-view.json</b> &#8212;
+    the in-game quest log (F7) shows exactly what you picked. Your selection stays saved in this page.
+    Curious how these quests got here? <a href="provenance.html" style="color:var(--gold)">Every
+    guild's artifact has a receipt</a>.</div>
+</footer>
+<script>
+var CATALOGS = [{"schema_version": 1, "guild": "Sample Guild", "era": 1, "source": {"kind": "sheet-xlsx", "detail": "../sample/sample-guild-tracker.xlsx :: Summons list for bot", "url": null, "retrieved": null}, "quests": [{"quest_id": "greydwarf_cull", "name": "Greydwarf Cull", "category": "Hunting", "coopable": true, "requirements": "Slay 20 greydwarves in one outing. 📸 one screenshot of the final tally.", "reward": null, "evidence": {"screenshots": 1, "video_alternative": false, "link": false, "group_turnin": false, "notes": true}, "evidence_note": null, "bot_command": "/summons summons_type: Greydwarf Cull image: summons_notes:", "auto_checked": false, "venue": "in_game", "trigger": null}, {"quest_id": "bronze_bell", "name": "Bronze Bell", "category": "Crafting", "coopable": false, "requirements": "Forge a full bronze set. 📸📸 before and after at the forge.", "reward": null, "evidence": {"screenshots": 2, "video_alternative": false, "link": false, "group_turnin": false, "notes": false}, "evidence_note": null, "bot_command": "/summons summons_type: Bronze Bell image: image2:", "auto_checked": false, "venue": "in_game", "trigger": null}, {"quest_id": "sail_the_serpent_sea", "name": "Sail the Serpent Sea", "category": "Exploration", "coopable": true, "requirements": "Cross open water at night with a serpent sighting. 🎞 video counts instead of screenshots. 🔗 clip link.", "reward": null, "evidence": {"screenshots": 0, "video_alternative": true, "link": true, "group_turnin": false, "notes": true}, "evidence_note": null, "bot_command": "/summons summons_type: Sail the Serpent Sea summons_url: summons_notes:", "auto_checked": false, "venue": "in_game", "trigger": null}, {"quest_id": "longhouse_raising", "name": "Longhouse Raising", "category": "Building", "coopable": true, "requirements": "Raise a longhouse with at least two clanmates. 🤜🤛 group turn-in.", "reward": null, "evidence": {"screenshots": 1, "video_alternative": false, "link": false, "group_turnin": true, "notes": false}, "evidence_note": null, "bot_command": "/summons summons_type: Longhouse Raising image: participants:", "auto_checked": false, "venue": "in_game", "trigger": null}, {"quest_id": "first_winter", "name": "First Winter", "category": "Milestones", "coopable": true, "requirements": "Survive to day 30. No submission, auto-checked.", "reward": null, "evidence": {"screenshots": 0, "video_alternative": false, "link": false, "group_turnin": false, "notes": false}, "evidence_note": null, "bot_command": null, "auto_checked": true, "venue": "in_game", "trigger": null}, {"quest_id": "troll_tussle", "name": "Troll Tussle", "category": "Hunting", "coopable": false, "requirements": "Defeat a troll without armor. 📸 proof at the corpse.", "reward": null, "evidence": {"screenshots": 1, "video_alternative": false, "link": false, "group_turnin": false, "notes": false}, "evidence_note": null, "bot_command": "/summons summons_type: Troll Scuffle image:", "auto_checked": false, "venue": "in_game", "trigger": null}]}];
+var PICKER_VERSION = 2;
+var STORE = 'comfy-quest-picker';
+
+var GUILD_CLASS = { slayers: 'g-slayers', rangers: 'g-rangers' };
+var PROOFS = [
+  { key: 'shots', label: '\uD83D\uDCF8 Screenshots', test: function (q) { return q.evidence.screenshots > 0; } },
+  { key: 'video', label: '\uD83C\uDF9E\uFE0F Video alt', test: function (q) { return q.evidence.video_alternative; } },
+  { key: 'link', label: '\uD83D\uDD17 Link', test: function (q) { return q.evidence.link; } },
+  { key: 'group', label: '\uD83E\uDD1C\uD83E\uDD1B Group', test: function (q) { return q.evidence.group_turnin || q.coopable; } },
+  { key: 'trigger', label: '\u26A1 Auto-capture', test: function (q) { return !!q.trigger; } },
+  { key: 'irl', label: '\uD83C\uDF0D IRL', test: function (q) { return q.venue === 'irl'; } },
+  { key: 'auto', label: 'Auto-checked', test: function (q) { return q.auto_checked; } }
+];
+
+var state = { selected: {}, player: '', discord: '' };
+try {
+  var raw = localStorage.getItem(STORE);
+  if (raw) { state = JSON.parse(raw); state.selected = state.selected || {}; }
+} catch (e) {}
+
+var filters = { q: '', guilds: [], cats: [], proofs: [], status: 'all', sort: 'guild' };
+var expandedKey = null;
+
+var ALL = [];
+CATALOGS.forEach(function (cat) {
+  cat.quests.forEach(function (q) {
+    ALL.push({ key: cat.guild + '/' + q.quest_id, guild: cat.guild, era: cat.era, q: q });
+  });
+});
+
+function persist() {
+  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {}
+}
+
+function el(tag, cls, text) {
+  var node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function toggleArr(arr, val) {
+  var i = arr.indexOf(val);
+  if (i === -1) arr.push(val); else arr.splice(i, 1);
+}
+
+function chip(label, isOn, onClick, dotColor) {
+  var c = el('button', 'chip' + (isOn ? ' on' : ''));
+  if (dotColor) {
+    var d = el('span', 'cdot');
+    d.style.background = dotColor;
+    c.appendChild(d);
+    if (isOn) { c.style.borderColor = dotColor; c.style.color = dotColor; c.style.background = dotColor + '26'; }
+  }
+  c.appendChild(document.createTextNode(label));
+  c.addEventListener('click', onClick);
+  return c;
+}
+
+function guildColor(guild) {
+  var g = guild.toLowerCase();
+  if (g === 'slayers') return getComputedStyle(document.documentElement).getPropertyValue('--slayers').trim();
+  if (g === 'rangers') return getComputedStyle(document.documentElement).getPropertyValue('--rangers').trim();
+  return getComputedStyle(document.documentElement).getPropertyValue('--gold').trim();
+}
+
+function matches(item) {
+  var q = item.q;
+  if (filters.guilds.length && filters.guilds.indexOf(item.guild) === -1) return false;
+  if (filters.cats.length && filters.cats.indexOf(item.guild + ':' + q.category) === -1) return false;
+  if (filters.proofs.length) {
+    var any = filters.proofs.some(function (key) {
+      var p = PROOFS.filter(function (x) { return x.key === key; })[0];
+      return p && p.test(q);
+    });
+    if (!any) return false;
+  }
+  var tracked = !!state.selected[item.key];
+  if (filters.status === 'tracked' && !tracked) return false;
+  if (filters.status === 'untracked' && tracked) return false;
+  if (filters.q) {
+    var hay = (q.name + ' ' + (q.requirements || '') + ' ' + (q.reward || '') + ' ' + q.category + ' ' + item.guild).toLowerCase();
+    if (hay.indexOf(filters.q) === -1) return false;
+  }
+  return true;
+}
+
+function sortList(list) {
+  var s = filters.sort;
+  list.sort(function (a, b) {
+    if (s === 'name') return a.q.name.localeCompare(b.q.name);
+    if (s === 'shots') return (b.q.evidence.screenshots - a.q.evidence.screenshots) || a.q.name.localeCompare(b.q.name);
+    if (s === 'tracked') {
+      var ta = state.selected[a.key] ? 0 : 1, tb = state.selected[b.key] ? 0 : 1;
+      if (ta !== tb) return ta - tb;
+    }
+    return a.guild.localeCompare(b.guild) || a.q.category.localeCompare(b.q.category) || a.q.name.localeCompare(b.q.name);
+  });
+  return list;
+}
+
+function evidencePills(item) {
+  var q = item.q;
+  var wrap = el('span', 'pills');
+  if (q.reward) wrap.appendChild(el('span', 'pill reward', q.reward));
+  if (q.evidence.screenshots > 0) wrap.appendChild(el('span', 'pill', '\uD83D\uDCF8\u00D7' + q.evidence.screenshots));
+  if (q.evidence.video_alternative) wrap.appendChild(el('span', 'pill muted', '\uD83C\uDF9E\uFE0F'));
+  if (q.evidence.link) wrap.appendChild(el('span', 'pill muted', '\uD83D\uDD17'));
+  if (q.evidence.group_turnin || q.coopable) wrap.appendChild(el('span', 'pill muted', '\uD83E\uDD1C\uD83E\uDD1B'));
+  if (q.evidence.notes) wrap.appendChild(el('span', 'pill muted', 'notes'));
+  if (q.trigger) wrap.appendChild(el('span', 'pill trig', '\u26A1 auto'));
+  if (q.venue === 'irl') wrap.appendChild(el('span', 'pill muted', '\uD83C\uDF0D IRL'));
+  if (q.auto_checked) wrap.appendChild(el('span', 'pill muted', 'auto-checked'));
+  return wrap;
+}
+
+function questRow(item) {
+  var q = item.q;
+  var tracked = !!state.selected[item.key];
+  var cls = GUILD_CLASS[item.guild.toLowerCase()] || 'g-other';
+  var row = el('div', 'qrow ' + cls + (tracked ? ' on' : ''));
+
+  var check = el('button', 'check', tracked ? '\u2713' : '');
+  check.setAttribute('aria-label', 'track');
+  check.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (state.selected[item.key]) delete state.selected[item.key]; else state.selected[item.key] = true;
+    persist(); render();
+  });
+
+  var nameWrap = el('div');
+  var name = el('div', 'qname', q.name);
+  if (q.name_note) name.appendChild(el('span', 'note', q.name_note));
+  nameWrap.appendChild(name);
+  nameWrap.appendChild(el('div', 'qsub', item.guild + ' \u00B7 ' + q.category));
+
+  row.appendChild(check);
+  row.appendChild(nameWrap);
+  row.appendChild(evidencePills(item));
+
+  if (expandedKey === item.key) {
+    var detail = el('div', 'qdetail');
+    detail.appendChild(el('div', 'qreq', q.requirements || '(no requirements text)'));
+    var meta = [];
+    if (q.evidence_note) meta.push('Evidence: ' + q.evidence_note);
+    if (q.bot_command) meta.push('Turn-in: ' + q.bot_command);
+    if (meta.length) detail.appendChild(el('div', 'qmeta', meta.join('\n')));
+    row.appendChild(detail);
+  }
+
+  row.addEventListener('click', function () {
+    expandedKey = expandedKey === item.key ? null : item.key;
+    render();
+  });
+  return row;
+}
+
+function activeFilterChips() {
+  var wrap = document.getElementById('activechips');
+  wrap.innerHTML = '';
+  var actives = [];
+  filters.guilds.forEach(function (g) {
+    actives.push({ label: g, fn: function () { toggleArr(filters.guilds, g); } });
+  });
+  filters.cats.forEach(function (c) {
+    actives.push({ label: c.split(':')[1], fn: function () { toggleArr(filters.cats, c); } });
+  });
+  filters.proofs.forEach(function (p) {
+    var def = PROOFS.filter(function (x) { return x.key === p; })[0];
+    actives.push({ label: def ? def.label : p, fn: function () { toggleArr(filters.proofs, p); } });
+  });
+  if (filters.status !== 'all') {
+    actives.push({ label: filters.status === 'tracked' ? 'Tracked only' : 'Untracked only',
+                   fn: function () { filters.status = 'all'; } });
+  }
+  if (filters.q) {
+    actives.push({ label: '"' + filters.q + '"',
+                   fn: function () { filters.q = ''; document.getElementById('search').value = ''; } });
+  }
+
+  actives.forEach(function (a) {
+    var c = el('button', 'activechip');
+    c.appendChild(document.createTextNode(a.label));
+    c.appendChild(el('span', 'x', '\u00D7'));
+    c.addEventListener('click', function () { a.fn(); render(); });
+    wrap.appendChild(c);
+  });
+  if (actives.length) {
+    var clear = el('button', 'clearall', 'clear all');
+    clear.addEventListener('click', function () {
+      filters.q = ''; filters.guilds = []; filters.cats = []; filters.proofs = []; filters.status = 'all';
+      document.getElementById('search').value = '';
+      render();
+    });
+    wrap.appendChild(clear);
+  }
+}
+
+function renderRail() {
+  var fg = document.getElementById('f-guilds');
+  fg.innerHTML = '';
+  CATALOGS.forEach(function (cat) {
+    fg.appendChild(chip(cat.guild, filters.guilds.indexOf(cat.guild) !== -1, function () {
+      toggleArr(filters.guilds, cat.guild); render();
+    }, guildColor(cat.guild)));
+  });
+
+  var fc = document.getElementById('f-cats');
+  fc.innerHTML = '';
+  CATALOGS.forEach(function (cat) {
+    var seen = {};
+    cat.quests.forEach(function (q) {
+      if (seen[q.category]) return;
+      seen[q.category] = true;
+      var key = cat.guild + ':' + q.category;
+      if (filters.guilds.length && filters.guilds.indexOf(cat.guild) === -1) return;
+      fc.appendChild(chip(q.category, filters.cats.indexOf(key) !== -1, function () {
+        toggleArr(filters.cats, key); render();
+      }));
+    });
+  });
+
+  var fp = document.getElementById('f-proofs');
+  fp.innerHTML = '';
+  PROOFS.forEach(function (p) {
+    fp.appendChild(chip(p.label, filters.proofs.indexOf(p.key) !== -1, function () {
+      toggleArr(filters.proofs, p.key); render();
+    }));
+  });
+
+  var fs = document.getElementById('f-status');
+  fs.innerHTML = '';
+  [['all', 'All'], ['untracked', 'Untracked'], ['tracked', 'Tracked']].forEach(function (s) {
+    fs.appendChild(chip(s[1], filters.status === s[0], function () {
+      filters.status = s[0]; render();
+    }));
+  });
+}
+
+function render() {
+  renderRail();
+  activeFilterChips();
+
+  var list = sortList(ALL.filter(matches));
+  var root = document.getElementById('list');
+  root.innerHTML = '';
+  if (!list.length) {
+    root.appendChild(el('div', 'empty', 'No quests match these filters.'));
+  } else {
+    list.forEach(function (item) { root.appendChild(questRow(item)); });
+  }
+  document.getElementById('count').textContent = list.length;
+  document.getElementById('countlabel').textContent = 'quest' + (list.length === 1 ? '' : 's');
+
+  var n = Object.keys(state.selected).length;
+  document.getElementById('trackcount').textContent = n + ' tracked';
+  document.getElementById('trackpill').className = 'trackpill' + (n ? ' on' : '');
+  document.getElementById('save').disabled = n === 0 || !state.player.trim();
+}
+
+function buildView() {
+  var quests = [];
+  CATALOGS.forEach(function (cat) {
+    cat.quests.forEach(function (q) {
+      if (state.selected[cat.guild + '/' + q.quest_id]) {
+        var copy = JSON.parse(JSON.stringify(q));
+        copy.guild = cat.guild;
+        copy.era = cat.era;
+        quests.push(copy);
+      }
+    });
+  });
+  return {
+    schema_version: 1,
+    player: { name: state.player || '', discord: state.discord || null },
+    created_at: new Date().toISOString(),
+    picker_version: PICKER_VERSION,
+    quests: quests
+  };
+}
+
+document.getElementById('search').addEventListener('input', function (e) {
+  filters.q = e.target.value.toLowerCase().trim(); render();
+});
+document.getElementById('sort').addEventListener('change', function (e) {
+  filters.sort = e.target.value; render();
+});
+
+var playerEl = document.getElementById('player');
+var discordEl = document.getElementById('discord');
+playerEl.value = state.player || '';
+discordEl.value = state.discord || '';
+playerEl.addEventListener('input', function () { state.player = playerEl.value; persist(); render(); });
+discordEl.addEventListener('input', function () { state.discord = discordEl.value; persist(); });
+
+document.getElementById('save').addEventListener('click', function () {
+  var view = buildView();
+  var blob = new Blob([JSON.stringify(view, null, 2) + '\n'], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'quest-view.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  document.getElementById('savednote').textContent =
+    'Saved ' + view.quests.length + ' quest(s) for ' + view.player.name;
+});
+
+render();
+</script>
+</body>
+</html>
+
+<!-- SAMPLE-CATALOG: synthetic demonstration data only -->
