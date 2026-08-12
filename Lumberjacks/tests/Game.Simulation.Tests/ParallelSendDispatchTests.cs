@@ -24,9 +24,9 @@ namespace Game.Simulation.Tests;
 ///      once (chunking correctness survives the switch from Task.WhenAll);
 ///   3. per-chunk-local accumulators (sent/culled/aborts) sum correctly at the join, mirroring
 ///      TickBroadcaster's SendAccumulator pattern;
-///   4. MaxDegreeOfParallelism>1 chunks actually run concurrently on distinct pool threads —
-///      the thing the phase 3a bug got wrong — using a Barrier so an inline-serial dispatch
-///      would deadlock/time out instead of silently passing.
+///   4. MaxDegreeOfParallelism>1 chunks are in flight concurrently — the thing the phase 3a
+///      bug got wrong — using an asynchronous rendezvous so an inline-serial dispatch times
+///      out instead of silently passing, without blocking the runner's thread pool.
 /// </summary>
 public class ParallelSendDispatchTests
 {
@@ -113,30 +113,56 @@ public class ParallelSendDispatchTests
         // Directly reproduces the phase 3a bug as a regression guard: if chunk bodies ran
         // inline-serial (the old "await SendChunkAsync(...) directly, then Task.WhenAll" shape,
         // where every await resolves synchronously), the first participant to reach the
-        // barrier would block waiting for the other three — which would never arrive, because
-        // execution wouldn't move on to the next chunk until the current one (blocked on the
-        // barrier) finished. Parallel.ForEachAsync's Task.Run-per-worker dispatch means all
-        // `workers` chunks are in flight on distinct thread-pool threads at once, so the
-        // barrier releases promptly for every participant.
+        // rendezvous would wait for the other three — which would never arrive, because
+        // execution wouldn't move on to the next chunk until the current one finished.
+        // Parallel.ForEachAsync schedules multiple worker loops, so all `workers` chunks can
+        // reach the rendezvous before any is released.
+        //
+        // This deliberately uses an async gate instead of Barrier.SignalAndWait. Blocking all
+        // four pool threads makes the assertion depend on the hosted runner's thread-pool
+        // hill-climbing timing and can manufacture a ten-second failure even when the dispatch
+        // is correct. The async gate proves overlapping in-flight chunk bodies while returning
+        // each waiting worker to the pool.
         const int workers = 4;
         var chunks = SendFanOut.Chunk(count: workers, workers); // exactly 1 item per chunk
-        using var barrier = new Barrier(workers);
-        var released = new bool[workers];
+        var allArrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var arrivals = 0;
+        var entered = new bool[workers];
 
         var dispatch = Parallel.ForEachAsync(
             Enumerable.Range(0, chunks.Count),
             new ParallelOptions { MaxDegreeOfParallelism = workers },
-            (i, _) =>
+            async (i, cancellationToken) =>
             {
-                released[i] = barrier.SignalAndWait(TimeSpan.FromSeconds(5));
-                return ValueTask.CompletedTask;
+                entered[i] = true;
+                if (Interlocked.Increment(ref arrivals) == workers)
+                    allArrived.TrySetResult();
+
+                await release.Task.WaitAsync(cancellationToken);
             });
 
-        var completed = await Task.WhenAny(dispatch, Task.Delay(TimeSpan.FromSeconds(10)));
-        Assert.Same(dispatch, completed); // didn't hit the outer timeout
-        await dispatch; // propagate any fault (e.g. a broken barrier) instead of swallowing it
+        var timedOut = false;
+        try
+        {
+            await allArrived.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        catch (TimeoutException)
+        {
+            timedOut = true;
+        }
+        finally
+        {
+            // Always let already-started delegates finish, including on the failure path, so a
+            // failed assertion cannot strand work that contaminates later tests in this process.
+            release.TrySetResult();
+        }
 
-        Assert.All(released, Assert.True);
+        await dispatch; // propagate a worker fault instead of swallowing it
+
+        Assert.False(timedOut, $"only {Volatile.Read(ref arrivals)} of {workers} chunks overlapped");
+        Assert.Equal(workers, Volatile.Read(ref arrivals));
+        Assert.All(entered, Assert.True);
     }
 
     // ── SocketForChunk distinctness under true concurrency (phase 3a′ UDP-safety guarantee) ──
