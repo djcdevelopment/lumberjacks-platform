@@ -56,8 +56,19 @@ $sandbox = Join-Path ([IO.Path]::GetTempPath()) ('lumberjacks-mod-release-' + [G
 New-Item -ItemType Directory -Path $sandbox | Out-Null
 try {
     $dllPath = Join-Path $sandbox 'ComfyNetworkSense.dll'
-    $source = [IO.File]::ReadAllText((Join-Path $fixtureRoot 'ComfyNetworkSense.fixture.cs'))
-    Add-Type -TypeDefinition $source -Language CSharp -OutputAssembly $dllPath
+    # Add-Type names and stamps output assemblies differently in Windows
+    # PowerShell 5.1 and PowerShell 7. Build the tiny checked-in fixture project
+    # with the SDK so both shells verify identical managed-identity semantics.
+    $fixtureProjectRoot = Join-Path $sandbox 'fixture-project'
+    $fixtureOutput = Join-Path $fixtureProjectRoot 'out'
+    New-Item -ItemType Directory -Path $fixtureProjectRoot | Out-Null
+    Copy-Item -LiteralPath (Join-Path $fixtureRoot 'ComfyNetworkSense.fixture.cs') -Destination $fixtureProjectRoot
+    Copy-Item -LiteralPath (Join-Path $fixtureRoot 'ComfyNetworkSense.fixture.csproj') -Destination $fixtureProjectRoot
+    & dotnet build (Join-Path $fixtureProjectRoot 'ComfyNetworkSense.fixture.csproj') `
+        -c Release -o $fixtureOutput --nologo --verbosity quiet
+    if ($LASTEXITCODE -ne 0) { throw 'could not build the synthetic managed release fixture' }
+    Copy-Item -LiteralPath (Join-Path $fixtureOutput 'ComfyNetworkSense.dll') -Destination $dllPath
+    Remove-Item -LiteralPath $fixtureProjectRoot -Recurse -Force
 
     $releaseIdentityLib = Join-Path $repoRoot 'infra\gcp\p7\scripts\lib\ReleaseIdentity.ps1'
     . $releaseIdentityLib

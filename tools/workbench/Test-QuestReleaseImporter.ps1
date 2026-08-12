@@ -69,6 +69,16 @@ function Write-TestZip {
     }
 }
 
+$fixtureTimestamp = '2030-01-02T03:04:05Z'
+Assert-Test ((ConvertTo-QuestCanonicalTimestamp $fixture.published_at) -ceq $fixtureTimestamp) 'JSON-coerced fixture timestamp did not remain canonical.'
+$fixtureDateTime = [DateTime]::Parse(
+    $fixtureTimestamp,
+    [Globalization.CultureInfo]::InvariantCulture,
+    [Globalization.DateTimeStyles]::RoundtripKind)
+Assert-Test ((ConvertTo-QuestCanonicalTimestamp $fixtureTimestamp) -ceq $fixtureTimestamp) 'String timestamp did not remain canonical.'
+Assert-Test ((ConvertTo-QuestCanonicalTimestamp $fixtureDateTime) -ceq $fixtureTimestamp) 'DateTime timestamp did not remain canonical.'
+$checks.Add('PowerShell 5 string and PowerShell 7 DateTime timestamps: passed')
+
 function New-ReleaseFixture {
     param([string]$Path)
     New-Item -ItemType Directory -Path $Path | Out-Null

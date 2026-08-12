@@ -367,7 +367,7 @@
       <div class="headline">M0 CLOSED — FROZEN RELEASE LIVE AND PUBLIC · VOLUNTEER PLATFORM NOT READY</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-12T09:49:13.390Z</span>
+        <span>Updated 2026-08-12T10:01:11.150Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1017,7 +1017,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260812094913-make-cross-repository-release-boundaries-executa">
+        <div class="journal"><article class="journal-entry" id="note-20260812100111-make-release-fixture-gates-type-stable-across-po">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-12T10:01:11.150Z">2026-08-12T10:01:11.150Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>A7 · M7</span>
+      </div>
+      <h3>Make release fixture gates type-stable across PowerShell generations</h3>
+      <p><strong>Impact:</strong> The Quest importer now canonicalizes timestamps whether ConvertFrom-Json returns a string on Windows PowerShell 5.1 or a DateTime on PowerShell 7. The NetworkSense tamper fixture now builds a named managed assembly through the SDK because Add-Type stamps different names and file versions between those shells; the pure release verifier itself remains build-free.</p>
+      <details><summary>Verification (2)</summary><ul><li>The complete guards job command sequence passes under PowerShell 7.6.4, including Transport rehearsal, Quest positive and all tamper negatives, and the executed NetworkSense DLL tamper negative.</li><li>The Quest importer suite also passes under Windows PowerShell 5.1 and carries direct string/DateTime canonicalization regression assertions.</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>tools/workbench/Test-QuestReleaseImporter.ps1</code> <code>tools/Test-ArtifactHashGate.ps1</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260812094913-make-cross-repository-release-boundaries-executa">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

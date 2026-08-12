@@ -314,9 +314,24 @@ function Test-QuestReleaseBundle {
 }
 
 function ConvertTo-QuestCanonicalTimestamp {
-    param([Parameter(Mandatory = $true)][string]$Timestamp)
+    param([Parameter(Mandatory = $true)]$Timestamp)
     try {
-        $parsed = [DateTimeOffset]::Parse($Timestamp, [Globalization.CultureInfo]::InvariantCulture)
+        if ($Timestamp -is [DateTimeOffset]) {
+            $parsed = [DateTimeOffset]$Timestamp
+        }
+        elseif ($Timestamp -is [DateTime]) {
+            $dateTime = [DateTime]$Timestamp
+            if ($dateTime.Kind -eq [DateTimeKind]::Unspecified) {
+                $dateTime = [DateTime]::SpecifyKind($dateTime, [DateTimeKind]::Utc)
+            }
+            $parsed = [DateTimeOffset]$dateTime
+        }
+        else {
+            $parsed = [DateTimeOffset]::Parse(
+                [string]$Timestamp,
+                [Globalization.CultureInfo]::InvariantCulture,
+                [Globalization.DateTimeStyles]::RoundtripKind)
+        }
     }
     catch {
         throw "PublishedAt is not a timestamp: $Timestamp"
@@ -398,8 +413,7 @@ function Get-QuestCanonicalLock {
     Assert-QuestCondition ([string]$Lock.release_manifest_sha256 -cmatch '^[0-9a-f]{64}$') 'Pinned Quest lock manifest SHA-256 is invalid.'
     Assert-QuestCondition ([string]$Lock.revision -cmatch '^[0-9a-f]{40}$') 'Pinned Quest lock revision is invalid.'
     Assert-QuestCondition ([string]$Lock.version -ceq (Get-QuestVersionFromTag ([string]$Lock.release_tag))) 'Pinned Quest lock version does not match its tag.'
-    $publishedAt = ConvertTo-QuestCanonicalTimestamp ([string]$Lock.published_at)
-    Assert-QuestCondition ([string]$Lock.published_at -ceq $publishedAt) 'Pinned Quest lock published_at is not canonical UTC.'
+    $publishedAt = ConvertTo-QuestCanonicalTimestamp $Lock.published_at
     $artifactMap = Get-QuestArtifactMap $Lock 'Quest lock'
     $destinations = @($Lock.destinations)
     Assert-QuestCondition ($destinations.Count -eq $script:QuestAssetNames.Count) 'Pinned Quest lock must name exactly four destinations.'
@@ -494,7 +508,8 @@ function Get-QuestUpdatedWorkbenchCatalogText {
         $row = $Verification.Artifacts[$mapping.Asset]
         Assert-QuestCondition ([string]$tool[0].access.sha256 -ceq [string]$row.sha256) 'Updated Workbench catalog SHA-256 did not round-trip.'
         Assert-QuestCondition ([long]$tool[0].access.size_bytes -eq [long]$row.bytes) 'Updated Workbench catalog byte count did not round-trip.'
-        Assert-QuestCondition ([string]$tool[0].access.published_at -ceq $canonicalPublishedAt) 'Updated Workbench catalog timestamp did not round-trip.'
+        $catalogPublishedAt = ConvertTo-QuestCanonicalTimestamp $tool[0].access.published_at
+        Assert-QuestCondition ($catalogPublishedAt -ceq $canonicalPublishedAt) 'Updated Workbench catalog timestamp did not round-trip.'
     }
     return $updated
 }
@@ -624,7 +639,8 @@ function Test-QuestReleaseLock {
         $row = $lockArtifacts[$mapping.Asset]
         Assert-QuestCondition ([string]$tool[0].access.sha256 -ceq [string]$row.sha256) "Workbench '$($mapping.Id)' SHA-256 does not match the Quest lock."
         Assert-QuestCondition ([long]$tool[0].access.size_bytes -eq [long]$row.bytes) "Workbench '$($mapping.Id)' byte count does not match the Quest lock."
-        Assert-QuestCondition ([string]$tool[0].access.published_at -ceq [string]$canonical.published_at) "Workbench '$($mapping.Id)' publication timestamp does not match the Quest lock."
+        $catalogPublishedAt = ConvertTo-QuestCanonicalTimestamp $tool[0].access.published_at
+        Assert-QuestCondition ($catalogPublishedAt -ceq [string]$canonical.published_at) "Workbench '$($mapping.Id)' publication timestamp does not match the Quest lock."
     }
 
     return [pscustomobject][ordered]@{
@@ -641,6 +657,7 @@ Export-ModuleMember -Function @(
     'Get-QuestReleaseAssetNames',
     'Get-QuestReleaseFileNames',
     'Get-QuestReleaseSha256',
+    'ConvertTo-QuestCanonicalTimestamp',
     'Test-QuestReleaseBundle',
     'New-UnpinnedQuestReleaseLock',
     'New-PinnedQuestReleaseLock',
