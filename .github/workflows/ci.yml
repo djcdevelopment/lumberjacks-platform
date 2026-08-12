@@ -61,7 +61,11 @@ jobs:
       run:
         working-directory: Lumberjacks
     steps:
+      # Workbench provenance names the last commit that touched its inputs; a
+      # depth-one checkout cannot answer that when HEAD is the rendered output.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22

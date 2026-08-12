@@ -12,7 +12,9 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PS = "powershell"
+# Prefer supported, cross-platform PowerShell. Windows PowerShell remains a
+# fallback for developer machines that do not have pwsh installed.
+PS = shutil.which("pwsh") or shutil.which("powershell") or "powershell"
 PYTHON = sys.executable
 GENERATOR = ROOT / "tools" / "guest-package" / "build-guest-package.ps1"
 PREFLIGHT = ROOT / "tools" / "guest-package" / "Invoke-GuestPreflight.ps1"
