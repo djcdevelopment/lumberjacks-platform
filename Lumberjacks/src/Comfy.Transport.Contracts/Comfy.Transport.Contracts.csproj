@@ -20,11 +20,21 @@
   <PropertyGroup>
     <PackageId>Comfy.Transport.Contracts</PackageId>
     <Version>0.1.0-local</Version>
+    <Title>Comfy Transport Contracts</Title>
     <Authors>djcdevelopment</Authors>
+    <PackageProjectUrl>https://github.com/djcdevelopment/lumberjacks-platform</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/djcdevelopment/lumberjacks-platform</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageLicenseExpression>BUSL-1.1</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReadmeFile>PACKAGE-README.md</PackageReadmeFile>
+    <PackageTags>valheim;transport;contracts;modding</PackageTags>
     <Description>Routed-RPC admission table and Zdo/vehicle relevance policies shared byte-for-byte between ComfyNetworkSense, Game.Contracts/Game.Gateway, and authority-lab.</Description>
     <ContentTargetFolders>contentFiles</ContentTargetFolders>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="PACKAGE-README.md" Pack="true" PackagePath="\" />
     <None Include="Valheim\*.cs"
           Pack="true"
           PackagePath="contentFiles\cs\any\Valheim\%(Filename)%(Extension)"

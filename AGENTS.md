@@ -12,6 +12,23 @@ State-changing automation must dot-source `tools/Assert-RepoIdentity.ps1` and
 call `Assert-RepoIdentity` before the first mutation. Paths derive from the
 script location or an explicit parameter.
 
+## Release boundaries
+
+Read [`docs/RELEASE-READINESS.md`](docs/RELEASE-READINESS.md) before changing a
+cross-repository pin. `Comfy.Transport.Contracts` publishes only through the
+`nuget-v*` workflow; it never treats an existing version as a skipped success.
+Quest dependencies move from the exact interim profile to the exact public
+profile only through `tools/dependencies/Set-DependencyProfile.ps1`, as one
+transaction. NetworkSense and Quest releases are downloaded inputs verified
+from their producer manifests; missing releases never authorize sibling-source
+builds.
+
+Current external blockers (verified 2026-08-12): `NUGET_API_KEY` is absent,
+none of the three public 0.1.0 contract packages is available on NuGet.org,
+and `comfy-quest` has no GitHub release. Therefore do not create a release tag,
+publish a package/release, activate the public profile, or deploy as part of
+readiness work.
+
 ## Landing work
 
 “Go”, “push”, “land it”, or “ship it” authorizes commit and direct push to

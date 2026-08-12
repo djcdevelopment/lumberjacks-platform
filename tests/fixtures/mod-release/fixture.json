@@ -1,0 +1,10 @@
+{
+  "schema": "lumberjacks-mod-release-fixture/v1",
+  "tag": "mod-v1.2.3-fixture",
+  "source_revision": "0123456789abcdef0123456789abcdef01234567",
+  "release_id": "m9-fixture-20260812-r1",
+  "plugin_version": "1.2.3",
+  "dependency_profile": "interim",
+  "expected_tamper_error": "ComfyNetworkSense.dll SHA-256 mismatch",
+  "fixture_only": "Synthetic consumer-contract fixture. It is not a published or deployable NetworkSense release."
+}

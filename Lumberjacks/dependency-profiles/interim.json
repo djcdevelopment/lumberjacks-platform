@@ -1,0 +1,19 @@
+{
+  "schema": "lumberjacks-dependency-profile/v1",
+  "name": "interim",
+  "packages": {
+    "Comfy.Quest.Contracts": "[0.1.0-local]",
+    "Comfy.Quest.Studio": "[0.1.0-local]"
+  },
+  "package_sources": [
+    {
+      "key": "packages-local",
+      "value": "packages-local"
+    },
+    {
+      "key": "nuget.org",
+      "value": "https://api.nuget.org/v3/index.json"
+    }
+  ],
+  "companion_tests_studio_reference": "PackageReference"
+}

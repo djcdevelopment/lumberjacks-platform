@@ -13,11 +13,12 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.16.0" />
-    <!-- Cross-repo boundary package (comfy-quest owns it); 0.1.0-local resolves from the root
-         nuget.config local-contracts feed until Phase 3 repins to a published NuGet.org version. -->
-    <PackageVersion Include="Comfy.Quest.Contracts" Version="0.1.0-local" />
-    <!-- Quest Studio carve (finding F4): Comfy.Quest.Studio, packed from
-         Lumberjacks/src/Quest.Studio into the same local-contracts feed. -->
-    <PackageVersion Include="Comfy.Quest.Studio" Version="0.1.0-local" />
+    <!-- Cross-repo boundary package (comfy-quest owns it). The active interim profile is exact
+         and resolves only the rehearsed package from packages-local; the public profile is
+         committed separately and becomes usable after the coordinated 0.1.0 publication. -->
+    <PackageVersion Include="Comfy.Quest.Contracts" Version="[0.1.0-local]" />
+    <!-- Quest Studio is published by comfy-quest; its interim rehearsal package is
+         frozen in packages-local alongside Contracts. -->
+    <PackageVersion Include="Comfy.Quest.Studio" Version="[0.1.0-local]" />
   </ItemGroup>
 </Project>

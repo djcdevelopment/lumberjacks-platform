@@ -8,6 +8,8 @@ Start with [`BOUNDARY.md`](BOUNDARY.md) for ownership and artifact contracts,
 then [`Lumberjacks/README.md`](Lumberjacks/README.md) for platform development.
 The extraction record and baseline commit map live in
 [`PROVENANCE.md`](PROVENANCE.md).
+Cross-repository publication/import blockers and the no-deploy verification
+commands live in [`docs/RELEASE-READINESS.md`](docs/RELEASE-READINESS.md).
 
 ```powershell
 C:\work\dotnet9\dotnet.exe build Lumberjacks\Game.sln -c Release

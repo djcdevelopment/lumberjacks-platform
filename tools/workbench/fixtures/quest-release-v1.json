@@ -1,0 +1,17 @@
+{
+  "schema": "lumberjacks-quest-release-fixture/v1",
+  "release_tag": "quest-v9.8.7-split-proof",
+  "revision": "0123456789abcdef0123456789abcdef01234567",
+  "version": "9.8.7",
+  "release_id": "quest-fixture-9.8.7",
+  "published_at": "2030-01-02T03:04:05Z",
+  "questlab_html": "<!doctype html><title>ComfyQuestLab fixture</title><p>fixture tome</p>\n",
+  "quest_picker_html": "<!doctype html><title>Quest Picker fixture</title><!-- SAMPLE-CATALOG: synthetic demonstration data only -->\n",
+  "quest_lab_dll_base64": "Zml4dHVyZS1xdWVzdC1sYWItZGxs",
+  "expected_assets": [
+    "questlab.html",
+    "quest-lab.zip",
+    "quest-picker.html",
+    "quest-picker.zip"
+  ]
+}

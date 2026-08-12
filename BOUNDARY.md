@@ -20,11 +20,11 @@
 
 | Direction | Artifact | Verification |
 | --- | --- | --- |
-| publishes | `Comfy.Transport.Contracts` | exact NuGet version; local `0.1.0-local` rehearsal until Phase 3 |
+| publishes | `Comfy.Transport.Contracts` | exact NuGet version; strict tag/commit/payload validation and NuGet.org availability proof |
 | publishes | Gateway/service images | immutable image digest and release identity |
-| consumes | `Comfy.Quest.Contracts`, `Comfy.Quest.Studio` | exact package version; local feed only during extraction |
-| consumes | `ComfyNetworkSense.dll` | release tag, manifest schema, bytes, SHA-256, and baked release ID |
-| consumes | Quest Lab/Picker assets | release tag plus manifest SHA-256 |
+| consumes | `Comfy.Quest.Contracts`, `Comfy.Quest.Studio` | exact `[0.1.0]` public profile; explicit exact `[0.1.0-local]` interim profile until publication |
+| consumes | `ComfyNetworkSense.dll` | manifest v1 + SHA256SUMS, bytes, managed identity, source/tag, and baked release ID |
+| consumes | Quest Lab/Picker assets | comfy-quest manifest v1, exact four-asset verification, release tag, and pinned manifest SHA-256 |
 
 Sibling source trees are never a fallback. A missing package or artifact is a
 hard boundary failure, not permission to build another repository’s source.

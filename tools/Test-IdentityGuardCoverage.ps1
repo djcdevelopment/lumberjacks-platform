@@ -26,6 +26,8 @@ $entrypoints = @(
     'tools/p7/Invoke-C10bCandidateProof.ps1',
     'tools/p7/Invoke-C10bPairPromotion.ps1',
     'tools/p7/Invoke-P7BootDeterminism.ps1',
+    'tools/dependencies/Set-DependencyProfile.ps1',
+    'tools/workbench/Import-QuestRelease.ps1',
     'tools/wave0/Start-Wave0LiveGate.ps1',
     'Lumberjacks/tools/companion/New-CompanionBootstrap.ps1',
     'Lumberjacks/tools/companion/Start-LocalCompanion.ps1',

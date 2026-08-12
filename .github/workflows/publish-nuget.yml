@@ -1,0 +1,107 @@
+name: publish Transport NuGet package
+
+on:
+  push:
+    tags:
+      - "nuget-v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-transport-nuget-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: nuget-production
+    env:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate tag, commit, and publication authority
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_NAME" != "nuget-v0.1.0" ]]; then
+            echo "This first-publication lane accepts only nuget-v0.1.0; got $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          if [[ -z "${NUGET_API_KEY// }" ]]; then
+            echo "NUGET_API_KEY is not configured" >&2
+            exit 1
+          fi
+          tag_commit="$(git rev-parse "refs/tags/$GITHUB_REF_NAME^{commit}")"
+          if [[ "$tag_commit" != "$GITHUB_SHA" ]]; then
+            echo "Tag target $tag_commit does not match workflow commit $GITHUB_SHA" >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Publication commit $GITHUB_SHA is not reachable from origin/main" >&2
+            exit 1
+          fi
+          echo "value=0.1.0" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse an existing public version
+        run: >-
+          python tools/nuget/nuget_availability.py assert-absent
+          --id Comfy.Transport.Contracts
+          --version ${{ steps.version.outputs.value }}
+
+      - name: Pack immutable Transport contracts
+        run: |
+          dotnet pack Lumberjacks/src/Comfy.Transport.Contracts/Comfy.Transport.Contracts.csproj \
+            -c Release \
+            -o artifacts/nuget/local \
+            -p:Version=${{ steps.version.outputs.value }} \
+            -p:RepositoryCommit=${{ github.sha }} \
+            -p:ContinuousIntegrationBuild=true
+
+      - name: Validate ID, version, commit, dependencies, and payload
+        run: |
+          python tools/nuget/validate_transport_nupkg.py \
+            --package artifacts/nuget/local/Comfy.Transport.Contracts.${{ steps.version.outputs.value }}.nupkg \
+            --version ${{ steps.version.outputs.value }} \
+            --commit ${{ github.sha }} \
+            --source-root Lumberjacks/src/Comfy.Transport.Contracts
+
+      - name: Publish once
+        run: |
+          dotnet nuget push artifacts/nuget/local/Comfy.Transport.Contracts.${{ steps.version.outputs.value }}.nupkg \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY"
+
+      - name: Poll NuGet.org and validate the served package
+        run: |
+          python tools/nuget/nuget_availability.py wait \
+            --id Comfy.Transport.Contracts \
+            --version ${{ steps.version.outputs.value }} \
+            --out artifacts/nuget/public/Comfy.Transport.Contracts.${{ steps.version.outputs.value }}.nupkg \
+            --timeout 900
+          python tools/nuget/validate_transport_nupkg.py \
+            --package artifacts/nuget/public/Comfy.Transport.Contracts.${{ steps.version.outputs.value }}.nupkg \
+            --version ${{ steps.version.outputs.value }} \
+            --commit ${{ github.sha }} \
+            --source-root Lumberjacks/src/Comfy.Transport.Contracts \
+            --allow-repository-signature
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inspected-transport-package-${{ github.sha }}
+          path: artifacts/nuget/
+          if-no-files-found: error

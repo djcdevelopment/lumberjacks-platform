@@ -62,3 +62,34 @@ function Get-AssemblyMetadataValue {
   } finally { $stream.Dispose() }
   return $null
 }
+
+function Get-ManagedAssemblyIdentity {
+  param([Parameter(Mandatory = $true)][string] $DllPath)
+
+  if (!(Test-Path -LiteralPath $DllPath -PathType Leaf)) {
+    throw "artifact not found: $DllPath"
+  }
+
+  Initialize-MetadataReader
+  $fullPath = (Resolve-Path -LiteralPath $DllPath).Path
+  $stream = [IO.File]::OpenRead($fullPath)
+  try {
+    $pe = New-Object System.Reflection.PortableExecutable.PEReader($stream)
+    try {
+      if (-not $pe.HasMetadata) { throw "artifact is not a managed assembly: $fullPath" }
+      $metadata = [System.Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($pe)
+      $assembly = $metadata.GetAssemblyDefinition()
+      $module = $metadata.GetModuleDefinition()
+      $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($fullPath).FileVersion
+
+      [pscustomobject]@{
+        AssemblyName = $metadata.GetString($assembly.Name)
+        AssemblyVersion = $assembly.Version.ToString()
+        FileVersion = [string]$fileVersion
+        ModuleVersionId = $metadata.GetGuid($module.Mvid).ToString('D')
+      }
+    }
+    finally { $pe.Dispose() }
+  }
+  finally { $stream.Dispose() }
+}

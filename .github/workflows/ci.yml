@@ -28,6 +28,19 @@ jobs:
       - name: Service identity contract (G4)
         shell: pwsh
         run: ./tools/Test-ServiceIdentity.ps1 -SelfTest
+      - name: Exact dependency profiles and coordinated repin
+        shell: pwsh
+        run: |
+          ./tools/dependencies/Test-DependencyProfiles.ps1
+          ./tools/dependencies/Set-DependencyProfile.ps1 -Profile interim -Check
+      - name: Transport NuGet publication rehearsal
+        shell: pwsh
+        run: ./tools/nuget/Test-TransportNuGetReadiness.ps1
+      - name: Quest release importer positive, tamper, and lock checks
+        shell: pwsh
+        run: |
+          ./tools/workbench/Test-QuestReleaseImporter.ps1
+          ./tools/workbench/Import-QuestRelease.ps1 -Check
       - name: Mod artifact hash gate (G6)
         shell: pwsh
         run: ./tools/Test-ArtifactHashGate.ps1

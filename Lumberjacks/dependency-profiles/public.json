@@ -1,0 +1,15 @@
+{
+  "schema": "lumberjacks-dependency-profile/v1",
+  "name": "public",
+  "packages": {
+    "Comfy.Quest.Contracts": "[0.1.0]",
+    "Comfy.Quest.Studio": "[0.1.0]"
+  },
+  "package_sources": [
+    {
+      "key": "nuget.org",
+      "value": "https://api.nuget.org/v3/index.json"
+    }
+  ],
+  "companion_tests_studio_reference": "PackageReference"
+}
