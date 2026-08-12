@@ -86,17 +86,25 @@ function Remove-ComfyBepInExKeys {
     $newline = if ($Text.Contains("`r`n")) { "`r`n" } else { "`n" }
     $lines = [Collections.Generic.List[string]]::new()
     foreach ($line in ($Text -split "`r?`n", -1)) { [void]$lines.Add($line) }
-    $start = -1; $end = $lines.Count
-    for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i].Trim() -eq ('[' + $Section + ']')) { $start = $i; break } }
-    if ($start -lt 0) { return $Text }
-    for ($i = $start + 1; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^\s*\[[^\]]+\]\s*$') { $end = $i; break } }
     $keySet = @{}
     foreach ($key in $Keys) { $keySet[[string]$key] = $true }
-    for ($i = $end - 1; $i -gt $start; $i--) {
-        if ($lines[$i] -match '^\s*([^#;=\s]+)\s*=') {
-            if ($keySet.ContainsKey($Matches[1])) { $lines.RemoveAt($i) }
+
+    # BepInEx configuration files can contain duplicate sections. This occurs
+    # naturally when an existing config has a later managed block appended, and
+    # users may append another section after installation. Remove managed keys
+    # from every matching section while preserving all user-owned keys/sections.
+    $inTargetSection = $false
+    $remove = [Collections.Generic.List[int]]::new()
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match '^\s*\[([^\]]+)\]\s*$') {
+            $inTargetSection = ($Matches[1] -eq $Section)
+            continue
+        }
+        if ($inTargetSection -and $lines[$i] -match '^\s*([^#;=\s]+)\s*=') {
+            if ($keySet.ContainsKey($Matches[1])) { [void]$remove.Add($i) }
         }
     }
+    for ($i = $remove.Count - 1; $i -ge 0; $i--) { $lines.RemoveAt($remove[$i]) }
     return [string]::Join($newline, $lines.ToArray())
 }
 

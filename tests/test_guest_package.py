@@ -155,7 +155,9 @@ class GuestPackageTests(unittest.TestCase):
         edited = config.read_text(encoding="utf-8")
         self.assertIn("userEdited=true", edited)
         self.assertIn("userOwnedKey=keep", edited)
+        self.assertIn("old=value", edited)
         self.assertNotIn("lumberjacksGatewayUrl=", edited)
+        self.assertNotIn("lumberjacksClientAccessKey=", edited)
 
     def test_preflight_ready_fixture(self):
         data = json.loads((self.package / "guest-package-inputs.json").read_text(encoding="utf-8-sig"))
