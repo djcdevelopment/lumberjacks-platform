@@ -25,11 +25,13 @@ jq -e '.schema == "comfy-p7-creatoros-deploy/v2" and
 release_hash="$(jq -r '.verification.release_manifest_sha256' "$deployment_manifest")"
 archive_hash="$(jq -r '.archive_sha256' "$deployment_manifest")"
 controls_hash="$(jq -r '.controls_archive_sha256' "$deployment_manifest")"
+installer_hash="$(jq -r '.installer_sha256' "$deployment_manifest")"
 world_uid="$(jq -r '.verification.world_uid' "$deployment_manifest")"
 world_pair_hash="$(jq -r '.verification.world_pair_hash' "$deployment_manifest")"
 pack_hash="$(jq -r '.verification.pack_content_hash' "$deployment_manifest")"
 [[ "$release_hash" =~ ^[0-9a-f]{64}$ && "$archive_hash" =~ ^[0-9a-f]{64}$ &&
-   "$controls_hash" =~ ^[0-9a-f]{64}$ && "$world_pair_hash" =~ ^[0-9a-f]{64}$ &&
+   "$controls_hash" =~ ^[0-9a-f]{64}$ && "$installer_hash" =~ ^[0-9a-f]{64}$ &&
+   "$world_pair_hash" =~ ^[0-9a-f]{64}$ &&
    "$pack_hash" =~ ^[0-9a-f]{64}$ ]] || { echo 'deployment hashes are invalid' >&2; exit 1; }
 [[ "$world_uid" =~ ^-?[1-9][0-9]*$ ]] || { echo 'world UID is invalid' >&2; exit 1; }
 [[ "$(sha256sum "$archive" | cut -d' ' -f1)" == "$archive_hash" ]] || {
@@ -37,6 +39,9 @@ pack_hash="$(jq -r '.verification.pack_content_hash' "$deployment_manifest")"
 }
 [[ "$(sha256sum "$controls_archive" | cut -d' ' -f1)" == "$controls_hash" ]] || {
   echo 'uploaded platform-controls archive hash mismatch' >&2; exit 1;
+}
+[[ "$(sha256sum "$0" | cut -d' ' -f1)" == "$installer_hash" ]] || {
+  echo 'uploaded remote installer hash mismatch' >&2; exit 1;
 }
 
 release_parent="$state_root/releases/creatoros-beta1"
@@ -309,18 +314,21 @@ jq -n \
   --arg completed_utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg release_manifest_sha256 "$release_hash" \
   --arg controls_archive_sha256 "$controls_hash" \
+  --arg installer_sha256 "$installer_hash" \
   --arg world_uid "$world_uid" \
   --arg world_pair_hash "$world_pair_hash" \
   --arg pack_content_hash "$pack_hash" \
   --arg backup_root "$backup_root" \
   '{schema:$schema,status:$status,completed_utc:$completed_utc,release_manifest_sha256:$release_manifest_sha256,
-    controls_archive_sha256:$controls_archive_sha256,world_name:"CreatorOSBeta1",world_uid:$world_uid,
+    controls_archive_sha256:$controls_archive_sha256,installer_sha256:$installer_sha256,
+    world_name:"CreatorOSBeta1",world_uid:$world_uid,
     world_pair_hash:$world_pair_hash,pack_content_hash:$pack_content_hash,server_mode:"native-valheim",
     strict_roster:true,handshake_fail_closed:true,platform_controls_verified:true,backup_root:$backup_root}' \
   > "$receipt.tmp"
 mv "$receipt.tmp" "$receipt"
 
 if [[ "$activate" == true ]]; then
+  activation_started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   systemctl start "$service_name"
   systemctl is-active --quiet "$service_name"
   container="$(cd "$compose_root" && docker compose --env-file "$environment_file" ps -q valheim-server)"
@@ -330,15 +338,45 @@ if [[ "$activate" == true ]]; then
     echo 'running container world identity drifted' >&2; false;
   }
   expected_dll="$(manifest_hash_for 'BepInEx/plugins/ComfyNetworkSense.dll')"
-  runtime_dll="$(docker exec "$container" sha256sum /opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll | cut -d' ' -f1)"
-  [[ "$runtime_dll" == "$expected_dll" ]] || { echo 'running NetworkSense hash drifted' >&2; false; }
-  handshake="$(curl -fsS http://127.0.0.1:4000/valheim/handshake/status/creatoros-beta1)"
-  jq -e '.window_id == "creatoros-beta1" and .seat_capacity == 0 and .strict_roster_enabled == true' <<<"$handshake" >/dev/null || {
-    echo 'Gateway did not arm the durable strict CreatorOS roster window' >&2; false;
+  activation_deadline=$((SECONDS + 240))
+  runtime_dll=''
+  handshake=''
+  runtime_dll_ready() {
+    runtime_dll="$(docker exec "$container" sha256sum /opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll 2>/dev/null | cut -d' ' -f1 || true)"
+    [[ "$runtime_dll" == "$expected_dll" ]]
   }
-  curl -fsS https://comfy-p7.duckdns.org/health >/dev/null
+  creatoros_world_loaded() {
+    docker logs --since "$activation_started" "$container" 2>&1 | grep -Fq 'Load world: CreatorOSBeta1'
+  }
+  strict_handshake_ready() {
+    handshake="$(curl -fsS http://127.0.0.1:4000/valheim/handshake/status/creatoros-beta1 2>/dev/null || true)"
+    jq -e '.window_id == "creatoros-beta1" and .seat_capacity == 0 and .strict_roster_enabled == true' \
+      <<<"$handshake" >/dev/null 2>&1
+  }
+  tls_ready() {
+    curl -fsS https://comfy-p7.duckdns.org/health >/dev/null 2>&1
+  }
+  wait_for_activation() {
+    local label="$1"
+    local predicate="$2"
+    until "$predicate"; do
+      if (( SECONDS >= activation_deadline )); then
+        echo "activation readiness timed out: $label" >&2
+        return 1
+      fi
+      sleep 2
+    done
+  }
+  if ! wait_for_activation 'NetworkSense runtime hash' runtime_dll_ready ||
+     ! wait_for_activation 'CreatorOSBeta1 world load' creatoros_world_loaded ||
+     ! wait_for_activation 'durable strict roster window' strict_handshake_ready ||
+     ! wait_for_activation 'public TLS health' tls_ready; then
+    docker logs --tail 120 "$container" >&2 || true
+    false
+  fi
   jq --arg status active --arg hash "$runtime_dll" \
-    '.status=$status | .activated_utc=(now | todateiso8601) | .tls_health=true | .runtime_networksense_sha256=$hash' \
+    '.status=$status | .activated_utc=(now | todateiso8601) | .tls_health=true |
+      .creatoros_world_loaded=true | .strict_handshake_ready=true | .runtime_networksense_sha256=$hash' \
     "$receipt" > "$receipt.active"
   mv "$receipt.active" "$receipt"
 fi

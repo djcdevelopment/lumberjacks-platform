@@ -30,6 +30,8 @@ $verification = ($verificationText -join [Environment]::NewLine) | ConvertFrom-J
 if ([string]$verification.status -ne 'valid') { throw 'CreatorOS server verification returned a non-valid result.' }
 $releaseHash = [string]$verification.release_manifest_sha256
 if ($releaseHash -notmatch '^[0-9a-f]{64}$') { throw 'Verified release hash is invalid.' }
+$action = if ($Activate) { 'install and activate' } else { 'install without activation' }
+if (-not $PSCmdlet.ShouldProcess("$SshTarget CreatorOSBeta1/$releaseHash", $action)) { return }
 
 $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
 $tempRoot = Join-Path $tempBase ("creatoros-p7-{0}" -f [Guid]::NewGuid().ToString('N'))
@@ -76,6 +78,8 @@ try {
     & tar -czf $controlsArchive -C $tempRoot controls
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the CreatorOS platform-controls archive.' }
     $controlsArchiveHash = (Get-FileHash -LiteralPath $controlsArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+    $remoteInstallerSource = Join-Path $PSScriptRoot 'install-creatoros-beta-server.sh'
+    $remoteInstallerHash = (Get-FileHash -LiteralPath $remoteInstallerSource -Algorithm SHA256).Hash.ToLowerInvariant()
     $controlFiles = @($controlSources | ForEach-Object {
         $item = Get-Item -LiteralPath $_.Destination
         [ordered]@{
@@ -91,6 +95,7 @@ try {
         created_utc = (Get-Date).ToUniversalTime().ToString('o')
         archive_sha256 = $archiveHash
         controls_archive_sha256 = $controlsArchiveHash
+        installer_sha256 = $remoteInstallerHash
         control_files = $controlFiles
         verification = $verification
     }
@@ -104,8 +109,6 @@ try {
     $remoteControls = "$remotePrefix-controls.tar.gz"
     $remoteManifest = "$remotePrefix-deployment.json"
     $remoteInstaller = "$remotePrefix-install.sh"
-    $action = if ($Activate) { 'install and activate' } else { 'install without activation' }
-    if (-not $PSCmdlet.ShouldProcess("$SshTarget CreatorOSBeta1/$releaseHash", $action)) { return }
 
     & scp $archive "${SshTarget}:$remoteArchive"
     if ($LASTEXITCODE -ne 0) { throw 'CreatorOS server archive upload failed.' }
@@ -113,7 +116,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'CreatorOS platform-controls upload failed.' }
     & scp $deploymentPath "${SshTarget}:$remoteManifest"
     if ($LASTEXITCODE -ne 0) { throw 'CreatorOS deployment manifest upload failed.' }
-    & scp (Join-Path $PSScriptRoot 'install-creatoros-beta-server.sh') "${SshTarget}:$remoteInstaller"
+    & scp $remoteInstallerSource "${SshTarget}:$remoteInstaller"
     if ($LASTEXITCODE -ne 0) { throw 'CreatorOS remote installer upload failed.' }
     $activateText = if ($Activate) { 'true' } else { 'false' }
     $command = "sudo bash '$remoteInstaller' '$remoteArchive' '$remoteControls' '$remoteManifest' '$activateText'"
@@ -130,6 +133,7 @@ try {
         [string]$receipt.status -ne $expectedStatus -or
         [string]$receipt.release_manifest_sha256 -ne $releaseHash -or
         [string]$receipt.controls_archive_sha256 -ne $controlsArchiveHash -or
+        [string]$receipt.installer_sha256 -ne $remoteInstallerHash -or
         [bool]$receipt.platform_controls_verified -ne $true -or
         [string]$receipt.world_uid -ne [string]$verification.world_uid -or
         [string]$receipt.world_pair_hash -ne [string]$verification.world_pair_hash) {
@@ -142,6 +146,7 @@ try {
         world_uid = [string]$receipt.world_uid
         world_pair_hash = [string]$receipt.world_pair_hash
         controls_archive_sha256 = [string]$receipt.controls_archive_sha256
+        installer_sha256 = [string]$receipt.installer_sha256
         receipt = [string]$receiptPath
     }
 }

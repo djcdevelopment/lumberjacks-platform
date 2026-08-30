@@ -183,11 +183,13 @@ class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
     def test_driver_hashes_and_uploads_the_exact_platform_controls(self) -> None:
         self.assertIn("comfy-p7-creatoros-deploy/v2", self.driver)
         self.assertIn("controls_archive_sha256", self.driver)
+        self.assertIn("installer_sha256", self.driver)
         self.assertIn("controls/docker-compose.yml", self.driver)
         self.assertIn("controls/comfy-lumberjacks-p7.service", self.driver)
         self.assertIn("controls/scripts/stop-p7-stack.sh", self.driver)
         self.assertIn("$remoteArchive' '$remoteControls' '$remoteManifest'", self.driver)
         self.assertIn("[string]$receipt.controls_archive_sha256 -ne $controlsArchiveHash", self.driver)
+        self.assertIn("[string]$receipt.installer_sha256 -ne $remoteInstallerHash", self.driver)
 
     def test_remote_installer_verifies_controls_before_installing_them(self) -> None:
         verify = self.installer.index("verify_control controls/docker-compose.yml")
@@ -195,6 +197,7 @@ class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
         self.assertLess(verify, install)
         self.assertIn("platform-controls archive file set drifted", self.installer)
         self.assertIn("systemd-analyze verify \"$unit_target\"", self.installer)
+        self.assertIn("uploaded remote installer hash mismatch", self.installer)
 
     def test_remote_installer_has_a_bounded_rollback_transaction(self) -> None:
         self.assertIn("trap rollback_on_error ERR", self.installer)
@@ -206,6 +209,12 @@ class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
             "backup_if_present \"$world_root/$name\" \"worlds_local/$name\""
         )
         self.assertLess(stop, world_backup)
+
+    def test_activation_waits_for_service_and_world_readiness(self) -> None:
+        self.assertIn("activation_deadline=$((SECONDS + 240))", self.installer)
+        self.assertIn("wait_for_activation 'CreatorOSBeta1 world load'", self.installer)
+        self.assertIn("wait_for_activation 'durable strict roster window'", self.installer)
+        self.assertIn("wait_for_activation 'public TLS health'", self.installer)
 
     def test_vm_stop_requires_the_entire_stack_to_stop(self) -> None:
         self.assertIn("detail=remaining_stack_stop_failed", self.stop_script)
