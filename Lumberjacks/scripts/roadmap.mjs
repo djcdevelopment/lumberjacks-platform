@@ -1030,7 +1030,7 @@ function render(roadmap, notes) {
   <!-- GENERATED FILE: edit docs/roadmap sources and run npm run roadmap:render -->
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <div class="brand"><span class="mark">LJ</span><span>Valheim volunteer roadmap</span></div>
+      <div class="brand"><span class="mark">LJ</span><span>Northwoods field roadmap</span></div>
       <nav aria-label="Gateway surfaces">
         <a href="/roadmap" aria-current="page">Roadmap</a>
         <a href="/community">Community</a>
@@ -1047,7 +1047,7 @@ function render(roadmap, notes) {
 
   <main>
     <div class="wrap hero">
-      <div class="eyebrow">Comfy × Valheim · Lumberjacks P7</div>
+      <div class="eyebrow">Northwoods field alpha · Lumberjacks P7</div>
       <h1>${escapeHtml(roadmap.title.replace('Comfy × Valheim — ', ''))}</h1>
       <div class="headline">${escapeHtml(roadmap.headline)}</div>
       <p class="lede">${escapeHtml(roadmap.claim)}</p>
@@ -1062,16 +1062,16 @@ function render(roadmap, notes) {
 
     <section>
       <div class="wrap">
-        <div class="section-head"><div class="section-number">01 · CURRENT TRUTH</div><div><h2>Protect the proof; earn the platform.</h2><p class="section-copy">The validated, hash-recorded one-client result is real. Volunteer readiness and concurrent correctness have separate, visible gates.</p></div></div>
+        <div class="section-head"><div class="section-number">01 · CURRENT TRUTH</div><div><h2>Ship the smallest honest loop.</h2><p class="section-copy">The public native artifact and live single-player field loop are real. Third-machine, public-human, and concurrent-human proof remain separate visible gates.</p></div></div>
         <div class="truth-grid">
-          <article class="truth-card proved"><h3>Proved now</h3><p>One enrolled client closed the complete observed all-prefab ZDO window through Lumberjacks priority delivery with exact durable accounting.</p><p><a href="#proof">See the validated result ↓</a></p></article>
-          <article class="truth-card not-yet"><h3>Not proved yet</h3>${list(['Safe public credential transport and authoritative admission.', 'A clean no-hand-edit package for a non-developer.', 'Per-session and per-recipient retained proof.', 'Two simultaneous consumers with isolated pending and ACK state.', 'Lumberjacks-owned candidate relevance, simulation, or non-ZDO RPCs.'])}</article>
+          <article class="truth-card proved"><h3>Proved now</h3><p>The exact public Windows package connected to P7, felled the authored Storm Pine, persisted one terminal result, and recovered it after both Gateway restart and full VM stop/start.</p><p><a href="#proof">See the retained evidence ↓</a></p></article>
+          <article class="truth-card not-yet"><h3>Not proved yet</h3>${list(['Installation and launch on the offline i5 third machine.', 'One public Steam-authenticated field-pass import and human play lap.', 'A real concurrent multi-human session within the ten-session cap.', 'A broader content, art, audio, and progression loop beyond the authored tree slice.'])}</article>
         </div>
         <div class="truth-card" style="margin-top:16px"><h3 style="color:var(--blue)">Where things stand</h3><p class="focus-note">Present state only, each line dated when it was last checked against reality. Finished work lives in the milestones below; what comes next is in each milestone's exit criteria.</p>${focus}</div>
         <article class="primer">
           <div class="primer-head"><h3>${escapeHtml(roadmap.primer.title)}</h3><p>${escapeHtml(roadmap.primer.summary)}</p></div>
           <div class="denominator"><strong>The exact denominator</strong>${escapeHtml(roadmap.primer.denominator)}</div>
-          <div class="dataflow" aria-label="Current ZDO cutover dataflow">${primerFlow}</div>
+          <div class="dataflow" aria-label="Current native alpha dataflow">${primerFlow}</div>
           <details class="glossary"><summary>Terms used on this page</summary><dl>${glossary}</dl></details>
         </article>
       </div>
@@ -1079,7 +1079,7 @@ function render(roadmap, notes) {
 
     <section>
       <div class="wrap">
-        <div class="section-head"><div class="section-number">02 · CRITICAL PATH</div><div><h2>Two lanes, one honest widening point.</h2><p class="section-copy">The graph is generated from each milestone's declared dependencies. Build the single-volunteer experience without waiting for the queue redesign; keep capacity at one until recipient isolation passes.</p></div></div>
+        <div class="section-head"><div class="section-number">02 · HISTORICAL PATH</div><div><h2>The infrastructure path that made the pivot possible.</h2><p class="section-copy">This dependency graph preserves the Valheim and transport work as evidence and rollback context. The active native field lane and its remaining physical proofs are stated above.</p></div></div>
         <div class="tracks">${tracks}</div>
         ${dependencyDag}
       </div>

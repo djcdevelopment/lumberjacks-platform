@@ -1,31 +1,29 @@
-# Combined Comfy + Lumberjacks P7 environment
+# Lumberjacks P7 environment
 
-Status: **re-provisioned from `baseline` and re-accepted**, 2026-07-21 UTC. All five
-gated services now run from digest pins resolved out of a validated release bundle,
-and the VM's deployment source is a `baseline` checkout rather than the retired
-`comfy` repo. A real player session then met every §9 acceptance criterion:
-75,112/75,112 receipts acknowledged with zero pending, `complete=true`, 100% coverage
-over 148,892 ZDOs, and zero native-only, fallback, reject, duplicate, or retry.
+Status: **native Northwoods field alpha live**, 2026-08-30 UTC.
 
-The earlier single-client cutover (2026-07-16, 83,220/83,220) remains the origin of
-this line of work; it is superseded as the current state but not as history.
+P7 runs the native Lumberjacks Gateway, PostgreSQL, Caddy, EventLog, Progression,
+and Operator API. The standalone Godot client owns the active game loop. Gateway
+`m33-native-20260830-r1` admits the exact native client `0.1.0-alpha.1` for an
+invite-only cohort capped at ten sessions.
 
-P7 runs the real `ComfyEra16` Valheim world and Lumberjacks authority services on
-GCP. OMEN is the rendered client and operator workstation.
+The public Windows x64 prerelease is published with SHA-256
+`4dd6e02a08308487d006ac4868f178933c672f0aec4b7652744696033db026bf` and a
+verified GitHub attestation. The authored Storm Pine loop persisted through a
+Gateway restart and a full VM stop/start on `e2-medium`.
 
-Historical acceptance evidence remains indexed in the
-[`baseline`](https://github.com/djcdevelopment/baseline) repository. The paths
-below name that evidence archive and are not platform runtime inputs:
+The historical Valheim server saved cleanly and is frozen as rollback evidence. It
+is excluded from the default `tls` compose profile and is restored only by the
+explicit `tls,valheim` rollback profile. No world, image, configuration, or state
+was deleted.
 
-- `Lumberjacks/docs/roadmap/m5-v3-acceptance-receipt.json` — current acceptance sample
-- `Lumberjacks/docs/roadmap/m5-v3-reprovision-receipt.json` — what changed on the VM
-- `Lumberjacks/docs/roadmap/m5-recipients-build-candidate-v3.json` — release manifest
-- `fieldlab/evidence/p7-primary-v1-authoritative-priority-zdo-20260716-v0531.md` — the
-  2026-07-16 victory session (historical)
+See:
 
-> Older revisions of this file cited these under `C:\work\comfy\…` and
-> `C:\work\lumberjacks\…`. Both are retired checkout roots; the content landed in this
-> repo unmodified during the July 2026 consolidation.
+- [`RUNBOOK-native-alpha.md`](RUNBOOK-native-alpha.md) for cutover and rollback.
+- [The deployment receipt](../../../Lumberjacks/docs/roadmap/native-v0.1.0-alpha.1-deployment.json)
+  for exact release, image, live-loop, and persistence observations.
+- [The public prerelease](https://github.com/djcdevelopment/lumberjacks-platform/releases/tag/native-v0.1.0-alpha.1)
+  for the Windows archive, checksum, and attestation.
 
 ## Live deployment
 
@@ -33,346 +31,84 @@ below name that evidence archive and are not platform runtime inputs:
 |---|---|
 | GCP project | `lumberjacks-exp-20260711-djc` |
 | VM / zone | `comfy-lumberjacks-p7` / `us-west1-b` |
-| Machine | `n2-highmem-2` (deliberate cost downsize from `n2-highmem-8`) |
+| Machine | `e2-medium` |
 | SSH target | `comfy-p7` through IAP |
-| Deployment source | `/opt/comfy` — a **`baseline` checkout**, branch `main`. Updated by `git bundle` over SSH; the box holds no GitHub credentials (ADR 0006). Pre-cutover `comfy` commit retained as local branch `master` for rollback. |
 | Persistent disk | `/mnt/comfy-p7` |
-| World / server | `ComfyEra16` / `Comfy Era16 Lab` |
-| Valheim join | `8.231.129.249:2456` UDP; Steam-only, unlisted, password-free |
-| Player Gateway | `http://8.231.129.249:42317` |
-| Mode / window | `lumberjacks-primary` / `p7-primary-v1` |
-| Release | `m5-recipients-20260720-r1` (v3 manifest) |
-| Mod | ComfyNetworkSense `0.5.31` |
-| Mod SHA-256 | `035faa8793114c75ccb4295e219a6c10a91250a3a4f3764e70aed499a32a0dfd` |
-| Gateway image | `sha256:69e025e8c13bc7ce01a21a054c9dcb42478415531d727e8b55b4b2d37ca7b38b` |
-| EventLog image | `sha256:501537285f89052991a62201969117557005c03ddfd280086bde81ce8e8593e4` |
-| Progression image | `sha256:1700513587ae259d7447caba267c90213c5249ce7da50408f65648a2bf4872bc` |
-| Operator API image | `sha256:cec85d9272530a13b9c1e5217ef8864f0bffd4dc8fc89a18d2236d75482761a7` |
-| Valheim image | `ghcr.io/community-valheim-tools/valheim-server@sha256:e8b13da3c44f54a38511c8ac224f2959a437c0b2626cf916683ca7acc8dfb146` |
+| World | `northwoods-field-alpha` |
+| Public edge | Caddy TLS; Gateway remains internal on container port `4000` |
+| Native session cap | `10` |
+| Native release | `native-v0.1.0-alpha.1` |
+| Native source | `45bc6935dbb393c623baeef164064344df4c492e` |
+| Gateway release | `m33-native-20260830-r1` |
+| Gateway image | `sha256:02807e680d27b23cb51f0b5c9e15cd8d0cb4128c733d8ca156e1202d091f9383` |
+| Frozen Valheim image | `ghcr.io/community-valheim-tools/valheim-server@sha256:e8b13da3c44f54a38511c8ac224f2959a437c0b2626cf916683ca7acc8dfb146` |
 
-All five Lumberjacks images are pinned by digest in `docker-compose.yml` with no `build:`
-fallback, and resolve through `/etc/comfy-p7/environment` alone — verified by a real
-`systemctl restart`.
-
-> **A `systemctl restart` is NOT the reboot path**, and this file used to claim it was. A restart
-> runs on a box whose state disk is already mounted, whose docker daemon is already up, and whose
-> containers were torn down in an unhurried `ExecStop`. A cold boot re-tests all three, and on
-> 2026-07-30 it failed: six containers stuck in `Created`, nothing serving, SSH answering
-> normally. Boot is being made deterministic — see
-> [`RUNBOOK-boot-determinism.md`](RUNBOOK-boot-determinism.md). Until a real stop/start cycle is
-> observed to pass, **treat "it comes back on its own" as unproven** and check the stack after
-> every boot.
-
-> **Server restart is not instant.** A `systemctl restart` reloads the ~9.1M-ZDO `ComfyEra16`
-> world; the server is not joinable until the log emits `Game server connected`, roughly a
-> minute later. Wait for that line before telling a player to join.
-
-Services:
-
-| Service | Exposure | Persistent role |
-|---|---|---|
-| Valheim | public UDP `2456-2457` | world simulation and native peer connection |
-| Gateway | GCP loopback `4000`; pilot public TCP `42317` | priority ZDO queue, acknowledgements, enrollment, telemetry |
-| Gateway UDP | public UDP `4005` | session-token-authenticated player motion; UDP preferred with binary WebSocket fallback |
-| PostgreSQL | loopback `5433` | general Lumberjacks persistence |
-| EventLog / Progression / Operator API | loopback `4002` / `4003` / `4004` | internal service and operator surfaces |
-| `redirect.wal` | `/mnt/comfy-p7/lumberjacks/zdo-queue/redirect.wal` | durable authoritative ZDO delivery |
-| enrollment store | `/mnt/comfy-p7/lumberjacks/enrollment/` | one-time invites and per-player credentials |
-
-The player Gateway is intentionally simple for the volunteer pilot: plain HTTP on a
-non-default port. Authoritative Valheim routes require the issued enrollment ID and
-token. Dashboard GETs are not access-controlled. Add TLS, rate limits, and surface
-separation before treating this as an Internet-hardened service.
-
-## Authority boundary
-
-Lumberjacks owns sequencing, priority ordering, durable delivery, client application
-validation, and success-only acknowledgement for the observed ZDO window. Steam
-login, the native Valheim connection, server simulation, Valheim's construction of
-the candidate relevance list, and non-ZDO RPCs remain native.
-
-The server adapter is primary and fail-closed for redirected ZDOs: loss of the
-Gateway/client path leaves durable unacknowledged work. It does not silently count a
-native fallback as success.
-
-## Current role configuration
-
-The server's non-secret settings are:
+The environment file is `/etc/comfy-p7/environment` with mode `0600`. Do not print
+it wholesale: it contains database, telemetry, and administration secrets. The
+active non-secret declarations are:
 
 ```ini
-[Lumberjacks]
-lumberjacksGatewayUrl = http://gateway:4000
-lumberjacksCutoverMode = lumberjacks-primary
-lumberjacksEnrollmentManifestId = p7-primary-v1
-zdoAuthoritativeConsumerEnabled = false
-zdoRedirectEnabled = true
-zdoRedirectPrefabs = *
-zdoRedirectEndpoint = http://gateway:4000
-zdoRedirectWindowId = p7-primary-v1
-zdoRedirectActiveSeconds = 0
+LUMBERJACKS_NATIVE_CLIENT_RELEASE=0.1.0-alpha.1
+LUMBERJACKS_NATIVE_CLIENT_DOWNLOAD_URL=https://github.com/djcdevelopment/lumberjacks-platform/releases/download/native-v0.1.0-alpha.1/Lumberjacks-0.1.0-alpha.1-windows-x64.zip
+LUMBERJACKS_NATIVE_CLIENT_MAX_SESSIONS=10
+LUMBERJACKS_WORLD_ID=northwoods-field-alpha
+COMPOSE_PROFILES=tls
 ```
 
-Each player receives unique values after Steam invite redemption:
+`/game` requires the exact client release plus either a valid per-enrollment
+credential or a private-plane connection. A shared compatibility key is rejected
+for native players. A field pass is a one-use, no-store JSON attachment delivered
+over TLS; never put its credential in a URL, release archive, log, screenshot, or
+roadmap note.
 
-```ini
-[Lumberjacks]
-lumberjacksGatewayUrl = http://8.231.129.249:42317
-lumberjacksAuthoritativeWindowId = p7-primary-v1
-lumberjacksEnrollmentId = <issued enrollment id>
-lumberjacksClientAccessKey = <issued secret>
-zdoAuthoritativeConsumerEnabled = true
-```
+## Operational checks
 
-Never commit, screenshot, or paste an issued access key into an evidence report.
+Before inviting a player, require:
 
-Player motion uses the same enrollment identity. The client first authenticates its
-WebSocket, receives a random per-session UDP token, joins the configured Lumberjacks
-region, and then sends a fixed 50-byte motion datagram at up to 20 Hz. UDP `4005` uses
-the same Terraform source-range policy as player TCP `42317`. A client that cannot
-establish UDP carries the same binary motion frame over the WebSocket instead.
+1. Public `/health` reports healthy and `/identity` reports Gateway
+   `m33-native-20260830-r1` from source
+   `45bc6935dbb393c623baeef164064344df4c492e`.
+2. An anonymous valid WebSocket upgrade to `/game` is rejected with HTTP 401.
+3. The active compose profile is `tls` and the Valheim container remains exited.
+4. The public archive checksum matches the value above.
+5. The invite creates a one-use native field pass for release `0.1.0-alpha.1`.
 
-## Reproduce the current deployment
+The complete local and P7 field-loop proof felled `northwoods-old-pine` in eight
+strikes, persisted health `0`, recorded fall heading `-2.3`, and emitted exactly
+one `tree_felled` event. Recheck those invariants after any Gateway promotion or
+machine restart.
 
-### 1. Protect the world lineage
+## Deploy and roll back
 
-Confirm no source/old server can write `ComfyEra16` while P7 is active. Before a
-migration, stop the source cleanly, archive the final `.db` and `.fwl`, and verify the
-archive manifest byte-for-byte. Historical migration baseline hashes are:
+Gateway deploys promote a prebuilt, locally verified image. Do not copy Gateway
+source to P7 and do not run `docker compose build` there. Use the guarded scripts
+in [`scripts`](scripts), which assert repository identity, back up the environment,
+promote with `--no-build --no-deps`, and verify health and the exact running image.
 
-| Artifact | Baseline SHA-256 |
-|---|---|
-| root BepInEx configuration | `065e942174d0912ca94d108794b4d59bbdec34e2e21a299a31b63efc6a017d01` |
-| `ComfyEra16.db` | `4513d0348e9f740cad22032c476c5dd6f5304490dc05912f35b250837e25d49a` |
-| `ComfyEra16.fwl` | `5f323fbe7b627fd50520d8f4f6dedd13027a92bfe056013aa52d7306d09a3539` |
+Rollback does not rebuild or delete anything:
 
-World hashes change after a clean save; treat these as migration records, not eternal
-expected values.
+1. Re-pin `lumberjacks-gateway:m32-creatoros-20260830-r3` using the promotion
+   backup at
+   `/mnt/comfy-p7/backups/gateway-image-promote/20260830T163747Z/environment`.
+2. Set `COMPOSE_PROFILES=tls,valheim`.
+3. Start through `comfy-lumberjacks-p7.service` and wait for
+   `Game server connected` before inviting a Valheim player.
 
-### 2. Provision or reconcile GCP
+The native-control backup is
+`/mnt/comfy-p7/backups/native-alpha/20260830T163735Z`. Frozen means recoverable,
+not discarded.
 
-Copy `terraform.tfvars.example` to ignored `terraform.tfvars`, set the project,
-operator, OMEN CIDR, and pilot port, then review before applying:
+## Historical evidence
 
-```powershell
-terraform -chdir=infra\gcp\p7 init
-terraform -chdir=infra\gcp\p7 plan
-terraform -chdir=infra\gcp\p7 apply
-```
+The 2026-07-16 and 2026-07-21 Valheim/NetworkSense acceptance windows remain
+valuable transport evidence, but they are no longer the active product topology.
+Their receipts and manifests remain under `Lumberjacks/docs/roadmap` and
+`fieldlab/evidence`; the native alpha did not rebuild or modify their binaries.
 
-Secrets belong only in `/etc/comfy-p7/environment` with mode `0600`, never Terraform
-state. Required non-secret runtime declarations include:
+## Remaining physical proof
 
-```text
-COMFY_NETWORKSENSE_VERSION=0.5.31
-COMFY_LUMBERJACKS_CUTOVER_MODE=lumberjacks-primary
-COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID=p7-primary-v1
-LUMBERJACKS_PLAYER_PORT=42317
-LUMBERJACKS_PLAYER_GATEWAY_URL=http://8.231.129.249:42317
-LUMBERJACKS_ENROLLMENT_PUBLIC_URL=http://8.231.129.249:42317
-```
-
-`LUMBERJACKS_ROOT` used to head that list and is now retired — nothing consumes it. It is
-called out here because it was listed as *required* long after it stopped resolving to a real
-path, which is how a schema-less database survived undetected; see
-[`RUNBOOK-schema-repair.md`](RUNBOOK-schema-repair.md). Remove it from any existing
-`/etc/comfy-p7/environment` rather than leaving a stale value on the box.
-
-The file also contains database, telemetry, shared fallback, and admin secrets. Do not
-print it wholesale.
-
-### 3. Test the code
-
-```powershell
-Set-Location .\Lumberjacks
-& C:\work\dotnet9\dotnet.exe test `
-  Game.sln -c Release
-```
-
-The platform does not build mod source. Obtain `ComfyNetworkSense.dll` plus its
-manifest and SHA-256 from a `networksense` release. The Gateway suite currently
-emits pre-existing Entity Framework version-conflict warnings.
-
-### 4. Deploy ComfyNetworkSense
-
-Close local Valheim before copying the OMEN DLL. Deploy the server DLL with guarded
-backup, restart, readiness, runtime hash, and cold-start hash checks:
-
-```powershell
-.\infra\gcp\p7\scripts\deploy-network-sense.ps1 `
-  -ArtifactPath C:\path\to\ComfyNetworkSense.dll `
-  -ExpectedSha256 <64-hex-release-hash> `
-  -ExpectedRelease <baked-release-id>
-```
-
-Server paths:
-
-```text
-runtime:    /opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll
-cold start: /mnt/comfy-p7/valheim/config/bepinex/plugins/ComfyNetworkSense.dll
-config:     /mnt/comfy-p7/valheim/config/bepinex/djcdevelopment.valheim.comfynetworksense.cfg
-```
-
-The config bind mount must remain UID/GID `1000:1000`, mode `0664`; otherwise
-BepInEx can abort the plugin during `ConfigFile.Bind`. The victory backup is
-`/mnt/comfy-p7/backups/comfynetworksense/20260716T004955Z`.
-
-The mod build also targets the standard OMEN plugin location. After Valheim is closed,
-verify the installed file explicitly:
-
-```powershell
-$dll = 'C:\Program Files (x86)\Steam\steamapps\common\Valheim\BepInEx\plugins\ComfyNetworkSense.dll'
-Get-FileHash $dll -Algorithm SHA256
-[Reflection.AssemblyName]::GetAssemblyName($dll).Version
-```
-
-### 5. Deploy Gateway changes
-
-Gateway deploys now promote a prebuilt local Docker image. Do not copy Gateway source
-to the VM and do not run `docker compose build` on P7 for normal alpha UI/API changes.
-
-Cut and verify the image locally:
-
-```powershell
-.\infra\gcp\p7\scripts\New-GatewayReleaseCut.ps1 `
-  -ImageReleaseId m19-boundarytrace-20260723-r1 `
-  -AdmittedModRelease m15-hudrecover-20260723-r1
-```
-
-Then promote the already-verified image to P7:
-
-```powershell
-.\infra\gcp\p7\scripts\Promote-GatewayImage.ps1 `
-  -Image lumberjacks-gateway:m19-boundarytrace-20260723-r1 `
-  -AdmittedModRelease m15-hudrecover-20260723-r1
-```
-
-The promotion saves the local image, verifies the archive SHA-256 after upload, loads
-the image on P7, removes duplicate `LUMBERJACKS_GATEWAY_IMAGE` and `LUMBERJACKS_VERSION`
-lines before writing the new durable pins, restarts only `gateway` with
-`--no-build --no-deps`, and verifies both `/health` and the exact running image id. The
-previous environment file is backed up under
-`/mnt/comfy-p7/backups/gateway-image-promote/<timestamp>/environment` and is restored
-automatically if the remote transaction fails.
-
-`scripts\deploy-gateway.ps1` is retained for historical reference only. It still copies
-source into `/opt/lumberjacks-ed83bd8` and builds on the VM, which is the stale path
-that this image-promotion lane replaces.
-
-### 6. Enroll the player
-
-```powershell
-.\infra\gcp\p7\scripts\new-player-invite.ps1
-```
-
-The script authenticates locally on GCP over SSH and returns a one-use, 24-hour URL.
-The player follows the link, signs in with Steam OpenID, and downloads the
-personalized mod pack. For already-installed testers, use `/join/update`; that path
-downloads the latest mod files without rotating the existing access key. See
-[VOLUNTEER-ENDPOINT.md](VOLUNTEER-ENDPOINT.md).
-
-### 7. Establish the preflight baseline
-
-```powershell
-$gateway = 'http://8.231.129.249:42317'
-Invoke-RestMethod "$gateway/health"
-Invoke-RestMethod "$gateway/api/v0/telemetry/cutover" |
-  ConvertTo-Json -Depth 20
-```
-
-Require fresh heartbeat, version `0.5.31`, `lumberjacks-primary`, 100% coverage,
-native-only zero, persistence healthy, and an empty P7 window before admitting a new
-test. Also verify disk space and both server DLL hashes.
-
-### 8. Launch without a tunnel
-
-```powershell
-.\infra\gcp\p7\scripts\start-direct-session.ps1
-```
-
-This health-checks the direct Gateway and launches Valheim with
-`+connect 8.231.129.249:2456`. No OMEN forwarding process is required; the poller is
-inside ComfyNetworkSense. The old `127.0.0.1:14000` IAP tunnel remains an operator
-fallback only.
-
-### 9. Accept and preserve the window
-
-Exercise spawn, dense construction, and rapid travel into an uncached area. Capture
-`/api/v0/telemetry/cutover` before disconnect. Pass only when the same primary window
-has 100% coverage, zero native-only/fallback, receipts equal acknowledgements, zero
-pending, `complete=true`, healthy persistence, and zero reject/duplicate/retry/client
-transport failures.
-
-The live API can reset receipt counters after a consumer leaves or a window rolls;
-save the coherent closure sample rather than reconstructing it from later totals.
-
-### 10. Run the player-motion canary
-
-Use [VALHEIM-MOTION-CANARY.md](VALHEIM-MOTION-CANARY.md) for the two-client,
-observe-first A/B. Do not begin with `APPLY` enabled. First prove both clients send,
-the Gateway receives, and the peer receives; then compare UDP to WebSocket fallback;
-only then enable apply on one observer. The in-game truth strip and the community
-dashboard trace are the two acceptance surfaces.
-
-## Dashboards
-
-These report the deployed GCP Gateway:
-
-```text
-http://8.231.129.249:42317/community
-http://8.231.129.249:42317/networksense
-http://8.231.129.249:42317/events
-http://8.231.129.249:42317/testing
-```
-
-For the private admin console, forward Operator API and run Vite locally:
-
-```powershell
-gcloud compute ssh comfy-lumberjacks-p7 `
-  --project lumberjacks-exp-20260711-djc `
-  --zone us-west1-b --tunnel-through-iap -- `
-  -L 14004:127.0.0.1:4004
-```
-
-Then start `admin-web` with `API_TARGET=http://127.0.0.1:14004`.
-
-## Rollback and recovery
-
-The mod rolls back by restoring its backed-up DLL pair:
-
-```powershell
-.\infra\gcp\p7\scripts\rollback-network-sense.ps1 `
-  -BackupPath /mnt/comfy-p7/backups/comfynetworksense/<timestamp>
-```
-
-**The gateway rolls back by re-pinning its image, never by rebuilding.** Use phase 3
-of the promotion drill, which re-pins the historical image already on the VM, brings
-it up with `--no-build`, and verifies both `/health` and the exact image id:
-
-```powershell
-.\infra\gcp\p7\scripts\run-promotion-drill.ps1 `
-  -BundleRoot <bundle> -Execute `
-  -RollbackImageId <sha256:...> -RollbackModSha256 <sha256> `
-  -RollbackModBackupPath /mnt/comfy-p7/backups/comfynetworksense/<timestamp>
-```
-
-There used to be a standalone `rollback-gateway.ps1` here. It was deleted rather than
-repaired: it copied source onto the VM and ran `docker compose build gateway`, which
-this stack structurally forbids — the compose file pins every service by image and
-carries no `build:` stanza — so it could only fail, and it failed *after* the copy had
-already mutated `/opt`. Its `-SourceRoot` also defaulted to `/opt/lumberjacks-ed83bd8`,
-a frozen historical commit. `configure-player-gateway.sh` was deleted for the same
-reason and a hardcoded public IP besides.
-
-After rollback, do not resume primary traffic until Gateway health, mod/server
-readiness, runtime/cold-start hashes, WAL health, and empty-window state all pass.
-Gateway restart and client reconnect were exercised during the earlier efficiency
-audit. Continue retaining raw samples for restart, network interruption, malformed
-envelope, disk-full/permission, replay, and two-client recipient-isolation tests.
-
-## Next correctness gate
-
-The P7 queue is currently a shared authoritative window. Before adding simultaneous
-volunteers, make pending delivery and acknowledgement recipient-scoped, then run two
-real Steam clients and prove that neither can consume or acknowledge the other's
-relevant ZDOs. Only after that gate should the project broaden capacity, automate WAL
-compaction, harden transport exposure, and right-size the VM.
+The i5 third machine was offline during release. Before broadening the cohort,
+install and launch the published archive there and complete one real public
+Steam-authenticated invitation, field-pass import, and human play lap. These two
+checks are intentionally recorded as unverified, not inferred from private-plane
+automation.

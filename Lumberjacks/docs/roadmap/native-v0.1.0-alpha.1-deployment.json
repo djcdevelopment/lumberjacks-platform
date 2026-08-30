@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "kind": "native_alpha_deployment_receipt",
+  "observed_at_utc": "2026-08-30T17:03:00Z",
+  "release": {
+    "tag": "native-v0.1.0-alpha.1",
+    "source_revision": "45bc6935dbb393c623baeef164064344df4c492e",
+    "public_url": "https://github.com/djcdevelopment/lumberjacks-platform/releases/tag/native-v0.1.0-alpha.1",
+    "filename": "Lumberjacks-0.1.0-alpha.1-windows-x64.zip",
+    "size_bytes": 73320022,
+    "sha256": "4dd6e02a08308487d006ac4868f178933c672f0aec4b7652744696033db026bf",
+    "signed": false,
+    "github_attestation_verified": true,
+    "credential_files_included": false
+  },
+  "p7": {
+    "gateway_release": "m33-native-20260830-r1",
+    "gateway_image_id": "sha256:02807e680d27b23cb51f0b5c9e15cd8d0cb4128c733d8ca156e1202d091f9383",
+    "source_revision": "45bc6935dbb393c623baeef164064344df4c492e",
+    "native_client_release": "0.1.0-alpha.1",
+    "world_id": "northwoods-field-alpha",
+    "max_native_sessions": 10,
+    "machine_type": "e2-medium",
+    "public_tls_health": "ok",
+    "anonymous_game_upgrade": "rejected_http_401",
+    "valheim_state": "frozen",
+    "valheim_in_default_profile": false,
+    "valheim_world_save_receipt": "2026-08-30T09:43:09-07:00 World saved (49.359ms)"
+  },
+  "live_loop": {
+    "resource_id": "northwoods-old-pine",
+    "resource_name": "Storm Pine",
+    "strike_count": 8,
+    "final_health": 0,
+    "fall_heading": -2.3,
+    "tree_felled_events": 1,
+    "persisted_after_gateway_restart": true,
+    "persisted_after_vm_stop_start": true,
+    "cold_boot_kept_valheim_frozen": true
+  },
+  "rollback": {
+    "previous_gateway_image": "lumberjacks-gateway:m32-creatoros-20260830-r3",
+    "previous_environment_backup": "/mnt/comfy-p7/backups/gateway-image-promote/20260830T163747Z/environment",
+    "native_control_backup": "/mnt/comfy-p7/backups/native-alpha/20260830T163735Z",
+    "valheim_restore_profile": "tls,valheim",
+    "historical_state_deleted": false
+  },
+  "remaining_physical_proof": [
+    "Install and launch the published package on the offline i5 third machine.",
+    "Complete one public Steam-authenticated field-pass import and human play lap."
+  ]
+}

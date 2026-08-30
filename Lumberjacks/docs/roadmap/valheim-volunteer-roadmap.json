@@ -1,61 +1,61 @@
 {
   "schema_version": 2,
-  "title": "Comfy × Valheim — Lumberjacks Volunteer Roadmap",
-  "headline": "CREATOROS BETA 1 CUTOVER STAGED · P7 NOT YET SERVING",
-  "updated_at": "2026-08-30T16:58:32.404Z",
+  "title": "Lumberjacks — Northwoods Field Roadmap",
+  "headline": "NORTHWOODS FIELD ALPHA LIVE · INVITE-ONLY WINDOWS X64",
+  "updated_at": "2026-08-30T17:10:03.612Z",
   "overall_status": "active",
-  "platform_readiness": "not_ready",
-  "active_milestone": "M1",
+  "platform_readiness": "invite_only_alpha",
+  "active_milestone": "M2",
   "current_release": {
-    "release_id": "m30-rolecontrol-20260723-r1",
-    "mod": "ComfyNetworkSense 0.5.35",
-    "mod_sha256": "19de788597fae87dfba2db9566ea0e37623f8c967d333187fe24589237b3df06",
-    "gateway_image": "m30-rolecontrol-20260723-r1",
-    "gateway_image_release_id": "m30-rolecontrol-20260723-r1",
-    "client_package_release": "m31-motionphase-20260724-r1",
-    "client_package_sha256": "ef5ced82655f403deeaae83e40ed382742db445db7cae0a3349cbeabd2117259",
-    "client_plugin_sha256": "1e875984fde1b81895beaf70a3ad99db832a330257788d2f8ccfd6db7f4fe6a7",
+    "release_id": "native-v0.1.0-alpha.1",
+    "mod": "Native Godot client 0.1.0-alpha.1",
+    "mod_sha256": "4dd6e02a08308487d006ac4868f178933c672f0aec4b7652744696033db026bf",
+    "gateway_image": "m33-native-20260830-r1",
+    "gateway_image_release_id": "m33-native-20260830-r1",
+    "client_package_release": "native-v0.1.0-alpha.1",
+    "client_package_sha256": "4dd6e02a08308487d006ac4868f178933c672f0aec4b7652744696033db026bf",
+    "client_plugin_sha256": "embedded-in-native-package",
     "deployment": "comfy-lumberjacks-p7",
-    "window": "p7-primary-v1",
-    "authoritative_consumer_ceiling": 2,
-    "ceiling_enforcement": "Alpha target is two simultaneous testers. The temporary Gateway one-seat reservation is disabled on P7 via VALHEIM_HANDSHAKE_SEAT_CAPACITY=0; native Valheim max-player enforcement still applies. N-seat Gateway admission remains deferred until per-holder liveness exists.",
-    "gateway_admits_mod_release": "m30-rolecontrol-20260723-r1"
+    "window": "northwoods-field-alpha",
+    "authoritative_consumer_ceiling": 10,
+    "ceiling_enforcement": "Gateway atomically caps first-party native sessions at ten and prevents duplicate enrolled-player incarnations. The public /game lane requires an exact client release and a per-enrollment credential; private-plane probes are explicitly separate.",
+    "gateway_admits_mod_release": "m7-c10b-20260807-r42"
   },
-  "claim": "The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.",
+  "claim": "The invite-only Northwoods field alpha is live: one immutable Windows x64 package, one exact-release authenticated Gateway lane, and one authored Storm Pine loop whose state survived both a Gateway restart and a full P7 stop/start. This proves the release, deployment, and scripted single-player field loop—not a third-machine install, a public Steam-authenticated human lap, or concurrent human play.",
   "primer": {
-    "title": "What is being replaced in this test?",
-    "summary": "Valheim still decides which world-object revisions a player should receive. The server mod redirects those eligible revisions through Lumberjacks, the Gateway stores and leases them, and the enrolled client mod applies them on Unity's main thread before acknowledging a terminal outcome.",
-    "denominator": "100% means 83,220 of 83,220 eligible ZDO revisions observed in the declared strict one-client window closed through Lumberjacks, with zero eligible native ZDO sends. It does not mean 100% of Valheim networking.",
+    "title": "What does this alpha actually prove?",
+    "summary": "A player can receive a one-use field pass, launch the standalone Godot client, walk to the authored Storm Pine, fell it through the live Gateway, and reconnect to the same durable result. The native game lane has no runtime dependency on Valheim, CreatorOS, or a reverse-engineered mod.",
+    "denominator": "The first gameplay proof is intentionally one authored resource: eight accepted strikes reduced Storm Pine to zero health, selected one deterministic fall heading, and emitted exactly one terminal tree_felled event. Those facts survived service and machine restarts; they do not stand in for the pending human-client and concurrency laps.",
     "dataflow": [
       {
-        "stage": "1 · SELECT",
-        "owner": "Native Valheim",
-        "action": "Build the peer-specific list of world-object revisions.",
-        "boundary": "Candidate relevance and inference remain native today."
+        "stage": "1 · ENROLL",
+        "owner": "Gateway",
+        "action": "Exchange a one-use invitation for a no-store native field pass.",
+        "boundary": "The automated private-plane proof is complete; one public Steam human exchange remains."
       },
       {
-        "stage": "2 · REDIRECT",
-        "owner": "Lumberjacks server adapter",
-        "action": "Intercept eligible revisions, attach stable ordering metadata, and redirect the declared ZDO delivery path.",
-        "boundary": "Producer loss safety and per-peer readiness are M4a work."
+        "stage": "2 · LAUNCH",
+        "owner": "Godot client",
+        "action": "Import the field pass and connect with the exact admitted client release.",
+        "boundary": "The package is unsigned alpha software; SHA-256, manifest, and attestation establish its identity."
       },
       {
-        "stage": "3 · STORE AND LEASE",
-        "owner": "Lumberjacks Gateway",
-        "action": "Durably record envelopes and make pending work available to the authenticated consumer.",
-        "boundary": "The current queue is safe only at the one-consumer ceiling; recipient isolation is M4a."
+        "stage": "3 · PLAY",
+        "owner": "Native simulation",
+        "action": "Move in three dimensions and apply cooldown-, range-, and release-checked axe strikes.",
+        "boundary": "The alpha exposes one deliberately narrow authored tree loop."
       },
       {
-        "stage": "4 · APPLY",
-        "owner": "Lumberjacks client adapter",
-        "action": "Poll in the background, marshal onto Unity's main thread, invoke RPC_ZDOData, and validate the outcome.",
-        "boundary": "Unity remains the game engine and compatibility target."
+        "stage": "4 · PERSIST",
+        "owner": "Gateway and PostgreSQL",
+        "action": "Record the exact tree state and one terminal event through a durable worker.",
+        "boundary": "Atomic capacity and duplicate-player defenses are tested; concurrent human play is not."
       },
       {
-        "stage": "5 · ACKNOWLEDGE",
-        "owner": "Lumberjacks client and Gateway",
-        "action": "Acknowledge only an applied or safely superseded terminal outcome and retain the accounting result.",
-        "boundary": "Per-run retained volunteer proof is M3 work."
+        "stage": "5 · RETURN",
+        "owner": "Northwoods field",
+        "action": "Reconnect after a process or machine restart and observe the same fallen tree.",
+        "boundary": "The offline i5 install and public human field-pass lap remain the next physical proofs."
       }
     ]
   },
@@ -198,26 +198,22 @@
     {
       "status": "active",
       "as_of": "2026-08-30",
-      "milestone": "M1",
-      "text": "CREATOROS BETA 1 CUTOVER ACTIVE. A frozen CreatorOSBeta1 server slice now pins the fresh world UID and pair hash, Slayers Signature Hunt content lineage, the exact NetworkSense server DLL, native Valheim networking, and fail-closed durable-roster admission. The local P7 activation path also pins its compose and systemd controls, requires a graceful world save before replacement or VM shutdown, and rolls back a failed activation. P7 remains TERMINATED and none of this is represented as deployed yet. The next external action is to cut the exact Gateway image, boot P7, install the frozen slice, prove TLS and roster state, then exercise a saved stop/start and leave P7 running.",
+      "milestone": "M2",
+      "text": "The invite-only Northwoods field alpha is LIVE on P7. The public Windows x64 prerelease and exact SHA-256 are published; Gateway m33-native-20260830-r1 admits exact native client 0.1.0-alpha.1 with a ten-player cap. The authored Storm Pine loop persisted through Gateway restart and full VM stop/start on e2-medium.",
       "verify_by": [
-        "infra/gcp/p7/scripts/verify-creatoros-beta-server-release.py",
-        "infra/gcp/p7/scripts/Install-CreatorOsBetaServer.ps1",
-        "infra/gcp/p7/scripts/install-creatoros-beta-server.sh",
-        "infra/gcp/p7/scripts/Stop-P7Safely.ps1",
-        "tests/test_creatoros_beta_server_release.py",
-        "gcloud compute instances describe (P7) — the VM state is the authority for deployed status"
+        "docs/roadmap/native-v0.1.0-alpha.1-deployment.json",
+        "https://github.com/djcdevelopment/lumberjacks-platform/releases/tag/native-v0.1.0-alpha.1",
+        "Live /identity and /health on P7"
       ]
     },
     {
-      "status": "deployed_config",
+      "status": "dormant",
       "as_of": "2026-08-30",
-      "milestone": "M1",
-      "text": "P7 is currently TERMINATED. The last deployed state remains Gateway and admitted mod release m30-rolecontrol-20260723-r1 with the m31-motionphase-20260724-r1 client-pull pointer. That historical custom-transport configuration is the rollback state, not the CreatorOS Beta 1 target and not a claim that any service is currently reachable.",
+      "milestone": "M7",
+      "text": "CreatorOS and the historical Valheim server are FROZEN rollback evidence, not the active product lane. Valheim saved cleanly, remains excluded from the default compose profile, and can be restored explicitly with tls,valheim. A third-machine i5 install and one public Steam field-pass lap remain unverified because i5 was offline.",
       "verify_by": [
-        "HANDOFF-2026-07-29.md",
-        "Lumberjacks/docs/roadmap/valheim-volunteer-roadmap.json (current_release block)",
-        "gcloud compute instances describe (P7) — the VM state is the authority for deployed status"
+        "infra/gcp/p7/RUNBOOK-native-alpha.md",
+        "docs/roadmap/native-v0.1.0-alpha.1-deployment.json"
       ]
     }
   ],
