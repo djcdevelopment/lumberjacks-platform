@@ -53,8 +53,16 @@ db="$world_root/$world_name.db"
 fwl="$world_root/$world_name.fwl"
 db_bytes=0
 fwl_bytes=0
-[[ -f "$db" ]] && db_bytes="$(stat -c '%s' "$db")"
-[[ -f "$fwl" ]] && fwl_bytes="$(stat -c '%s' "$fwl")"
+db_sha256=''
+fwl_sha256=''
+if [[ -f "$db" ]]; then
+  db_bytes="$(stat -c '%s' "$db")"
+  db_sha256="$(sha256sum "$db" | awk '{print $1}')"
+fi
+if [[ -f "$fwl" ]]; then
+  fwl_bytes="$(stat -c '%s' "$fwl")"
+  fwl_sha256="$(sha256sum "$fwl" | awk '{print $1}')"
+fi
 new_files=0
 for candidate in "$db.new" "$fwl.new"; do
   [[ -e "$candidate" ]] && new_files=$((new_files + 1))
@@ -69,7 +77,8 @@ if [[ "$was_running" == true ]]; then
     detail=graceful_stop_missing_world_saved_marker
   fi
 fi
-if (( db_bytes <= 0 || fwl_bytes <= 0 || new_files != 0 )); then
+if (( db_bytes <= 0 || fwl_bytes <= 0 || new_files != 0 )) ||
+   [[ ! "$db_sha256" =~ ^[0-9a-f]{64}$ ]] || [[ ! "$fwl_sha256" =~ ^[0-9a-f]{64}$ ]]; then
   status=failed
   detail=world_pair_missing_empty_or_interrupted
 fi
@@ -95,11 +104,14 @@ jq -n \
   --argjson save_logged "$save_logged" \
   --argjson db_bytes "$db_bytes" \
   --argjson fwl_bytes "$fwl_bytes" \
+  --arg db_sha256 "$db_sha256" \
+  --arg fwl_sha256 "$fwl_sha256" \
   --argjson interrupted_temp_files "$new_files" \
   --argjson stack_stop_exit "$stack_stop_exit" \
   '{schema:$schema,status:$status,detail:$detail,completed_utc:$completed_utc,
     world_name:$world_name,was_running:$was_running,world_saved_log_seen:$save_logged,
-    db_bytes:$db_bytes,fwl_bytes:$fwl_bytes,interrupted_temp_files:$interrupted_temp_files,
+    db_bytes:$db_bytes,fwl_bytes:$fwl_bytes,db_sha256:$db_sha256,fwl_sha256:$fwl_sha256,
+    interrupted_temp_files:$interrupted_temp_files,
     stack_stop_exit:$stack_stop_exit}' \
   > "$receipt.tmp"
 mv "$receipt.tmp" "$receipt"

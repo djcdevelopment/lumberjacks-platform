@@ -224,6 +224,13 @@ class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
         self.assertIn('--argjson stack_stop_exit "$stack_stop_exit"', self.stop_script)
         self.assertIn("[int]$receipt.stack_stop_exit -ne 0", self.stop_driver)
 
+    def test_vm_stop_receipt_pins_the_post_save_world_pair(self) -> None:
+        self.assertIn('db_sha256="$(sha256sum "$db"', self.stop_script)
+        self.assertIn('fwl_sha256="$(sha256sum "$fwl"', self.stop_script)
+        self.assertIn('--arg db_sha256 "$db_sha256"', self.stop_script)
+        self.assertIn("[string]$receipt.db_sha256 -notmatch '^[0-9a-f]{64}$'", self.stop_driver)
+        self.assertIn("[string]$receipt.fwl_sha256 -notmatch '^[0-9a-f]{64}$'", self.stop_driver)
+
     def test_compose_reconciles_the_durable_p7_project(self) -> None:
         self.assertIn('name: "${P7_COMPOSE_PROJECT_NAME:-comfy-lumberjacks-p7}"', self.compose)
         self.assertIn(
