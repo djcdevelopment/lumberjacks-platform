@@ -63,6 +63,13 @@ LUMBERJACKS_ALPHA_SEAT_GATE=disabled
 # are retired.
 VALHEIM_HANDSHAKE_SEAT_CAPACITY=0
 
+# First-party Northwoods field alpha. These values are public artifact/runtime identities, not
+# credentials. The client cap is independently clamped to ten by Gateway.
+LUMBERJACKS_NATIVE_CLIENT_RELEASE=0.1.0-alpha.1
+LUMBERJACKS_NATIVE_CLIENT_DOWNLOAD_URL=https://github.com/djcdevelopment/lumberjacks-platform/releases/download/native-v0.1.0-alpha.1/Lumberjacks-0.1.0-alpha.1-windows-x64.zip
+LUMBERJACKS_NATIVE_CLIENT_MAX_SESSIONS=10
+LUMBERJACKS_WORLD_ID=northwoods-field-alpha
+
 # --- Valheim server/world identity ---
 # CreatorOS Beta 1 overrides these with "CreatorOS Beta 1" and CreatorOSBeta1.
 VALHEIM_SERVER_NAME=Comfy Era16 Lab
@@ -105,6 +112,8 @@ VALHEIM_SERVER_PASSWORD=
 # on 80/443, the public volunteer endpoint dark, and no error anywhere, because
 # a profile that is not selected is not a failure — the service simply does not
 # exist for that `docker compose up`.
+# `valheim` is deliberately absent: that keeps the historical server/world frozen through
+# Gateway promotions and VM reboots. Rollback is explicit: COMPOSE_PROFILES=tls,valheim.
 COMPOSE_PROFILES=tls
 
 # A real DNS A record must point at this VM; ACME will not issue for a bare IP.

@@ -21,6 +21,11 @@ x-lumberjacks-telemetry: &lumberjacks-telemetry
   LUMBERJACKS_AUTHORITATIVE_WINDOW_ID: "${LUMBERJACKS_AUTHORITATIVE_WINDOW_ID:-p7-primary-v1}"
   LUMBERJACKS_STRICT_ROSTER_ENABLED: "${LUMBERJACKS_STRICT_ROSTER_ENABLED:-false}"
   LUMBERJACKS_STRICT_RELEASE_ENABLED: "${LUMBERJACKS_STRICT_RELEASE_ENABLED:-false}"
+  # First-party Northwoods client identity. Keep the public field-pass document, the WebSocket
+  # admission gate, and persisted tree-felling evidence on one explicit release/world identity.
+  LUMBERJACKS_NATIVE_CLIENT_RELEASE: "${LUMBERJACKS_NATIVE_CLIENT_RELEASE:-0.1.0-alpha.1}"
+  LUMBERJACKS_NATIVE_CLIENT_DOWNLOAD_URL: "${LUMBERJACKS_NATIVE_CLIENT_DOWNLOAD_URL:-https://github.com/djcdevelopment/lumberjacks-platform/releases/download/native-v0.1.0-alpha.1/Lumberjacks-0.1.0-alpha.1-windows-x64.zip}"
+  LUMBERJACKS_WORLD_ID: "${LUMBERJACKS_WORLD_ID:-northwoods-field-alpha}"
 
 x-lumberjacks-service: &lumberjacks-service
   restart: unless-stopped
@@ -124,6 +129,9 @@ services:
       # Rollback compatibility for older Gateway images that do not understand
       # LUMBERJACKS_ALPHA_SEAT_GATE.
       ValheimHandshake__SeatCapacity: "${VALHEIM_HANDSHAKE_SEAT_CAPACITY:-1}"
+      # ASP.NET's environment binder uses a double underscore for nested configuration.
+      # The runtime clamps this to 1..10 as a second line of defence.
+      NativeClient__MaxSessions: "${LUMBERJACKS_NATIVE_CLIENT_MAX_SESSIONS:-10}"
       Urls: "http://+:4000"
       ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
       ServiceUrls__EventLog: "http://eventlog:4002"
@@ -258,6 +266,10 @@ services:
         condition: service_healthy
 
   valheim-server:
+    # Frozen during the native Northwoods alpha. The existing world, image, and volumes remain
+    # intact for rollback, but ordinary P7 starts/promotions cannot resurrect Valheim. An operator
+    # must deliberately add `valheim` to COMPOSE_PROFILES to re-enter the historical server lane.
+    profiles: ["valheim"]
     image: ghcr.io/community-valheim-tools/valheim-server@sha256:e8b13da3c44f54a38511c8ac224f2959a437c0b2626cf916683ca7acc8dfb146
     restart: unless-stopped
     cap_add:
