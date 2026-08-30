@@ -203,14 +203,6 @@ rollback_on_error() {
       restore_backup "$world_root/CreatorOSBeta1.fwl" 'worlds_local/CreatorOSBeta1.fwl'
       restore_backup "$bepinex_root/plugins/ComfyNetworkSense.dll" 'bepinex/plugins/ComfyNetworkSense.dll'
       restore_backup "$bepinex_root/djcdevelopment.valheim.comfynetworksense.cfg" 'bepinex/djcdevelopment.valheim.comfynetworksense.cfg'
-      if [[ -f "$backup_root/bepinex-root.metadata" ]]; then
-        IFS=: read -r prior_uid prior_gid prior_mode < "$backup_root/bepinex-root.metadata"
-        if [[ "$prior_uid" =~ ^[0-9]+$ && "$prior_gid" =~ ^[0-9]+$ &&
-              "$prior_mode" =~ ^[0-7]{3,4}$ ]]; then
-          chown "$prior_uid:$prior_gid" "$bepinex_root"
-          chmod "$prior_mode" "$bepinex_root"
-        fi
-      fi
       restore_backup "$bepinex_root/comfy-network-sense/quest-view.json" 'bepinex/comfy-network-sense/quest-view.json'
       restore_backup "$creator_root/venue.json" 'creatoros-beta1/venue.json'
       restore_backup "$creator_root/campaign.json" 'creatoros-beta1/campaign.json'
@@ -282,47 +274,6 @@ backup_if_present "$bepinex_root/djcdevelopment.valheim.comfynetworksense.cfg" '
 install_atomic "$release_root/server/BepInEx/config/djcdevelopment.valheim.comfynetworksense.cfg" \
   "$bepinex_root/djcdevelopment.valheim.comfynetworksense.cfg" \
   "$(manifest_hash_for 'BepInEx/config/djcdevelopment.valheim.comfynetworksense.cfg')"
-
-# The frozen release is intentionally secret-free. Bind the existing P7 telemetry credential only
-# after the exact public config has passed its content hash. BepInEx rewrites the leaf file as 0644
-# during startup, so the durable secrecy boundary is the uid-owned 0700 BepInEx directory rather
-# than a leaf mode it does not preserve. The secret never enters the release tree, deployment
-# manifest, receipt, command line, or logs.
-telemetry_key="$(sed -n 's/^VALHEIM_TELEMETRY_KEY=//p' "$environment_file" | tail -n 1)"
-telemetry_key="$(printf '%s' "$telemetry_key" | sed 's/^"//;s/"$//')"
-[[ "$telemetry_key" =~ ^[A-Za-z0-9._~+/=-]{16,256}$ ]] || {
-  echo 'P7 telemetry key is missing or unsafe for the BepInEx config boundary' >&2; false;
-}
-telemetry_config="$bepinex_root/djcdevelopment.valheim.comfynetworksense.cfg"
-telemetry_config_temp="$telemetry_config.creatoros-secret-${release_hash:0:12}"
-[[ ! -e "$telemetry_config_temp" ]] || {
-  echo 'stale telemetry-config temporary exists' >&2; false;
-}
-inserted_telemetry_key=0
-while IFS= read -r line || [[ -n "$line" ]]; do
-  printf '%s\n' "$line" >> "$telemetry_config_temp"
-  if [[ "$line" == 'lumberjacksTelemetryHeartbeatEnabled = true' ]]; then
-    printf 'lumberjacksTelemetryKey = %s\n' "$telemetry_key" >> "$telemetry_config_temp"
-    inserted_telemetry_key=$((inserted_telemetry_key + 1))
-  fi
-done < "$telemetry_config"
-if (( inserted_telemetry_key != 1 )); then
-  rm -f -- "$telemetry_config_temp"
-  echo 'frozen NetworkSense config has no unique telemetry-key insertion boundary' >&2
-  false
-fi
-chown 1000:1000 "$telemetry_config_temp"
-chmod 0600 "$telemetry_config_temp"
-mv -f "$telemetry_config_temp" "$telemetry_config"
-unset telemetry_key
-stat -c '%u:%g:%a' "$bepinex_root" > "$backup_root/bepinex-root.metadata"
-chown 1000:1000 "$bepinex_root"
-chmod 0700 "$bepinex_root"
-[[ "$(stat -c '%u:%g:%a' "$bepinex_root")" == '1000:1000:700' &&
-   "$(stat -c '%u:%g:%a' "$telemetry_config")" == '1000:1000:600' &&
-   "$(grep -c '^lumberjacksTelemetryKey = ' "$telemetry_config")" == 1 ]] || {
-  echo 'effective NetworkSense telemetry config boundary drifted' >&2; false;
-}
 backup_if_present "$bepinex_root/comfy-network-sense/quest-view.json" 'bepinex/comfy-network-sense/quest-view.json'
 install_atomic "$release_root/server/BepInEx/config/comfy-network-sense/quest-view.json" \
   "$bepinex_root/comfy-network-sense/quest-view.json" \
@@ -376,7 +327,6 @@ jq -n \
     world_name:"CreatorOSBeta1",world_uid:$world_uid,
     world_pair_hash:$world_pair_hash,pack_content_hash:$pack_content_hash,server_mode:"native-valheim",
     strict_roster:true,strict_release:true,handshake_fail_closed:true,
-    telemetry_secret_injected:true,telemetry_secret_boundary:true,
     platform_controls_verified:true,backup_root:$backup_root}' \
   > "$receipt.tmp"
 mv "$receipt.tmp" "$receipt"
@@ -419,14 +369,6 @@ if [[ "$activate" == true ]]; then
       (.heartbeat.mod_version | type == "string" and length > 0)' \
       <<<"$telemetry_heartbeat" >/dev/null 2>&1
   }
-  telemetry_secret_boundary_ready() {
-    # BepInEx owns and rewrites the leaf while saving defaults, including its mode. Chmodding that
-    # live file races its watcher forever. The parent is the durable boundary: other OS users cannot
-    # traverse it even when BepInEx recreates the leaf as 0644.
-    [[ "$(stat -c '%u:%g:%a' "$bepinex_root")" == '1000:1000:700' &&
-       "$(stat -c '%u:%g' "$telemetry_config")" == '1000:1000' &&
-       "$(grep -c '^lumberjacksTelemetryKey = ' "$telemetry_config")" == 1 ]]
-  }
   wait_for_activation() {
     local label="$1"
     local predicate="$2"
@@ -442,7 +384,6 @@ if [[ "$activate" == true ]]; then
      ! wait_for_activation 'CreatorOSBeta1 world load' creatoros_world_loaded ||
      ! wait_for_activation 'durable strict roster window' strict_handshake_ready ||
      ! wait_for_activation 'authenticated NetworkSense heartbeat' telemetry_heartbeat_ready ||
-     ! wait_for_activation 'private telemetry secret boundary' telemetry_secret_boundary_ready ||
      ! wait_for_activation 'public TLS health' tls_ready; then
     docker logs --tail 120 "$container" >&2 || true
     false
@@ -450,8 +391,7 @@ if [[ "$activate" == true ]]; then
   jq --arg status active --arg hash "$runtime_dll" \
     '.status=$status | .activated_utc=(now | todateiso8601) | .tls_health=true |
       .creatoros_world_loaded=true | .strict_handshake_ready=true |
-      .telemetry_heartbeat_ready=true | .telemetry_secret_boundary_ready=true |
-      .runtime_networksense_sha256=$hash' \
+      .telemetry_heartbeat_ready=true | .runtime_networksense_sha256=$hash' \
     "$receipt" > "$receipt.active"
   mv "$receipt.active" "$receipt"
 fi

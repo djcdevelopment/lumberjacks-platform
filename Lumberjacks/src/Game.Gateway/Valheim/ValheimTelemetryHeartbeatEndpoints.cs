@@ -16,8 +16,10 @@ public static class ValheimTelemetryHeartbeatEndpoints
             ValheimWindowActivityService activity) =>
         {
             var expected = Environment.GetEnvironmentVariable("VALHEIM_TELEMETRY_KEY");
-            if (!string.IsNullOrWhiteSpace(expected) &&
-                request.Headers["X-Lumberjacks-Telemetry-Key"] != expected)
+            if (!ValheimTelemetryHeartbeatAuthorization.Allows(
+                    ValheimPrincipal.From(request.HttpContext),
+                    expected,
+                    request.Headers["X-Lumberjacks-Telemetry-Key"].ToString()))
             {
                 return Results.Unauthorized();
             }
@@ -82,5 +84,26 @@ public static class ValheimTelemetryHeartbeatEndpoints
 
             return Results.Ok(service.EnrollmentSnapshot(manifestId));
         }).RequireCors(PublicTelemetryV0.CorsPolicyName);
+    }
+}
+
+/// <summary>
+/// The server mod already arrives through the capability middleware's direct private-plane grant,
+/// so it does not need a copy of Gateway's shared heartbeat secret on disk. Public callers remain
+/// keyed even when they hold a consumer/telemetry enrollment.
+/// </summary>
+public static class ValheimTelemetryHeartbeatAuthorization
+{
+    public static bool Allows(ValheimPrincipal? principal, string? expectedKey, string? suppliedKey)
+    {
+        if (string.Equals(principal?.Kind, "private-plane", StringComparison.Ordinal))
+            return true;
+        if (string.IsNullOrWhiteSpace(expectedKey))
+            return true;
+
+        var actual = System.Text.Encoding.UTF8.GetBytes(suppliedKey ?? string.Empty);
+        var expected = System.Text.Encoding.UTF8.GetBytes(expectedKey);
+        return actual.Length == expected.Length &&
+            System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(actual, expected);
     }
 }

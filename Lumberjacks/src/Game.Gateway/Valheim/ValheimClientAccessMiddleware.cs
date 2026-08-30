@@ -117,7 +117,13 @@ public sealed class ValheimClientAccessMiddleware
             return ValheimPrincipal.Anonymous;
         }
 
-        if (IsPrivateOrLoopback(context.Connection.RemoteIpAddress))
+        // Caddy reaches Gateway over the private Docker network, but it also supplies
+        // X-Forwarded-For for every public request. Treating the socket alone as authoritative
+        // turns the TLS reverse proxy into an admin-capability tunnel. Direct server-container
+        // traffic has no forwarded claim; proxied traffic must authenticate as the public caller.
+        var hasForwardedPeerClaim = !string.IsNullOrWhiteSpace(
+            context.Request.Headers["X-Forwarded-For"].ToString());
+        if (IsPrivateOrLoopback(context.Connection.RemoteIpAddress) && !hasForwardedPeerClaim)
         {
             var principal = new ValheimPrincipal("private-plane",
                 ValheimCapability.Admin | ValheimCapability.Producer |

@@ -145,6 +145,7 @@ public sealed class ValheimClientAccessMiddlewareTests : IDisposable
     {
         var (service, issued) = CreateEnrolledService();
         var context = Request("GET", "/valheim/zdo-redirect/pending/p7-primary-v1", PrivateAddress,
+            ("X-Forwarded-For", PublicAddress.ToString()),
             ("X-Lumberjacks-Enrollment-Id", issued.Enrollment.EnrollmentId),
             ("X-Lumberjacks-Client-Key", issued.AccessToken));
 
@@ -154,6 +155,30 @@ public sealed class ValheimClientAccessMiddlewareTests : IDisposable
         Assert.Equal("enrollment", principal!.Kind);
         Assert.Equal(issued.Enrollment.RecipientId, principal.Enrollment!.RecipientId);
         Assert.False(principal.Has(ValheimCapability.Admin));
+    }
+
+    [Fact]
+    public async Task AnonymousPublicCaller_BehindPrivateProxy_IsNotGrantedPrivatePlane()
+    {
+        var (service, _) = CreateEnrolledService();
+        var context = Request("POST", "/valheim/handshake/peerinfo", PrivateAddress,
+            ("X-Forwarded-For", PublicAddress.ToString()));
+
+        Assert.False(await Invoke(context, service));
+        Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        Assert.Equal("anonymous", ValheimPrincipal.From(context)?.Kind);
+    }
+
+    [Fact]
+    public async Task SharedKeyPublicCaller_BehindPrivateProxy_KeepsConsumerAccess()
+    {
+        var (service, _) = CreateEnrolledService();
+        var context = Request("POST", "/valheim/telemetry/heartbeat", PrivateAddress,
+            ("X-Forwarded-For", PublicAddress.ToString()),
+            ("X-Lumberjacks-Client-Key", SharedKey));
+
+        Assert.True(await Invoke(context, service));
+        Assert.Equal("shared-client-key", ValheimPrincipal.From(context)?.Kind);
     }
 
     [Fact]
