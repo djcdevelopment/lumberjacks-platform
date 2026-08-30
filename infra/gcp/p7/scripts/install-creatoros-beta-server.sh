@@ -420,12 +420,12 @@ if [[ "$activate" == true ]]; then
       <<<"$telemetry_heartbeat" >/dev/null 2>&1
   }
   telemetry_secret_boundary_ready() {
-    # BepInEx may have replaced the leaf while saving defaults. Re-tighten it for the live process;
-    # the 0700 parent remains the durable cold-start boundary even before this activation check.
-    chown 1000:1000 "$telemetry_config" && chmod 0600 "$telemetry_config" &&
-      [[ "$(stat -c '%u:%g:%a' "$bepinex_root")" == '1000:1000:700' &&
-         "$(stat -c '%u:%g:%a' "$telemetry_config")" == '1000:1000:600' &&
-         "$(grep -c '^lumberjacksTelemetryKey = ' "$telemetry_config")" == 1 ]]
+    # BepInEx owns and rewrites the leaf while saving defaults, including its mode. Chmodding that
+    # live file races its watcher forever. The parent is the durable boundary: other OS users cannot
+    # traverse it even when BepInEx recreates the leaf as 0644.
+    [[ "$(stat -c '%u:%g:%a' "$bepinex_root")" == '1000:1000:700' &&
+       "$(stat -c '%u:%g' "$telemetry_config")" == '1000:1000' &&
+       "$(grep -c '^lumberjacksTelemetryKey = ' "$telemetry_config")" == 1 ]]
   }
   wait_for_activation() {
     local label="$1"

@@ -259,6 +259,7 @@ class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
         self.assertIn(
             "wait_for_activation 'private telemetry secret boundary'", self.installer
         )
+        self.assertIn("other OS users cannot", self.installer)
         self.assertIn(".telemetry_heartbeat_ready=true", self.installer)
         self.assertIn(".telemetry_secret_boundary_ready=true", self.installer)
         self.assertIn("[bool]$receipt.telemetry_secret_injected -ne $true", self.driver)
