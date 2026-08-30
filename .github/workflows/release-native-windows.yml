@@ -27,13 +27,18 @@ jobs:
       # Godot selects an SDK from DOTNET_ROOT. The hosted image also carries .NET 8; installing
       # 9 beside it under Program Files let Godot select 8 first, which cannot restore the
       # server contract's net9 target. Keep the release SDK isolated and disable host fallback.
-      DOTNET_INSTALL_DIR: ${{ runner.temp }}\dotnet9
       DOTNET_MULTILEVEL_LOOKUP: "0"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+
+      - name: Select isolated .NET install root
+        shell: pwsh
+        run: |
+          "DOTNET_INSTALL_DIR=$env:RUNNER_TEMP\dotnet9" |
+            Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - uses: actions/setup-dotnet@v4
         with:
