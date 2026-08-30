@@ -6,7 +6,8 @@ namespace Game.Gateway.Valheim;
 public sealed record ValheimHandshakeStartupSettings(
     string WindowId,
     int SeatCapacity,
-    bool StrictRosterEnabled = false);
+    bool StrictRosterEnabled = false,
+    bool StrictReleaseEnabled = false);
 
 public static class ValheimHandshakeStartup
 {
@@ -14,6 +15,7 @@ public static class ValheimHandshakeStartup
     public const int DefaultSeatCapacity = 1;
     public const string AlphaSeatGateKey = "LUMBERJACKS_ALPHA_SEAT_GATE";
     public const string StrictRosterKey = "LUMBERJACKS_STRICT_ROSTER_ENABLED";
+    public const string StrictReleaseKey = "LUMBERJACKS_STRICT_RELEASE_ENABLED";
 
     public static ValheimHandshakeStartupSettings FromConfiguration(IConfiguration configuration)
     {
@@ -22,19 +24,21 @@ public static class ValheimHandshakeStartup
             windowId = DefaultWindowId;
 
         var seatCapacity = SeatCapacityFromConfiguration(configuration);
-        var strictRoster = StrictRosterFromConfiguration(configuration);
+        var strictRoster = BooleanFromConfiguration(configuration, StrictRosterKey);
+        var strictRelease = BooleanFromConfiguration(configuration, StrictReleaseKey);
 
         var context = new ValheimHandshakeServerContext
         {
             SeatCapacity = seatCapacity,
             StrictRosterEnabled = strictRoster,
+            StrictReleaseEnabled = strictRelease,
         };
         var contextError = ValheimHandshakeService.ValidateContext(context);
         if (contextError is not null)
             throw new InvalidOperationException(
                 $"Invalid ValheimHandshake startup configuration: {contextError}");
 
-        return new ValheimHandshakeStartupSettings(windowId, seatCapacity, strictRoster);
+        return new ValheimHandshakeStartupSettings(windowId, seatCapacity, strictRoster, strictRelease);
     }
 
     public static void Configure(
@@ -47,6 +51,7 @@ public static class ValheimHandshakeStartup
         {
             SeatCapacity = settings.SeatCapacity,
             StrictRosterEnabled = settings.StrictRosterEnabled,
+            StrictReleaseEnabled = settings.StrictReleaseEnabled,
         });
 
         if (!result.Ok)
@@ -54,10 +59,11 @@ public static class ValheimHandshakeStartup
                 $"Invalid ValheimHandshake startup configuration: {result.Error}");
 
         logger?.LogInformation(
-            "Configured Valheim handshake startup window {WindowId} with seat capacity {SeatCapacity} and strict roster {StrictRosterEnabled}",
+            "Configured Valheim handshake startup window {WindowId} with seat capacity {SeatCapacity}, strict roster {StrictRosterEnabled}, and strict release {StrictReleaseEnabled}",
             settings.WindowId,
             settings.SeatCapacity,
-            settings.StrictRosterEnabled);
+            settings.StrictRosterEnabled,
+            settings.StrictReleaseEnabled);
     }
 
     private static int SeatCapacityFromConfiguration(IConfiguration configuration)
@@ -89,14 +95,14 @@ public static class ValheimHandshakeStartup
         return seatCapacity;
     }
 
-    private static bool StrictRosterFromConfiguration(IConfiguration configuration)
+    private static bool BooleanFromConfiguration(IConfiguration configuration, string key)
     {
-        var raw = configuration[StrictRosterKey];
+        var raw = configuration[key];
         if (string.IsNullOrWhiteSpace(raw))
             return false;
         if (bool.TryParse(raw.Trim(), out var enabled))
             return enabled;
         throw new InvalidOperationException(
-            $"Invalid ValheimHandshake startup configuration: {StrictRosterKey} must be true or false");
+            $"Invalid ValheimHandshake startup configuration: {key} must be true or false");
     }
 }

@@ -230,6 +230,11 @@ class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
             "set_environment P7_COMPOSE_PROJECT_NAME comfy-lumberjacks-p7", self.installer
         )
 
+    def test_activation_arms_baked_release_compatibility(self) -> None:
+        self.assertIn("set_environment LUMBERJACKS_STRICT_RELEASE_ENABLED true", self.installer)
+        self.assertIn(".strict_release_enabled == true", self.installer)
+        self.assertIn("[bool]$receipt.strict_release -ne $true", self.driver)
+
 
 if __name__ == "__main__":
     unittest.main()

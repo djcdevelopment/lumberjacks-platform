@@ -197,6 +197,7 @@ public sealed class ValheimHandshakeSeatTests
         Assert.Equal(ValheimHandshakeStartup.DefaultWindowId, settings.WindowId);
         Assert.Equal(1, settings.SeatCapacity);
         Assert.False(settings.StrictRosterEnabled);
+        Assert.False(settings.StrictReleaseEnabled);
     }
 
     [Fact]
@@ -280,6 +281,7 @@ public sealed class ValheimHandshakeSeatTests
             ["LUMBERJACKS_AUTHORITATIVE_WINDOW_ID"] = Window,
             ["LUMBERJACKS_ALPHA_SEAT_GATE"] = "disabled",
             ["LUMBERJACKS_STRICT_ROSTER_ENABLED"] = "true",
+            ["LUMBERJACKS_STRICT_RELEASE_ENABLED"] = "true",
         }).Build();
         var service = new ValheimHandshakeService(
             roster: steamId => steamId == HolderSteamId
@@ -293,6 +295,7 @@ public sealed class ValheimHandshakeSeatTests
         Assert.False(rejected.Accept);
         Assert.Equal("not_enrolled", rejected.FailedCheck);
         Assert.True(service.GetStatus(Window).StrictRosterEnabled);
+        Assert.True(service.GetStatus(Window).StrictReleaseEnabled);
     }
 
     [Fact]
@@ -306,6 +309,19 @@ public sealed class ValheimHandshakeSeatTests
         var error = Assert.Throws<InvalidOperationException>(
             () => ValheimHandshakeStartup.FromConfiguration(config));
         Assert.Contains("LUMBERJACKS_STRICT_ROSTER_ENABLED", error.Message);
+    }
+
+    [Fact]
+    public void StartupConfiguration_RefusesAmbiguousStrictReleaseValue()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["LUMBERJACKS_STRICT_RELEASE_ENABLED"] = "eventually",
+        }).Build();
+
+        var error = Assert.Throws<InvalidOperationException>(
+            () => ValheimHandshakeStartup.FromConfiguration(config));
+        Assert.Contains("LUMBERJACKS_STRICT_RELEASE_ENABLED", error.Message);
     }
 
     [Fact]

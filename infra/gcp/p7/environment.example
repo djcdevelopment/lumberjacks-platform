@@ -52,6 +52,8 @@ LUMBERJACKS_AUTHORITATIVE_WINDOW_ID=p7-primary-v1
 # Set true only with a server-side strict handshake responder. CreatorOS Beta 1 uses true;
 # the historical primary window remains false until deliberately migrated.
 LUMBERJACKS_STRICT_ROSTER_ENABLED=false
+# Arm only after the deployed responder reports its baked release ID. CreatorOS Beta 1 does.
+LUMBERJACKS_STRICT_RELEASE_ENABLED=false
 # Preferred Gateway alpha admission mode. `disabled` removes the temporary one-seat
 # reservation gate so known-cohort multi-account testing can join. `one-seat`
 # restores the conservative single-seat reservation.

@@ -135,6 +135,7 @@ try {
         [string]$receipt.controls_archive_sha256 -ne $controlsArchiveHash -or
         [string]$receipt.installer_sha256 -ne $remoteInstallerHash -or
         [bool]$receipt.platform_controls_verified -ne $true -or
+        [bool]$receipt.strict_release -ne $true -or
         [string]$receipt.world_uid -ne [string]$verification.world_uid -or
         [string]$receipt.world_pair_hash -ne [string]$verification.world_pair_hash) {
         throw 'CreatorOS P7 receipt identity or status drifted.'

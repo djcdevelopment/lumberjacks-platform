@@ -303,6 +303,7 @@ set_environment P7_COMPOSE_PROJECT_NAME comfy-lumberjacks-p7
 set_environment COMFY_LUMBERJACKS_CUTOVER_MODE native
 set_environment LUMBERJACKS_AUTHORITATIVE_WINDOW_ID creatoros-beta1
 set_environment LUMBERJACKS_STRICT_ROSTER_ENABLED true
+set_environment LUMBERJACKS_STRICT_RELEASE_ENABLED true
 set_environment LUMBERJACKS_ALPHA_SEAT_GATE disabled
 set_environment VALHEIM_HANDSHAKE_SEAT_CAPACITY 0
 set_environment P7_VALHEIM_STOP_TIMEOUT_SECONDS 70
@@ -324,7 +325,8 @@ jq -n \
     controls_archive_sha256:$controls_archive_sha256,installer_sha256:$installer_sha256,
     world_name:"CreatorOSBeta1",world_uid:$world_uid,
     world_pair_hash:$world_pair_hash,pack_content_hash:$pack_content_hash,server_mode:"native-valheim",
-    strict_roster:true,handshake_fail_closed:true,platform_controls_verified:true,backup_root:$backup_root}' \
+    strict_roster:true,strict_release:true,handshake_fail_closed:true,
+    platform_controls_verified:true,backup_root:$backup_root}' \
   > "$receipt.tmp"
 mv "$receipt.tmp" "$receipt"
 
@@ -351,7 +353,8 @@ if [[ "$activate" == true ]]; then
   }
   strict_handshake_ready() {
     handshake="$(curl -fsS http://127.0.0.1:4000/valheim/handshake/status/creatoros-beta1 2>/dev/null || true)"
-    jq -e '.window_id == "creatoros-beta1" and .seat_capacity == 0 and .strict_roster_enabled == true' \
+    jq -e '.window_id == "creatoros-beta1" and .seat_capacity == 0 and
+      .strict_roster_enabled == true and .strict_release_enabled == true' \
       <<<"$handshake" >/dev/null 2>&1
   }
   tls_ready() {
