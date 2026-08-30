@@ -245,7 +245,10 @@ class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
     def test_activation_injects_and_proves_private_telemetry_auth(self) -> None:
         self.assertIn("sed -n 's/^VALHEIM_TELEMETRY_KEY=//p'", self.installer)
         self.assertIn("chmod 0600 \"$telemetry_config_temp\"", self.installer)
+        self.assertIn("chmod 0700 \"$bepinex_root\"", self.installer)
+        self.assertIn("bepinex-root.metadata", self.installer)
         self.assertIn("telemetry_secret_injected:true", self.installer)
+        self.assertIn("telemetry_secret_boundary:true", self.installer)
         self.assertIn(
             "set_environment COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID creatoros-beta1",
             self.installer,
@@ -253,9 +256,14 @@ class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
         self.assertIn(
             "wait_for_activation 'authenticated NetworkSense heartbeat'", self.installer
         )
+        self.assertIn(
+            "wait_for_activation 'private telemetry secret boundary'", self.installer
+        )
         self.assertIn(".telemetry_heartbeat_ready=true", self.installer)
+        self.assertIn(".telemetry_secret_boundary_ready=true", self.installer)
         self.assertIn("[bool]$receipt.telemetry_secret_injected -ne $true", self.driver)
         self.assertIn("[bool]$receipt.telemetry_heartbeat_ready -ne $true", self.driver)
+        self.assertIn("[bool]$receipt.telemetry_secret_boundary_ready -ne $true", self.driver)
 
 
 if __name__ == "__main__":
