@@ -22,6 +22,9 @@ LUMBERJACKS_PROGRESSION_IMAGE=CHANGE_ME_promoted_progression_image_ref
 LUMBERJACKS_OPERATORAPI_IMAGE=CHANGE_ME_promoted_operatorapi_image_ref
 
 # --- Runtime identity ---
+# Compose project identity is durable on P7. Changing it creates a second set of containers and
+# networks instead of updating the deployed stack.
+P7_COMPOSE_PROJECT_NAME=comfy-lumberjacks-p7
 # LUMBERJACKS_ROOT is RETIRED — deliberately absent, do not reintroduce it, and remove the line
 # from any existing /etc/comfy-p7/environment. It named a source tree that docker-compose.yml
 # resolved the Postgres schema script against. The 2026-07-20 unification moved that file under

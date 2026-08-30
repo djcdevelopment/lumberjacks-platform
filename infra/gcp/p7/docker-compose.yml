@@ -1,4 +1,7 @@
-name: lumberjacks-p7
+# This is a durable identity, not presentation. P7's existing containers, volumes, promotion
+# scripts, and rollback path all use comfy-lumberjacks-p7; changing it creates a parallel stack
+# that collides on host ports instead of reconciling the deployed one.
+name: "${P7_COMPOSE_PROJECT_NAME:-comfy-lumberjacks-p7}"
 
 x-lumberjacks-telemetry: &lumberjacks-telemetry
   GOOGLE_CLOUD_PROJECT: "${GOOGLE_CLOUD_PROJECT:?GOOGLE_CLOUD_PROJECT must be set}"

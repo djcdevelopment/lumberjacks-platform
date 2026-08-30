@@ -179,6 +179,9 @@ class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
         self.installer = (scripts / "install-creatoros-beta-server.sh").read_text(encoding="utf-8")
         self.stop_driver = (scripts / "Stop-P7Safely.ps1").read_text(encoding="utf-8")
         self.stop_script = (scripts / "stop-p7-stack.sh").read_text(encoding="utf-8")
+        self.compose = (ROOT / "infra" / "gcp" / "p7" / "docker-compose.yml").read_text(
+            encoding="utf-8"
+        )
 
     def test_driver_hashes_and_uploads_the_exact_platform_controls(self) -> None:
         self.assertIn("comfy-p7-creatoros-deploy/v2", self.driver)
@@ -220,6 +223,12 @@ class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
         self.assertIn("detail=remaining_stack_stop_failed", self.stop_script)
         self.assertIn('--argjson stack_stop_exit "$stack_stop_exit"', self.stop_script)
         self.assertIn("[int]$receipt.stack_stop_exit -ne 0", self.stop_driver)
+
+    def test_compose_reconciles_the_durable_p7_project(self) -> None:
+        self.assertIn('name: "${P7_COMPOSE_PROJECT_NAME:-comfy-lumberjacks-p7}"', self.compose)
+        self.assertIn(
+            "set_environment P7_COMPOSE_PROJECT_NAME comfy-lumberjacks-p7", self.installer
+        )
 
 
 if __name__ == "__main__":

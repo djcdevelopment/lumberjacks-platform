@@ -299,6 +299,7 @@ set_environment() {
 }
 set_environment VALHEIM_SERVER_NAME '"CreatorOS Beta 1"'
 set_environment VALHEIM_WORLD_NAME CreatorOSBeta1
+set_environment P7_COMPOSE_PROJECT_NAME comfy-lumberjacks-p7
 set_environment COMFY_LUMBERJACKS_CUTOVER_MODE native
 set_environment LUMBERJACKS_AUTHORITATIVE_WINDOW_ID creatoros-beta1
 set_environment LUMBERJACKS_STRICT_ROSTER_ENABLED true
