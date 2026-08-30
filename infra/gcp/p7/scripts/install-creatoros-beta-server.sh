@@ -274,6 +274,42 @@ backup_if_present "$bepinex_root/djcdevelopment.valheim.comfynetworksense.cfg" '
 install_atomic "$release_root/server/BepInEx/config/djcdevelopment.valheim.comfynetworksense.cfg" \
   "$bepinex_root/djcdevelopment.valheim.comfynetworksense.cfg" \
   "$(manifest_hash_for 'BepInEx/config/djcdevelopment.valheim.comfynetworksense.cfg')"
+
+# The frozen release is intentionally secret-free. Bind the existing P7 telemetry credential only
+# after the exact public config has passed its content hash, and keep the effective file readable
+# only by the Valheim uid. The secret never enters the release tree, deployment manifest, receipt,
+# command line, or logs.
+telemetry_key="$(sed -n 's/^VALHEIM_TELEMETRY_KEY=//p' "$environment_file" | tail -n 1)"
+telemetry_key="$(printf '%s' "$telemetry_key" | sed 's/^"//;s/"$//')"
+[[ "$telemetry_key" =~ ^[A-Za-z0-9._~+/=-]{16,256}$ ]] || {
+  echo 'P7 telemetry key is missing or unsafe for the BepInEx config boundary' >&2; false;
+}
+telemetry_config="$bepinex_root/djcdevelopment.valheim.comfynetworksense.cfg"
+telemetry_config_temp="$telemetry_config.creatoros-secret-${release_hash:0:12}"
+[[ ! -e "$telemetry_config_temp" ]] || {
+  echo 'stale telemetry-config temporary exists' >&2; false;
+}
+inserted_telemetry_key=0
+while IFS= read -r line || [[ -n "$line" ]]; do
+  printf '%s\n' "$line" >> "$telemetry_config_temp"
+  if [[ "$line" == 'lumberjacksTelemetryHeartbeatEnabled = true' ]]; then
+    printf 'lumberjacksTelemetryKey = %s\n' "$telemetry_key" >> "$telemetry_config_temp"
+    inserted_telemetry_key=$((inserted_telemetry_key + 1))
+  fi
+done < "$telemetry_config"
+if (( inserted_telemetry_key != 1 )); then
+  rm -f -- "$telemetry_config_temp"
+  echo 'frozen NetworkSense config has no unique telemetry-key insertion boundary' >&2
+  false
+fi
+chown 1000:1000 "$telemetry_config_temp"
+chmod 0600 "$telemetry_config_temp"
+mv -f "$telemetry_config_temp" "$telemetry_config"
+unset telemetry_key
+[[ "$(stat -c '%u:%g:%a' "$telemetry_config")" == '1000:1000:600' &&
+   "$(grep -c '^lumberjacksTelemetryKey = ' "$telemetry_config")" == 1 ]] || {
+  echo 'effective NetworkSense telemetry config boundary drifted' >&2; false;
+}
 backup_if_present "$bepinex_root/comfy-network-sense/quest-view.json" 'bepinex/comfy-network-sense/quest-view.json'
 install_atomic "$release_root/server/BepInEx/config/comfy-network-sense/quest-view.json" \
   "$bepinex_root/comfy-network-sense/quest-view.json" \
@@ -301,6 +337,7 @@ set_environment VALHEIM_SERVER_NAME '"CreatorOS Beta 1"'
 set_environment VALHEIM_WORLD_NAME CreatorOSBeta1
 set_environment P7_COMPOSE_PROJECT_NAME comfy-lumberjacks-p7
 set_environment COMFY_LUMBERJACKS_CUTOVER_MODE native
+set_environment COMFY_LUMBERJACKS_ENROLLMENT_MANIFEST_ID creatoros-beta1
 set_environment LUMBERJACKS_AUTHORITATIVE_WINDOW_ID creatoros-beta1
 set_environment LUMBERJACKS_STRICT_ROSTER_ENABLED true
 set_environment LUMBERJACKS_STRICT_RELEASE_ENABLED true
@@ -326,6 +363,7 @@ jq -n \
     world_name:"CreatorOSBeta1",world_uid:$world_uid,
     world_pair_hash:$world_pair_hash,pack_content_hash:$pack_content_hash,server_mode:"native-valheim",
     strict_roster:true,strict_release:true,handshake_fail_closed:true,
+    telemetry_secret_injected:true,
     platform_controls_verified:true,backup_root:$backup_root}' \
   > "$receipt.tmp"
 mv "$receipt.tmp" "$receipt"
@@ -344,6 +382,7 @@ if [[ "$activate" == true ]]; then
   activation_deadline=$((SECONDS + 240))
   runtime_dll=''
   handshake=''
+  telemetry_heartbeat=''
   runtime_dll_ready() {
     runtime_dll="$(docker exec "$container" sha256sum /opt/valheim/bepinex/BepInEx/plugins/ComfyNetworkSense.dll 2>/dev/null | cut -d' ' -f1 || true)"
     [[ "$runtime_dll" == "$expected_dll" ]]
@@ -360,6 +399,13 @@ if [[ "$activate" == true ]]; then
   tls_ready() {
     curl -fsS https://comfy-p7.duckdns.org/health >/dev/null 2>&1
   }
+  telemetry_heartbeat_ready() {
+    telemetry_heartbeat="$(curl -fsS http://127.0.0.1:4000/api/v0/telemetry/valheim 2>/dev/null || true)"
+    jq -e '.stale == false and .heartbeat.cutover_mode == "native" and
+      .heartbeat.enrollment_manifest_id == "creatoros-beta1" and
+      (.heartbeat.mod_version | type == "string" and length > 0)' \
+      <<<"$telemetry_heartbeat" >/dev/null 2>&1
+  }
   wait_for_activation() {
     local label="$1"
     local predicate="$2"
@@ -374,13 +420,15 @@ if [[ "$activate" == true ]]; then
   if ! wait_for_activation 'NetworkSense runtime hash' runtime_dll_ready ||
      ! wait_for_activation 'CreatorOSBeta1 world load' creatoros_world_loaded ||
      ! wait_for_activation 'durable strict roster window' strict_handshake_ready ||
+     ! wait_for_activation 'authenticated NetworkSense heartbeat' telemetry_heartbeat_ready ||
      ! wait_for_activation 'public TLS health' tls_ready; then
     docker logs --tail 120 "$container" >&2 || true
     false
   fi
   jq --arg status active --arg hash "$runtime_dll" \
     '.status=$status | .activated_utc=(now | todateiso8601) | .tls_health=true |
-      .creatoros_world_loaded=true | .strict_handshake_ready=true | .runtime_networksense_sha256=$hash' \
+      .creatoros_world_loaded=true | .strict_handshake_ready=true |
+      .telemetry_heartbeat_ready=true | .runtime_networksense_sha256=$hash' \
     "$receipt" > "$receipt.active"
   mv "$receipt.active" "$receipt"
 fi
