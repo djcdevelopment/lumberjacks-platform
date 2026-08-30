@@ -9,7 +9,7 @@ world truth.
 
 ## Shared contracts
 
-`clients/godot-cs/nature-2.0/nature 2.0.csproj` references `Game.Contracts`.
+`clients/godot-cs/nature-2.0/Lumberjacks.csproj` references `Game.Contracts`.
 `Game.Contracts` targets both .NET 9 and .NET 8 so the server and Godot can share:
 
 - message names and compact IDs;

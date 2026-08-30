@@ -41,6 +41,7 @@ public class PlayerHandler
             Id = request.PlayerId,
             Name = $"Player-{request.PlayerId[..8]}",
             GuildId = request.GuildId,
+            EquippedItemType = "axe",
             Position = spawnPos,
             RegionId = request.RegionId,
             Connected = true,
@@ -85,17 +86,26 @@ public class PlayerHandler
 
         var naturalResourceEntities = _world.NaturalResources.Values
             .Where(n => n.RegionId == request.RegionId)
-            .Select(n => new Dictionary<string, object>
+            .Select(n =>
             {
-                ["entity_id"] = n.Id,
-                ["entity_type"] = "natural_resource",
-                ["type"] = n.Type,
-                ["position"] = new { x = n.Position.X, y = n.Position.Y, z = n.Position.Z },
-                ["health"] = n.Health,
-                ["lean_x"] = n.LeanX,
-                ["lean_z"] = n.LeanZ,
-                // We skip growth_history in the initial snapshot to keep the message size small.
-                // It can be requested on-demand or sent when interacting.
+                var entity = new Dictionary<string, object>
+                {
+                    ["entity_id"] = n.Id,
+                    ["entity_type"] = "natural_resource",
+                    ["type"] = n.Type,
+                    ["position"] = new { x = n.Position.X, y = n.Position.Y, z = n.Position.Z },
+                    ["health"] = n.Health,
+                    ["stump_health"] = n.StumpHealth,
+                    ["regrowth_progress"] = n.RegrowthProgress,
+                    ["lean_x"] = n.LeanX,
+                    ["lean_z"] = n.LeanZ,
+                };
+                // The authored alpha tree carries its field notes in the first snapshot.  Keeping
+                // generated scenery lean preserves the existing world-snapshot budget.
+                if (n.GrowthHistory.TryGetValue("featured", out var featured) &&
+                    string.Equals(featured, "true", StringComparison.OrdinalIgnoreCase))
+                    entity["growth_history"] = n.GrowthHistory;
+                return entity;
             })
             .ToList();
 
@@ -194,6 +204,8 @@ public class PlayerHandler
             return LeaveResult.NotFound();
 
         _world.SpatialGrid.Remove(request.PlayerId);
+        _world.LastActionFlags.TryRemove(request.PlayerId, out _);
+        _world.NextAxeStrikeTick.TryRemove(request.PlayerId, out _);
 
         // Update region player count
         if (_world.Regions.TryGetValue(player.RegionId, out var region))

@@ -56,6 +56,8 @@ jobs:
         run: dotnet build Lumberjacks/Game.sln -c Release
       - name: Test
         run: dotnet test Lumberjacks/Game.sln -c Release --no-build --logger "console;verbosity=minimal"
+      - name: Native Godot C# client
+        run: dotnet build "Lumberjacks/clients/godot-cs/nature-2.0/Lumberjacks.csproj" -c Release
       - name: Authority lab
         run: dotnet test tools/authority-lab/tests/AuthorityLab.Tests/AuthorityLab.Tests.csproj -c Release --logger "console;verbosity=minimal"
 

@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace CommunitySurvival.Entities;
@@ -10,21 +11,25 @@ namespace CommunitySurvival.Entities;
 /// </summary>
 public partial class TreeEntity : Node3D
 {
+    private Node3D _standing;
     private MeshInstance3D _trunk, _canopy, _canopy2, _canopy3, _stump, _sapling;
     private string _entityId;
     private double _health = 100, _stumpHealth = 50, _regrowth;
     private double _leanX, _leanZ;
-    private bool _isFelled;
+    private bool _isFelled, _fallComplete;
     private float _twist, _fallHeading;
     private int _age = 100;
     private bool _fireScars;
+    private string _name = "Pine";
+    private string _fieldNote = "";
 
     public override void _Ready()
     {
-        _trunk = GetNode<MeshInstance3D>("Trunk");
-        _canopy = GetNode<MeshInstance3D>("Canopy");
-        _canopy2 = GetNode<MeshInstance3D>("Canopy2");
-        _canopy3 = GetNode<MeshInstance3D>("Canopy3");
+        _standing = GetNode<Node3D>("Standing");
+        _trunk = GetNode<MeshInstance3D>("Standing/Trunk");
+        _canopy = GetNode<MeshInstance3D>("Standing/Canopy");
+        _canopy2 = GetNode<MeshInstance3D>("Standing/Canopy2");
+        _canopy3 = GetNode<MeshInstance3D>("Standing/Canopy3");
         _stump = GetNode<MeshInstance3D>("Stump");
         _sapling = GetNode<MeshInstance3D>("Sapling");
     }
@@ -43,18 +48,21 @@ public partial class TreeEntity : Node3D
         if (meta.ContainsKey("growth_history"))
             ParseHistory((string)meta["growth_history"]);
 
+        if (_health <= 0)
+        {
+            _isFelled = true;
+            _fallComplete = true;
+        }
+
         ApplyVariation();
+        AddFeaturedMarker();
         UpdateVisuals();
     }
 
     public void UpdateFromServer(Godot.Collections.Dictionary meta)
     {
-        if (meta.ContainsKey("health"))
-        {
-            double old = _health;
-            _health = (double)meta["health"];
-            if (old > 0 && _health <= 0 && !_isFelled) TriggerFall();
-        }
+        double oldHealth = _health;
+        if (meta.ContainsKey("health")) _health = (double)meta["health"];
         if (meta.ContainsKey("stump_health")) _stumpHealth = (double)meta["stump_health"];
         if (meta.ContainsKey("regrowth_progress")) _regrowth = (double)meta["regrowth_progress"];
         if (meta.ContainsKey("lean_x")) _leanX = (double)meta["lean_x"];
@@ -63,6 +71,12 @@ public partial class TreeEntity : Node3D
         {
             ParseHistory((string)meta["growth_history"]);
             ApplyVariation();
+        }
+        if (oldHealth > _health && _health > 0) ShowStrike();
+        if (oldHealth > 0 && _health <= 0 && !_isFelled)
+        {
+            TriggerFall();
+            return;
         }
         UpdateVisuals();
     }
@@ -77,6 +91,8 @@ public partial class TreeEntity : Node3D
             if (r.TryGetProperty("age_years", out var ag)) int.TryParse(ag.GetString(), out _age);
             if (r.TryGetProperty("fire_scars", out var fs)) bool.TryParse(fs.GetString(), out _fireScars);
             if (r.TryGetProperty("fall_heading", out var fh)) float.TryParse(fh.GetString(), out _fallHeading);
+            if (r.TryGetProperty("name", out var name)) _name = name.GetString() ?? _name;
+            if (r.TryGetProperty("field_note", out var note)) _fieldNote = note.GetString() ?? "";
         }
         catch { }
     }
@@ -87,7 +103,7 @@ public partial class TreeEntity : Node3D
     /// </summary>
     private void ApplyVariation()
     {
-        var rng = new Random(_entityId?.GetHashCode() ?? 0);
+        var rng = new Random(StableSeed(_entityId));
 
         // Trunk height from age (20-200 years → 0.85-1.15x)
         float ageScale = Mathf.Lerp(0.85f, 1.15f, Mathf.Clamp(_age / 200f, 0f, 1f));
@@ -127,8 +143,6 @@ public partial class TreeEntity : Node3D
         SetColor(_canopy3, canopyColor);
         SetColor(_stump, trunkColor);
 
-        if (_entityId?.GetHashCode() % 100 == 0)
-            GD.Print($"Tree: pos={Position}, trunk_vis={_trunk.Visible}, canopy_vis={_canopy.Visible}, canopy_pos={_canopy.Position}, health={_health}");
     }
 
     private void ApplyCanopy(MeshInstance3D c, Random rng, float rot, float scaleMin, float scaleMax, Vector3 pos)
@@ -149,14 +163,21 @@ public partial class TreeEntity : Node3D
             _sapling.Visible = true;
             _sapling.Scale = Vector3.One * Mathf.Lerp(0.2f, 1f, (float)_regrowth);
         }
+        else if (_isFelled && !_fallComplete)
+        {
+            _standing.Visible = true;
+            _stump.Visible = false;
+            _sapling.Visible = false;
+        }
         else if (_health <= 0 || _isFelled)
         {
-            _canopy.Visible = false; _canopy2.Visible = false; _canopy3.Visible = false;
+            _standing.Visible = false;
             _stump.Visible = _stumpHealth > 0;
             _sapling.Visible = false;
         }
         else
         {
+            _standing.Visible = true;
             _trunk.Visible = true;
             _canopy.Visible = true; _canopy2.Visible = true; _canopy3.Visible = true;
             _stump.Visible = false;
@@ -173,14 +194,55 @@ public partial class TreeEntity : Node3D
         else if (Math.Abs(_leanX) > 0.01 || Math.Abs(_leanZ) > 0.01)
             angle = Mathf.Atan2((float)_leanX, (float)-_leanZ);
         else
-            angle = (_entityId?.GetHashCode() ?? 0) % 628 / 100f;
+            angle = StableSeed(_entityId) % 628 / 100f;
 
-        _trunk.Rotation = new Vector3(0, angle, 0);
+        _standing.Rotation = new Vector3(0, angle, 0);
+        _standing.Visible = true;
+        _stump.Visible = false;
         var tween = CreateTween();
-        tween.TweenProperty(_trunk, "rotation:x", Mathf.Pi / 2f, 1.2)
+        tween.TweenProperty(_standing, "rotation:x", Mathf.Pi / 2f, 1.35)
             .SetTrans(Tween.TransitionType.Bounce)
             .SetEase(Tween.EaseType.Out);
-        _stump.Visible = _stumpHealth > 0;
+        tween.TweenInterval(0.35);
+        tween.TweenCallback(Callable.From(() =>
+        {
+            _fallComplete = true;
+            UpdateVisuals();
+        }));
+    }
+
+    private void ShowStrike()
+    {
+        if (_isFelled) return;
+        var direction = Mathf.Sign((float)(_leanX + _leanZ));
+        if (direction == 0) direction = 1;
+        var tween = CreateTween();
+        tween.TweenProperty(_standing, "rotation:z", direction * 0.035f, 0.06);
+        tween.TweenProperty(_standing, "rotation:z", 0f, 0.16)
+            .SetTrans(Tween.TransitionType.Elastic)
+            .SetEase(Tween.EaseType.Out);
+    }
+
+    private void AddFeaturedMarker()
+    {
+        if (string.IsNullOrWhiteSpace(_fieldNote)) return;
+        var marker = new Label3D
+        {
+            Text = _name,
+            Position = new Vector3(0, 6.6f, 0),
+            FontSize = 34,
+            OutlineSize = 10,
+            Modulate = new Color(0.91f, 0.79f, 0.53f),
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            NoDepthTest = true,
+        };
+        AddChild(marker);
+    }
+
+    private static int StableSeed(string value)
+    {
+        var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value ?? string.Empty));
+        return BitConverter.ToInt32(hash, 0) & int.MaxValue;
     }
 
     private static void SetColor(MeshInstance3D mesh, Color color)

@@ -35,23 +35,45 @@ theme_override_constants/separation = 12
 
 [node name="Title" type="Label" parent="ConnectScreen/VBox"]
 layout_mode = 2
-text = "Nature 2.0"
+text = "LUMBERJACKS"
 horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.82, 0.67, 0.38, 1)
+theme_override_font_sizes/font_size = 34
 
-[node name="URLInput" type="LineEdit" parent="ConnectScreen/VBox"]
+[node name="Subtitle" type="Label" parent="ConnectScreen/VBox"]
 layout_mode = 2
-placeholder_text = "ws://localhost:4000"
-alignment = 1
+text = "A NORTHWOODS FIELD JOURNAL"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.57, 0.65, 0.5, 1)
+theme_override_font_sizes/font_size = 14
 
-[node name="ConnectButton" type="Button" parent="ConnectScreen/VBox"]
+[node name="Rule" type="HSeparator" parent="ConnectScreen/VBox"]
 layout_mode = 2
-text = "Connect"
+
+[node name="Welcome" type="Label" parent="ConnectScreen/VBox"]
+layout_mode = 2
+text = "Ten field seats. One old pine. Every mark persists."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ImportButton" type="Button" parent="ConnectScreen/VBox"]
+layout_mode = 2
+text = "Import field pass"
 
 [node name="StatusLabel" type="Label" parent="ConnectScreen/VBox"]
 layout_mode = 2
-text = "Enter server address"
+text = "Select lumberjacks-access.json from your invitation"
 horizontal_alignment = 1
 autowrap_mode = 2
+
+[node name="FieldPassDialog" type="FileDialog" parent="ConnectScreen"]
+title = "Choose your Lumberjacks field pass"
+initial_position = 2
+size = Vector2i(760, 520)
+ok_button_text = "Open field pass"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.json ; Lumberjacks field pass")
 
 [node name="ReconnectOverlay" type="Control" parent="."]
 visible = false

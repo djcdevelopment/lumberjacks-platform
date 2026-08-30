@@ -4,8 +4,10 @@
     <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>CommunitySurvival</RootNamespace>
+    <AssemblyName>Lumberjacks</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Game.Contracts\Game.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Game.Contracts\Game.Contracts.csproj"
+                      AdditionalProperties="LumberjacksClientTarget=true" />
   </ItemGroup>
 </Project>

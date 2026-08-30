@@ -19,6 +19,7 @@ namespace CommunitySurvival.Networking;
 /// </summary>
 public partial class SimulationClient : Node
 {
+    public const string CurrentRelease = "0.1.0-alpha.1";
     [Signal] public delegate void SessionStartedEventHandler(string playerId, string resumeToken);
     [Signal] public delegate void WorldSnapshotReceivedEventHandler(string rawJson);
     [Signal] public delegate void EntityUpdatedEventHandler(string entityId, Vector3 position, Vector3 velocity, float heading, int lastInputSeq, long tick);
@@ -37,17 +38,21 @@ public partial class SimulationClient : Node
         while (_queue.TryDequeue(out var action)) action();
     }
 
-    public async Task Connect(string url)
+    public async Task Connect(NativeAccessConfig access)
     {
         if (_socket?.State == WebSocketState.Open) return;
         _socket = new ClientWebSocket();
+        _socket.Options.SetRequestHeader("X-Lumberjacks-Enrollment-Id", access.EnrollmentId);
+        _socket.Options.SetRequestHeader("X-Lumberjacks-Client-Key", access.ClientKey);
+        _socket.Options.SetRequestHeader("X-Lumberjacks-Native-Release", CurrentRelease);
 
+        var url = access.GatewayUrl;
         if (!url.Contains("protocol=binary"))
             url += url.Contains("?") ? "&protocol=binary" : "?protocol=binary";
 
         try
         {
-            GD.Print($"SimulationClient: connecting to {url}");
+            GD.Print($"SimulationClient: connecting to {new Uri(url).Authority}");
             await _socket.ConnectAsync(new Uri(url), CancellationToken.None);
             _queue.Enqueue(() => EmitSignal(SignalName.Connected));
             _cts = new CancellationTokenSource();

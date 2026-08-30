@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 using Game.Contracts.Entities;
 using Game.Persistence;
 using Game.Persistence.Entities;
@@ -13,6 +15,7 @@ namespace Game.Simulation.Startup;
 /// </summary>
 public class NaturalResourceLoader
 {
+    public const string FeaturedTreeId = "northwoods-old-pine";
     private readonly WorldState _world;
     private readonly IDbContextFactory<GameDbContext> _dbFactory;
     private readonly ILogger<NaturalResourceLoader> _logger;
@@ -32,13 +35,26 @@ public class NaturalResourceLoader
         {
             var entities = await db.NaturalResources.Where(n => n.RegionId == regionId).ToListAsync();
             
+            var changed = false;
             if (entities.Count == 0)
             {
                 _logger.LogInformation("Generating initial forest for region {RegionId}", regionId);
                 entities = GenerateInitialForest(regionId);
                 db.NaturalResources.AddRange(entities);
-                await db.SaveChangesAsync();
+                changed = true;
             }
+
+            if (string.Equals(regionId, "region-spawn", StringComparison.Ordinal) &&
+                entities.All(entity => !string.Equals(entity.Id, FeaturedTreeId, StringComparison.Ordinal)))
+            {
+                var featured = CreateFeaturedTree(regionId);
+                entities.Add(featured);
+                db.NaturalResources.Add(featured);
+                changed = true;
+            }
+
+            if (changed)
+                await db.SaveChangesAsync();
 
             foreach (var e in entities)
             {
@@ -67,7 +83,7 @@ public class NaturalResourceLoader
     private List<NaturalResourceEntity> GenerateInitialForest(string regionId)
     {
         var entities = new List<NaturalResourceEntity>();
-        var random = new Random(regionId.GetHashCode());
+        var random = new Random(StableSeed(regionId));
         
         if (!_world.RegionProfiles.TryGetValue(regionId, out var profile) || !_world.Regions.TryGetValue(regionId, out var region))
             return entities;
@@ -109,6 +125,11 @@ public class NaturalResourceLoader
                     var twist = (profile.TradeWindX + profile.TradeWindZ) * (age / 100.0) * (random.NextDouble() * 0.5);
                     var survivedFire = random.NextDouble() > 0.9;
 
+                    // Preserve an authored clearing around spawn.  This also makes nearest-target
+                    // selection obvious in the first public slice.
+                    if (worldX * worldX + worldZ * worldZ < 144)
+                        continue;
+
                     entities.Add(new NaturalResourceEntity
                     {
                         Id = Guid.NewGuid().ToString(),
@@ -135,4 +156,33 @@ public class NaturalResourceLoader
 
         return entities;
     }
+
+    private static NaturalResourceEntity CreateFeaturedTree(string regionId) => new()
+    {
+        Id = FeaturedTreeId,
+        Type = "pine_tree",
+        PositionX = 0,
+        PositionY = 0,
+        PositionZ = 5,
+        RegionId = regionId,
+        Health = 100,
+        StumpHealth = 50,
+        RegrowthProgress = 0,
+        LeanX = 0,
+        LeanZ = 0,
+        GrowthHistory = JsonSerializer.Serialize(new Dictionary<string, string>
+        {
+            ["featured"] = "true",
+            ["name"] = "The Storm Pine",
+            ["species"] = "eastern white pine",
+            ["age_years"] = "173",
+            ["twist"] = "1.35",
+            ["fire_scars"] = "True",
+            ["field_note"] = "Storm-scarred, wind-shaped, and still standing.",
+            ["strike_count"] = "0",
+        }),
+    };
+
+    private static int StableSeed(string value) =>
+        BitConverter.ToInt32(SHA256.HashData(Encoding.UTF8.GetBytes(value)), 0);
 }

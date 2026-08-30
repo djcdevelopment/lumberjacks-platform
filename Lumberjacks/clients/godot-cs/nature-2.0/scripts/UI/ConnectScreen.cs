@@ -1,35 +1,41 @@
 using Godot;
+using System.IO;
 
 namespace CommunitySurvival.UI;
 
 /// <summary>
-/// Connection UI — URL input + connect button. Emits ConnectRequested.
+/// Connection UI. The credential-bearing field pass is read locally and never printed.
 /// </summary>
 public partial class ConnectScreen : Control
 {
-    [Signal] public delegate void ConnectRequestedEventHandler(string url);
+    [Signal] public delegate void ConnectRequestedEventHandler(string accessJson);
 
-    private LineEdit _urlInput;
-    private Button _connectButton;
+    private Button _importButton;
+    private FileDialog _fileDialog;
     private Label _statusLabel;
 
     public override void _Ready()
     {
-        _urlInput = GetNode<LineEdit>("VBox/URLInput");
-        _connectButton = GetNode<Button>("VBox/ConnectButton");
+        _importButton = GetNode<Button>("VBox/ImportButton");
+        _fileDialog = GetNode<FileDialog>("FieldPassDialog");
         _statusLabel = GetNode<Label>("VBox/StatusLabel");
 
-        _connectButton.Pressed += OnConnectPressed;
-        _urlInput.TextSubmitted += _ => OnConnectPressed();
-        _urlInput.Text = "ws://localhost:4000";
+        _importButton.Pressed += () => _fileDialog.PopupCenteredRatio(0.65f);
+        _fileDialog.FileSelected += OnFileSelected;
     }
 
-    private void OnConnectPressed()
+    private void OnFileSelected(string path)
     {
-        var url = _urlInput.Text.Trim();
-        if (string.IsNullOrEmpty(url)) url = "ws://localhost:4000";
-        GD.Print($"ConnectScreen: requesting {url}");
-        EmitSignal(SignalName.ConnectRequested, url);
+        try
+        {
+            var json = File.ReadAllText(path);
+            _statusLabel.Text = "Reading field pass…";
+            EmitSignal(SignalName.ConnectRequested, json);
+        }
+        catch
+        {
+            _statusLabel.Text = "Could not read that field pass.";
+        }
     }
 
     public void SetStatus(string text) => _statusLabel.Text = text;

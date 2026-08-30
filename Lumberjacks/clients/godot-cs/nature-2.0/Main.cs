@@ -49,10 +49,18 @@ public partial class Main : Node
 		if (ev is InputEventKey k && k.Pressed && k.Keycode == Key.Escape && _inWorld) BackToMenu();
 	}
 
-	private void OnConnect(string url)
-	{
-		_statusLabel.Text = "Connecting...";
-		_ = _net.Connect(url);
+    private void OnConnect(string accessJson)
+    {
+		try
+		{
+			var access = NativeAccessConfig.Parse(accessJson);
+			_statusLabel.Text = "Opening the Northwoods…";
+			_ = _net.Connect(access);
+		}
+		catch (System.Exception ex)
+		{
+			_statusLabel.Text = ex.Message;
+		}
 	}
 
 	private async void OnSession(string playerId, string resumeToken)
@@ -80,7 +88,7 @@ public partial class Main : Node
 		_state.Clear();
 		_reconnectOverlay.Hide();
 		_connectScreen.Show();
-		_statusLabel.Text = "Enter server address";
+		_statusLabel.Text = "Import your field pass to return";
 		await _net.Disconnect();
 	}
 }

@@ -13,13 +13,20 @@ public class GameWebSocketMiddleware
     private readonly SessionManager _sessions;
     private readonly ILogger<GameWebSocketMiddleware> _logger;
     private readonly IServiceProvider _services;
+    private readonly IConfiguration _configuration;
 
-    public GameWebSocketMiddleware(RequestDelegate next, SessionManager sessions, ILogger<GameWebSocketMiddleware> logger, IServiceProvider services)
+    public GameWebSocketMiddleware(
+        RequestDelegate next,
+        SessionManager sessions,
+        ILogger<GameWebSocketMiddleware> logger,
+        IServiceProvider services,
+        IConfiguration configuration)
     {
         _next = next;
         _sessions = sessions;
         _logger = logger;
         _services = services;
+        _configuration = configuration;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -30,10 +37,58 @@ public class GameWebSocketMiddleware
             return;
         }
 
-        var ws = await context.WebSockets.AcceptWebSocketAsync();
-
         // Check for resume token in query string: ws://host:4000?resume=TOKEN
         var resumeToken = context.Request.Query["resume"].FirstOrDefault();
+        var isNativeClient = context.Request.Path.Equals("/game");
+        var principal = ValheimPrincipal.From(context);
+        NativeClientAdmissionDecision? nativeAdmission = null;
+        string? suppliedNativeRelease = null;
+
+        if (isNativeClient)
+        {
+            suppliedNativeRelease = context.Request.Headers[NativeClientAdmission.ReleaseHeader]
+                .FirstOrDefault();
+            var requiredRelease = _configuration["NativeClient:RequiredRelease"] ??
+                _configuration["LUMBERJACKS_NATIVE_CLIENT_RELEASE"] ??
+                "0.1.0-alpha.1";
+            var maximum = Math.Clamp(
+                _configuration.GetValue("NativeClient:MaxSessions", 10), 1, 10);
+            // A resume replaces an existing incarnation, so it does not consume a new seat.
+            // Its token and identity are checked immediately after the upgrade.
+            var active = string.IsNullOrWhiteSpace(resumeToken)
+                ? _sessions.GetAll().Count(candidate => candidate.IsNativeClient)
+                : 0;
+            var worldId = _configuration["World:Id"] ??
+                _configuration["LUMBERJACKS_WORLD_ID"] ??
+                "world-default";
+            nativeAdmission = NativeClientAdmission.Evaluate(
+                principal, suppliedNativeRelease, requiredRelease, active, maximum, worldId);
+            if (!nativeAdmission.Allowed)
+            {
+                context.Response.StatusCode = nativeAdmission.StatusCode;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = nativeAdmission.Error,
+                    required_release = nativeAdmission.Error == "native_release_mismatch"
+                        ? requiredRelease
+                        : null,
+                });
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(resumeToken) &&
+                _sessions.GetAll().Any(candidate =>
+                    candidate.IsNativeClient &&
+                    string.Equals(candidate.PlayerId, nativeAdmission.PlayerId, StringComparison.Ordinal)))
+            {
+                context.Response.StatusCode = StatusCodes.Status409Conflict;
+                await context.Response.WriteAsJsonAsync(new { error = "native_player_already_connected" });
+                return;
+            }
+        }
+
+        var ws = await context.WebSockets.AcceptWebSocketAsync();
+
         // Check for binary protocol: ws://host:4000?protocol=binary
         var useBinary = string.Equals(
             context.Request.Query["protocol"].FirstOrDefault(), "binary",
@@ -61,6 +116,19 @@ public class GameWebSocketMiddleware
             else
             {
                 // Token invalid or expired — create fresh session
+                if (isNativeClient)
+                {
+                    // Native resume never falls through to a fresh identity: a stale or
+                    // stolen token must not open an eleventh or duplicate incarnation.
+                    var rejected = new GameSession(
+                        Guid.NewGuid().ToString(),
+                        nativeAdmission!.PlayerId!,
+                        ws,
+                        new ReliableGameSessionState("rejected", "rejected"));
+                    await RejectAsync(ws, rejected, "native resume token invalid or expired");
+                    return;
+                }
+
                 session = _sessions.Create(ws);
                 _logger.LogInformation(
                     "Resume token invalid/expired, new session {SessionId} (player {PlayerId})",
@@ -69,13 +137,52 @@ public class GameWebSocketMiddleware
         }
         else
         {
-            session = _sessions.Create(ws);
+            if (isNativeClient)
+            {
+                if (!_sessions.TryCreateNative(
+                        ws,
+                        nativeAdmission!.PlayerId!,
+                        suppliedNativeRelease!,
+                        Math.Clamp(_configuration.GetValue("NativeClient:MaxSessions", 10), 1, 10),
+                        out var nativeSession))
+                {
+                    var rejected = new GameSession(
+                        Guid.NewGuid().ToString(),
+                        nativeAdmission.PlayerId!,
+                        ws,
+                        new ReliableGameSessionState("rejected", "rejected"));
+                    await RejectAsync(ws, rejected, "native capacity or player incarnation changed");
+                    return;
+                }
+
+                session = nativeSession!;
+            }
+            else
+            {
+                session = _sessions.Create(ws);
+            }
             _logger.LogInformation("Session {SessionId} connected (player {PlayerId})", session.SessionId, session.PlayerId);
         }
 
-        var principal = ValheimPrincipal.From(context);
+        if (isNativeClient)
+        {
+            if (resumed &&
+                (!session.IsNativeClient ||
+                 !string.Equals(session.PlayerId, nativeAdmission!.PlayerId, StringComparison.Ordinal) ||
+                 !string.Equals(session.NativeClientRelease, suppliedNativeRelease, StringComparison.Ordinal)))
+            {
+                await RejectAsync(ws, session, "native resume identity changed");
+                return;
+            }
+
+            session.IsNativeClient = true;
+            session.NativeClientRelease = suppliedNativeRelease;
+            session.ValheimRole = "native";
+            session.ValheimLogicalPeerId = "native:" + session.PlayerId;
+        }
+
         var requestedRole = context.Request.Query["valheim_role"].FirstOrDefault();
-        if (!resumed)
+        if (!isNativeClient && !resumed)
         {
             session.ValheimRole =
                 string.Equals(requestedRole, "server", StringComparison.OrdinalIgnoreCase) &&
@@ -83,7 +190,7 @@ public class GameWebSocketMiddleware
                     ? "server"
                     : "client";
         }
-        else if (!string.IsNullOrWhiteSpace(requestedRole) &&
+        else if (!isNativeClient && !string.IsNullOrWhiteSpace(requestedRole) &&
                  !string.Equals(requestedRole, session.ValheimRole,
                      StringComparison.OrdinalIgnoreCase))
         {
@@ -91,49 +198,54 @@ public class GameWebSocketMiddleware
             return;
         }
 
-        var logicalPeerId = ValheimLogicalPeerIdentity.Resolve(
-            principal,
-            session.ValheimRole,
-            context.Request.Query["valheim_client"].FirstOrDefault(),
-            context.Request.Query["valheim_character"].FirstOrDefault(),
-            session.Reliable.ServerInstanceId,
-            session.Reliable.WorldId,
-            out var logicalPeerError);
-        if (logicalPeerId is null ||
-            (resumed && !string.Equals(
-                session.ValheimLogicalPeerId, logicalPeerId, StringComparison.Ordinal)))
+        if (!isNativeClient)
         {
-            await RejectAsync(
-                ws, session, logicalPeerError ?? "resumed logical peer changed");
-            return;
-        }
-        var duplicate = _sessions.GetAll().FirstOrDefault(candidate =>
-            candidate.SessionId != session.SessionId &&
-            string.Equals(candidate.ValheimLogicalPeerId, logicalPeerId,
-                StringComparison.Ordinal));
-        if (duplicate is not null)
-        {
-            var staleFor = DateTime.UtcNow - duplicate.LastInboundUtc;
-            var canRecoverCanonicalServer =
-                string.Equals(session.ValheimRole, "server", StringComparison.Ordinal) &&
-                string.Equals(duplicate.ValheimRole, "server", StringComparison.Ordinal) &&
-                principal?.Has(ValheimCapability.Producer) == true &&
-                staleFor >= ServerSessionStaleAfter;
-            if (!canRecoverCanonicalServer)
+            var logicalPeerId = ValheimLogicalPeerIdentity.Resolve(
+                principal,
+                session.ValheimRole,
+                context.Request.Query["valheim_client"].FirstOrDefault(),
+                context.Request.Query["valheim_character"].FirstOrDefault(),
+                session.Reliable.ServerInstanceId,
+                session.Reliable.WorldId,
+                out var logicalPeerError);
+            if (logicalPeerId is null ||
+                (resumed && !string.Equals(
+                    session.ValheimLogicalPeerId, logicalPeerId, StringComparison.Ordinal)))
             {
-                await RejectAsync(ws, session, "logical peer already connected");
+                await RejectAsync(
+                    ws, session, logicalPeerError ?? "resumed logical peer changed");
                 return;
             }
 
-            _sessions.Remove(duplicate.SessionId);
-            try { duplicate.Socket.Abort(); } catch { }
-            _logger.LogWarning(
-                "Replaced stale canonical Valheim server session {OldSessionId} after {StaleSeconds:F1}s without inbound traffic",
-                duplicate.SessionId, staleFor.TotalSeconds);
+            var duplicate = _sessions.GetAll().FirstOrDefault(candidate =>
+                candidate.SessionId != session.SessionId &&
+                string.Equals(candidate.ValheimLogicalPeerId, logicalPeerId,
+                    StringComparison.Ordinal));
+            if (duplicate is not null)
+            {
+                var staleFor = DateTime.UtcNow - duplicate.LastInboundUtc;
+                var canRecoverCanonicalServer =
+                    string.Equals(session.ValheimRole, "server", StringComparison.Ordinal) &&
+                    string.Equals(duplicate.ValheimRole, "server", StringComparison.Ordinal) &&
+                    principal?.Has(ValheimCapability.Producer) == true &&
+                    staleFor >= ServerSessionStaleAfter;
+                if (!canRecoverCanonicalServer)
+                {
+                    await RejectAsync(ws, session, "logical peer already connected");
+                    return;
+                }
+
+                _sessions.Remove(duplicate.SessionId);
+                try { duplicate.Socket.Abort(); } catch { }
+                _logger.LogWarning(
+                    "Replaced stale canonical Valheim server session {OldSessionId} after {StaleSeconds:F1}s without inbound traffic",
+                    duplicate.SessionId, staleFor.TotalSeconds);
+            }
+
+            session.ValheimLogicalPeerId = logicalPeerId;
+            session.ValheimCharacter =
+                context.Request.Query["valheim_character"].FirstOrDefault()?.Trim() ?? "";
         }
-        session.ValheimLogicalPeerId = logicalPeerId;
-        session.ValheimCharacter =
-            context.Request.Query["valheim_character"].FirstOrDefault()?.Trim() ?? "";
 
         // Set protocol mode based on handshake
         session.Protocol = useBinary ? ProtocolMode.Binary : ProtocolMode.Json;
@@ -163,6 +275,7 @@ public class GameWebSocketMiddleware
             udp_port = udpPort,
             valheim_motion_available = session.ValheimMotionIdentity != null,
             valheim_role = session.ValheimRole,
+            native_client_release = session.NativeClientRelease,
         };
         var envelope = EnvelopeFactory.Create(MessageType.SessionStarted, startedPayload);
         var json = EnvelopeFactory.Serialize(envelope);

@@ -1,0 +1,81 @@
+name: release native Windows alpha
+
+on:
+  push:
+    tags:
+      - "native-v*"
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release-native-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Validate immutable first-alpha tag
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_NAME -ne 'native-v0.1.0-alpha.1') {
+            throw "This lane accepts only native-v0.1.0-alpha.1; got $env:GITHUB_REF_NAME"
+          }
+          $tagCommit = (git rev-parse "refs/tags/$env:GITHUB_REF_NAME^{commit}").Trim()
+          if ($tagCommit -ne $env:GITHUB_SHA) { throw 'Tag target does not match workflow commit.' }
+
+      - name: Verify server and policy tests
+        shell: pwsh
+        run: |
+          dotnet build Lumberjacks/Game.sln -c Release
+          dotnet test Lumberjacks/Game.sln -c Release --no-build --logger "console;verbosity=minimal"
+
+      - name: Install pinned Godot .NET editor and export templates
+        shell: pwsh
+        run: |
+          $editorUrl = 'https://downloads.godotengine.org/?flavor=stable&platform=windows.64&slug=mono_win64.zip&version=4.6.1'
+          $templatesUrl = 'https://downloads.godotengine.org/?flavor=stable&platform=templates&slug=mono_export_templates.tpz&version=4.6.1'
+          Invoke-WebRequest $editorUrl -OutFile "$env:RUNNER_TEMP\godot.zip"
+          Invoke-WebRequest $templatesUrl -OutFile "$env:RUNNER_TEMP\templates.zip"
+          Expand-Archive "$env:RUNNER_TEMP\godot.zip" "$env:RUNNER_TEMP\godot"
+          Expand-Archive "$env:RUNNER_TEMP\templates.zip" "$env:RUNNER_TEMP\template-package"
+          $templateHome = Join-Path $env:APPDATA 'Godot\export_templates\4.6.1.stable.mono'
+          New-Item -ItemType Directory -Path $templateHome -Force | Out-Null
+          Copy-Item "$env:RUNNER_TEMP\template-package\templates\*" $templateHome -Recurse -Force
+          $godot = Get-ChildItem "$env:RUNNER_TEMP\godot" -Filter 'Godot*_mono_win64.exe' -Recurse | Select-Object -First 1
+          if (-not $godot) { throw 'Pinned Godot .NET editor was not found after extraction.' }
+          "GODOT_EXE=$($godot.FullName)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build credential-free Windows package and SHA-256
+        shell: pwsh
+        run: ./tools/release/New-NativeWindowsRelease.ps1 -GodotExe $env:GODOT_EXE
+
+      - name: Attest the public archive
+        uses: actions/attest@v4
+        with:
+          subject-path: artifacts/native/Lumberjacks-0.1.0-alpha.1-windows-x64.zip
+
+      - name: Publish GitHub prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME `
+            artifacts/native/Lumberjacks-0.1.0-alpha.1-windows-x64.zip `
+            artifacts/native/Lumberjacks-0.1.0-alpha.1-windows-x64.zip.sha256 `
+            --repo $env:GITHUB_REPOSITORY `
+            --title 'Lumberjacks 0.1.0-alpha.1 - Northwoods Field Test' `
+            --notes-file docs/releases/native-v0.1.0-alpha.1.md `
+            --prerelease `
+            --verify-tag

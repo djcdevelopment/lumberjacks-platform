@@ -12,6 +12,13 @@ public class WorldState
     public ConcurrentDictionary<string, NaturalResource> NaturalResources { get; } = new();
     public ConcurrentDictionary<string, RegionProfile> RegionProfiles { get; } = new();
 
+    /// <summary>
+    /// Server-owned interaction edge/cooldown state.  Clients send button state at 20 Hz;
+    /// keeping the previous flags here turns a held button into one deliberate action.
+    /// </summary>
+    public ConcurrentDictionary<string, byte> LastActionFlags { get; } = new();
+    public ConcurrentDictionary<string, long> NextAxeStrikeTick { get; } = new();
+
     /// <summary>Monotonically increasing tick counter, incremented by TickLoop at 20Hz.</summary>
     public long CurrentTick { get; set; }
 

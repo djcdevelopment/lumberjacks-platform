@@ -137,6 +137,8 @@ builder.Services.AddSingleton<TickMetrics>();
 builder.Services.AddSingleton<UdpTransport>();
 builder.Services.AddSingleton<TickBroadcaster>();
 builder.Services.AddSingleton<ITickBroadcaster>(sp => sp.GetRequiredService<TickBroadcaster>());
+builder.Services.AddSingleton<NaturalResourcePersistenceWorker>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<NaturalResourcePersistenceWorker>());
 builder.Services.AddHostedService<TickLoop>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<UdpTransport>());
 // Singletons: handlers use IDbContextFactory (not DbContext) so they're stateless.

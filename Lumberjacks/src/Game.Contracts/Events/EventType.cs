@@ -41,6 +41,7 @@ public static class EventType
     public const string KillingBlow = "killing_blow";
     public const string WeaponUsed = "weapon_used";
     public const string QuestCompleted = "quest_completed";
+    public const string TreeFelled = "tree_felled";
 
     // Alpha observability events (mod-produced; public projection carries no identity)
     public const string TransportControlChanged = "transport_control_changed";
@@ -61,7 +62,7 @@ public static class EventType
         ItemPickedUp, ItemStored, RoadSegmentMaintained, SettlementSignatureUpdated,
         ChallengeStarted, ChallengeCompleted, GuildObjectiveProgressed, GuildObjectiveCompleted,
         RewardGranted, DiscordIdentityLinked, DiscordRoleSyncRequested, DiscordRoleSynced,
-        FirstHit, KillingBlow, WeaponUsed, QuestCompleted, TransportControlChanged,
+        FirstHit, KillingBlow, WeaponUsed, QuestCompleted, TreeFelled, TransportControlChanged,
         RegionActivated, RegionDeactivated, InterestSubscriptionChanged,
         EdgeNodeRegistered, EdgeNodeUnhealthy, EdgeNodeDetached,
     ];

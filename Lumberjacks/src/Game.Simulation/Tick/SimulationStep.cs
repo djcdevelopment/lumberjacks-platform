@@ -1,6 +1,7 @@
 using Game.Contracts.Entities;
 using Game.Contracts.Protocol;
 using Game.Simulation.World;
+using System.Globalization;
 
 namespace Game.Simulation.Tick;
 
@@ -10,22 +11,28 @@ namespace Game.Simulation.Tick;
 /// </summary>
 public class SimulationStep
 {
-    /// <summary>Max player movement speed in units per tick (at 20Hz = 200 units/sec).</summary>
-    public const double MaxSpeedPerTick = 10.0;
+    /// <summary>Max player movement speed in units per tick (at 20 Hz = 6 units/sec).</summary>
+    public const double MaxSpeedPerTick = 0.3;
 
     /// <summary>Friction deceleration per tick when no input (units/tick²).</summary>
-    public const double FrictionPerTick = 2.0;
+    public const double FrictionPerTick = 0.08;
+
+    public const byte AxeActionFlag = 0x04;
+    public const long AxeCooldownTicks = 10;
+    public const double AxeRange = 2.5;
+    public const double AxeDamage = 12.5;
 
     /// <summary>
     /// Process one tick: apply queued inputs → compute physics → return list of changed entities.
     /// </summary>
-    public static (HashSet<string> PlayerIds, HashSet<string> ResourceIds) Execute(
+    public static SimulationStepResult Execute(
         WorldState world,
         InputQueue inputQueue,
         long tick)
     {
         var changedPlayers = new HashSet<string>();
         var changedResources = new HashSet<string>();
+        var resourceMutations = new List<NaturalResourceMutation>();
 
         // 1. Drain inputs for this tick
         var inputs = inputQueue.DrainForTick(tick);
@@ -41,51 +48,82 @@ public class SimulationStep
             var input = queuedInput.Input;
             
             // === INTERACTION LOGIC (Axe Geometry) ===
-            if ((input.ActionFlags & 0x04) != 0) // Bit 2: Interact
-            {
-                // Must have axe equipped (Nature 2.0 requirement)
-                if (player.EquippedItemType == "axe")
-                {
-                    var nearby = world.SpatialGrid.QueryRadius(player.Position, 2.5);
-                    foreach (var entityId in nearby)
-                    {
-                        if (world.NaturalResources.TryGetValue(entityId, out var resource))
-                        {
-                            // Calculate strike vector from input direction (0-255)
-                            var swingRad = (input.Direction / 255.0) * 360.0 * Math.PI / 180.0;
-                            var strikeX = Math.Sin(swingRad);
-                            var strikeZ = Math.Cos(swingRad);
+            // PlayerInput carries button state, not commands.  Only the rising edge can strike;
+            // the server cooldown is a second boundary against fast or malicious clients.
+            var previousFlags = world.LastActionFlags.GetValueOrDefault(playerId);
+            world.LastActionFlags[playerId] = input.ActionFlags;
+            var axePressed =
+                (input.ActionFlags & AxeActionFlag) != 0 &&
+                (previousFlags & AxeActionFlag) == 0;
 
-                            // Accumulate lean (Axe Geometry)
-                            var updatedResource = resource with
-                            {
-                                Health = Math.Max(0, resource.Health - 5.0), // 20 hits to fell
-                                LeanX = resource.LeanX + strikeX,
-                                LeanZ = resource.LeanZ + strikeZ,
-                                LastUpdatedAt = DateTimeOffset.UtcNow
-                            };
-                            
-                            // If it just fell, finalize growth history with fall direction
-                            if (resource.Health > 0 && updatedResource.Health <= 0)
-                            {
-                                // Final direction = strike mean + trade winds (Phase 0/3)
-                                world.RegionProfiles.TryGetValue(player.RegionId, out var profile);
-                                var windX = profile?.TradeWindX ?? 0;
-                                var windZ = profile?.TradeWindZ ?? 0;
-                                
-                                var finalFallAngle = Math.Atan2(updatedResource.LeanX + windX, updatedResource.LeanZ + windZ);
-                                updatedResource.GrowthHistory["fall_heading"] = (finalFallAngle * 180.0 / Math.PI).ToString("F1");
-                                _ = world.NaturalResources.TryUpdate(entityId, updatedResource, resource);
-                            }
-                            else
-                            {
-                                world.NaturalResources[entityId] = updatedResource;
-                            }
-                            
-                            changedResources.Add(entityId);
-                            break; // only hit one tree per tick
-                        }
+            if (axePressed &&
+                player.EquippedItemType == "axe" &&
+                tick >= world.NextAxeStrikeTick.GetValueOrDefault(playerId))
+            {
+                var target = world.SpatialGrid.QueryRadius(player.Position, AxeRange)
+                    .Select(id => world.NaturalResources.TryGetValue(id, out var resource)
+                        ? (Id: id, Resource: resource, DistanceSq: XzDistanceSq(player.Position, resource.Position))
+                        : (Id: id, Resource: (NaturalResource?)null, DistanceSq: double.PositiveInfinity))
+                    .Where(candidate => candidate.Resource is { Health: > 0 } &&
+                        candidate.DistanceSq <= AxeRange * AxeRange)
+                    .OrderBy(candidate => candidate.DistanceSq)
+                    .ThenBy(candidate => candidate.Id, StringComparer.Ordinal)
+                    .FirstOrDefault();
+
+                if (target.Resource is { } resource)
+                {
+                    var dx = resource.Position.X - player.Position.X;
+                    var dz = resource.Position.Z - player.Position.Z;
+                    var length = Math.Sqrt(dx * dx + dz * dz);
+                    if (length <= double.Epsilon)
+                    {
+                        var headingRadians = player.Heading * Math.PI / 180.0;
+                        dx = Math.Sin(headingRadians);
+                        dz = Math.Cos(headingRadians);
+                        length = 1;
                     }
+
+                    var history = new Dictionary<string, string>(resource.GrowthHistory, StringComparer.Ordinal);
+                    var strikeCount = history.TryGetValue("strike_count", out var storedCount) &&
+                        int.TryParse(storedCount, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedCount)
+                            ? parsedCount + 1
+                            : 1;
+                    history["strike_count"] = strikeCount.ToString(CultureInfo.InvariantCulture);
+
+                    var updatedResource = resource with
+                    {
+                        Health = Math.Max(0, resource.Health - AxeDamage),
+                        LeanX = resource.LeanX + dx / length,
+                        LeanZ = resource.LeanZ + dz / length,
+                        GrowthHistory = history,
+                        LastUpdatedAt = DateTimeOffset.UtcNow,
+                    };
+
+                    var felled = resource.Health > 0 && updatedResource.Health <= 0;
+                    if (felled)
+                    {
+                        world.RegionProfiles.TryGetValue(player.RegionId, out var profile);
+                        var windX = profile?.TradeWindX ?? 0;
+                        var windZ = profile?.TradeWindZ ?? 0;
+                        var windLength = Math.Sqrt(windX * windX + windZ * windZ);
+                        if (windLength > double.Epsilon)
+                        {
+                            windX = windX / windLength * 0.35;
+                            windZ = windZ / windLength * 0.35;
+                        }
+
+                        var finalFallAngle = Math.Atan2(
+                            updatedResource.LeanX + windX,
+                            updatedResource.LeanZ + windZ);
+                        history["fall_heading"] = (finalFallAngle * 180.0 / Math.PI)
+                            .ToString("F1", CultureInfo.InvariantCulture);
+                    }
+
+                    world.NaturalResources[target.Id] = updatedResource;
+                    world.NextAxeStrikeTick[playerId] = tick + AxeCooldownTicks;
+                    changedResources.Add(target.Id);
+                    resourceMutations.Add(new NaturalResourceMutation(
+                        target.Id, playerId, updatedResource, felled, strikeCount, tick));
                 }
             }
 
@@ -93,7 +131,9 @@ public class SimulationStep
             var speed = Math.Clamp(input.SpeedPercent, (byte)0, (byte)100) / 100.0 * MaxSpeedPerTick;
 
             // Convert direction byte (0-255) to radians
-            var headingDeg = input.Direction / 255.0 * 360.0;
+            var headingDeg = speed > 0
+                ? input.Direction / 255.0 * 360.0
+                : player.Heading;
             var headingRad = headingDeg * Math.PI / 180.0;
 
             // Compute velocity from direction + speed
@@ -177,6 +217,26 @@ public class SimulationStep
             }
         }
 
-        return (changedPlayers, changedResources);
+        return new SimulationStepResult(changedPlayers, changedResources, resourceMutations);
+    }
+
+    private static double XzDistanceSq(Vec3 left, Vec3 right)
+    {
+        var dx = left.X - right.X;
+        var dz = left.Z - right.Z;
+        return dx * dx + dz * dz;
     }
 }
+
+public sealed record NaturalResourceMutation(
+    string ResourceId,
+    string ActorId,
+    NaturalResource Resource,
+    bool Felled,
+    int StrikeCount,
+    long Tick);
+
+public sealed record SimulationStepResult(
+    HashSet<string> PlayerIds,
+    HashSet<string> ResourceIds,
+    IReadOnlyList<NaturalResourceMutation> ResourceMutations);

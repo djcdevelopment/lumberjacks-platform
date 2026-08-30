@@ -18,6 +18,8 @@ public partial class PlayerController : Node
     private double _debugTimer;
     private const double Interval = 0.05;
     private const float FlySpeed = 30f;
+    private bool _swingQueued;
+    private Tween _axeTween;
 
     public bool DebugFly { get; private set; }
     private float _flyY;
@@ -39,6 +41,11 @@ public partial class PlayerController : Node
 
     public override void _UnhandledInput(InputEvent ev)
     {
+        if (ev.IsActionPressed("chop"))
+        {
+            _swingQueued = true;
+        }
+
         if (ev is InputEventKey k && k.Pressed && k.Keycode == Key.F1)
         {
             DebugFly = !DebugFly;
@@ -99,10 +106,29 @@ public partial class PlayerController : Node
             dir = CoordinateMapper.GodotRotationToServerByte(angle);
         }
 
-        if (Input.IsActionPressed("interact"))
+        if (_swingQueued)
+        {
             action |= 0x04;
+            _swingQueued = false;
+            AnimateAxe(parent);
+        }
 
         _seq++;
         _ = _net.SendPlayerInput(dir, speed, action, _seq);
+    }
+
+    private void AnimateAxe(Node3D parent)
+    {
+        var axe = parent?.GetNodeOrNull<Node3D>("Axe");
+        if (axe == null) return;
+        _axeTween?.Kill();
+        axe.RotationDegrees = new Vector3(-35, 0, 0);
+        _axeTween = axe.CreateTween();
+        _axeTween.TweenProperty(axe, "rotation_degrees:x", 58f, 0.12)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.In);
+        _axeTween.TweenProperty(axe, "rotation_degrees:x", 0f, 0.2)
+            .SetTrans(Tween.TransitionType.Back)
+            .SetEase(Tween.EaseType.Out);
     }
 }

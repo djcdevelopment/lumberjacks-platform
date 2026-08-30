@@ -9,6 +9,7 @@ public class TickLoop : BackgroundService
     private readonly WorldState _world;
     private readonly InputQueue _inputQueue;
     private readonly ITickBroadcaster _broadcaster;
+    private readonly NaturalResourcePersistenceWorker _resourcePersistence;
     private readonly ILogger<TickLoop> _logger;
     private readonly TickMetrics? _metrics;
     private const int TickMs = 50; // 20 Hz
@@ -17,11 +18,18 @@ public class TickLoop : BackgroundService
     private const int RegionReconcileIntervalTicks = 100; // every 5 seconds
     private const int InputPurgeIntervalTicks = 60; // every 3 seconds
 
-    public TickLoop(WorldState world, InputQueue inputQueue, ITickBroadcaster broadcaster, ILogger<TickLoop> logger, TickMetrics? metrics = null)
+    public TickLoop(
+        WorldState world,
+        InputQueue inputQueue,
+        ITickBroadcaster broadcaster,
+        NaturalResourcePersistenceWorker resourcePersistence,
+        ILogger<TickLoop> logger,
+        TickMetrics? metrics = null)
     {
         _world = world;
         _inputQueue = inputQueue;
         _broadcaster = broadcaster;
+        _resourcePersistence = resourcePersistence;
         _logger = logger;
         _metrics = metrics;
     }
@@ -44,7 +52,11 @@ public class TickLoop : BackgroundService
 
             // === CORE SIMULATION STEP ===
             // Drain input queue → apply physics → get changed entities
-            var (changedPlayers, changedResources) = SimulationStep.Execute(_world, _inputQueue, tick);
+            var step = SimulationStep.Execute(_world, _inputQueue, tick);
+            foreach (var mutation in step.ResourceMutations)
+            {
+                _resourcePersistence.MarkDirty(mutation);
+            }
             var afterSim = Stopwatch.GetTimestamp();
 
             // Compute deterministic state hash
@@ -53,11 +65,11 @@ public class TickLoop : BackgroundService
             var afterHash = Stopwatch.GetTimestamp();
 
             // Broadcast authoritative state for changed entities
-            if (changedPlayers.Count > 0 || changedResources.Count > 0)
+            if (step.PlayerIds.Count > 0 || step.ResourceIds.Count > 0)
             {
                 await _broadcaster.BroadcastTickAsync(
                     _world.Players, _world.Regions, _world.NaturalResources,
-                    changedPlayers, changedResources, tick, stateHash);
+                    step.PlayerIds, step.ResourceIds, tick, stateHash);
             }
             var afterBroadcast = Stopwatch.GetTimestamp();
 

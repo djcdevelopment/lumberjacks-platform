@@ -169,6 +169,28 @@ public static class SteamEnrollmentEndpoints
             return Results.Text(BuildConfig(issued, gateway), "text/plain");
         }).RequireRateLimiting("join");
 
+        // First-party client bootstrap. The browser spends the same single-use credential
+        // only when the player clicks download; the long-lived key is delivered once in a
+        // no-store attachment and is never written to a URL, log message, or server response again.
+        app.MapPost("/join/native-access", (HttpRequest request, SteamEnrollmentService service) =>
+        {
+            NoStore(request);
+            var token = request.HasFormContentType ? request.Form["token"].ToString() : string.Empty;
+            if (!service.TryConsumeBootstrap(token, out var issued, out var reason))
+                return Results.BadRequest(new { error = reason });
+
+            var gateway = Environment.GetEnvironmentVariable("LUMBERJACKS_PLAYER_GATEWAY_URL") ??
+                baseUrlFor(request);
+            var release = Environment.GetEnvironmentVariable("LUMBERJACKS_NATIVE_CLIENT_RELEASE") ??
+                "0.1.0-alpha.1";
+            var access = NativeAccessDocument.Create(
+                gateway, issued.Enrollment.EnrollmentId, issued.AccessToken, release);
+            return Results.File(
+                System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(access),
+                "application/json",
+                "lumberjacks-access.json");
+        }).RequireRateLimiting("join");
+
         // The self-service download: the button on the callback page POSTs the single-use bootstrap
         // here (form field, so it stays a POST — out of history/referers, and single-use). Consuming
         // it mints the access token at that moment (stored only as a hash), which is injected into the
@@ -344,4 +366,39 @@ public static class SteamEnrollmentEndpoints
     public sealed record AdminPackRequest(
         [property: System.Text.Json.Serialization.JsonPropertyName("enrollment_id")] string? EnrollmentId,
         [property: System.Text.Json.Serialization.JsonPropertyName("steam_id")] string? SteamId);
+}
+
+public sealed record NativeAccessDocument(
+    [property: System.Text.Json.Serialization.JsonPropertyName("schema")] string Schema,
+    [property: System.Text.Json.Serialization.JsonPropertyName("gateway_url")] string GatewayUrl,
+    [property: System.Text.Json.Serialization.JsonPropertyName("enrollment_id")] string EnrollmentId,
+    [property: System.Text.Json.Serialization.JsonPropertyName("client_key")] string ClientKey,
+    [property: System.Text.Json.Serialization.JsonPropertyName("required_release")] string RequiredRelease)
+{
+    public const string SchemaId = "lumberjacks-native-access/v1";
+
+    public static NativeAccessDocument Create(
+        string gateway,
+        string enrollmentId,
+        string clientKey,
+        string requiredRelease)
+    {
+        var input = new Uri(gateway, UriKind.Absolute);
+        var builder = new UriBuilder(input)
+        {
+            Scheme = string.Equals(input.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+                ? "wss"
+                : string.Equals(input.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                    ? "ws"
+                    : input.Scheme,
+            Path = "/game",
+            Query = string.Empty,
+        };
+        return new NativeAccessDocument(
+            SchemaId,
+            builder.Uri.AbsoluteUri,
+            enrollmentId,
+            clientKey,
+            requiredRelease);
+    }
 }

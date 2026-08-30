@@ -106,7 +106,7 @@ public class SimulationStepTests
     public void FrictionStopsPlayerAtLowSpeed()
     {
         // Velocity below friction threshold → full stop
-        var world = CreateWorldWithPlayer(velocity: new Vec3(0, 0, 1.0));
+        var world = CreateWorldWithPlayer(velocity: new Vec3(0, 0, 0.05));
         var queue = new InputQueue();
 
         SimulationStep.Execute(world, queue, tick: 1);
@@ -171,5 +171,113 @@ public class SimulationStepTests
         SimulationStep.Execute(world, queue, tick: 1);
 
         Assert.Equal(42, world.Players["player-1"].LastInputSeq);
+    }
+
+    [Fact]
+    public void AxePressStrikesNearestResourceOnceAndReturnsMutation()
+    {
+        var world = CreateWorldWithPlayer();
+        world.Players["player-1"] = world.Players["player-1"] with { EquippedItemType = "axe" };
+        AddTree(world, "tree-far", new Vec3(0, 0, 2));
+        AddTree(world, "tree-near", new Vec3(0, 0, 1));
+        var queue = new InputQueue();
+
+        EnqueueAxe(queue, tick: 0, flags: SimulationStep.AxeActionFlag);
+        var first = SimulationStep.Execute(world, queue, tick: 1);
+        EnqueueAxe(queue, tick: 1, flags: SimulationStep.AxeActionFlag);
+        var held = SimulationStep.Execute(world, queue, tick: 2);
+
+        Assert.Equal(87.5, world.NaturalResources["tree-near"].Health);
+        Assert.Equal(100, world.NaturalResources["tree-far"].Health);
+        var mutation = Assert.Single(first.ResourceMutations);
+        Assert.Equal("tree-near", mutation.ResourceId);
+        Assert.Equal(1, mutation.StrikeCount);
+        Assert.Empty(held.ResourceMutations);
+    }
+
+    [Fact]
+    public void AxeCooldownRejectsRapidReleaseAndRepress()
+    {
+        var world = CreateWorldWithPlayer();
+        world.Players["player-1"] = world.Players["player-1"] with { EquippedItemType = "axe" };
+        AddTree(world, "tree", new Vec3(0, 0, 1));
+        var queue = new InputQueue();
+
+        EnqueueAxe(queue, tick: 0, flags: SimulationStep.AxeActionFlag);
+        SimulationStep.Execute(world, queue, tick: 1);
+        EnqueueAxe(queue, tick: 1, flags: 0);
+        SimulationStep.Execute(world, queue, tick: 2);
+        EnqueueAxe(queue, tick: 2, flags: SimulationStep.AxeActionFlag);
+        var tooSoon = SimulationStep.Execute(world, queue, tick: 3);
+        EnqueueAxe(queue, tick: 9, flags: 0);
+        SimulationStep.Execute(world, queue, tick: 10);
+        EnqueueAxe(queue, tick: 10, flags: SimulationStep.AxeActionFlag);
+        var ready = SimulationStep.Execute(world, queue, tick: 11);
+
+        Assert.Empty(tooSoon.ResourceMutations);
+        Assert.Single(ready.ResourceMutations);
+        Assert.Equal(75, world.NaturalResources["tree"].Health);
+    }
+
+    [Fact]
+    public void TerminalStrikeRecordsDeterministicFallHeading()
+    {
+        var world = CreateWorldWithPlayer(position: new Vec3(0, 0, 0));
+        world.Players["player-1"] = world.Players["player-1"] with { EquippedItemType = "axe" };
+        AddTree(world, "tree", new Vec3(1, 0, 0), health: SimulationStep.AxeDamage);
+        world.RegionProfiles["region-spawn"] = new RegionProfile
+        {
+            Id = "profile",
+            RegionId = "region-spawn",
+            TradeWindX = 0,
+            TradeWindZ = 1,
+        };
+        var queue = new InputQueue();
+
+        EnqueueAxe(queue, tick: 0, flags: SimulationStep.AxeActionFlag);
+        var result = SimulationStep.Execute(world, queue, tick: 1);
+
+        var mutation = Assert.Single(result.ResourceMutations);
+        Assert.True(mutation.Felled);
+        Assert.Equal(0, mutation.Resource.Health);
+        Assert.Equal("70.7", mutation.Resource.GrowthHistory["fall_heading"]);
+    }
+
+    [Fact]
+    public void FellingEventIdentityIsStableAndWorldScoped()
+    {
+        var createdAt = DateTimeOffset.Parse("2026-08-30T12:00:00Z");
+
+        var first = NaturalResourcePersistenceWorker.CreateFellingEventId("world-a", "tree", createdAt);
+        var repeated = NaturalResourcePersistenceWorker.CreateFellingEventId("world-a", "tree", createdAt);
+        var otherWorld = NaturalResourcePersistenceWorker.CreateFellingEventId("world-b", "tree", createdAt);
+
+        Assert.Equal(first, repeated);
+        Assert.NotEqual(first, otherWorld);
+        Assert.True(Guid.TryParse(first, out _));
+    }
+
+    private static void AddTree(WorldState world, string id, Vec3 position, double health = 100)
+    {
+        world.NaturalResources[id] = new NaturalResource
+        {
+            Id = id,
+            Type = "eastern_white_pine",
+            Position = position,
+            RegionId = "region-spawn",
+            Health = health,
+        };
+        world.SpatialGrid.Update(id, position);
+    }
+
+    private static void EnqueueAxe(InputQueue queue, long tick, byte flags)
+    {
+        queue.Enqueue("player-1", new PlayerInputMessage
+        {
+            Direction = 0,
+            SpeedPercent = 0,
+            InputSeq = checked((ushort)(tick + 1)),
+            ActionFlags = flags,
+        }, currentTick: tick);
     }
 }

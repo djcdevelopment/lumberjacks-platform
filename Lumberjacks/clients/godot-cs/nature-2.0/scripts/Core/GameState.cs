@@ -156,6 +156,11 @@ public partial class GameState : Node
             _entities[id] = new EntityRec { Id = id, Type = entityType, Pos = Vector3.Zero };
             EmitSignal(SignalName.EntityAdded, id, entityType, Vector3.Zero, 0f, meta);
         }
+        else
+        {
+            foreach (var key in meta.Keys)
+                _entities[id].Meta[key] = meta[key];
+        }
         EmitSignal(SignalName.EntityDataChanged, id, entityType, meta, tick);
     }
 
@@ -169,7 +174,7 @@ public partial class GameState : Node
     public int EntityCount => _entities.Count;
 
     private static readonly HashSet<string> _treeTypes = new()
-        { "tree", "natural_resource", "oak_tree", "pine_tree", "birch_tree" };
+        { "tree", "natural_resource", "oak_tree", "pine_tree", "birch_tree", "eastern_white_pine" };
 
     public Godot.Collections.Dictionary GetEntityMeta(string id) =>
         _entities.TryGetValue(id, out var r) ? r.Meta : null;

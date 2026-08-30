@@ -367,7 +367,7 @@
       <div class="headline">CREATOROS BETA 1 CUTOVER STAGED · P7 NOT YET SERVING</div>
       <p class="lede">The validated, hash-recorded P7 run observed 83,220 eligible server-to-client ZDO revisions in one strict single-client window. All 83,220 were durably received by Lumberjacks and closed as applied or safely superseded with durable acknowledgement; zero eligible revisions used native ZDO delivery. This 100% denominator covers that declared ZDO delivery window only, not every Valheim packet, RPC, simulation, ownership decision, Steam login, or base peer-transport function.</p>
       <div class="hero-meta">
-        <span>Updated 2026-08-30T14:26:28.686Z</span>
+        <span>Updated 2026-08-30T16:25:24.471Z</span>
         <span>ComfyNetworkSense 0.5.35</span>
         <span>comfy-lumberjacks-p7</span>
         <span>authoritative consumer ceiling 2</span>
@@ -1005,7 +1005,23 @@
     <section>
       <div class="wrap">
         <div class="section-head"><div class="section-number">07 · COMMIT NOTES</div><div><h2>Implementation journal</h2><p class="section-copy">Every non-merge commit appends one note. Newest entries appear first; history remains append-only.</p></div></div>
-        <div class="journal"><article class="journal-entry" id="note-20260830142628-closed-public-proxy-privilege-confusion-on-p7">
+        <div class="journal"><article class="journal-entry" id="note-20260830162524-cut-the-native-northwoods-field-alpha-candidate">
+    <div class="journal-rail" aria-hidden="true"></div>
+    <div class="journal-body">
+      <div class="journal-meta">
+        <time datetime="2026-08-30T16:25:24.471Z">2026-08-30T16:25:24.471Z</time>
+        <span class="pill note-kind">implementation</span>
+        <span>Lumberjacks</span>
+        <span>M1 · M2 · M7</span>
+      </div>
+      <h3>Cut the native Northwoods field alpha candidate</h3>
+      <p><strong>Impact:</strong> An invited Windows player can now import a one-use field pass, enter a ten-seat server-authoritative clearing, fell the authored Storm Pine, and return after a Gateway restart to the same persisted marks and fall state; the unsigned public archive is reproducible and carries SHA-256 plus attestation automation.</p>
+      <details><summary>Verification (3)</summary><ul><li>Game.sln: 671 tests passed</li><li>Production-shape local Gateway and Postgres: native admission, eight-strike felling, atomic event persistence, and restarted snapshot passed</li><li>Godot 4.6.1 .NET Windows x64 export and extracted headless runtime smoke passed</li></ul></details>
+      <div class="journal-evidence"><strong>Evidence:</strong> <code>clients/godot-cs/nature-2.0/Lumberjacks.csproj</code> <code>src/Game.Simulation/Tick/NaturalResourcePersistenceWorker.cs</code> <code>../.github/workflows/release-native-windows.yml</code></div>
+      <div class="containing-commit">Recorded by Codex · associated with the Git commit containing this note</div>
+    </div>
+  </article>
+<article class="journal-entry" id="note-20260830142628-closed-public-proxy-privilege-confusion-on-p7">
     <div class="journal-rail" aria-hidden="true"></div>
     <div class="journal-body">
       <div class="journal-meta">

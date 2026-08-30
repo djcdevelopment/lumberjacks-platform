@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <!-- Multi-target: net9.0 for server, net8.0 for Godot client -->
-    <TargetFramework></TargetFramework>
-    <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
+    <TargetFramework Condition="'$(LumberjacksClientTarget)' == 'true'">net8.0</TargetFramework>
+    <TargetFramework Condition="'$(LumberjacksClientTarget)' != 'true'"></TargetFramework>
+    <TargetFrameworks Condition="'$(LumberjacksClientTarget)' != 'true'">net9.0;net8.0</TargetFrameworks>
   </PropertyGroup>
   <!-- ValheimRoutedRpcAdmissions.cs (used by Game.Gateway/WebSocket/MessageRouter.cs) moved to
        Lumberjacks/src/Comfy.Transport.Contracts/ and left this project's own glob. In-repo

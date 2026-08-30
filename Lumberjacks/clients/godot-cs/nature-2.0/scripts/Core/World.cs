@@ -16,7 +16,7 @@ public partial class World : Node3D
     private readonly Dictionary<string, Node3D> _entities = new();
 
     private static readonly HashSet<string> TreeTypes = new()
-        { "tree", "natural_resource", "oak_tree", "pine_tree", "birch_tree" };
+        { "tree", "natural_resource", "oak_tree", "pine_tree", "birch_tree", "eastern_white_pine" };
     private int _treeCount, _structCount, _playerCount;
 
     public override void _Ready()
@@ -208,10 +208,10 @@ public partial class World : Node3D
     private void SetupEnvironment()
     {
         var sky = new ProceduralSkyMaterial();
-        sky.SkyTopColor = new Color(0.35f, 0.55f, 0.85f);
-        sky.SkyHorizonColor = new Color(0.6f, 0.7f, 0.85f);
-        sky.GroundBottomColor = new Color(0.2f, 0.25f, 0.15f);
-        sky.GroundHorizonColor = new Color(0.5f, 0.55f, 0.45f);
+        sky.SkyTopColor = new Color(0.12f, 0.2f, 0.24f);
+        sky.SkyHorizonColor = new Color(0.58f, 0.47f, 0.31f);
+        sky.GroundBottomColor = new Color(0.035f, 0.055f, 0.04f);
+        sky.GroundHorizonColor = new Color(0.19f, 0.24f, 0.15f);
 
         var skyRes = new Sky();
         skyRes.SkyMaterial = sky;
@@ -222,14 +222,14 @@ public partial class World : Node3D
 
         // Ambient light so shadowed sides aren't pitch black
         env.AmbientLightSource = Godot.Environment.AmbientSource.Color;
-        env.AmbientLightColor = new Color(0.45f, 0.5f, 0.55f);
-        env.AmbientLightEnergy = 0.4f;
+        env.AmbientLightColor = new Color(0.48f, 0.53f, 0.42f);
+        env.AmbientLightEnergy = 0.32f;
 
         // Fog — reinforces AoI, distant things fade
         env.FogEnabled = true;
-        env.FogLightColor = new Color(0.6f, 0.7f, 0.8f);
-        env.FogDensity = 0.002f;
-        env.FogSkyAffect = 0.3f;
+        env.FogLightColor = new Color(0.39f, 0.46f, 0.39f);
+        env.FogDensity = 0.0045f;
+        env.FogSkyAffect = 0.55f;
 
         // Tonemap for richer colors
         env.TonemapMode = Godot.Environment.ToneMapper.Aces;

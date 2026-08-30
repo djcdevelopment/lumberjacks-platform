@@ -66,6 +66,46 @@ public sealed class SessionPlaneRecoveryTests
         Assert.Null(sessions.TryResume("no-such-token", new FakeWebSocket(), out _));
     }
 
+    [Fact]
+    public void NativeIdentityAndReleaseSurviveResume()
+    {
+        var sessions = new SessionManager();
+        var original = sessions.Create(new FakeWebSocket(), "p-stable");
+        original.IsNativeClient = true;
+        original.NativeClientRelease = "0.1.0-alpha.1";
+        var token = original.ResumeToken;
+        sessions.Detach(original);
+
+        var resumed = sessions.TryResume(token, new FakeWebSocket(), out _);
+
+        Assert.NotNull(resumed);
+        Assert.Equal("p-stable", resumed!.PlayerId);
+        Assert.True(resumed.IsNativeClient);
+        Assert.Equal("0.1.0-alpha.1", resumed.NativeClientRelease);
+    }
+
+    [Fact]
+    public void NativeCreationAtomicallyBoundsCapacityAndPlayerIncarnations()
+    {
+        var sessions = new SessionManager();
+
+        Assert.True(sessions.TryCreateNative(
+            new FakeWebSocket(), "p-one", "release", 1, out var first));
+        Assert.NotNull(first);
+        Assert.True(first!.IsNativeClient);
+        Assert.Equal("native:p-one", first.ValheimLogicalPeerId);
+
+        Assert.False(sessions.TryCreateNative(
+            new FakeWebSocket(), "p-two", "release", 1, out var overCapacity));
+        Assert.Null(overCapacity);
+
+        sessions.Detach(first);
+        Assert.True(sessions.TryCreateNative(
+            new FakeWebSocket(), "p-one", "release", 1, out var replacement));
+        Assert.NotNull(replacement);
+        Assert.Null(sessions.TryResume(first.ResumeToken, new FakeWebSocket(), out _));
+    }
+
     // --- Fix 2: stalled-session abort ------------------------------------------------------
 
     [Fact]

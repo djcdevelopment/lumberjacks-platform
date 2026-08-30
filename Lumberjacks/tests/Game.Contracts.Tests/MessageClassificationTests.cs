@@ -31,6 +31,6 @@ public class MessageClassificationTests
     public void All_event_types_are_present()
     {
         // Includes the public-safe mod-produced transport_control_changed observation.
-        Assert.Equal(35, Game.Contracts.Events.EventType.All.Count);
+        Assert.Equal(36, Game.Contracts.Events.EventType.All.Count);
     }
 }

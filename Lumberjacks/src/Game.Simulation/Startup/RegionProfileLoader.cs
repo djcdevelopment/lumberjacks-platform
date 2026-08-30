@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 using Game.Contracts.Entities;
 using Game.Persistence;
 using Game.Persistence.Entities;
@@ -60,7 +62,8 @@ public class RegionProfileLoader
     private RegionProfileEntity GenerateDefaultProfile(string regionId)
     {
         // Deterministic generation based on ID
-        var random = new Random(regionId.GetHashCode());
+        var random = new Random(BitConverter.ToInt32(
+            SHA256.HashData(Encoding.UTF8.GetBytes(regionId)), 0));
         var width = 50;
         var height = 50;
         

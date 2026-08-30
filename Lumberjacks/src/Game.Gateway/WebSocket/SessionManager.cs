@@ -78,6 +78,12 @@ public record GameSession(
     /// </summary>
     public string ValheimLogicalPeerId { get; set; } = "";
 
+    /// <summary>True only for the first-party Godot client admitted on /game.</summary>
+    public bool IsNativeClient { get; set; }
+
+    /// <summary>Exact immutable native-client release admitted at the HTTP upgrade boundary.</summary>
+    public string? NativeClientRelease { get; set; }
+
     public void TouchInbound() =>
         Interlocked.Exchange(ref _lastInboundUtcTicks, DateTime.UtcNow.Ticks);
 
@@ -251,6 +257,8 @@ public record DetachedSession(
     long? ValheimPeerUid,
     string ValheimLogicalPeerId,
     string ValheimCharacter,
+    bool IsNativeClient,
+    string? NativeClientRelease,
     ValheimCharacterAuthority? ValheimCharacterAuthority,
     ValheimMotionPosition? ValheimMotionPosition,
     ReliableGameSessionState Reliable,
@@ -431,6 +439,7 @@ public class SessionManager
 {
     private readonly ConcurrentDictionary<string, GameSession> _sessions = new();
     private readonly ConcurrentDictionary<string, DetachedSession> _detached = new();
+    private readonly object _nativeAdmissionGate = new();
 
     private static readonly TimeSpan ResumeWindow = TimeSpan.FromMinutes(2);
     private readonly string _serverInstanceId =
@@ -439,18 +448,58 @@ public class SessionManager
     private readonly string _worldId =
         Environment.GetEnvironmentVariable("LUMBERJACKS_WORLD_ID") ?? "world-default";
 
-    public GameSession Create(System.Net.WebSockets.WebSocket socket)
+    public GameSession Create(System.Net.WebSockets.WebSocket socket, string? playerId = null)
     {
         var reliable = new ReliableGameSessionState(_serverInstanceId, _worldId);
         var session = new GameSession(
             SessionId: Guid.NewGuid().ToString(),
-            PlayerId: Guid.NewGuid().ToString(),
+            PlayerId: playerId ?? Guid.NewGuid().ToString(),
             Socket: socket,
             Reliable: reliable);
 
         _sessions[session.SessionId] = session;
         LumberjacksTelemetry.SessionCreated(resumed: false);
         return session;
+    }
+
+    /// <summary>
+    /// Atomically claims one native-client seat and one live incarnation for a stable player.
+    /// The HTTP preflight produces a useful status before upgrade; this is the race-proof gate.
+    /// A fresh connection supersedes an old detached token for the same player because the first
+    /// public client intentionally does not persist resume credentials.
+    /// </summary>
+    public bool TryCreateNative(
+        System.Net.WebSockets.WebSocket socket,
+        string playerId,
+        string release,
+        int maximum,
+        out GameSession? session)
+    {
+        lock (_nativeAdmissionGate)
+        {
+            if (_sessions.Values.Count(candidate => candidate.IsNativeClient) >= maximum ||
+                _sessions.Values.Any(candidate =>
+                    candidate.IsNativeClient &&
+                    string.Equals(candidate.PlayerId, playerId, StringComparison.Ordinal)))
+            {
+                session = null;
+                return false;
+            }
+
+            foreach (var detached in _detached.Where(pair =>
+                         pair.Value.IsNativeClient &&
+                         string.Equals(pair.Value.PlayerId, playerId, StringComparison.Ordinal)).ToArray())
+            {
+                _detached.TryRemove(detached.Key, out _);
+            }
+
+            session = Create(socket, playerId);
+            session.IsNativeClient = true;
+            session.NativeClientRelease = release;
+            session.ValheimRole = "native";
+            session.ValheimLogicalPeerId = "native:" + playerId;
+            return true;
+        }
     }
 
     /// <summary>
@@ -473,32 +522,37 @@ public class SessionManager
         System.Net.WebSockets.WebSocket socket,
         out bool evictedLiveSession)
     {
-        evictedLiveSession = false;
-        if (_detached.TryRemove(resumeToken, out var match))
+        lock (_nativeAdmissionGate)
         {
-            // Check if resume window has expired
-            if (DateTimeOffset.UtcNow - match.DetachedAt > ResumeWindow)
+            evictedLiveSession = false;
+            if (_detached.TryRemove(resumeToken, out var match))
             {
-                return null;
+                // Check if resume window has expired
+                if (DateTimeOffset.UtcNow - match.DetachedAt > ResumeWindow)
+                {
+                    return null;
+                }
+
+                return AttachResumed(socket, match.PlayerId, match.GuildId, match.RegionId,
+                    match.ValheimRole, match.ValheimPeerUid, match.ValheimLogicalPeerId,
+                    match.ValheimCharacter, match.IsNativeClient, match.NativeClientRelease,
+                    match.ValheimCharacterAuthority,
+                    match.ValheimMotionPosition, match.Reliable);
             }
 
-            return AttachResumed(socket, match.PlayerId, match.GuildId, match.RegionId,
-                match.ValheimRole, match.ValheimPeerUid, match.ValheimLogicalPeerId,
-                match.ValheimCharacter, match.ValheimCharacterAuthority,
-                match.ValheimMotionPosition, match.Reliable);
+            var zombie = _sessions.Values.FirstOrDefault(candidate =>
+                string.Equals(candidate.ResumeToken, resumeToken, StringComparison.Ordinal));
+            if (zombie is null || !_sessions.TryRemove(zombie.SessionId, out _)) return null;
+            try { zombie.Socket.Abort(); } catch { }
+            evictedLiveSession = true;
+            // The zombie's receive loop unwinds through the middleware finally block, whose
+            // Detach() no-ops because the session is already out of _sessions.
+            return AttachResumed(socket, zombie.PlayerId, zombie.GuildId, zombie.RegionId,
+                zombie.ValheimRole, zombie.ValheimPeerUid, zombie.ValheimLogicalPeerId,
+                zombie.ValheimCharacter, zombie.IsNativeClient, zombie.NativeClientRelease,
+                zombie.ValheimCharacterAuthority,
+                zombie.ValheimMotionPosition, zombie.Reliable);
         }
-
-        var zombie = _sessions.Values.FirstOrDefault(candidate =>
-            string.Equals(candidate.ResumeToken, resumeToken, StringComparison.Ordinal));
-        if (zombie is null || !_sessions.TryRemove(zombie.SessionId, out _)) return null;
-        try { zombie.Socket.Abort(); } catch { }
-        evictedLiveSession = true;
-        // The zombie's receive loop unwinds through the middleware finally block, whose
-        // Detach() no-ops because the session is already out of _sessions.
-        return AttachResumed(socket, zombie.PlayerId, zombie.GuildId, zombie.RegionId,
-            zombie.ValheimRole, zombie.ValheimPeerUid, zombie.ValheimLogicalPeerId,
-            zombie.ValheimCharacter, zombie.ValheimCharacterAuthority,
-            zombie.ValheimMotionPosition, zombie.Reliable);
     }
 
     private GameSession AttachResumed(
@@ -510,6 +564,8 @@ public class SessionManager
         long? valheimPeerUid,
         string valheimLogicalPeerId,
         string valheimCharacter,
+        bool isNativeClient,
+        string? nativeClientRelease,
         ValheimCharacterAuthority? characterAuthority,
         ValheimMotionPosition? motionPosition,
         ReliableGameSessionState reliable)
@@ -528,6 +584,8 @@ public class SessionManager
             ValheimPeerUid = valheimPeerUid,
             ValheimLogicalPeerId = valheimLogicalPeerId,
             ValheimCharacter = valheimCharacter,
+            IsNativeClient = isNativeClient,
+            NativeClientRelease = nativeClientRelease,
         };
         session.RestoreValheimCharacter(characterAuthority, motionPosition);
 
@@ -542,21 +600,26 @@ public class SessionManager
     /// </summary>
     public void Detach(GameSession session)
     {
-        if (!_sessions.TryRemove(session.SessionId, out _)) return;
-        LumberjacksTelemetry.SessionDetached();
-        _detached[session.ResumeToken] = new DetachedSession(
-            session.PlayerId,
-            session.GuildId,
-            session.RegionId,
-            session.ValheimRole,
-            session.ValheimPeerUid,
-            session.ValheimLogicalPeerId,
-            session.ValheimCharacter,
-            session.ValheimCharacterAuthority,
-            session.ValheimMotionPosition,
-            session.Reliable,
-            session.ResumeEpoch,
-            DateTimeOffset.UtcNow);
+        lock (_nativeAdmissionGate)
+        {
+            if (!_sessions.TryRemove(session.SessionId, out _)) return;
+            LumberjacksTelemetry.SessionDetached();
+            _detached[session.ResumeToken] = new DetachedSession(
+                session.PlayerId,
+                session.GuildId,
+                session.RegionId,
+                session.ValheimRole,
+                session.ValheimPeerUid,
+                session.ValheimLogicalPeerId,
+                session.ValheimCharacter,
+                session.IsNativeClient,
+                session.NativeClientRelease,
+                session.ValheimCharacterAuthority,
+                session.ValheimMotionPosition,
+                session.Reliable,
+                session.ResumeEpoch,
+                DateTimeOffset.UtcNow);
+        }
     }
 
     public void Remove(string sessionId)
