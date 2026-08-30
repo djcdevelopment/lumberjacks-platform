@@ -39,10 +39,17 @@
 #>
 [CmdletBinding()]
 param(
-  [string] $LumberjacksRoot = "$PSScriptRoot\..\..\..\..\Lumberjacks"
+  [string] $LumberjacksRoot
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
+. (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
+if ([string]::IsNullOrWhiteSpace($LumberjacksRoot)) {
+  $LumberjacksRoot = Join-Path $repoRoot 'Lumberjacks'
+}
+$LumberjacksRoot = [IO.Path]::GetFullPath($LumberjacksRoot)
 
 $TagPrefix = 'lumberjacks-gateway-regression'
 $CaseATag  = "${TagPrefix}:case-a"

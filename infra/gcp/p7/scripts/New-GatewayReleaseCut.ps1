@@ -52,13 +52,20 @@
 param(
   [Parameter(Mandatory)][string] $ImageReleaseId,
   [Parameter(Mandatory)][string] $AdmittedModRelease,
-  [string] $LumberjacksRoot = "$PSScriptRoot\..\..\..\..\Lumberjacks"
+  [string] $LumberjacksRoot
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..'))
 . (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
 Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
+if ([string]::IsNullOrWhiteSpace($LumberjacksRoot)) {
+  # Parameter defaults are bound before PowerShell initializes $PSScriptRoot. Resolving this in
+  # the body keeps the ordinary no-override command repo-relative instead of collapsing to
+  # C:\..\..\..\..\Lumberjacks on Windows PowerShell 5.1.
+  $LumberjacksRoot = Join-Path $repoRoot 'Lumberjacks'
+}
+$LumberjacksRoot = [IO.Path]::GetFullPath($LumberjacksRoot)
 
 # <milestone>-<label>-<yyyymmdd>-r<n>, enforced on BOTH ids because both become an artifact's
 # identity: one names the image, the other is compiled into it and decides who may join.
