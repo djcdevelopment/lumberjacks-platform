@@ -23,6 +23,12 @@ concurrency:
 jobs:
   windows:
     runs-on: windows-latest
+    env:
+      # Godot selects an SDK from DOTNET_ROOT. The hosted image also carries .NET 8; installing
+      # 9 beside it under Program Files let Godot select 8 first, which cannot restore the
+      # server contract's net9 target. Keep the release SDK isolated and disable host fallback.
+      DOTNET_INSTALL_DIR: ${{ runner.temp }}\dotnet9
+      DOTNET_MULTILEVEL_LOOKUP: "0"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,6 +58,11 @@ jobs:
       - name: Verify server and policy tests
         shell: pwsh
         run: |
+          $dotnet = (Get-Command dotnet).Source
+          if (-not $dotnet.StartsWith($env:DOTNET_INSTALL_DIR, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "dotnet resolved outside the isolated release SDK: $dotnet"
+          }
+          if ((dotnet --version) -notmatch '^9\.') { throw 'Release export requires SDK 9.' }
           dotnet build Lumberjacks/Game.sln -c Release
           dotnet test Lumberjacks/Game.sln -c Release --no-build --logger "console;verbosity=minimal"
 
@@ -73,7 +84,17 @@ jobs:
 
       - name: Build credential-free Windows package and SHA-256
         shell: pwsh
-        run: ./tools/release/New-NativeWindowsRelease.ps1 -GodotExe $env:GODOT_EXE
+        run: |
+          try {
+            ./tools/release/New-NativeWindowsRelease.ps1 -GodotExe $env:GODOT_EXE
+          } catch {
+            Get-ChildItem "$env:APPDATA\Godot\mono\build_logs" -Filter msbuild_log.txt -Recurse `
+              -ErrorAction SilentlyContinue |
+              Sort-Object LastWriteTime -Descending |
+              Select-Object -First 1 |
+              ForEach-Object { Get-Content -LiteralPath $_.FullName }
+            throw
+          }
 
       - name: Attest the public archive
         uses: actions/attest@v4
