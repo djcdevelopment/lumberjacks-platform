@@ -25,6 +25,17 @@ if (-not (($env:Path -split ';') -contains $dotnetRoot)) {
     $env:Path = "$dotnetRoot;$env:Path"
 }
 $resolvedGodot = (Resolve-Path -LiteralPath $GodotExe).Path
+# The GUI executable detaches immediately on Windows runners, returning success before export has
+# written even Lumberjacks.exe. Prefer the console sibling whenever the caller handed us that GUI
+# path; it is the same pinned editor build but preserves synchronous process/exit-code semantics.
+if ([IO.Path]::GetFileNameWithoutExtension($resolvedGodot) -notmatch '_console$') {
+    $consoleGodot = Join-Path `
+        ([IO.Path]::GetDirectoryName($resolvedGodot)) `
+        ([IO.Path]::GetFileNameWithoutExtension($resolvedGodot) + '_console.exe')
+    if (Test-Path -LiteralPath $consoleGodot -PathType Leaf) {
+        $resolvedGodot = $consoleGodot
+    }
+}
 $releaseRoot = if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
     Join-Path $repoRoot 'artifacts\native'
 } else {
