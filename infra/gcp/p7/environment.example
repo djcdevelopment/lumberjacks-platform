@@ -46,6 +46,9 @@ LUMBERJACKS_PLAYER_PORT=42317
 LUMBERJACKS_PLAYER_GATEWAY_URL=http://CHANGE_ME_vm_public_ip:42317
 LUMBERJACKS_ENROLLMENT_PUBLIC_URL=http://CHANGE_ME_vm_public_ip:42317
 LUMBERJACKS_AUTHORITATIVE_WINDOW_ID=p7-primary-v1
+# Set true only with a server-side strict handshake responder. CreatorOS Beta 1 uses true;
+# the historical primary window remains false until deliberately migrated.
+LUMBERJACKS_STRICT_ROSTER_ENABLED=false
 # Preferred Gateway alpha admission mode. `disabled` removes the temporary one-seat
 # reservation gate so known-cohort multi-account testing can join. `one-seat`
 # restores the conservative single-seat reservation.
@@ -54,6 +57,12 @@ LUMBERJACKS_ALPHA_SEAT_GATE=disabled
 # LUMBERJACKS_ALPHA_SEAT_GATE. Keep aligned with the line above until those images
 # are retired.
 VALHEIM_HANDSHAKE_SEAT_CAPACITY=0
+
+# --- Valheim server/world identity ---
+# CreatorOS Beta 1 overrides these with "CreatorOS Beta 1" and CreatorOSBeta1.
+VALHEIM_SERVER_NAME=Comfy Era16 Lab
+VALHEIM_WORLD_NAME=ComfyEra16
+P7_VALHEIM_STOP_TIMEOUT_SECONDS=70
 
 # Recipient cutover flag. Leave false until the mod build that stamps
 # recipients is deployed — flipping this first is silent total delivery

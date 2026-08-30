@@ -1,0 +1,217 @@
+from __future__ import annotations
+
+import hashlib
+import importlib.util
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+VERIFIER = ROOT / "infra" / "gcp" / "p7" / "scripts" / "verify-creatoros-beta-server-release.py"
+
+
+def load_verifier():
+    spec = importlib.util.spec_from_file_location("verify_creatoros_beta_server", VERIFIER)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+class CreatorOsBetaServerReleaseTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.verifier = load_verifier()
+
+    def fixture(self, root: Path) -> Path:
+        release = root / "release"
+        release.mkdir()
+        uid = "-123456789"
+        content_hash = "a" * 64
+        composition_hash = "b" * 64
+        files: list[tuple[str, str, bytes]] = [
+            ("server/worlds_local/CreatorOSBeta1.db", "world_db", b"MZ-world-db"),
+            ("server/worlds_local/CreatorOSBeta1.fwl", "world_fwl", b"world-fwl"),
+            ("server/BepInEx/plugins/ComfyNetworkSense.dll", "server_networksense_dll", b"MZnetwork"),
+            (
+                "server/BepInEx/config/djcdevelopment.valheim.comfynetworksense.cfg",
+                "networksense_server_config",
+                (
+                    "[Lumberjacks]\n"
+                    "lumberjacksGatewayUrl = http://gateway:4000\n"
+                    "lumberjacksCutoverMode = native\n"
+                    "zdoAuthoritativeConsumerEnabled = false\n"
+                    "lumberjacksMotionEnabled = false\n"
+                    "[LumberjacksGameSession]\n"
+                    "lumberjacksGameSessionEnabled = false\n"
+                    "[Gameplay]\n"
+                    "gameplayEventProducerEnabled = true\n"
+                    "questEvaluatorEnabled = true\n"
+                    "[Netcode]\n"
+                    "zdoRedirectEnabled = false\n"
+                    "handshakeResponderEnabled = true\n"
+                    "handshakeResponderEndpoint = http://gateway:4000\n"
+                    "handshakeResponderStrictMode = true\n"
+                    "handshakeResponderWindowId = creatoros-beta1\n"
+                    "handshakeResponderActiveSeconds = 0\n"
+                ).encode(),
+            ),
+            (
+                "server/BepInEx/config/comfy-network-sense/quest-view.json",
+                "server_quest_view",
+                json.dumps(
+                    {
+                        "release_lineage": {
+                            "release_id": "creatoros-beta1",
+                            "campaign_id": "slayers-signature-hunt",
+                            "composition_hash": composition_hash,
+                            "pack_content_hash": content_hash,
+                        }
+                    }
+                ).encode(),
+            ),
+            ("server/creatoros/venue.json", "server_venue", b"{}\n"),
+            (
+                "server/creatoros/campaign.json",
+                "server_campaign",
+                json.dumps(
+                    {
+                        "campaign_id": "slayers-signature-hunt",
+                        "composition_hash": composition_hash,
+                        "pack": {"content_hash": content_hash},
+                    }
+                ).encode(),
+            ),
+        ]
+        for relative, _, payload in files:
+            path = release / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(payload)
+        db = release / "server/worlds_local/CreatorOSBeta1.db"
+        fwl = release / "server/worlds_local/CreatorOSBeta1.fwl"
+        pair_hash = self.verifier.named_pair_hash(db, fwl)
+        platform = {
+            "schema": "creatoros-beta-platform-manifest/v1",
+            "release_id": "creatoros-beta1",
+            "server_mode": "native-valheim",
+            "world": {
+                "name": "CreatorOSBeta1",
+                "uid": uid,
+                "pair_hash": pair_hash,
+                "db_sha256": hashlib.sha256(db.read_bytes()).hexdigest(),
+                "fwl_sha256": hashlib.sha256(fwl.read_bytes()).hexdigest(),
+            },
+            "plugins": {
+                "comfy_network_sense_sha256": hashlib.sha256(b"MZnetwork").hexdigest()
+            },
+            "controls": {
+                "lumberjacks_custom_transport": "off",
+                "native_valheim_networking": "on",
+                "enrollment_admission": "on-fail-closed",
+                "eventlog": "on",
+                "dedicated_personal_progression": "client-only-message-actions",
+            },
+        }
+        files.append(
+            (
+                "server/platform-manifest.json",
+                "platform_manifest",
+                (json.dumps(platform, indent=2) + "\n").encode(),
+            )
+        )
+        (release / "server/platform-manifest.json").write_bytes(files[-1][2])
+        artifacts = []
+        for relative, role, payload in files:
+            artifacts.append(
+                {
+                    "path": relative,
+                    "role": role,
+                    "sha256": hashlib.sha256(payload).hexdigest(),
+                    "bytes": len(payload),
+                }
+            )
+        manifest = {
+            "schema": "creatoros-beta-release/v1",
+            "release_id": "creatoros-beta1",
+            "release_state": "frozen",
+            "world": {"name": "CreatorOSBeta1", "uid": uid, "pair_hash": pair_hash},
+            "artifacts": artifacts,
+        }
+        (release / "release-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+        return release
+
+    def test_exact_server_slice_is_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            result = self.verifier.verify(self.fixture(Path(temporary)))
+        self.assertEqual("valid", result["status"])
+        self.assertEqual(8, len(result["server_files"]))
+
+    def test_world_tamper_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            release = self.fixture(Path(temporary))
+            with (release / "server/worlds_local/CreatorOSBeta1.db").open("ab") as stream:
+                stream.write(b"tamper")
+            with self.assertRaisesRegex(self.verifier.VerificationError, "artifact hash/size mismatch"):
+                self.verifier.verify(release)
+
+    def test_fail_open_config_is_rejected_even_if_rehashed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            release = self.fixture(Path(temporary))
+            config = release / "server/BepInEx/config/djcdevelopment.valheim.comfynetworksense.cfg"
+            payload = config.read_bytes().replace(b"handshakeResponderStrictMode = true", b"handshakeResponderStrictMode = false")
+            config.write_bytes(payload)
+            manifest_path = release / "release-manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            row = next(item for item in manifest["artifacts"] if item["role"] == "networksense_server_config")
+            row["sha256"] = hashlib.sha256(payload).hexdigest()
+            row["bytes"] = len(payload)
+            manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+            with self.assertRaisesRegex(self.verifier.VerificationError, "StrictMode"):
+                self.verifier.verify(release)
+
+
+class CreatorOsBetaDeploymentContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        scripts = ROOT / "infra" / "gcp" / "p7" / "scripts"
+        self.driver = (scripts / "Install-CreatorOsBetaServer.ps1").read_text(encoding="utf-8")
+        self.installer = (scripts / "install-creatoros-beta-server.sh").read_text(encoding="utf-8")
+        self.stop_driver = (scripts / "Stop-P7Safely.ps1").read_text(encoding="utf-8")
+        self.stop_script = (scripts / "stop-p7-stack.sh").read_text(encoding="utf-8")
+
+    def test_driver_hashes_and_uploads_the_exact_platform_controls(self) -> None:
+        self.assertIn("comfy-p7-creatoros-deploy/v2", self.driver)
+        self.assertIn("controls_archive_sha256", self.driver)
+        self.assertIn("controls/docker-compose.yml", self.driver)
+        self.assertIn("controls/comfy-lumberjacks-p7.service", self.driver)
+        self.assertIn("controls/scripts/stop-p7-stack.sh", self.driver)
+        self.assertIn("$remoteArchive' '$remoteControls' '$remoteManifest'", self.driver)
+        self.assertIn("[string]$receipt.controls_archive_sha256 -ne $controlsArchiveHash", self.driver)
+
+    def test_remote_installer_verifies_controls_before_installing_them(self) -> None:
+        verify = self.installer.index("verify_control controls/docker-compose.yml")
+        install = self.installer.index("install_atomic \"$controls_root/controls/docker-compose.yml\"")
+        self.assertLess(verify, install)
+        self.assertIn("platform-controls archive file set drifted", self.installer)
+        self.assertIn("systemd-analyze verify \"$unit_target\"", self.installer)
+
+    def test_remote_installer_has_a_bounded_rollback_transaction(self) -> None:
+        self.assertIn("trap rollback_on_error ERR", self.installer)
+        self.assertIn("transaction_committed=true", self.installer)
+        self.assertIn("comfy-p7-creatoros-rollback/v1", self.installer)
+        self.assertIn("Rollback blocked: Valheim is still running", self.installer)
+        stop = self.installer.index("systemctl stop \"$service_name\"")
+        world_backup = self.installer.index(
+            "backup_if_present \"$world_root/$name\" \"worlds_local/$name\""
+        )
+        self.assertLess(stop, world_backup)
+
+    def test_vm_stop_requires_the_entire_stack_to_stop(self) -> None:
+        self.assertIn("detail=remaining_stack_stop_failed", self.stop_script)
+        self.assertIn('--argjson stack_stop_exit "$stack_stop_exit"', self.stop_script)
+        self.assertIn("[int]$receipt.stack_stop_exit -ne 0", self.stop_driver)
+
+
+if __name__ == "__main__":
+    unittest.main()

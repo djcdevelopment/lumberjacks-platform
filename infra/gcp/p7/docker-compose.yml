@@ -16,6 +16,7 @@ x-lumberjacks-telemetry: &lumberjacks-telemetry
   LUMBERJACKS_PLAYER_GATEWAY_URL: "${LUMBERJACKS_PLAYER_GATEWAY_URL:-http://127.0.0.1:14000}"
   LUMBERJACKS_ENROLLMENT_PUBLIC_URL: "${LUMBERJACKS_ENROLLMENT_PUBLIC_URL:-http://127.0.0.1:14000}"
   LUMBERJACKS_AUTHORITATIVE_WINDOW_ID: "${LUMBERJACKS_AUTHORITATIVE_WINDOW_ID:-p7-primary-v1}"
+  LUMBERJACKS_STRICT_ROSTER_ENABLED: "${LUMBERJACKS_STRICT_ROSTER_ENABLED:-false}"
 
 x-lumberjacks-service: &lumberjacks-service
   restart: unless-stopped
@@ -262,8 +263,8 @@ services:
       - "2456-2457:2456-2457/udp"
     environment:
       TZ: America/Los_Angeles
-      SERVER_NAME: "Comfy Era16 Lab"
-      WORLD_NAME: "ComfyEra16"
+      SERVER_NAME: "${VALHEIM_SERVER_NAME:-Comfy Era16 Lab}"
+      WORLD_NAME: "${VALHEIM_WORLD_NAME:-ComfyEra16}"
       SERVER_PASS: "${VALHEIM_SERVER_PASSWORD:-}"
       SERVER_PUBLIC: "false"
       SERVER_PORT: "2456"

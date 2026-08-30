@@ -196,6 +196,7 @@ public sealed class ValheimHandshakeSeatTests
 
         Assert.Equal(ValheimHandshakeStartup.DefaultWindowId, settings.WindowId);
         Assert.Equal(1, settings.SeatCapacity);
+        Assert.False(settings.StrictRosterEnabled);
     }
 
     [Fact]
@@ -269,6 +270,42 @@ public sealed class ValheimHandshakeSeatTests
         var error = Assert.Throws<InvalidOperationException>(
             () => ValheimHandshakeStartup.FromConfiguration(config));
         Assert.Contains("seat_capacity", error.Message);
+    }
+
+    [Fact]
+    public void StartupConfiguration_PersistsStrictRosterAcrossServiceConstruction()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["LUMBERJACKS_AUTHORITATIVE_WINDOW_ID"] = Window,
+            ["LUMBERJACKS_ALPHA_SEAT_GATE"] = "disabled",
+            ["LUMBERJACKS_STRICT_ROSTER_ENABLED"] = "true",
+        }).Build();
+        var service = new ValheimHandshakeService(
+            roster: steamId => steamId == HolderSteamId
+                ? ValheimRosterVerdict.Active
+                : ValheimRosterVerdict.NotEnrolled);
+
+        ValheimHandshakeStartup.Configure(service, config);
+
+        Assert.True(service.SubmitPeerInfo(Window, Submission("enrolled", HolderSteamId)).Result!.Accept);
+        var rejected = service.SubmitPeerInfo(Window, Submission("stranger", RivalSteamId)).Result!;
+        Assert.False(rejected.Accept);
+        Assert.Equal("not_enrolled", rejected.FailedCheck);
+        Assert.True(service.GetStatus(Window).StrictRosterEnabled);
+    }
+
+    [Fact]
+    public void StartupConfiguration_RefusesAmbiguousStrictRosterValue()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["LUMBERJACKS_STRICT_ROSTER_ENABLED"] = "sometimes",
+        }).Build();
+
+        var error = Assert.Throws<InvalidOperationException>(
+            () => ValheimHandshakeStartup.FromConfiguration(config));
+        Assert.Contains("LUMBERJACKS_STRICT_ROSTER_ENABLED", error.Message);
     }
 
     [Fact]

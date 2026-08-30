@@ -229,6 +229,8 @@ public sealed record ValheimHandshakeWindowStatus(
     int MaxPlayers,
     int CurrentPlayers,
     int SeatCapacity,
+    bool StrictRosterEnabled,
+    bool StrictReleaseEnabled,
     bool RequireSteamTicket,
     int BannedHosts,
     int PermittedHosts,
@@ -680,6 +682,8 @@ public sealed class ValheimHandshakeService
                     _context.MaxPlayers,
                     _context.CurrentPlayers,
                     _context.SeatCapacity,
+                    _context.StrictRosterEnabled,
+                    _context.StrictReleaseEnabled,
                     _context.RequireSteamTicket,
                     _context.BannedHosts.Count,
                     _context.PermittedHosts.Count,
@@ -710,7 +714,7 @@ public sealed class ValheimHandshakeService
         }
 
         public static ValheimHandshakeWindowStatus Empty(string windowId) =>
-            new(windowId, NetworkVersion, false, MaxPlayers, 0, 1, true, 0, 0,
+            new(windowId, NetworkVersion, false, MaxPlayers, 0, 1, false, false, true, 0, 0,
                 0, 0, 0, 0, new Dictionary<string, long>(),
                 new List<ValheimHandshakeExchangeRecord>(), null, null);
     }
