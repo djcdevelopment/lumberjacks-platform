@@ -466,21 +466,35 @@ public class SessionManager
     /// Atomically claims one native-client seat and one live incarnation for a stable player.
     /// The HTTP preflight produces a useful status before upgrade; this is the race-proof gate.
     /// A fresh connection supersedes an old detached token for the same player because the first
-    /// public client intentionally does not persist resume credentials.
+    /// public client intentionally does not persist resume credentials. Private R&amp;D may also
+    /// replace its one live incarnation so a crashed client never becomes a developer-facing gate.
     /// </summary>
     public bool TryCreateNative(
         System.Net.WebSockets.WebSocket socket,
         string playerId,
         string release,
         int maximum,
-        out GameSession? session)
+        out GameSession? session,
+        bool replaceExisting = false)
     {
         lock (_nativeAdmissionGate)
         {
+            var existing = _sessions.Values.Where(candidate =>
+                candidate.IsNativeClient &&
+                string.Equals(candidate.PlayerId, playerId, StringComparison.Ordinal)).ToArray();
+            if (replaceExisting)
+            {
+                foreach (var prior in existing)
+                {
+                    if (_sessions.TryRemove(prior.SessionId, out _))
+                    {
+                        try { prior.Socket.Abort(); } catch { }
+                    }
+                }
+            }
+
             if (_sessions.Values.Count(candidate => candidate.IsNativeClient) >= maximum ||
-                _sessions.Values.Any(candidate =>
-                    candidate.IsNativeClient &&
-                    string.Equals(candidate.PlayerId, playerId, StringComparison.Ordinal)))
+                (!replaceExisting && existing.Length > 0))
             {
                 session = null;
                 return false;

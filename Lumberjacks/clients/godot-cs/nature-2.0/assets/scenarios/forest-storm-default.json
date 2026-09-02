@@ -1,0 +1,14 @@
+{
+  "schema": "lumberjacks.forest-storm/v1",
+  "seed": 12648430,
+  "duration_seconds": 80,
+  "center_x": 0,
+  "center_z": 0,
+  "radius_meters": 240,
+  "wind_direction_degrees": 35,
+  "peak_wind_mps": 27,
+  "moisture": 0.78,
+  "temperature_c": 9,
+  "turbulence": 0.72,
+  "intensity_curve": [0, 0.04, 0.42, 1, 0.88, 0.52, 0.26, 0]
+}

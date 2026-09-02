@@ -56,24 +56,24 @@ text = "Ten field seats. One old pine. Every mark persists."
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ImportButton" type="Button" parent="ConnectScreen/VBox"]
+[node name="ServerAddress" type="LineEdit" parent="ConnectScreen/VBox"]
 layout_mode = 2
-text = "Import field pass"
+text = "ws://127.0.0.1:14000/game"
+placeholder_text = "Lumberjacks server address"
+
+[node name="ConnectButton" type="Button" parent="ConnectScreen/VBox"]
+layout_mode = 2
+text = "Play Lumberjacks"
+
+[node name="LabButton" type="Button" parent="ConnectScreen/VBox"]
+layout_mode = 2
+text = "Open Forest + Storm Lab"
 
 [node name="StatusLabel" type="Label" parent="ConnectScreen/VBox"]
 layout_mode = 2
-text = "Select lumberjacks-access.json from your invitation"
+text = "R&D build — no enrollment or Steam setup"
 horizontal_alignment = 1
 autowrap_mode = 2
-
-[node name="FieldPassDialog" type="FileDialog" parent="ConnectScreen"]
-title = "Choose your Lumberjacks field pass"
-initial_position = 2
-size = Vector2i(760, 520)
-ok_button_text = "Open field pass"
-file_mode = 0
-access = 2
-filters = PackedStringArray("*.json ; Lumberjacks field pass")
 
 [node name="ReconnectOverlay" type="Control" parent="."]
 visible = false

@@ -2,6 +2,7 @@ using Godot;
 using System;
 using System.Security.Cryptography;
 using System.Text.Json;
+using CommunitySurvival.Forest;
 
 namespace CommunitySurvival.Entities;
 
@@ -13,6 +14,9 @@ public partial class TreeEntity : Node3D
 {
     private Node3D _standing;
     private MeshInstance3D _trunk, _canopy, _canopy2, _canopy3, _stump, _sapling;
+    private MeshInstance3D _featuredTree;
+    private ForestArchetype _featuredArchetype;
+    private float _featuredModelHeight;
     private string _entityId;
     private double _health = 100, _stumpHealth = 50, _regrowth;
     private double _leanX, _leanZ;
@@ -34,7 +38,8 @@ public partial class TreeEntity : Node3D
         _sapling = GetNode<MeshInstance3D>("Sapling");
     }
 
-    public void Initialize(Vector3 pos, float heading, Godot.Collections.Dictionary meta)
+    public void Initialize(Vector3 pos, float heading, Godot.Collections.Dictionary meta,
+        ForestAssetLibrary forestAssets = null)
     {
         _entityId = meta.ContainsKey("entity_id") ? (string)meta["entity_id"] : GetInstanceId().ToString();
         Position = pos;
@@ -47,6 +52,8 @@ public partial class TreeEntity : Node3D
 
         if (meta.ContainsKey("growth_history"))
             ParseHistory((string)meta["growth_history"]);
+
+        ApplyFeaturedAsset(forestAssets);
 
         if (_health <= 0)
         {
@@ -114,6 +121,27 @@ public partial class TreeEntity : Node3D
         float baseRot = (float)(rng.NextDouble() * Mathf.Tau);
         float twistRad = _twist * 0.175f;
 
+        if (_featuredTree != null)
+        {
+            var desiredHeight = 6.8f * ageScale;
+            if (_name.Contains("white pine", StringComparison.OrdinalIgnoreCase)) desiredHeight *= 1.28f;
+            var scale = desiredHeight / _featuredModelHeight;
+            _featuredTree.Scale = Vector3.One * scale;
+            _featuredTree.Rotation = new Vector3(0f, baseRot + twistRad, 0f);
+            var traits = _featuredArchetype switch
+            {
+                ForestArchetype.Pine => (Stiffness: 0.86f, Crown: 0.72f),
+                ForestArchetype.Common => (Stiffness: 0.66f, Crown: 0.90f),
+                _ => (Stiffness: 1.14f, Crown: 1.18f),
+            };
+            _featuredTree.SetInstanceShaderParameter("use_tree_traits_override", 1f);
+            _featuredTree.SetInstanceShaderParameter("tree_traits_override", new Color(
+                (float)rng.NextDouble(),
+                traits.Stiffness * Mathf.Lerp(0.9f, 1.1f, (float)rng.NextDouble()),
+                traits.Crown * Mathf.Lerp(0.9f, 1.1f, (float)rng.NextDouble()),
+                Mathf.Lerp(0.48f, 0.92f, (float)rng.NextDouble())));
+        }
+
         ApplyCanopy(_canopy, rng, baseRot + twistRad, 0.85f, 1.15f,
             new Vector3(0, 4.2f * ageScale, 0));
         ApplyCanopy(_canopy2, rng, baseRot + twistRad + 2.1f, 0.65f, 0.95f,
@@ -153,10 +181,41 @@ public partial class TreeEntity : Node3D
         c.Position = pos;
     }
 
+    private void ApplyFeaturedAsset(ForestAssetLibrary assets)
+    {
+        if (assets == null) return;
+        var selector = StableSeed(_entityId) % 5;
+        _featuredArchetype = _name.Contains("pine", StringComparison.OrdinalIgnoreCase)
+            ? ForestArchetype.Pine
+            : _name.Contains("oak", StringComparison.OrdinalIgnoreCase) ||
+              _name.Contains("birch", StringComparison.OrdinalIgnoreCase)
+                ? ForestArchetype.Common
+                : selector switch
+                {
+                    0 or 1 => ForestArchetype.Pine,
+                    2 or 3 => ForestArchetype.Common,
+                    _ => ForestArchetype.Twisted,
+                };
+        var asset = assets[_featuredArchetype];
+        _featuredModelHeight = asset.ModelHeight;
+        _featuredTree = new MeshInstance3D
+        {
+            Name = "WindTree",
+            Mesh = asset.Mesh,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.On,
+        };
+        _standing.AddChild(_featuredTree);
+        _trunk.Visible = false;
+        _canopy.Visible = false;
+        _canopy2.Visible = false;
+        _canopy3.Visible = false;
+    }
+
     private void UpdateVisuals()
     {
         if (_regrowth > 0 && _regrowth < 1.0)
         {
+            if (_featuredTree != null) _featuredTree.Visible = false;
             _trunk.Visible = false;
             _canopy.Visible = false; _canopy2.Visible = false; _canopy3.Visible = false;
             _stump.Visible = _stumpHealth > 0;
@@ -166,6 +225,7 @@ public partial class TreeEntity : Node3D
         else if (_isFelled && !_fallComplete)
         {
             _standing.Visible = true;
+            if (_featuredTree != null) _featuredTree.Visible = true;
             _stump.Visible = false;
             _sapling.Visible = false;
         }
@@ -178,8 +238,10 @@ public partial class TreeEntity : Node3D
         else
         {
             _standing.Visible = true;
-            _trunk.Visible = true;
-            _canopy.Visible = true; _canopy2.Visible = true; _canopy3.Visible = true;
+            var fallback = _featuredTree == null;
+            if (_featuredTree != null) _featuredTree.Visible = true;
+            _trunk.Visible = fallback;
+            _canopy.Visible = fallback; _canopy2.Visible = fallback; _canopy3.Visible = fallback;
             _stump.Visible = false;
             _sapling.Visible = false;
         }

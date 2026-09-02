@@ -28,6 +28,7 @@
 - [Spatial interest management](network/interest-management.md)
 - [Validation](network/validation.md)
 - [Godot integration](network/godot-integration.md)
+- [September Lumberjacks launch slice](launch-slice-2026-09.md)
 
 ## Research and lab method
 

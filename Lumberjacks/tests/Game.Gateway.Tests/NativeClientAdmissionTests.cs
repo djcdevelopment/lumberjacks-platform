@@ -57,6 +57,47 @@ public sealed class NativeClientAdmissionTests
     }
 
     [Fact]
+    public void PrivateRAndDUsesStableLoginWithoutEnrollmentOrReleaseGate()
+    {
+        var principal = new ValheimPrincipal(
+            "private-plane",
+            ValheimCapability.Admin | ValheimCapability.Consumer);
+
+        var first = NativeClientAdmission.Evaluate(
+            principal, null, "release-a", 0, 10, "world",
+            privateRAndD: true,
+            suppliedRAndDUser: "derek",
+            suppliedRAndDPassword: "lumberjacks-rnd");
+        var afterReleaseChange = NativeClientAdmission.Evaluate(
+            principal, null, "release-b", 0, 10, "world",
+            privateRAndD: true,
+            suppliedRAndDUser: "derek",
+            suppliedRAndDPassword: "lumberjacks-rnd");
+
+        Assert.True(first.Allowed);
+        Assert.Equal(first.PlayerId, afterReleaseChange.PlayerId);
+    }
+
+    [Fact]
+    public void PrivateRAndDStillRequiresPrivatePlaneAndCorrectLogin()
+    {
+        var anonymous = NativeClientAdmission.Evaluate(
+            ValheimPrincipal.Anonymous, null, "release", 0, 10, "world",
+            privateRAndD: true,
+            suppliedRAndDUser: "derek",
+            suppliedRAndDPassword: "lumberjacks-rnd");
+        var privatePlane = new ValheimPrincipal("private-plane", ValheimCapability.Consumer);
+        var wrongPassword = NativeClientAdmission.Evaluate(
+            privatePlane, null, "release", 0, 10, "world",
+            privateRAndD: true,
+            suppliedRAndDUser: "derek",
+            suppliedRAndDPassword: "wrong");
+
+        Assert.Equal("private_rnd_requires_private_plane", anonymous.Error);
+        Assert.Equal("private_rnd_credentials_invalid", wrongPassword.Error);
+    }
+
+    [Fact]
     public void PlayerIdentityIsStableOpaqueAndWorldScoped()
     {
         var first = NativeClientAdmission.PlayerIdFor("world-a", "enrollment-a");

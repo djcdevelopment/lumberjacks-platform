@@ -1,6 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 using CommunitySurvival.Entities;
+using CommunitySurvival.Forest;
 
 namespace CommunitySurvival.Core;
 
@@ -13,6 +14,7 @@ public partial class World : Node3D
     private PackedScene _playerScene;
     private PackedScene _treeScene;
     private MeshInstance3D _ground;
+    private LiveForestStorm _forestStorm;
     private readonly Dictionary<string, Node3D> _entities = new();
 
     private static readonly HashSet<string> TreeTypes = new()
@@ -56,6 +58,7 @@ public partial class World : Node3D
     private void OnTerrainReady()
     {
         if (!_state.HasTerrain) return;
+        _forestStorm?.FollowTradeWind(_state.TradeWindX, _state.TradeWindZ);
         var mesh = TerrainGenerator.Generate(_state.AltitudeGrid, _state.GridWidth, _state.GridHeight);
         if (mesh != null && _ground != null)
         {
@@ -97,7 +100,7 @@ public partial class World : Node3D
 
         meta["entity_id"] = id;
         if (instance is TreeEntity tree)
-            tree.Initialize(pos, heading, meta);
+            tree.Initialize(pos, heading, meta, _forestStorm?.Assets);
         else
             instance.Position = pos;
     }
@@ -206,6 +209,15 @@ public partial class World : Node3D
     }
 
     private void SetupEnvironment()
+    {
+        _forestStorm = new LiveForestStorm { Name = "ForestStorm" };
+        _forestStorm.Initialize(
+            GetNode<DirectionalLight3D>("Sun"),
+            GetNode<DirectionalLight3D>("FillLight"));
+        AddChild(_forestStorm);
+    }
+
+    private void SetupLegacyEnvironment()
     {
         var sky = new ProceduralSkyMaterial();
         sky.SkyTopColor = new Color(0.12f, 0.2f, 0.24f);

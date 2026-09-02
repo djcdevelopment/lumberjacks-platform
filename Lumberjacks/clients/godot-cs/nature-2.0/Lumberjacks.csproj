@@ -5,6 +5,10 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>CommunitySurvival</RootNamespace>
     <AssemblyName>Lumberjacks</AssemblyName>
+    <!-- Godot invokes dotnet publish itself. Serial project-reference builds avoid two target
+         graph legs racing on the shared netstandard contract output under Windows Defender. -->
+    <BuildInParallel>false</BuildInParallel>
+    <UseSharedCompilation>false</UseSharedCompilation>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Game.Contracts\Game.Contracts.csproj"

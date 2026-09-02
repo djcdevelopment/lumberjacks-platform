@@ -17,6 +17,7 @@ public partial class Main : Node
 
 	private SimulationClient _net;
 	private GameState _state;
+	private bool _forestLab;
 
 	public override void _Ready()
 	{
@@ -26,6 +27,13 @@ public partial class Main : Node
 		_connectScreen = GetNode<Control>("ConnectScreen");
 		_statusLabel = GetNode<Label>("ConnectScreen/VBox/StatusLabel");
 		_reconnectOverlay = GetNode<Control>("ReconnectOverlay");
+
+		if (System.Array.Exists(OS.GetCmdlineUserArgs(),
+			arg => string.Equals(arg, "--lab=forest-storm", System.StringComparison.OrdinalIgnoreCase)))
+		{
+			StartForestLab();
+			return;
+		}
 
 		_worldScene = GD.Load<PackedScene>("res://scenes/World.tscn");
 
@@ -38,22 +46,38 @@ public partial class Main : Node
 
 		var cs = _connectScreen as CommunitySurvival.UI.ConnectScreen;
 		cs.ConnectRequested += OnConnect;
+		cs.ForestLabRequested += StartForestLab;
 		GetNode<Button>("ReconnectOverlay/VBox/BackButton").Pressed += BackToMenu;
 
 		_reconnectOverlay.Hide();
 		_connectScreen.Show();
+
+		var serverArgument = System.Array.Find(
+			OS.GetCmdlineUserArgs(),
+			arg => arg.StartsWith("--server=", System.StringComparison.OrdinalIgnoreCase));
+		if (!string.IsNullOrWhiteSpace(serverArgument))
+		{
+			var serverAddress = serverArgument["--server=".Length..];
+			cs.SetServerAddress(serverAddress);
+			Callable.From(() => OnConnect(serverAddress)).CallDeferred();
+		}
 	}
 
 	public override void _UnhandledInput(InputEvent ev)
 	{
+		if (_forestLab && ev is InputEventKey { Pressed: true, Keycode: Key.Escape })
+		{
+			GetTree().Quit();
+			return;
+		}
 		if (ev is InputEventKey k && k.Pressed && k.Keycode == Key.Escape && _inWorld) BackToMenu();
 	}
 
-    private void OnConnect(string accessJson)
+    private void OnConnect(string serverAddress)
     {
 		try
 		{
-			var access = NativeAccessConfig.Parse(accessJson);
+			var access = NativeAccessConfig.ForPrivateRAndD(serverAddress);
 			_statusLabel.Text = "Opening the Northwoods…";
 			_ = _net.Connect(access);
 		}
@@ -61,6 +85,15 @@ public partial class Main : Node
 		{
 			_statusLabel.Text = ex.Message;
 		}
+	}
+
+	private void StartForestLab()
+	{
+		_forestLab = true;
+		_connectScreen.Hide();
+		_reconnectOverlay.Hide();
+		_worldInstance = GD.Load<PackedScene>("res://scenes/ForestStormLab.tscn").Instantiate();
+		AddChild(_worldInstance);
 	}
 
 	private async void OnSession(string playerId, string resumeToken)
@@ -88,7 +121,7 @@ public partial class Main : Node
 		_state.Clear();
 		_reconnectOverlay.Hide();
 		_connectScreen.Show();
-		_statusLabel.Text = "Import your field pass to return";
+		_statusLabel.Text = "Ready to reconnect";
 		await _net.Disconnect();
 	}
 }

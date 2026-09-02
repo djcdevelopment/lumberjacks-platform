@@ -19,7 +19,7 @@ namespace CommunitySurvival.Networking;
 /// </summary>
 public partial class SimulationClient : Node
 {
-    public const string CurrentRelease = "0.1.0-alpha.1";
+    public const string CurrentRelease = NativeAccessConfig.CurrentRelease;
     [Signal] public delegate void SessionStartedEventHandler(string playerId, string resumeToken);
     [Signal] public delegate void WorldSnapshotReceivedEventHandler(string rawJson);
     [Signal] public delegate void EntityUpdatedEventHandler(string entityId, Vector3 position, Vector3 velocity, float heading, int lastInputSeq, long tick);
@@ -42,9 +42,21 @@ public partial class SimulationClient : Node
     {
         if (_socket?.State == WebSocketState.Open) return;
         _socket = new ClientWebSocket();
-        _socket.Options.SetRequestHeader("X-Lumberjacks-Enrollment-Id", access.EnrollmentId);
-        _socket.Options.SetRequestHeader("X-Lumberjacks-Client-Key", access.ClientKey);
-        _socket.Options.SetRequestHeader("X-Lumberjacks-Native-Release", CurrentRelease);
+        if (access.PrivateRAndD)
+        {
+            var basic = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes($"{access.RAndDUsername}:{access.RAndDPassword}"));
+            _socket.Options.SetRequestHeader("Authorization", "Basic " + basic);
+            // Compatibility only: the currently running pre-R&D Gateway still reads this.
+            // The private-rnd admission path in current source does not gate on it.
+            _socket.Options.SetRequestHeader("X-Lumberjacks-Native-Release", CurrentRelease);
+        }
+        else
+        {
+            _socket.Options.SetRequestHeader("X-Lumberjacks-Enrollment-Id", access.EnrollmentId);
+            _socket.Options.SetRequestHeader("X-Lumberjacks-Client-Key", access.ClientKey);
+            _socket.Options.SetRequestHeader("X-Lumberjacks-Native-Release", CurrentRelease);
+        }
 
         var url = access.GatewayUrl;
         if (!url.Contains("protocol=binary"))

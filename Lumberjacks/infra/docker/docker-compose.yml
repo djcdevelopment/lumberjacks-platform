@@ -69,6 +69,9 @@ services:
       LUMBERJACKS_SERVER_INSTANCE_ID: "${LUMBERJACKS_SERVER_INSTANCE_ID:-am4-gateway-dev}"
       LUMBERJACKS_WORLD_ID: "${LUMBERJACKS_WORLD_ID:-am4-cutover-world}"
       LUMBERJACKS_SOURCE_REVISION: "${LUMBERJACKS_SOURCE_REVISION:-unknown}"
+      LUMBERJACKS_ACCESS_MODE: "${LUMBERJACKS_ACCESS_MODE:-private-rnd}"
+      LUMBERJACKS_RND_USERNAME: "${LUMBERJACKS_RND_USERNAME:-derek}"
+      LUMBERJACKS_RND_PASSWORD: "${LUMBERJACKS_RND_PASSWORD:-lumberjacks-rnd}"
       # The local release publisher writes the same hash-verified runtime pointer shape used on
       # P7 into gatewaydata. Keeping the pointer in the existing volume makes Lab update checks
       # deterministic without embedding a package in the Gateway image.

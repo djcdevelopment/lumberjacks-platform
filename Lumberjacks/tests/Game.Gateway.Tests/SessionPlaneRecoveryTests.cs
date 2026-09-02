@@ -106,6 +106,25 @@ public sealed class SessionPlaneRecoveryTests
         Assert.Null(sessions.TryResume(first.ResumeToken, new FakeWebSocket(), out _));
     }
 
+    [Fact]
+    public void PrivateRAndDCanReplaceAStaleLiveIncarnation()
+    {
+        var sessions = new SessionManager();
+        var originalSocket = new FakeWebSocket();
+        Assert.True(sessions.TryCreateNative(
+            originalSocket, "p-rnd", "release", 1, out var original));
+
+        Assert.True(sessions.TryCreateNative(
+            new FakeWebSocket(), "p-rnd", "release", 1, out var replacement,
+            replaceExisting: true));
+
+        Assert.True(originalSocket.Aborted);
+        Assert.NotNull(replacement);
+        Assert.Single(sessions.GetAll());
+        Assert.Equal("p-rnd", replacement!.PlayerId);
+        Assert.Null(sessions.TryResume(original!.ResumeToken, new FakeWebSocket(), out _));
+    }
+
     // --- Fix 2: stalled-session abort ------------------------------------------------------
 
     [Fact]

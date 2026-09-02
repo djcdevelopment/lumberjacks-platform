@@ -1,42 +1,32 @@
 using Godot;
-using System.IO;
 
 namespace CommunitySurvival.UI;
 
-/// <summary>
-/// Connection UI. The credential-bearing field pass is read locally and never printed.
-/// </summary>
+/// <summary>Deliberately small R&amp;D entry screen: an address and a play button.</summary>
 public partial class ConnectScreen : Control
 {
-    [Signal] public delegate void ConnectRequestedEventHandler(string accessJson);
+    [Signal] public delegate void ConnectRequestedEventHandler(string serverAddress);
+    [Signal] public delegate void ForestLabRequestedEventHandler();
 
-    private Button _importButton;
-    private FileDialog _fileDialog;
-    private Label _statusLabel;
+    private LineEdit _serverAddress = null!;
+    private Label _statusLabel = null!;
 
     public override void _Ready()
     {
-        _importButton = GetNode<Button>("VBox/ImportButton");
-        _fileDialog = GetNode<FileDialog>("FieldPassDialog");
+        _serverAddress = GetNode<LineEdit>("VBox/ServerAddress");
         _statusLabel = GetNode<Label>("VBox/StatusLabel");
-
-        _importButton.Pressed += () => _fileDialog.PopupCenteredRatio(0.65f);
-        _fileDialog.FileSelected += OnFileSelected;
+        GetNode<Button>("VBox/ConnectButton").Pressed += Connect;
+        GetNode<Button>("VBox/LabButton").Pressed += () =>
+            EmitSignal(SignalName.ForestLabRequested);
+        _serverAddress.TextSubmitted += _ => Connect();
     }
 
-    private void OnFileSelected(string path)
+    private void Connect()
     {
-        try
-        {
-            var json = File.ReadAllText(path);
-            _statusLabel.Text = "Reading field pass…";
-            EmitSignal(SignalName.ConnectRequested, json);
-        }
-        catch
-        {
-            _statusLabel.Text = "Could not read that field pass.";
-        }
+        _statusLabel.Text = "Opening the Northwoods…";
+        EmitSignal(SignalName.ConnectRequested, _serverAddress.Text);
     }
 
+    public void SetServerAddress(string value) => _serverAddress.Text = value;
     public void SetStatus(string text) => _statusLabel.Text = text;
 }

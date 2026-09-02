@@ -21,8 +21,30 @@ public static class NativeClientAdmission
         string requiredRelease,
         int activeNativeSessions,
         int maxNativeSessions,
-        string worldId)
+        string worldId,
+        bool privateRAndD = false,
+        string? suppliedRAndDUser = null,
+        string? suppliedRAndDPassword = null,
+        string expectedRAndDUser = "derek",
+        string expectedRAndDPassword = "lumberjacks-rnd")
     {
+        if (privateRAndD)
+        {
+            if (!string.Equals(principal?.Kind, "private-plane", StringComparison.Ordinal))
+                return Deny(StatusCodes.Status403Forbidden, "private_rnd_requires_private_plane");
+            if (!CryptographicEquals(suppliedRAndDUser ?? "", expectedRAndDUser) ||
+                !CryptographicEquals(suppliedRAndDPassword ?? "", expectedRAndDPassword))
+                return Deny(StatusCodes.Status401Unauthorized, "private_rnd_credentials_invalid");
+            if (activeNativeSessions >= maxNativeSessions)
+                return Deny(StatusCodes.Status503ServiceUnavailable, "native_capacity_reached");
+
+            return new NativeClientAdmissionDecision(
+                true,
+                StatusCodes.Status101SwitchingProtocols,
+                null,
+                PlayerIdFor(worldId, $"private-rnd:{suppliedRAndDUser}"));
+        }
+
         if (principal is null ||
             (principal.Enrollment is null &&
              !string.Equals(principal.Kind, "private-plane", StringComparison.Ordinal)))

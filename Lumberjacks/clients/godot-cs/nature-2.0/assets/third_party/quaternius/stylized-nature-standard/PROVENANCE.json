@@ -1,0 +1,31 @@
+{
+  "schema": "lumberjacks.asset-provenance/v1",
+  "name": "Stylized Nature MegaKit Standard - selected trees",
+  "author": "Quaternius",
+  "license": "CC0-1.0",
+  "source": "https://quaternius.com/packs/stylizednaturemegakit.html",
+  "retrieval_mirror": "https://github.com/agentkaerf/FreeModels/tree/main/Stylized%20Nature%20MegaKit%5BStandard%5D",
+  "retrieved_utc": "2026-09-02T00:00:00Z",
+  "asset_set_sha256": "be57b22120225badfce94349b5694ecf7bca078f4a8310bcdc916bbeaf7790b0",
+  "archetypes": {
+    "pine": "Pine_1.gltf",
+    "common_flexible_broadleaf": "CommonTree_1.gltf",
+    "twisted_heavy_broadleaf": "TwistedTree_1.gltf"
+  },
+  "files": {
+    "Bark_NormalTree.png": "f36e94fdd73255347325b998e02a0b2575fdf714b0315bfe5e8ff34bc8e13603",
+    "Bark_NormalTree_Normal.png": "852f6155404b8c39e100e41e26970e02a6a5c81b482d3726618dab28e3ad03a2",
+    "Bark_TwistedTree.png": "01608a96c42954eb725b32824530b51e67a2f3d85432d21a8d8adff958d2084a",
+    "Bark_TwistedTree_Normal.png": "692da2f58909263f074cb17b36defd09f56bf89ab7efda567a9a3e59261747b3",
+    "CommonTree_1.bin": "9dd689e84e1aa2f5b08db8def591254d582783c73737af54ba0d89b3e549c3ae",
+    "CommonTree_1.gltf": "b51cdea6545edb51d102dd6c27caafe62aa75e3c328ac8f9039f4e7bfd690bfa",
+    "Leaf_Pine_C.png": "86f7ff7a214f5424de48d269568f36a15485e61c80677e426c7be9f45181eef9",
+    "Leaves_NormalTree_C.png": "998612bdf0b76a22f5f54d65cd7a457815d2842d89653fa4348a4ebb42933ad3",
+    "Leaves_TwistedTree_C.png": "0e459b56b14c0e81b1b7cf3d1e8c6f0bb71790eb6c46bb02a76a922d8df646ea",
+    "License_Standard.txt": "120710e542c3ebaf83856c4eb55b4a1e680593b39302eba7fdc5d942dfe78c58",
+    "Pine_1.bin": "0cc0900d156359cab7028d87cd5d8897fbcb0479ddf1ddf524d5462c11e17af2",
+    "Pine_1.gltf": "adc85a72e6f46f71317ca5f7630876bfb207f687427bc9e37cd97ec4af5f2cbc",
+    "TwistedTree_1.bin": "58e4c16c16e0a71051af76a37be0641ea8f7089652687f957383d3c4bd24723b",
+    "TwistedTree_1.gltf": "8544b084e1fadfbec981e964ce27463f50c39c460513e0d3442160880c5908a7"
+  }
+}

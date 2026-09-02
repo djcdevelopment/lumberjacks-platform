@@ -132,6 +132,11 @@ services:
       # ASP.NET's environment binder uses a double underscore for nested configuration.
       # The runtime clamps this to 1..10 as a second line of defence.
       NativeClient__MaxSessions: "${LUMBERJACKS_NATIVE_CLIENT_MAX_SESSIONS:-10}"
+      # Temporary launch-month path: IAP/private-plane plus one low-friction R&D login.
+      # Public/proxied sockets remain anonymous and cannot use this path.
+      LUMBERJACKS_ACCESS_MODE: "${LUMBERJACKS_ACCESS_MODE:-private-rnd}"
+      LUMBERJACKS_RND_USERNAME: "${LUMBERJACKS_RND_USERNAME:-derek}"
+      LUMBERJACKS_RND_PASSWORD: "${LUMBERJACKS_RND_PASSWORD:-lumberjacks-rnd}"
       Urls: "http://+:4000"
       ConnectionStrings__GameDb: "Host=postgres;Database=game;Username=game;Password=${POSTGRES_PASSWORD}"
       ServiceUrls__EventLog: "http://eventlog:4002"

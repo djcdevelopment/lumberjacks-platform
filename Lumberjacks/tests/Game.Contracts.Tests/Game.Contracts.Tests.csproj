@@ -7,6 +7,12 @@
     <ProjectReference Include="..\..\src\Game.Contracts\Game.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Forest\ForestStormScenario.cs" Link="Forest\ForestStormScenario.cs" />
+    <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Forest\ForestPlacement.cs" Link="Forest\ForestPlacement.cs" />
+    <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\TerrainSim.cs" Link="Forest\TerrainSim.cs" />
+    <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Networking\NativeAccessConfig.cs" Link="Networking\NativeAccessConfig.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />

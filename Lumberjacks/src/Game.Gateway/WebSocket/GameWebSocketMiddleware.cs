@@ -43,6 +43,8 @@ public class GameWebSocketMiddleware
         var principal = ValheimPrincipal.From(context);
         NativeClientAdmissionDecision? nativeAdmission = null;
         string? suppliedNativeRelease = null;
+        string? effectiveNativeRelease = null;
+        var privateRAndD = false;
 
         if (isNativeClient)
         {
@@ -51,18 +53,35 @@ public class GameWebSocketMiddleware
             var requiredRelease = _configuration["NativeClient:RequiredRelease"] ??
                 _configuration["LUMBERJACKS_NATIVE_CLIENT_RELEASE"] ??
                 "0.1.0-alpha.1";
+            privateRAndD = string.Equals(
+                _configuration["LUMBERJACKS_ACCESS_MODE"],
+                "private-rnd",
+                StringComparison.OrdinalIgnoreCase);
+            ReadBasicCredentials(context, out var rndUser, out var rndPassword);
             var maximum = Math.Clamp(
                 _configuration.GetValue("NativeClient:MaxSessions", 10), 1, 10);
             // A resume replaces an existing incarnation, so it does not consume a new seat.
             // Its token and identity are checked immediately after the upgrade.
-            var active = string.IsNullOrWhiteSpace(resumeToken)
+            var active = privateRAndD
+                ? 0
+                : string.IsNullOrWhiteSpace(resumeToken)
                 ? _sessions.GetAll().Count(candidate => candidate.IsNativeClient)
                 : 0;
             var worldId = _configuration["World:Id"] ??
                 _configuration["LUMBERJACKS_WORLD_ID"] ??
                 "world-default";
             nativeAdmission = NativeClientAdmission.Evaluate(
-                principal, suppliedNativeRelease, requiredRelease, active, maximum, worldId);
+                principal,
+                suppliedNativeRelease,
+                requiredRelease,
+                active,
+                maximum,
+                worldId,
+                privateRAndD,
+                rndUser,
+                rndPassword,
+                _configuration["LUMBERJACKS_RND_USERNAME"] ?? "derek",
+                _configuration["LUMBERJACKS_RND_PASSWORD"] ?? "lumberjacks-rnd");
             if (!nativeAdmission.Allowed)
             {
                 context.Response.StatusCode = nativeAdmission.StatusCode;
@@ -76,7 +95,10 @@ public class GameWebSocketMiddleware
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(resumeToken) &&
+            effectiveNativeRelease = privateRAndD ? requiredRelease : suppliedNativeRelease;
+
+            if (!privateRAndD &&
+                string.IsNullOrWhiteSpace(resumeToken) &&
                 _sessions.GetAll().Any(candidate =>
                     candidate.IsNativeClient &&
                     string.Equals(candidate.PlayerId, nativeAdmission.PlayerId, StringComparison.Ordinal)))
@@ -142,9 +164,10 @@ public class GameWebSocketMiddleware
                 if (!_sessions.TryCreateNative(
                         ws,
                         nativeAdmission!.PlayerId!,
-                        suppliedNativeRelease!,
+                        effectiveNativeRelease!,
                         Math.Clamp(_configuration.GetValue("NativeClient:MaxSessions", 10), 1, 10),
-                        out var nativeSession))
+                        out var nativeSession,
+                        replaceExisting: privateRAndD))
                 {
                     var rejected = new GameSession(
                         Guid.NewGuid().ToString(),
@@ -169,14 +192,14 @@ public class GameWebSocketMiddleware
             if (resumed &&
                 (!session.IsNativeClient ||
                  !string.Equals(session.PlayerId, nativeAdmission!.PlayerId, StringComparison.Ordinal) ||
-                 !string.Equals(session.NativeClientRelease, suppliedNativeRelease, StringComparison.Ordinal)))
+                 !string.Equals(session.NativeClientRelease, effectiveNativeRelease, StringComparison.Ordinal)))
             {
                 await RejectAsync(ws, session, "native resume identity changed");
                 return;
             }
 
             session.IsNativeClient = true;
-            session.NativeClientRelease = suppliedNativeRelease;
+            session.NativeClientRelease = effectiveNativeRelease;
             session.ValheimRole = "native";
             session.ValheimLogicalPeerId = "native:" + session.PlayerId;
         }
@@ -446,6 +469,31 @@ public class GameWebSocketMiddleware
 
             if (ws.State == WebSocketState.Open)
                 await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Goodbye", CancellationToken.None);
+        }
+    }
+
+    private static void ReadBasicCredentials(
+        HttpContext context,
+        out string? username,
+        out string? password)
+    {
+        username = null;
+        password = null;
+        var authorization = context.Request.Headers.Authorization.ToString();
+        if (!authorization.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase)) return;
+
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(
+                Convert.FromBase64String(authorization[6..].Trim()));
+            var separator = decoded.IndexOf(':');
+            if (separator < 0) return;
+            username = decoded[..separator];
+            password = decoded[(separator + 1)..];
+        }
+        catch (FormatException)
+        {
+            // Admission intentionally returns one generic invalid-credential response.
         }
     }
 
