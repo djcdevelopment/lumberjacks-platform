@@ -140,8 +140,6 @@ public partial class World : Node3D
 
         if (isLocal)
         {
-            if (instance.HasNode("CameraPivot/Camera3D"))
-                instance.GetNode<Camera3D>("CameraPivot/Camera3D").Current = true;
             if (instance.HasNode("Nametag"))
                 instance.GetNode<Label3D>("Nametag").Visible = false;
 
@@ -154,9 +152,17 @@ public partial class World : Node3D
                 var cam = instance.GetNode<Camera3D>("CameraPivot/Camera3D");
                 cam.GetParent().RemoveChild(cam);
                 camCtrl.AddChild(cam);
+                // The scene camera carries a fixed +30-degree pitch. The orbit controller owns
+                // pitch after reparenting, so retaining both rotations points the view at the sky.
+                cam.Rotation = Vector3.Zero;
                 cam.Position = new Vector3(0, 0, 15); // Distance behind
                 pivot.AddChild(camCtrl);
                 camCtrl.Name = "CameraController";
+                // Removing a current camera from the scene tree lets FallbackCamera reclaim the
+                // viewport. Make this camera current only after the complete orbit rig is back in
+                // the tree; otherwise the fallback sits below the generated terrain at spawn.
+                cam.MakeCurrent();
+                GD.Print($"World: active camera={cam.GetPath()} pos={cam.GlobalPosition}");
             }
 
             instance.AddChild(new Player.PlayerController());

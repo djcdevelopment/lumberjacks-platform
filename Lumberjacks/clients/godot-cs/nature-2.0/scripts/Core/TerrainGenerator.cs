@@ -45,13 +45,15 @@ public static class TerrainGenerator
                 var c00 = AltColor(y00); var c10 = AltColor(y10);
                 var c01 = AltColor(y01); var c11 = AltColor(y11);
 
+                // Counter-clockwise from above so generated normals face the player rather than
+                // into the ground. The previous winding made the whole terrain back-face culled.
                 st.SetColor(c00); st.AddVertex(v00);
-                st.SetColor(c01); st.AddVertex(v01);
                 st.SetColor(c10); st.AddVertex(v10);
+                st.SetColor(c01); st.AddVertex(v01);
 
                 st.SetColor(c10); st.AddVertex(v10);
-                st.SetColor(c01); st.AddVertex(v01);
                 st.SetColor(c11); st.AddVertex(v11);
+                st.SetColor(c01); st.AddVertex(v01);
             }
         }
 
