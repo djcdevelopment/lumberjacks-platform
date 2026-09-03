@@ -11,6 +11,8 @@
     <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Forest\ForestPlacement.cs" Link="Forest\ForestPlacement.cs" />
     <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\TerrainSim.cs" Link="Forest\TerrainSim.cs" />
     <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\AxeSwingProfile.cs" Link="Lab\AxeSwingProfile.cs" />
+    <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\AxeKinematics.cs" Link="Lab\AxeKinematics.cs" />
+    <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\AxeContactSolver.cs" Link="Lab\AxeContactSolver.cs" />
     <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Networking\NativeAccessConfig.cs" Link="Networking\NativeAccessConfig.cs" />
   </ItemGroup>
   <ItemGroup>

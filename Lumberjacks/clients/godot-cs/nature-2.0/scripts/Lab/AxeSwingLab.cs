@@ -15,6 +15,7 @@ public partial class AxeSwingLab : Node3D
     private readonly Vector3 _shoulderPosition = new(-0.30f, 1.32f, 0.30f);
     private AxeSwingProfile _profile = AxeSwingProfile.AcceptedV1();
     private bool _showChoppingHead;
+    private bool _contactMode;
     private Node3D _shoulderPivot;
     private MeshInstance3D _upperArm;
     private Node3D _elbowPivot;
@@ -27,6 +28,7 @@ public partial class AxeSwingLab : Node3D
     private MeshInstance3D _tip;
     private MeshInstance3D _arcGuide;
     private MeshInstance3D _contactGuide;
+    private Camera3D _camera;
     private Label _hud;
     private TuningSlider _restSlider;
     private TuningSlider _startSlider;
@@ -56,17 +58,28 @@ public partial class AxeSwingLab : Node3D
 
     public override void _Ready()
     {
+        var userArguments = OS.GetCmdlineUserArgs();
+        _contactMode = Array.Exists(
+            userArguments,
+            arg => string.Equals(arg, "--lab=axe-contact", StringComparison.OrdinalIgnoreCase));
         _showChoppingHead = !Array.Exists(
-            OS.GetCmdlineUserArgs(),
+            userArguments,
             arg => string.Equals(arg, "--lab=axe-arc", StringComparison.OrdinalIgnoreCase));
         BuildStage();
         BuildSwingRig();
         BuildGuides();
         BuildHud();
-        BuildPlaneToggle();
-        BuildTuningPanel();
+        if (_contactMode)
+            BuildContactWitness();
+        else
+        {
+            BuildPlaneToggle();
+            BuildTuningPanel();
+        }
         ApplyPose(_profile.Sample(0f));
-        GD.Print(_showChoppingHead
+        GD.Print(_contactMode
+            ? "AxeContactLab: ready; accepted swing against a finite neutral witness, no force/wood/damage. Space or LMB=replay, F=continue follow-through"
+            : _showChoppingHead
             ? "AxeHeadLab: ready; accepted articulated swing plus chopping-head geometry, no target/contact/damage. Space or LMB=replay, F=hold contact, Tab=tune"
             : "AxeArcLab: ready; accepted articulated swing only, no head/target/contact/damage. Space or LMB=replay, F=hold contact, Tab=tune");
     }
@@ -83,9 +96,17 @@ public partial class AxeSwingLab : Node3D
                 Replay();
                 break;
             case Key.F:
-                _holdAtContact = !_holdAtContact;
-                if (!_holdAtContact && _heldAtContact)
+                if (_contactMode && _heldAtContact)
+                {
                     _heldAtContact = false;
+                    _contactReleased = true;
+                }
+                else if (!_contactMode)
+                {
+                    _holdAtContact = !_holdAtContact;
+                    if (!_holdAtContact && _heldAtContact)
+                        _heldAtContact = false;
+                }
                 break;
             case Key.L:
                 _loop = !_loop;
@@ -102,7 +123,13 @@ public partial class AxeSwingLab : Node3D
         if (_elapsed < 0f || _heldAtContact) return;
 
         var next = _elapsed + (float)delta;
-        if (_holdAtContact && _elapsed < _profile.ContactTimeSeconds && next >= _profile.ContactTimeSeconds)
+        if (_contactMode && _contactResult.Hit && !_contactReleased &&
+            _elapsed < _contactResult.ContactTimeSeconds && next >= _contactResult.ContactTimeSeconds)
+        {
+            next = _contactResult.ContactTimeSeconds;
+            _heldAtContact = true;
+        }
+        else if (_holdAtContact && _elapsed < _profile.ContactTimeSeconds && next >= _profile.ContactTimeSeconds)
         {
             next = _profile.ContactTimeSeconds;
             _heldAtContact = true;
@@ -123,6 +150,7 @@ public partial class AxeSwingLab : Node3D
     {
         if (_profile.ValidationError is not null) return;
         _heldAtContact = false;
+        _contactReleased = false;
         _elapsed = 0f;
         ApplyPose(_profile.Sample(0f));
     }
@@ -172,10 +200,10 @@ public partial class AxeSwingLab : Node3D
         };
         AddChild(head);
 
-        var camera = new Camera3D { Current = true, Fov = 42f };
-        AddChild(camera);
+        _camera = new Camera3D { Current = true, Fov = 42f };
+        AddChild(_camera);
         // Reserve the left third for instruments and use the rest as an uncluttered stage.
-        camera.LookAtFromPosition(new Vector3(-1.1f, 3.25f, 4.8f), new Vector3(-1.1f, 1.15f, 0f));
+        _camera.LookAtFromPosition(new Vector3(-1.1f, 3.25f, 4.8f), new Vector3(-1.1f, 1.15f, 0f));
     }
 
     private void BuildSwingRig()
@@ -441,6 +469,12 @@ public partial class AxeSwingLab : Node3D
 
     private void ResetProfile()
     {
+        if (_contactMode)
+        {
+            ResetContactWitness();
+            return;
+        }
+
         _profile = AxeSwingProfile.AcceptedV1();
         _restSlider.SetValue(_profile.RestAngleDegrees);
         _startSlider.SetValue(_profile.StartAngleDegrees);
@@ -481,6 +515,8 @@ public partial class AxeSwingLab : Node3D
         var wristAngle = pose.AngleDegrees - pose.ShoulderAngleDegrees - pose.ElbowAngleDegrees;
         _handPivot.RotationDegrees = new Vector3(0f, 0f, wristAngle);
         UpdateHud(pose);
+        if (_contactMode)
+            UpdateContactWitness(pose);
     }
 
     private void UpdateHud(AxeSwingPose pose)
@@ -491,9 +527,14 @@ public partial class AxeSwingLab : Node3D
             ? _profile.ShoulderToHeadRadiusMeters(pose)
             : _profile.ShoulderToHandleTipRadiusMeters(pose);
         var wristAngle = pose.AngleDegrees - pose.ShoulderAngleDegrees - pose.ElbowAngleDegrees;
-        var tipSpeed = MathF.Abs(Mathf.DegToRad(pose.AngularVelocityDegreesPerSecond))
-            * headRadius;
-        var title = _showChoppingHead
+        var tipSpeed = _showChoppingHead && error is null
+            ? AxeKinematics.Sample(_profile, Math.Clamp(_elapsed, 0f, _profile.TotalSeconds))
+                .CuttingCenterSpeedMetersPerSecond
+            : MathF.Abs(Mathf.DegToRad(pose.AngularVelocityDegreesPerSecond)) * headRadius;
+        if (tipSpeed < 0.05f) tipSpeed = 0f;
+        var title = _contactMode
+            ? "AXE SWING LAB 03 — CONTACT WITNESS\n"
+            : _showChoppingHead
             ? "AXE SWING LAB 02 — CHOPPING HEAD\n"
             : "AXE SWING LAB 01 — ARTICULATED ARC\n";
         var headGeometry = _showChoppingHead
@@ -502,9 +543,14 @@ public partial class AxeSwingLab : Node3D
         var legend = _showChoppingHead
             ? "WHITE shoulder / TEAL elbow / GOLD hands / ORANGE cutting center\n\n"
             : "WHITE shoulder / TEAL elbow / GOLD hands / ORANGE handle tip\n\n";
-        var boundary = _showChoppingHead
+        var boundary = _contactMode
+            ? "TRANSLUCENT WITNESS / INSPECTION PAUSE ONLY\nCONTACT DOES NOT END THE SWING\nNO FORCE / WOOD / DAMAGE / NETWORK\n\n"
+            : _showChoppingHead
             ? "HEAD GEOMETRY / NO WOOD\nNO HIT OR DAMAGE / NO NETWORK\n\n"
             : "NO HEAD / NO WOOD\nNO HIT OR DAMAGE / NO NETWORK\n\n";
+        var controls = _contactMode
+            ? "\n[Space/LMB] Replay\n[F] Continue follow-through\n[R] Nominal target"
+            : $"\n[Space/LMB] Replay\n[F] Hold contact  {OnOff(_holdAtContact)}\n[L] Loop          {OnOff(_loop)}\n[R] Defaults\n[Tab] Tune";
         _hud.Text =
             title +
             $"Upper / forearm  {_profile.UpperArmLengthMeters:F2} / {_profile.ForearmLengthMeters:F2} m\n" +
@@ -528,8 +574,12 @@ public partial class AxeSwingLab : Node3D
                   $"Drive     {_profile.DriveSeconds:F2} s\n" +
                   $"Recovery  {_profile.RecoverySeconds:F2} s\n"
                 : $"INVALID PROFILE: {error}\n") +
-            $"\n[Space/LMB] Replay\n[F] Hold contact  {OnOff(_holdAtContact)}\n[L] Loop          {OnOff(_loop)}\n[R] Defaults\n[Tab] Tune" +
-            (_heldAtContact ? "\nHELD AT THE RED CONTACT LINE — press F to continue" : string.Empty);
+            controls +
+            (_heldAtContact
+                ? _contactMode
+                    ? "\nINSPECTION PAUSE AT FIRST CONTACT — press F to follow through"
+                    : "\nHELD AT THE RED CONTACT LINE — press F to continue"
+                : string.Empty);
     }
 
     private static string OnOff(bool value) => value ? "ON" : "OFF";

@@ -38,7 +38,8 @@ public partial class Main : Node
 		}
 		if (string.Equals(requestedLab, "--lab=axe-swing", System.StringComparison.OrdinalIgnoreCase) ||
 			string.Equals(requestedLab, "--lab=axe-arc", System.StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(requestedLab, "--lab=axe-head", System.StringComparison.OrdinalIgnoreCase))
+			string.Equals(requestedLab, "--lab=axe-head", System.StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(requestedLab, "--lab=axe-contact", System.StringComparison.OrdinalIgnoreCase))
 		{
 			StartStandaloneLab("res://scenes/AxeSwingLab.tscn");
 			return;

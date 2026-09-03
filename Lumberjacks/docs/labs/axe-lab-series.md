@@ -21,22 +21,31 @@ every accepted value so unrelated work cannot retune it accidentally.
 ```powershell
 .\tools\Start-AxeSwingLab.ps1 -Stage arc
 .\tools\Start-AxeSwingLab.ps1 -Stage head
+.\tools\Start-AxeSwingLab.ps1 -Stage contact
 ```
 
 Both default to Vulkan. `--lab=axe-arc` preserves Lab 01 without the chopping head;
 `--lab=axe-head` preserves Lab 02 with it. The older `--lab=axe-swing` command remains an alias for
-Lab 02.
+Lab 02. `--lab=axe-contact` preserves Lab 03: the accepted free swing crosses a finite neutral
+witness and pauses exactly at the first deterministic cutting-edge contact.
 
 Controls are `Space` or left mouse to replay, `F` to hold at contact, `L` to loop, `R` to restore
 the accepted baseline, and `Tab` to tune. Tuning is exploratory; it does not alter the accepted
 baseline until a reviewed code change updates the pinned values.
 
+Lab 03 adds no force, wood, or damage. Cyan marks arrival velocity, red marks first contact, and
+lime marks the already-committed follow-through behind the translucent witness. `F` continues the
+free swing after the inspection pause. Target presets exercise near, nominal, far, high, and low
+contact without making the answer depend on render-frame rate.
+
 ## Next gates
 
-The planned sequence is neutral contact witness, reach rack, single pine bite, impact position on
-the same arc, geometric chip formation, and controlled pine fall. Each lab stops for human visual
-acceptance before the next one introduces another variable. Networking, authority, persistence,
-and the playable forest remain outside the isolated labs.
+The next accepted question is one embedded bite into a fresh, upright, uniform trunk. Separate
+effort and aim-through controls replace a generic power scalar. Later gates accumulate a
+same-direction cut, oppose it to release a geometric chip, compare fixed and state-aware strike
+sequences, and finally feed remaining support into controlled fall behavior. Each lab stops for
+human visual acceptance before the next one introduces another variable. Networking, authority,
+persistence, and the playable forest remain outside the isolated labs.
 
 The earlier all-in-one `TreeFellingLab` remains reference material. Its tweened axe animation and
 empirical Janka-based penetration equation are not inputs to the new contact or cutting models.
