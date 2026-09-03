@@ -13,6 +13,9 @@
     <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\AxeSwingProfile.cs" Link="Lab\AxeSwingProfile.cs" />
     <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\AxeKinematics.cs" Link="Lab\AxeKinematics.cs" />
     <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\AxeContactSolver.cs" Link="Lab\AxeContactSolver.cs" />
+    <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\WoodCutState.cs" Link="Lab\WoodCutState.cs" />
+    <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\AxeBiteSolver.cs" Link="Lab\AxeBiteSolver.cs" />
+    <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Lab\PotentialChipGeometry.cs" Link="Lab\PotentialChipGeometry.cs" />
     <Compile Include="..\..\clients\godot-cs\nature-2.0\scripts\Networking\NativeAccessConfig.cs" Link="Networking\NativeAccessConfig.cs" />
   </ItemGroup>
   <ItemGroup>

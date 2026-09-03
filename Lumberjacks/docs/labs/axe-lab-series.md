@@ -22,6 +22,7 @@ every accepted value so unrelated work cannot retune it accidentally.
 .\tools\Start-AxeSwingLab.ps1 -Stage arc
 .\tools\Start-AxeSwingLab.ps1 -Stage head
 .\tools\Start-AxeSwingLab.ps1 -Stage contact
+.\tools\Start-AxeSwingLab.ps1 -Stage bite
 ```
 
 Both default to Vulkan. `--lab=axe-arc` preserves Lab 01 without the chopping head;
@@ -38,14 +39,44 @@ lime marks the already-committed follow-through behind the translucent witness. 
 free swing after the inspection pause. Target presets exercise near, nominal, far, high, and low
 contact without making the answer depend on render-frame rate.
 
+Lab 04 keeps that accepted motion and answers only what one fresh bite does to an upright, uniform
+trunk. Effort changes delivered kinetic energy; aim-through independently caps the intended depth.
+The deterministic solver stops at whichever limit is reached first and briefly pauses for
+inspection. Retention is a separate event: harder and deeper bites raise the chance that the wood
+holds the head, while a released chip lowers it and poor cut alignment raises it. Lab 04 has no chip
+release yet, so it supplies that condition explicitly rather than fabricating one. An embedded head
+does not begin any backswing until `F` is pressed; a free head withdraws and recovers automatically.
+Every replay starts with fresh wood, so this lab does not accumulate strikes or release chips.
+
+The retention event uses an explicit deterministic roll sequence. The HUD shows both probability
+and roll, allowing identical trials to be replayed and edge cases to be tested without tying the
+outcome to render timing or hidden randomness.
+
+The wood state stores two related but distinct results: 5 mm kerf cells describe removed/severed
+material, while a retained cut record stores the exact centerline, deepest endpoint, and simplified
+tangential face width for every strike.
+The elevation, plan, and bark-face views project that same state. Center-dense concentric growth
+rings in the plan view are a diagnostic ruler for penetration; they do not yet change resistance.
+The nominal accepted-motion preset currently stops near 5 cm in the uniform calibration.
+
 ## Next gates
 
-The next accepted question is one embedded bite into a fresh, upright, uniform trunk. Separate
-effort and aim-through controls replace a generic power scalar. Later gates accumulate a
-same-direction cut, oppose it to release a geometric chip, compare fixed and state-aware strike
-sequences, and finally feed remaining support into controlled fall behavior. Each lab stops for
-human visual acceptance before the next one introduces another variable. Networking, authority,
-persistence, and the playable forest remain outside the isolated labs.
+After human acceptance of Lab 04, later gates accumulate a same-direction cut, oppose it to release
+a geometric chip, compare fixed and state-aware strike sequences, and finally feed remaining
+support into controlled fall behavior. The potential chip is derived from history rather than
+spawned by a strike:
+
+```text
+potential chip volume = bounded cut cross-section area × overlapping cut width
+```
+
+Repeated same-direction cuts can deepen or widen an opening but cannot bound that cross-section.
+An opposing cut must intersect the retained geometry and close a region against another cut or the
+bark boundary. Even then the result is only a potential chip: fracture and remaining support decide
+whether it releases. Lab 04 stores the required history and tests this geometry without enabling
+release. Small stems are a separate support-exhaustion path and need not form a conventional notch.
+Each lab stops for human visual acceptance before the next one introduces another variable.
+Networking, authority, persistence, and the playable forest remain outside the isolated labs.
 
 The earlier all-in-one `TreeFellingLab` remains reference material. Its tweened axe animation and
 empirical Janka-based penetration equation are not inputs to the new contact or cutting models.

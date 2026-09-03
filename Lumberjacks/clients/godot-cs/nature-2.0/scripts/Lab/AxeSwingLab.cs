@@ -16,6 +16,7 @@ public partial class AxeSwingLab : Node3D
     private AxeSwingProfile _profile = AxeSwingProfile.AcceptedV1();
     private bool _showChoppingHead;
     private bool _contactMode;
+    private bool _biteMode;
     private Node3D _shoulderPivot;
     private MeshInstance3D _upperArm;
     private Node3D _elbowPivot;
@@ -62,6 +63,9 @@ public partial class AxeSwingLab : Node3D
         _contactMode = Array.Exists(
             userArguments,
             arg => string.Equals(arg, "--lab=axe-contact", StringComparison.OrdinalIgnoreCase));
+        _biteMode = Array.Exists(
+            userArguments,
+            arg => string.Equals(arg, "--lab=axe-bite", StringComparison.OrdinalIgnoreCase));
         _showChoppingHead = !Array.Exists(
             userArguments,
             arg => string.Equals(arg, "--lab=axe-arc", StringComparison.OrdinalIgnoreCase));
@@ -69,7 +73,9 @@ public partial class AxeSwingLab : Node3D
         BuildSwingRig();
         BuildGuides();
         BuildHud();
-        if (_contactMode)
+        if (_biteMode)
+            BuildBiteLab();
+        else if (_contactMode)
             BuildContactWitness();
         else
         {
@@ -77,7 +83,9 @@ public partial class AxeSwingLab : Node3D
             BuildTuningPanel();
         }
         ApplyPose(_profile.Sample(0f));
-        GD.Print(_contactMode
+        GD.Print(_biteMode
+            ? "AxeBiteLab: ready; one accepted swing into fresh uniform wood. Free heads auto-recover; retained heads wait for F"
+            : _contactMode
             ? "AxeContactLab: ready; accepted swing against a finite neutral witness, no force/wood/damage. Space or LMB=replay, F=continue follow-through"
             : _showChoppingHead
             ? "AxeHeadLab: ready; accepted articulated swing plus chopping-head geometry, no target/contact/damage. Space or LMB=replay, F=hold contact, Tab=tune"
@@ -96,7 +104,11 @@ public partial class AxeSwingLab : Node3D
                 Replay();
                 break;
             case Key.F:
-                if (_contactMode && _heldAtContact)
+                if (_biteMode)
+                {
+                    BeginBiteWithdrawal();
+                }
+                else if (_contactMode && _heldAtContact)
                 {
                     _heldAtContact = false;
                     _contactReleased = true;
@@ -120,6 +132,12 @@ public partial class AxeSwingLab : Node3D
 
     public override void _Process(double delta)
     {
+        if (_biteMode)
+        {
+            ProcessBite((float)delta);
+            return;
+        }
+
         if (_elapsed < 0f || _heldAtContact) return;
 
         var next = _elapsed + (float)delta;
@@ -148,6 +166,12 @@ public partial class AxeSwingLab : Node3D
 
     private void Replay()
     {
+        if (_biteMode)
+        {
+            ReplayBite();
+            return;
+        }
+
         if (_profile.ValidationError is not null) return;
         _heldAtContact = false;
         _contactReleased = false;
@@ -469,6 +493,12 @@ public partial class AxeSwingLab : Node3D
 
     private void ResetProfile()
     {
+        if (_biteMode)
+        {
+            ResetBiteLab();
+            return;
+        }
+
         if (_contactMode)
         {
             ResetContactWitness();
@@ -515,13 +545,20 @@ public partial class AxeSwingLab : Node3D
         var wristAngle = pose.AngleDegrees - pose.ShoulderAngleDegrees - pose.ElbowAngleDegrees;
         _handPivot.RotationDegrees = new Vector3(0f, 0f, wristAngle);
         UpdateHud(pose);
-        if (_contactMode)
+        if (_biteMode)
+            UpdateBiteVisuals(pose);
+        else if (_contactMode)
             UpdateContactWitness(pose);
     }
 
     private void UpdateHud(AxeSwingPose pose)
     {
         var error = _profile.ValidationError;
+        if (_biteMode)
+        {
+            UpdateBiteMainHud(pose, error);
+            return;
+        }
         var handReach = _profile.ShoulderToHandReachMeters(pose.ElbowAngleDegrees);
         var headRadius = _showChoppingHead
             ? _profile.ShoulderToHeadRadiusMeters(pose)

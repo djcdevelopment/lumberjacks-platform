@@ -18,6 +18,8 @@ namespace CommunitySurvival.Lab;
 /// </summary>
 public partial class TuningPanel : CanvasLayer
 {
+    public bool OpenOnRight { get; set; }
+
     private PanelContainer _root;
     private VBoxContainer _container;
     private readonly List<TuningSection> _sections = new();
@@ -28,8 +30,8 @@ public partial class TuningPanel : CanvasLayer
     {
         // Semi-transparent background panel, right side of screen
         _root = new PanelContainer();
-        _root.AnchorLeft = 0.0f;
-        _root.AnchorRight = 0.3f;
+        _root.AnchorLeft = OpenOnRight ? 0.70f : 0.0f;
+        _root.AnchorRight = OpenOnRight ? 1.0f : 0.3f;
         _root.AnchorTop = 0.0f;
         _root.AnchorBottom = 1.0f;
         _root.OffsetLeft = 0;
@@ -69,7 +71,7 @@ public partial class TuningPanel : CanvasLayer
         // Toggle hint (always visible)
         _toggleHint = new Label();
         _toggleHint.Text = "[Tab] Tuning";
-        _toggleHint.AnchorLeft = 0.01f;
+        _toggleHint.AnchorLeft = OpenOnRight ? 0.71f : 0.01f;
         _toggleHint.AnchorTop = 0.01f;
         _toggleHint.AddThemeFontSizeOverride("font_size", 12);
         _toggleHint.AddThemeColorOverride("font_color", new Color(0.6f, 0.6f, 0.5f, 0.6f));

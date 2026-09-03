@@ -2,7 +2,7 @@
 param(
     [ValidateSet('vulkan', 'd3d12')]
     [string]$Renderer = 'vulkan',
-    [ValidateSet('arc', 'head', 'contact')]
+    [ValidateSet('arc', 'head', 'contact', 'bite')]
     [string]$Stage = 'head',
     [string]$Godot = 'C:\work\godot-4.6.1\editor\Godot_v4.6.1-stable_mono_win64\Godot_v4.6.1-stable_mono_win64_console.exe'
 )
@@ -21,6 +21,6 @@ if (-not (Test-Path -LiteralPath (Join-Path $project 'project.godot') -PathType 
     throw "Lumberjacks Godot project not found: $project"
 }
 
-Write-Host "[lumberjacks] axe $Stage lab renderer=$Renderer (no target/contact/damage)"
+Write-Host "[lumberjacks] axe $Stage lab renderer=$Renderer"
 & $Godot --path $project --rendering-driver $Renderer -- "--lab=axe-$Stage"
 if ($LASTEXITCODE -ne 0) { throw "Axe swing lab exited with code $LASTEXITCODE" }
