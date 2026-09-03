@@ -2,7 +2,7 @@
 param(
     [ValidateSet('vulkan', 'd3d12')]
     [string]$Renderer = 'vulkan',
-    [ValidateSet('arc', 'head', 'contact', 'bite')]
+    [ValidateSet('arc', 'head', 'contact', 'bite', 'opposing')]
     [string]$Stage = 'head',
     [string]$Godot = 'C:\work\godot-4.6.1\editor\Godot_v4.6.1-stable_mono_win64\Godot_v4.6.1-stable_mono_win64_console.exe'
 )

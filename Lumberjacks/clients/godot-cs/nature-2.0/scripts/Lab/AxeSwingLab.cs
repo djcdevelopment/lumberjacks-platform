@@ -17,6 +17,10 @@ public partial class AxeSwingLab : Node3D
     private bool _showChoppingHead;
     private bool _contactMode;
     private bool _biteMode;
+    private bool _opposingMode;
+    private Node3D _actorRoot;
+    private MeshInstance3D _bodyBlob;
+    private MeshInstance3D _headBlob;
     private Node3D _shoulderPivot;
     private MeshInstance3D _upperArm;
     private Node3D _elbowPivot;
@@ -66,6 +70,9 @@ public partial class AxeSwingLab : Node3D
         _biteMode = Array.Exists(
             userArguments,
             arg => string.Equals(arg, "--lab=axe-bite", StringComparison.OrdinalIgnoreCase));
+        _opposingMode = Array.Exists(
+            userArguments,
+            arg => string.Equals(arg, "--lab=axe-opposing", StringComparison.OrdinalIgnoreCase));
         _showChoppingHead = !Array.Exists(
             userArguments,
             arg => string.Equals(arg, "--lab=axe-arc", StringComparison.OrdinalIgnoreCase));
@@ -73,7 +80,9 @@ public partial class AxeSwingLab : Node3D
         BuildSwingRig();
         BuildGuides();
         BuildHud();
-        if (_biteMode)
+        if (_opposingMode)
+            BuildOpposingLab();
+        else if (_biteMode)
             BuildBiteLab();
         else if (_contactMode)
             BuildContactWitness();
@@ -83,7 +92,9 @@ public partial class AxeSwingLab : Node3D
             BuildTuningPanel();
         }
         ApplyPose(_profile.Sample(0f));
-        GD.Print(_biteMode
+        GD.Print(_opposingMode
+            ? "AxeOpposingLab: ready; accepted opposing strokes. LMB=under-swing UP, RMB=top-swing DOWN, Space=replay selected, F=continue follow-through, Tab=explore UP tuning"
+            : _biteMode
             ? "AxeBiteLab: ready; one accepted swing into fresh uniform wood. Free heads auto-recover; retained heads wait for F"
             : _contactMode
             ? "AxeContactLab: ready; accepted swing against a finite neutral witness, no force/wood/damage. Space or LMB=replay, F=continue follow-through"
@@ -94,8 +105,15 @@ public partial class AxeSwingLab : Node3D
 
     public override void _UnhandledInput(InputEvent ev)
     {
-        if (ev is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
-            Replay();
+        if (ev is InputEventMouseButton { Pressed: true } mouse)
+        {
+            if (_opposingMode && mouse.ButtonIndex is MouseButton.Left or MouseButton.Right)
+                ReplayOpposingStroke(mouse.ButtonIndex == MouseButton.Left
+                    ? AxeCutSense.Up
+                    : AxeCutSense.Down);
+            else if (mouse.ButtonIndex == MouseButton.Left)
+                Replay();
+        }
 
         if (ev is not InputEventKey { Pressed: true, Echo: false } key) return;
         switch (key.Keycode)
@@ -104,7 +122,11 @@ public partial class AxeSwingLab : Node3D
                 Replay();
                 break;
             case Key.F:
-                if (_biteMode)
+                if (_opposingMode)
+                {
+                    ContinueOpposingStroke();
+                }
+                else if (_biteMode)
                 {
                     BeginBiteWithdrawal();
                 }
@@ -132,6 +154,12 @@ public partial class AxeSwingLab : Node3D
 
     public override void _Process(double delta)
     {
+        if (_opposingMode)
+        {
+            ProcessOpposingStroke((float)delta);
+            return;
+        }
+
         if (_biteMode)
         {
             ProcessBite((float)delta);
@@ -166,6 +194,12 @@ public partial class AxeSwingLab : Node3D
 
     private void Replay()
     {
+        if (_opposingMode)
+        {
+            ReplayOpposingStroke();
+            return;
+        }
+
         if (_biteMode)
         {
             ReplayBite();
@@ -208,21 +242,24 @@ public partial class AxeSwingLab : Node3D
         };
         AddChild(floor);
 
-        var body = new MeshInstance3D
+        _actorRoot = new Node3D { Name = "RegisteredActorStance" };
+        AddChild(_actorRoot);
+
+        _bodyBlob = new MeshInstance3D
         {
             Mesh = new CapsuleMesh { Radius = 0.24f, Height = 1.5f },
             Position = new Vector3(-0.45f, 0.75f, 0.08f),
             MaterialOverride = Material(new Color(0.18f, 0.25f, 0.22f)),
         };
-        AddChild(body);
+        _actorRoot.AddChild(_bodyBlob);
 
-        var head = new MeshInstance3D
+        _headBlob = new MeshInstance3D
         {
             Mesh = new SphereMesh { Radius = 0.19f, Height = 0.38f },
             Position = new Vector3(-0.45f, 1.72f, 0.08f),
             MaterialOverride = Material(new Color(0.25f, 0.33f, 0.28f)),
         };
-        AddChild(head);
+        _actorRoot.AddChild(_headBlob);
 
         _camera = new Camera3D { Current = true, Fov = 42f };
         AddChild(_camera);
@@ -233,7 +270,7 @@ public partial class AxeSwingLab : Node3D
     private void BuildSwingRig()
     {
         _shoulderPivot = new Node3D { Name = "ShoulderPivot", Position = _shoulderPosition };
-        AddChild(_shoulderPivot);
+        _actorRoot.AddChild(_shoulderPivot);
 
         var shoulder = new MeshInstance3D
         {
@@ -363,14 +400,14 @@ public partial class AxeSwingLab : Node3D
             Mesh = TipPathMesh(_profile, _showChoppingHead, new Color(0.32f, 0.78f, 0.72f)),
             Position = _shoulderPosition + new Vector3(0f, 0f, -0.035f),
         };
-        AddChild(_arcGuide);
+        _actorRoot.AddChild(_arcGuide);
 
         _contactGuide = new MeshInstance3D
         {
             Mesh = ContactLineMesh(_profile, _showChoppingHead, new Color(1f, 0.25f, 0.16f)),
             Position = _shoulderPosition + new Vector3(0f, 0f, -0.04f),
         };
-        AddChild(_contactGuide);
+        _actorRoot.AddChild(_contactGuide);
     }
 
     private void BuildHud()
@@ -493,6 +530,12 @@ public partial class AxeSwingLab : Node3D
 
     private void ResetProfile()
     {
+        if (_opposingMode)
+        {
+            ResetOpposingLab();
+            return;
+        }
+
         if (_biteMode)
         {
             ResetBiteLab();
@@ -545,7 +588,9 @@ public partial class AxeSwingLab : Node3D
         var wristAngle = pose.AngleDegrees - pose.ShoulderAngleDegrees - pose.ElbowAngleDegrees;
         _handPivot.RotationDegrees = new Vector3(0f, 0f, wristAngle);
         UpdateHud(pose);
-        if (_biteMode)
+        if (_opposingMode)
+            UpdateOpposingVisuals(pose);
+        else if (_biteMode)
             UpdateBiteVisuals(pose);
         else if (_contactMode)
             UpdateContactWitness(pose);
@@ -554,6 +599,12 @@ public partial class AxeSwingLab : Node3D
     private void UpdateHud(AxeSwingPose pose)
     {
         var error = _profile.ValidationError;
+        if (_opposingMode)
+        {
+            UpdateOpposingHud(pose, error);
+            return;
+        }
+
         if (_biteMode)
         {
             UpdateBiteMainHud(pose, error);

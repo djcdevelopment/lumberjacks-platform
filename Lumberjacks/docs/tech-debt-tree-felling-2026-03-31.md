@@ -1,5 +1,11 @@
 # Tech Debt: Tree Felling Lab (2026-03-31)
 
+> **2026-09-03 update:** The original `TreeFellingLab` still carries this historical debt, but the
+> active axe path replaced its animation with the human-reviewed serial labs documented in
+> [Axe Labs 01–05](labs/axe-lab-series.md) and
+> [ADR 0021](adrs/0021-human-gated-stateful-axe-mechanics.md). Do not repair the old tween and treat
+> that as promotion of the accepted mechanism.
+
 Technical debt identified during the tree felling physics lab build.
 
 ## Summary

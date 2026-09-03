@@ -14,6 +14,7 @@ namespace CommunitySurvival.Lab;
 public sealed class AxeSwingProfile
 {
     public const string AcceptedCalibrationId = "accepted-axe-v1";
+    public const string AcceptedUpCalibrationId = "accepted-axe-up-v1";
 
     public float RestAngleDegrees { get; set; } = -18f;
     public float StartAngleDegrees { get; set; } = 108f;
@@ -41,6 +42,16 @@ public sealed class AxeSwingProfile
     public float TotalSeconds => WindupSeconds + DriveSeconds + RecoverySeconds;
 
     public static AxeSwingProfile AcceptedV1() => new();
+
+    /// <summary>
+    /// Human-reviewed upward under-the-shoulder calibration accepted on
+    /// 2026-09-03. It reflects the accepted downward plane vertically while
+    /// preserving its link lengths, head geometry, timing, and joint keyframes.
+    /// </summary>
+    public static AxeSwingProfile AcceptedUpV1() => new()
+    {
+        PlaneTiltDegrees = -22f,
+    };
 
     public float ContactTimeSeconds
     {
@@ -70,8 +81,8 @@ public sealed class AxeSwingProfile
                 return "Upper-arm and forearm proxies must remain between 0.15 m and 0.55 m.";
             if (!JointAnglesInRange())
                 return "Shoulder and elbow joint values must remain between -145 and 145 degrees.";
-            if (PlaneTiltDegrees is < 0f or > 90f)
-                return "Swing-plane tilt must remain between horizontal (0) and vertical (90).";
+            if (PlaneTiltDegrees is < -90f or > 90f)
+                return "Swing-plane tilt must remain between -90 and 90 degrees.";
             if (WindupSeconds <= 0.01f || DriveSeconds <= 0.01f || RecoverySeconds <= 0.01f)
                 return "Every phase must last more than 0.01 seconds.";
             if (!(StartAngleDegrees > ContactAngleDegrees &&

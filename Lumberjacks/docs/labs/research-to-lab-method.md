@@ -33,6 +33,12 @@ Use scenario presets for known edge cases and parameter sweeps for broad spaces.
 Capture the input parameters, observed result, and reason it is acceptable. Visual
 plausibility and numerical correctness are different checks.
 
+When the question is physical feel, stop for a short human review before adding material,
+authority, or networking. Record accepted values as a named calibration and pin them in tests.
+Automated evidence may prove that a motion is deterministic and reaches its target; it cannot prove
+that the motion looks human. See [ADR 0021](../adrs/0021-human-gated-stateful-axe-mechanics.md) for the
+axe-series application of this rule.
+
 ## 6. Define the network projection
 
 Do not transmit the entire lab state. Identify the smallest state from which clients
@@ -46,7 +52,8 @@ behavior after packet loss.
 | Researched | Sources and assumptions recorded |
 | Simulated | Pure model runs independently |
 | Visualized | Lab exposes state and edge cases |
-| Validated | Presets, tests, or sweeps have recorded outcomes |
+| Mechanically validated | Presets, tests, or sweeps have recorded deterministic outcomes |
+| Human accepted | A named calibration records the reviewer, date, and visual/interaction judgment |
 | Projected | Minimal network state and byte accounting defined |
 | Serialized | Shared contract has round-trip tests |
 | Transported | Gateway selects lane and fallback correctly |

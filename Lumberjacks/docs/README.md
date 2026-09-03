@@ -6,11 +6,17 @@
 > 0001–0020, the Godot client, 90-day plans. Individual files are not all bannered, so
 > treat anything here as historical unless it says otherwise.
 >
-> **For current truth:** the repo root [`README.md`](../../README.md), the era map at
-> [`docs/internal/START-HERE.md`](../../docs/internal/START-HERE.md), and the live
+> **For current truth:** the repo root [`README.md`](../../README.md) and the live
 > roadmap journal under [`docs/roadmap/`](roadmap/README.md). The netcode program's own
 > canon is [`fieldlab/NETCODE-MAP.md`](../../fieldlab/NETCODE-MAP.md) and the ADR track
 > at [`fieldlab/docs/adr/`](../../fieldlab/docs/adr/README.md).
+
+## Current September 2026 game-mechanics record
+
+- [September Lumberjacks launch slice](launch-slice-2026-09.md)
+- [Accepted axe lab series](labs/axe-lab-series.md)
+- [ADR 0021: Human-gated, stateful axe mechanics](adrs/0021-human-gated-stateful-axe-mechanics.md)
+- [Axe Labs 01–05 retrospective](retro/2026-09-03-axe-labs-01-05.md)
 
 ## Start here (era-1 reading order — see the notice above)
 
@@ -58,7 +64,9 @@ The ADRs record decisions, not a perfect chronological build log.
 | [0014](adrs/0014-input-driven-deterministic-simulation.md) | Input-driven simulation |
 | [0015](adrs/0015-spatial-interest-management.md) | Spatial interest management |
 | [0016–0018](adrs/) | Godot protocol, interpolation, coordinates |
-| [0019](adrs/0019-tree-felling-physics-lab-validated.md) | Lab-validated tree physics |
+| [0019](adrs/0019-tree-felling-physics-lab-validated.md) | Polar tree failure and compact projection; refined by 0021 |
+| [0020](adrs/0020-recipient-scoped-durable-delivery.md) | Recipient-scoped durable delivery |
+| [0021](adrs/0021-human-gated-stateful-axe-mechanics.md) | Human-gated, stateful axe mechanics |
 
 ## Validation and results
 
@@ -77,6 +85,7 @@ The ADRs record decisions, not a perfect chronological build log.
 - [Godot C# migration retrospective](retrospective-godot-cs-migration-2026-03-29.md)
 - [Replay overview](replay-overview.md)
 - [Replay slices 0–1 retrospective](retro/2026-05-06-godot-replay-slices-0-1.md)
+- [Axe Labs 01–05 retrospective](retro/2026-09-03-axe-labs-01-05.md)
 
 ## Product and operations
 

@@ -27,7 +27,8 @@ Read [Research to lab method](research-to-lab-method.md) for the promotion gates
 |---|---|---|---|---|
 | Atmosphere | Visual tuning | Primarily Godot scene logic | Fog, light, terrain, trees | Visual-only; no compact projection claimed |
 | World generation | Hydraulic erosion and biome parameters | `TerrainSim` | `WorldGenLab`, five presets | Region profile exists; full server promotion remains incomplete |
-| Tree felling | Forestry manuals and swing/cutting physics | `TreeFellingSim` | `TreeFellingLab`, scenario presets | 24-byte projection demonstrated; shared wire integration incomplete |
+| Axe mechanics | Forestry practice, swing, contact, and cutting research | `AxeKinematics`, contact/bite solvers, `WoodCutState` | Axe Labs 01–05, human accepted | No live projection; accumulated notch is the next lab |
+| Tree failure | Forestry manuals and material mechanics | `TreeFellingSim` | Earlier `TreeFellingLab`, scenario presets | 24-byte projection demonstrated; shared wire integration incomplete |
 
 ## Existing detailed records
 
@@ -39,6 +40,9 @@ Read [Research to lab method](research-to-lab-method.md) for the promotion gates
 - [Tree-felling physics article](../article-tree-felling-physics.md)
 - [Swing physics article](../article-cross-swing-physics.md)
 - [Tree-felling tech debt](../tech-debt-tree-felling-2026-03-31.md)
+- [Accepted axe lab series](axe-lab-series.md)
+- [Human-gated axe ADR](../adrs/0021-human-gated-stateful-axe-mechanics.md)
+- [Axe Labs 01–05 retrospective](../retro/2026-09-03-axe-labs-01-05.md)
 
 Research source files are retained under `tools/ideas/`. A source file supports a
 model; it does not by itself validate the implementation.

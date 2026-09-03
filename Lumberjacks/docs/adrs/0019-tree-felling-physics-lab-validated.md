@@ -3,6 +3,9 @@
 **Status:** Accepted
 **Date:** 2026-03-31
 **Depends on:** ADR 0012 (Binary Payload Serialization), ADR 0015 (Spatial Interest Management)
+**Refined by:** ADR 0021 (Human-Gated, Stateful Axe Mechanics). The polar trunk and compact
+projection decisions remain accepted; the earlier lab's tweened swing is no longer acceptance
+evidence for the player-facing axe interaction.
 
 ## Context
 

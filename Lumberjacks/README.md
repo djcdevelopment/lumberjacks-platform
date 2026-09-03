@@ -4,6 +4,10 @@ Lumberjacks is a server-authoritative multiplayer infrastructure project with a 
 Godot client and a lab-driven method for turning research into network-ready game
 systems.
 
+The game and its network are both named **Lumberjacks**. **Valheim** is a separate
+commercial game whose modding and community workloads helped test the network; Valheim
+identity, enrollment, and release gates are not the Lumberjacks R&D player path.
+
 The network core is the primary asset: deterministic input processing, compact binary
 protocols, spatial interest management, and progressive UDP/WebSocket delivery built
 for 100-player communities and constrained links. Godot sits above that core as the
@@ -111,14 +115,33 @@ source research -> pure C# simulation -> interactive Godot lab -> validation
 
 ### Tree felling
 
-The tree-felling work uses forestry manuals, material properties, and swing/cutting
-research. `TreeFellingSim` models a rich polar trunk cross-section without depending
-on Godot. `TreeFellingLab` exposes the model through cut presets, stress views, force
-data, and failure scenarios.
+The current axe work uses five serial, human-reviewed labs rather than treating “chop
+a tree” as one implementation task. They isolate an articulated stroke, chopping-head
+geometry, deterministic contact, one fresh stateful bite, and an opposing upward
+under-the-shoulder stroke. The accepted motion IDs are `accepted-axe-v1` and
+`accepted-axe-up-v1`.
+
+`TreeFellingSim` and the earlier `TreeFellingLab` still provide a rich polar trunk
+cross-section, failure scenarios, and compact projection experiments. Their old
+tweened swing is reference material, not the accepted axe interaction. The new series
+keeps deterministic kinematics, kerf state, retained cut lines, and candidate-chip
+geometry in pure C# beneath the Godot inspection surfaces.
 
 The lab demonstrates a six-float, 24-byte `CompactTreeState`. That projection is not
 yet a shared binary serializer or live gateway payload; the documentation keeps those
 stages distinct.
+
+Run the accepted opposing-stroke comparison directly:
+
+```powershell
+.\tools\Start-AxeSwingLab.ps1 -Stage opposing
+```
+
+Left mouse replays the upward under-swing, right mouse replays the downward top-swing,
+`Space` repeats the selected stroke, and `F` continues through the exact contact pause.
+See the [axe lab series](docs/labs/axe-lab-series.md),
+[ADR 0021](docs/adrs/0021-human-gated-stateful-axe-mechanics.md), and the
+[Labs 01–05 retrospective](docs/retro/2026-09-03-axe-labs-01-05.md).
 
 ### World generation
 
@@ -186,6 +209,16 @@ npm run test:load:50
 Open `clients/godot-cs/nature-2.0/` in Godot 4.6.1 Mono. The primary world, atmosphere
 lab, world-generation lab, and tree-felling lab are separate scenes so mechanics can
 be examined without requiring the full live stack.
+
+The axe series can also be launched without the editor:
+
+```powershell
+.\tools\Start-AxeSwingLab.ps1 -Stage arc
+.\tools\Start-AxeSwingLab.ps1 -Stage head
+.\tools\Start-AxeSwingLab.ps1 -Stage contact
+.\tools\Start-AxeSwingLab.ps1 -Stage bite
+.\tools\Start-AxeSwingLab.ps1 -Stage opposing
+```
 
 ## Repository map
 

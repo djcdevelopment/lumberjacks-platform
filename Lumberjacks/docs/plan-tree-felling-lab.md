@@ -1,5 +1,10 @@
 # Tree Felling Physics Lab
 
+> **Historical plan:** The polar trunk, failure concepts, and compact projection remain useful. The
+> tweened axe interaction described here did not pass later human review. The accepted replacement is
+> the serial [Axe Labs 01–05](labs/axe-lab-series.md), governed by
+> [ADR 0021](adrs/0021-human-gated-stateful-axe-mechanics.md).
+
 ## Purpose
 
 Interactive sandbox for exploring realistic tree felling physics — axe swing mechanics, notch/back-cut geometry, hinge analysis, fall dynamics, and barber chair detection. No server dependency — pure local simulation. Results inform the server-side tree felling pipeline and validate that detailed physics can be compressed to 24-byte network payloads.

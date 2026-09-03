@@ -18,7 +18,16 @@ The primary system is the server-authoritative network core:
 The canonical overview is [Network infrastructure](network/README.md), and capability
 status is tracked in the [Network evidence index](network/evidence-index.md).
 
-## Latest recorded implementation work: gateway extensions
+## Latest recorded game work: accepted axe mechanics
+
+The September 2–3 work replaced the old all-in-one axe interaction with five serial Godot labs over
+pure deterministic C# models. DOWN/top and UP/under motions are human accepted and code-pinned.
+Contact, one fresh bite, cut history, conditional retention, and potential-chip geometry foundations
+exist; accumulated notch construction is the next unstarted gate. See the
+[axe lab series](labs/axe-lab-series.md), [ADR 0021](adrs/0021-human-gated-stateful-axe-mechanics.md),
+and [retrospective](retro/2026-09-03-axe-labs-01-05.md).
+
+## Latest recorded network work: gateway extensions
 
 The July 8–10 commits extend the gateway toward Valheim interoperability:
 
@@ -49,7 +58,8 @@ reconciliation. See [Godot integration](network/godot-integration.md).
 
 | Capability | Current stage | Next network stage |
 |---|---|---|
-| Tree felling | Research, pure simulation, lab, and 24-byte projection | Move projection into shared contracts, test serialization, broadcast, consume |
+| Axe interaction | Labs 01–05 accepted; deterministic motion, bite, retention, and cut history | Lab 06 accumulated notch and potential-chip construction |
+| Tree failure | Earlier polar simulation, lab, and 24-byte projection | Reconcile with accepted cut state before any shared serializer promotion |
 | World generation | Pure simulation, parameter sweep, lab, client terrain rendering | Promote generation into authoritative server pipeline |
 | Natural resources | Server entities and JSON updates | Add explicit interest policy and binary hot path if measurements justify it |
 

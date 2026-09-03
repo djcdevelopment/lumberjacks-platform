@@ -61,10 +61,17 @@ Controls are `WASDQE` to fly, right mouse to look, `Tab` to tune, `R` to replay,
 
 ## Axe mechanics labs
 
-The first two human-reviewed axe labs isolate an articulated horizontal-fell swing and its chopping
-head before any target, damage, tree physics, or networking is introduced. Their accepted values are
-pinned as `accepted-axe-v1`; see [`docs/labs/axe-lab-series.md`](labs/axe-lab-series.md). Later contact,
-wood, chip, and fall labs must reuse that baseline without silently retuning it.
+Five serial, human-reviewed axe labs now isolate the articulated horizontal-fell swing, chopping
+head, neutral contact, one fresh stateful bite, and opposing upward under-the-shoulder stroke. The
+accepted values are pinned as `accepted-axe-v1` and `accepted-axe-up-v1`; see
+[`docs/labs/axe-lab-series.md`](labs/axe-lab-series.md). Lab 05 passed visual acceptance on
+2026-09-03. Accumulated notch construction is next but has not started; chip release, fracture, fall,
+authority, persistence, and networking remain later gates.
+
+Launch the accepted comparison with `tools\Start-AxeSwingLab.ps1 -Stage opposing`. Left mouse is the
+under-swing, right mouse is the top-swing, and `F` continues from exact contact. The accepted witness
+is 1.5 m in diameter with centered tangent bit contact. The placeholder character deliberately uses
+grounded, volume-preserving slime deformation rather than clipping its capsule through the floor.
 
 The playable camera now targets 1.45 meters above the player origin instead of looking through
 rolling terrain from the character's feet. Vulkan is the Windows default for the current foliage

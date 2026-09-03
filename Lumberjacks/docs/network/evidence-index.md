@@ -18,7 +18,7 @@ describes the current repository, not an aspirational roadmap.
 | State hashing | ADR 0014 | `StateHasher` | State hasher tests | Carried in entity update; implemented |
 | Client reconciliation | ADRs 0014, 0017 | Sequence and hash support | Server-side tests | Full Godot replay/correction not implemented |
 | Terrain simulation | Worldgen plans | `TerrainSim`, `ParameterSweep`, `WorldGenLab` | 500-run sweep and interactive presets | Lab validated; server promotion incomplete |
-| Tree-felling simulation | Forestry sources, tree plan, ADR 0019 | `TreeFellingSim`, `TreeFellingLab` | Presets and interactive lab | Lab validated |
+| Axe and tree-felling simulation | Forestry sources, tree plan, ADRs 0019 and 0021 | `AxeKinematics`, `WoodCutState`, `TreeFellingSim`, serial axe labs | Pure tests plus human-reviewed Labs 01–05 | Axe motion/contact accepted; accumulated notch and live integration not implemented |
 | Compact tree projection | ADR 0019, tree plan | `CompactTreeState` in lab code | 24-byte display/budget check | Not in shared serializer or broadcaster |
 | Natural-resource transport | Nature 2.0 plans | JSON resource update in `TickBroadcaster` | Vertical client work | Binary/AoI path incomplete |
 | Valheim priority delivery | July gateway work | priority manifest planner and endpoints | Contract tests | Gateway extension; implemented in repository |
