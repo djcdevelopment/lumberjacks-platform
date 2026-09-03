@@ -14,6 +14,7 @@ public partial class CameraController : Node3D
     [Export] public float MinDistance = 3f;
     [Export] public float MaxDistance = 40f;
     [Export] public float ZoomSpeed = 2f;
+    [Export] public float TargetHeight = 1.45f;
 
     private Camera3D _camera;
     private bool _orbiting;
@@ -24,6 +25,9 @@ public partial class CameraController : Node3D
     public override void _Ready()
     {
         _camera = GetNode<Camera3D>("Camera3D");
+        // The player entity origin is at its feet. Orbiting that point aims the camera through
+        // rolling terrain; move the complete orbit rig to the character's eye/chest line.
+        Position = new Vector3(0, TargetHeight, 0);
         UpdateCamera();
     }
 

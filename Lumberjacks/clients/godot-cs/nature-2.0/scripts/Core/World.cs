@@ -162,7 +162,7 @@ public partial class World : Node3D
                 // viewport. Make this camera current only after the complete orbit rig is back in
                 // the tree; otherwise the fallback sits below the generated terrain at spawn.
                 cam.MakeCurrent();
-                GD.Print($"World: active camera={cam.GetPath()} pos={cam.GlobalPosition}");
+                GD.Print($"World: active camera={cam.GetPath()} pos={cam.GlobalPosition} target_height={camCtrl.TargetHeight:F2}");
             }
 
             instance.AddChild(new Player.PlayerController());

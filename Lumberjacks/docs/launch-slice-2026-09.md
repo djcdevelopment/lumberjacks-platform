@@ -59,6 +59,18 @@ Run the sandbox directly:
 
 Controls are `WASDQE` to fly, right mouse to look, `Tab` to tune, `R` to replay, and `F` to freeze.
 
+## Axe mechanics labs
+
+The first two human-reviewed axe labs isolate an articulated horizontal-fell swing and its chopping
+head before any target, damage, tree physics, or networking is introduced. Their accepted values are
+pinned as `accepted-axe-v1`; see [`docs/labs/axe-lab-series.md`](labs/axe-lab-series.md). Later contact,
+wood, chip, and fall labs must reuse that baseline without silently retuning it.
+
+The playable camera now targets 1.45 meters above the player origin instead of looking through
+rolling terrain from the character's feet. Vulkan is the Windows default for the current foliage
+build after the observed D3D12 device-loss cascade; D3D12 remains available as an explicit benchmark
+cell rather than a launch dependency.
+
 ## Renderer decision protocol
 
 The benchmark owner is `E:\work\b70tools\scripts\godot-forest`. Run both renderers three times at

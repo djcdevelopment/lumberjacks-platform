@@ -17,7 +17,7 @@ public partial class Main : Node
 
 	private SimulationClient _net;
 	private GameState _state;
-	private bool _forestLab;
+	private bool _standaloneLab;
 
 	public override void _Ready()
 	{
@@ -28,10 +28,19 @@ public partial class Main : Node
 		_statusLabel = GetNode<Label>("ConnectScreen/VBox/StatusLabel");
 		_reconnectOverlay = GetNode<Control>("ReconnectOverlay");
 
-		if (System.Array.Exists(OS.GetCmdlineUserArgs(),
-			arg => string.Equals(arg, "--lab=forest-storm", System.StringComparison.OrdinalIgnoreCase)))
+		var requestedLab = System.Array.Find(
+			OS.GetCmdlineUserArgs(),
+			arg => arg.StartsWith("--lab=", System.StringComparison.OrdinalIgnoreCase));
+		if (string.Equals(requestedLab, "--lab=forest-storm", System.StringComparison.OrdinalIgnoreCase))
 		{
 			StartForestLab();
+			return;
+		}
+		if (string.Equals(requestedLab, "--lab=axe-swing", System.StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(requestedLab, "--lab=axe-arc", System.StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(requestedLab, "--lab=axe-head", System.StringComparison.OrdinalIgnoreCase))
+		{
+			StartStandaloneLab("res://scenes/AxeSwingLab.tscn");
 			return;
 		}
 
@@ -65,7 +74,7 @@ public partial class Main : Node
 
 	public override void _UnhandledInput(InputEvent ev)
 	{
-		if (_forestLab && ev is InputEventKey { Pressed: true, Keycode: Key.Escape })
+		if (_standaloneLab && ev is InputEventKey { Pressed: true, Keycode: Key.Escape })
 		{
 			GetTree().Quit();
 			return;
@@ -89,10 +98,15 @@ public partial class Main : Node
 
 	private void StartForestLab()
 	{
-		_forestLab = true;
+		StartStandaloneLab("res://scenes/ForestStormLab.tscn");
+	}
+
+	private void StartStandaloneLab(string scenePath)
+	{
+		_standaloneLab = true;
 		_connectScreen.Hide();
 		_reconnectOverlay.Hide();
-		_worldInstance = GD.Load<PackedScene>("res://scenes/ForestStormLab.tscn").Instantiate();
+		_worldInstance = GD.Load<PackedScene>(scenePath).Instantiate();
 		AddChild(_worldInstance);
 	}
 

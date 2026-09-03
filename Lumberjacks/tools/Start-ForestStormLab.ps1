@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateSet('d3d12', 'vulkan')]
-    [string]$Renderer = 'd3d12',
+    [string]$Renderer = 'vulkan',
     [ValidateSet('feel', 'default', 'stress')]
     [string]$Preset = 'default',
     [int]$TreeCount = 0,
