@@ -3,9 +3,18 @@
 Operator: **Derek, at the keyboard**. Agents are classifier-blocked from GCP mutations, so
 every command below is staged for you to paste. Nothing here has been executed.
 
-Grounding: [`docs/audit/2026-07-25-gcp-burn-rate-review.md`](../../../docs/audit/2026-07-25-gcp-burn-rate-review.md)
-(the burn memo — all dollar figures are its list-price estimates, ±20%, no invoiced truth yet),
-[`README.md`](README.md), [`RECONCILE-GAP.md`](RECONCILE-GAP.md).
+Grounding: [`COST-OF-TELEMETRY.md`](COST-OF-TELEMETRY.md) — **read this before changing any
+metric, interval or agent receiver**; it carries the measured price of observability on this
+box and the preflight checklist. Also [`README.md`](README.md),
+[`RECONCILE-GAP.md`](RECONCILE-GAP.md).
+
+> **Dangling reference, 2026-09-06.** This section previously cited
+> `docs/audit/2026-07-25-gcp-burn-rate-review.md` as its grounding. **That file has never
+> existed in this repository** — not in the working tree, and `git log --all` on the path
+> returns nothing. Its dollar figures were carried into the decision table below without a
+> committed source. Treat every unattributed figure here as an estimate until a billing
+> export exists (item A). The mechanism those estimates were meant to explain is now
+> written down in `COST-OF-TELEMETRY.md`.
 
 ## Operator corrections — 2026-07-29 (these override the memo's framing)
 

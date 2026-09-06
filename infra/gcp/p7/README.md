@@ -2,6 +2,11 @@
 
 Status: **native Northwoods field alpha live**, 2026-08-30 UTC.
 
+> **Before you touch telemetry**, read [`COST-OF-TELEMETRY.md`](COST-OF-TELEMETRY.md).
+> Cloud Monitoring bills samples, not information, so an idle P7 costs the same as a busy
+> one. That has cost roughly $100 across two incidents. The file has the measured prices,
+> a per-series ready reckoner, and a preflight checklist.
+
 P7 runs the native Lumberjacks Gateway, PostgreSQL, Caddy, EventLog, Progression,
 and Operator API. The standalone Godot client owns the active game loop. Gateway
 `m33-native-20260830-r1` admits the exact native client `0.1.0-alpha.1` for an
