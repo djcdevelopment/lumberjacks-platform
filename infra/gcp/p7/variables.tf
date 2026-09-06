@@ -22,15 +22,25 @@ variable "machine_type" {
 }
 
 variable "boot_disk_size_gb" {
+  # 20, down from 40. Real usage after the 2026-09-06 reclamation is ~14 GiB: OS+apt 2.4,
+  # /var (docker images) ~7, swapfile 4. The old 40 was carrying a 16 GiB swapfile and
+  # 5.7 GiB of docker build cache, neither of which is load-bearing.
+  # NOTE: docker build cache regrows. `docker builder prune -af` is the maintenance knob;
+  # without it this disk fills again and 20 GiB is not generous.
   description = "Boot disk size for the OS, Docker layers, and build cache."
   type        = number
-  default     = 40
+  default     = 20
 }
 
 variable "data_disk_size_gb" {
+  # 15, down from a 150 default that never matched anything deployed: the live disk was 32 GiB
+  # (comfy-lumberjacks-p7-state-v2) and is now 15 GiB (comfy-p7-state-v3, rebuilt 2026-09-06).
+  # Real usage is 8.4 GiB: Valheim world+server 7.5, lumberjacks 766 MiB (of which
+  # boundary-events 705 MiB and postgres 47 MiB), backups 124 MiB.
+  # boundary-events grows without bound — it is append-only evidence. Watch it.
   description = "Persistent disk size for Valheim, PostgreSQL, and evidence."
   type        = number
-  default     = 150
+  default     = 15
 }
 
 variable "valheim_source_ranges" {
