@@ -459,3 +459,35 @@ one-off.
 
 Re-export whenever an image is promoted. The archive is a point-in-time copy, not a
 mirror; a tag promoted after 2026-09-06 exists only on the boot disk until this is re-run.
+
+### Duty-cycle: the alert policies have to move with the VM
+
+Four policies alarm on *absence*, so stopping P7 makes all four fire and keep re-firing
+(`auto_close` is 1800s, so a stopped VM re-alarms every half hour, forever). They are the
+two telemetry-absent policies and the two gateway health checks:
+
+| Policy ID | Display name |
+|---|---|
+| `14786988237719474750` | Comfy P7 telemetry absent |
+| `11094715803795048045` | Lumberjacks telemetry pipeline absent |
+| `4701078943267446923` | Comfy P7 gateway unavailable |
+| `13453279080877040487` | Lumberjacks gateway unavailable |
+
+Agents are classifier-blocked from the PATCH, so this is staged for you. Set
+`ENABLED=false` when you stop the VM, `true` when you start it:
+
+```bash
+ENABLED=false
+TOKEN=$(gcloud auth print-access-token)
+for id in 14786988237719474750 11094715803795048045 4701078943267446923 13453279080877040487; do
+  curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+    -d "{\"enabled\":$ENABLED}" \
+    "https://monitoring.googleapis.com/v3/projects/lumberjacks-exp-20260711-djc/alertPolicies/$id?updateMask=enabled" \
+    | grep -E '"displayName"|"enabled"'
+done
+```
+
+No `gcloud components install alpha` needed. **Re-arming is the half that matters** — these
+are the policies that tell you the server died, so a duty-cycle that only ever disables
+them leaves you blind on the next real outage. The other eight policies alarm on
+thresholds rather than absence and are harmless while the VM is off; leave them alone.
