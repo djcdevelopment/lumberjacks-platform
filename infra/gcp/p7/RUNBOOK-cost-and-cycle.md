@@ -365,3 +365,63 @@ schedule or just stop it when you log off; **watch the first restart once** — 
 unproven claim) → **D-prime** (only if A's invoiced data shows the e2 swap is worth a window).
 Combined with the corrections, the realistic dev-season burn floor is the ~$14/mo
 storage+IP floor plus compute only for hours you're actually on.
+
+---
+
+## 2026-09-06 reclamation — what was actually burning
+
+Triggered by ~$36 of unexplained spend over six days. The VM had been left running
+since 2026-08-30 with zero players connected. The compute was never the problem.
+
+**The bill was telemetry, not the VM.** Cloud Monitoring bills chargeable metric volume
+as `series x samples x bytes-per-sample`, and that product is independent of load: an
+idle server pays exactly what a busy one pays. Measured 69 MiB/day chargeable at
+$0.258/MiB (150 MiB/month free), against roughly $1/day for the e2-medium itself.
+
+| Source | MiB/day | Why it was expensive |
+|---|---|---|
+| `workload.googleapis.com` (app OTel) | 44 | 65 series at a **10s** export interval, mostly CUMULATIVE histograms with 14 bucket bounds (~70 B/sample vs ~8 for a gauge). A cumulative histogram is re-sent in full every interval whether or not a request arrived. |
+| `agent.googleapis.com` (Ops Agent) | 25 | `processes/*` emits one series per process per metric: 73 processes x 5 metrics = 365 series at 30s, for things like `agetty` and `chronyd`. |
+
+Fixes: export interval 10s -> 60s (`docker-compose.yml`), and `processes/*` dropped at
+the agent via an `exclude_metrics` processor (`ops-agent-config.yaml`). Expected ~14
+MiB/day. The alert policies in `monitoring.tf` read `memory/percent_used`,
+`swap/percent_used`, `disk/percent_used` and `agent/uptime` — none are in `processes/*`,
+so nothing was disarmed. **Verified**: process series stopped at the agent restart while
+all four alert dependencies kept reporting.
+
+**Disk reclamation, 52 GiB -> 22.4 GiB used.** Largest single item was a **16 GiB
+swapfile with 0 B ever used**, sized in `bootstrap.sh.tftpl` for the 64 GiB machine named
+in its own comment; this is an e2-medium with 3.8 GiB RAM. Now 4 GiB. Also: 5.7 GiB
+docker build cache, 6.3 GiB of superseded Valheim world copies (`.old`, `_backup_auto-*`,
+one aborted partial — the live world and `CreatorOSBeta1` were kept), 5.4 GiB of July
+promotion-drill snapshots, and a 1.9 GiB `.invalid-partial`.
+
+State disk rebuilt 32 GiB -> 15 GiB as `comfy-p7-state-v3` (PDs cannot be shrunk; this was
+a copy-and-swap). Verified byte-identical before the swap: 8,905,030,474 bytes and 4,768
+files on both sides, checksum-mode rsync clean, then the stack proven running on it.
+Re-attached under device name `comfy-p7-state` because `bootstrap.sh.tftpl` hard-codes
+`/dev/disk/by-id/google-comfy-p7-state` and **exits 1** if it is missing. The daily
+snapshot policy was attached to the old disk and had to be moved by hand.
+
+### Two hazards found on the way, neither of them cost
+
+1. **The boot disk is the only copy of every release image.** All 76 images are
+   local-only tags; there is no Artifact Registry or Container Registry in the project,
+   and `docker-compose.yml` states there is deliberately no `build:` fallback. The boot
+   disk also carries `auto_delete = true`. Deleting the instance destroys every promoted
+   image and every rollback target. **Do not rebuild or replace the boot disk before
+   exporting the active images.** This is why `boot_disk_size_gb` was only reduced in
+   `variables.tf` (for a future clean provision) and the live 40 GiB disk was left alone.
+
+2. **Deployed instance metadata had drifted from this repo.** The live `startup-script`
+   was 3,315 bytes against the repo's 8,076, and still carried a Cloud Logging docker
+   receiver that this repo recorded as disabled on 2026-07-23 — it had never stopped
+   running. The live copy also predates the docker `RequiresMountsFor=/mnt/comfy-p7`
+   drop-in and the stack-unit installer. Only the agent-config and swapfile blocks were
+   patched in metadata; the rest was left for a deliberate review.
+
+   Root cause: **there is no terraform state in the repo and no remote backend**, so
+   `terraform apply` would try to create this stack rather than update it. Changes here
+   have to be made against instance metadata directly. `data_disk_size_gb` defaulted to
+   150 while the live disk was 32 — that default never described anything deployed.

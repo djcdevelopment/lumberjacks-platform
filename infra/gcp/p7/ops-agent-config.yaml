@@ -1,13 +1,25 @@
-# Burn-stop hygiene 2026-07-23: docker-stdout and default syslog ingestion into
-# Cloud Logging are disabled (they were 136K + 25K entries/3d of free-tier noise;
-# see commandcenter GCP-AGENT-ASSESSMENT.html). Container logs remain on-VM via
-# `docker logs` and the comfy-gateway MCP tail tools. To re-enable, restore the
-# docker receiver/processor pipeline recorded in git history for this file.
-logging:
-  service:
-    pipelines:
-      default_pipeline:
-        receivers: []
+# Burn-stop hygiene 2026-07-23: docker-stdout ingestion into Cloud Logging is
+# disabled (it was 136K entries/3d of free-tier noise; see commandcenter
+# GCP-AGENT-ASSESSMENT.html). Container logs remain on-VM via `docker logs` and
+# the comfy-gateway MCP tail tools. To re-enable, restore the docker
+# receiver/processor pipeline recorded in git history for this file.
+#
+# DRIFT NOTE 2026-09-06: the instance metadata actually deployed on
+# comfy-lumberjacks-p7 still carried that docker pipeline, so it never stopped
+# running. Cloud Logging volume was 1.8 MiB/day until 2026-09-02, then 36 MiB/day.
+# That stayed inside the 50 GiB/month free tier and cost nothing, but it is noise
+# and it is not what this file said was deployed. Reconciled by rewriting the
+# instance's startup-script metadata directly — terraform state for this stack is
+# not in the repo and there is no remote backend, so `terraform apply` would try
+# to recreate the stack rather than update it. Do not run apply to land changes here.
+#
+# No `logging:` section ON PURPOSE. This file previously pinned
+# `default_pipeline.receivers: []`, which disables the built-in syslog pipeline —
+# and the comfy_p7_host_oom_kill log metric in monitoring.tf matches
+# "Out of memory: Killed process" against gce_instance syslog. Zeroing the
+# receiver list silently disarms the "Comfy P7 OOM kill detected" alert policy
+# built on it. Omitting the section leaves the Ops Agent default (syslog only,
+# ~50 entries/day) in place, which is what that alert needs and is free.
 
 combined:
   receivers:
@@ -21,8 +33,31 @@ metrics:
     hostmetrics:
       type: hostmetrics
       collection_interval: 30s
+  processors:
+    # Burn-stop hygiene 2026-09-06. The hostmetrics receiver emits one time series
+    # per running process per process metric; on an idle P7 that was 73 processes
+    # x 5 metrics = 365 series at 30s, ~18 MiB/day of CHARGEABLE metric volume
+    # ($0.258/MiB above the 150 MiB/month free tier) — over half the agent-domain
+    # spend, for series named `agetty`, `chronyd` and `containerd`. Cost is
+    # series x samples x bytes-per-sample and is independent of load: an idle VM
+    # pays the same as a busy one.
+    #
+    # The alert policies in monitoring.tf read memory/percent_used,
+    # swap/percent_used, disk/percent_used and agent/uptime. NONE are in the
+    # processes/* namespace, so every alert keeps working. Widen this pattern only
+    # after re-checking monitoring.tf.
+    drop_process_metrics:
+      type: exclude_metrics
+      metrics_pattern:
+        - agent.googleapis.com/processes/*
   service:
     pipelines:
+      # Declared explicitly so the processor has a pipeline to attach to. The
+      # receiver list is the same set the implicit default_pipeline already ran;
+      # only the processor is new.
+      default_pipeline:
+        receivers: [hostmetrics]
+        processors: [drop_process_metrics]
       otlp:
         receivers: [otlp]
 
