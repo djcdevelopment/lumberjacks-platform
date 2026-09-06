@@ -425,3 +425,28 @@ snapshot policy was attached to the old disk and had to be moved by hand.
    `terraform apply` would try to create this stack rather than update it. Changes here
    have to be made against instance metadata directly. `data_disk_size_gb` defaulted to
    150 while the live disk was 32 — that default never described anything deployed.
+
+### Release images are now backed up off the boot disk
+
+Closed hazard 1 on 2026-09-06. All 73 local-only tags (62 distinct images) are archived to:
+
+    gs://comfy-p7-cutover-lumberjacks-exp-20260711-djc/release-images/
+      p7-release-images-20260906.tar.gz        536 MiB, crc32c fm19YA==
+      p7-release-images-20260906.manifest.txt  tag list + the four tags live at export
+
+Restore:
+
+    gcloud storage cp gs://.../p7-release-images-20260906.tar.gz - | gunzip | docker load
+
+Verified at creation: crc32c matches between the VM-side archive and the stored object,
+the tar opens cleanly, `manifest.json` lists 62 images, and all four tags named in
+`/etc/comfy-p7/environment` are present along with 69 rollback tags.
+
+The VM's own service account **cannot write this bucket** (`storage.objects.create`
+denied), so the export was pulled to a workstation and pushed from there. If this should
+become a scheduled job rather than a manual one, that binding has to be granted first —
+it was deliberately not granted here, to avoid widening the runtime service account for a
+one-off.
+
+Re-export whenever an image is promoted. The archive is a point-in-time copy, not a
+mirror; a tag promoted after 2026-09-06 exists only on the boot disk until this is re-run.
