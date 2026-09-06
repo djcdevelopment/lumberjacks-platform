@@ -24,7 +24,10 @@ install -d -m 0755 "$MOUNT_POINT"/{valheim/config,valheim/data,lumberjacks/postg
 
 # Swap is a safety net and an alert signal, not a substitute for the 64 GiB VM.
 if ! swapon --show=NAME --noheadings | grep -qx '/swapfile'; then
-  fallocate -l 16G /swapfile
+  # 4G, not 16G. This VM is an e2-medium with 3.8 GiB of RAM; the 16G here was sized for
+  # the 64 GiB machine named in the comment above and never revised when the shape changed.
+  # Measured 2026-09-06: 16 GiB allocated, 0 B ever used, consuming 40%% of a 40 GiB boot disk.
+  fallocate -l 4G /swapfile
   chmod 600 /swapfile
   mkswap /swapfile
   swapon /swapfile

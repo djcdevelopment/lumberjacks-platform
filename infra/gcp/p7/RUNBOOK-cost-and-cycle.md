@@ -3,9 +3,18 @@
 Operator: **Derek, at the keyboard**. Agents are classifier-blocked from GCP mutations, so
 every command below is staged for you to paste. Nothing here has been executed.
 
-Grounding: [`docs/audit/2026-07-25-gcp-burn-rate-review.md`](../../../docs/audit/2026-07-25-gcp-burn-rate-review.md)
-(the burn memo — all dollar figures are its list-price estimates, ±20%, no invoiced truth yet),
-[`README.md`](README.md), [`RECONCILE-GAP.md`](RECONCILE-GAP.md).
+Grounding: [`COST-OF-TELEMETRY.md`](COST-OF-TELEMETRY.md) — **read this before changing any
+metric, interval or agent receiver**; it carries the measured price of observability on this
+box and the preflight checklist. Also [`README.md`](README.md),
+[`RECONCILE-GAP.md`](RECONCILE-GAP.md).
+
+> **Dangling reference, 2026-09-06.** This section previously cited
+> `docs/audit/2026-07-25-gcp-burn-rate-review.md` as its grounding. **That file has never
+> existed in this repository** — not in the working tree, and `git log --all` on the path
+> returns nothing. Its dollar figures were carried into the decision table below without a
+> committed source. Treat every unattributed figure here as an estimate until a billing
+> export exists (item A). The mechanism those estimates were meant to explain is now
+> written down in `COST-OF-TELEMETRY.md`.
 
 ## Operator corrections — 2026-07-29 (these override the memo's framing)
 
@@ -365,3 +374,120 @@ schedule or just stop it when you log off; **watch the first restart once** — 
 unproven claim) → **D-prime** (only if A's invoiced data shows the e2 swap is worth a window).
 Combined with the corrections, the realistic dev-season burn floor is the ~$14/mo
 storage+IP floor plus compute only for hours you're actually on.
+
+---
+
+## 2026-09-06 reclamation — what was actually burning
+
+Triggered by ~$36 of unexplained spend over six days. The VM had been left running
+since 2026-08-30 with zero players connected. The compute was never the problem.
+
+**The bill was telemetry, not the VM.** Cloud Monitoring bills chargeable metric volume
+as `series x samples x bytes-per-sample`, and that product is independent of load: an
+idle server pays exactly what a busy one pays. Measured 69 MiB/day chargeable at
+$0.258/MiB (150 MiB/month free), against roughly $1/day for the e2-medium itself.
+
+| Source | MiB/day | Why it was expensive |
+|---|---|---|
+| `workload.googleapis.com` (app OTel) | 44 | 65 series at a **10s** export interval, mostly CUMULATIVE histograms with 14 bucket bounds (~70 B/sample vs ~8 for a gauge). A cumulative histogram is re-sent in full every interval whether or not a request arrived. |
+| `agent.googleapis.com` (Ops Agent) | 25 | `processes/*` emits one series per process per metric: 73 processes x 5 metrics = 365 series at 30s, for things like `agetty` and `chronyd`. |
+
+Fixes: export interval 10s -> 60s (`docker-compose.yml`), and `processes/*` dropped at
+the agent via an `exclude_metrics` processor (`ops-agent-config.yaml`). Expected ~14
+MiB/day. The alert policies in `monitoring.tf` read `memory/percent_used`,
+`swap/percent_used`, `disk/percent_used` and `agent/uptime` — none are in `processes/*`,
+so nothing was disarmed. **Verified**: process series stopped at the agent restart while
+all four alert dependencies kept reporting.
+
+**Disk reclamation, 52 GiB -> 22.4 GiB used.** Largest single item was a **16 GiB
+swapfile with 0 B ever used**, sized in `bootstrap.sh.tftpl` for the 64 GiB machine named
+in its own comment; this is an e2-medium with 3.8 GiB RAM. Now 4 GiB. Also: 5.7 GiB
+docker build cache, 6.3 GiB of superseded Valheim world copies (`.old`, `_backup_auto-*`,
+one aborted partial — the live world and `CreatorOSBeta1` were kept), 5.4 GiB of July
+promotion-drill snapshots, and a 1.9 GiB `.invalid-partial`.
+
+State disk rebuilt 32 GiB -> 15 GiB as `comfy-p7-state-v3` (PDs cannot be shrunk; this was
+a copy-and-swap). Verified byte-identical before the swap: 8,905,030,474 bytes and 4,768
+files on both sides, checksum-mode rsync clean, then the stack proven running on it.
+Re-attached under device name `comfy-p7-state` because `bootstrap.sh.tftpl` hard-codes
+`/dev/disk/by-id/google-comfy-p7-state` and **exits 1** if it is missing. The daily
+snapshot policy was attached to the old disk and had to be moved by hand.
+
+### Two hazards found on the way, neither of them cost
+
+1. **The boot disk is the only copy of every release image.** All 76 images are
+   local-only tags; there is no Artifact Registry or Container Registry in the project,
+   and `docker-compose.yml` states there is deliberately no `build:` fallback. The boot
+   disk also carries `auto_delete = true`. Deleting the instance destroys every promoted
+   image and every rollback target. **Do not rebuild or replace the boot disk before
+   exporting the active images.** This is why `boot_disk_size_gb` was only reduced in
+   `variables.tf` (for a future clean provision) and the live 40 GiB disk was left alone.
+
+2. **Deployed instance metadata had drifted from this repo.** The live `startup-script`
+   was 3,315 bytes against the repo's 8,076, and still carried a Cloud Logging docker
+   receiver that this repo recorded as disabled on 2026-07-23 — it had never stopped
+   running. The live copy also predates the docker `RequiresMountsFor=/mnt/comfy-p7`
+   drop-in and the stack-unit installer. Only the agent-config and swapfile blocks were
+   patched in metadata; the rest was left for a deliberate review.
+
+   Root cause: **there is no terraform state in the repo and no remote backend**, so
+   `terraform apply` would try to create this stack rather than update it. Changes here
+   have to be made against instance metadata directly. `data_disk_size_gb` defaulted to
+   150 while the live disk was 32 — that default never described anything deployed.
+
+### Release images are now backed up off the boot disk
+
+Closed hazard 1 on 2026-09-06. All 73 local-only tags (62 distinct images) are archived to:
+
+    gs://comfy-p7-cutover-lumberjacks-exp-20260711-djc/release-images/
+      p7-release-images-20260906.tar.gz        536 MiB, crc32c fm19YA==
+      p7-release-images-20260906.manifest.txt  tag list + the four tags live at export
+
+Restore:
+
+    gcloud storage cp gs://.../p7-release-images-20260906.tar.gz - | gunzip | docker load
+
+Verified at creation: crc32c matches between the VM-side archive and the stored object,
+the tar opens cleanly, `manifest.json` lists 62 images, and all four tags named in
+`/etc/comfy-p7/environment` are present along with 69 rollback tags.
+
+The VM's own service account **cannot write this bucket** (`storage.objects.create`
+denied), so the export was pulled to a workstation and pushed from there. If this should
+become a scheduled job rather than a manual one, that binding has to be granted first —
+it was deliberately not granted here, to avoid widening the runtime service account for a
+one-off.
+
+Re-export whenever an image is promoted. The archive is a point-in-time copy, not a
+mirror; a tag promoted after 2026-09-06 exists only on the boot disk until this is re-run.
+
+### Duty-cycle: the alert policies have to move with the VM
+
+Four policies alarm on *absence*, so stopping P7 makes all four fire and keep re-firing
+(`auto_close` is 1800s, so a stopped VM re-alarms every half hour, forever). They are the
+two telemetry-absent policies and the two gateway health checks:
+
+| Policy ID | Display name |
+|---|---|
+| `14786988237719474750` | Comfy P7 telemetry absent |
+| `11094715803795048045` | Lumberjacks telemetry pipeline absent |
+| `4701078943267446923` | Comfy P7 gateway unavailable |
+| `13453279080877040487` | Lumberjacks gateway unavailable |
+
+Agents are classifier-blocked from the PATCH, so this is staged for you. Set
+`ENABLED=false` when you stop the VM, `true` when you start it:
+
+```bash
+ENABLED=false
+TOKEN=$(gcloud auth print-access-token)
+for id in 14786988237719474750 11094715803795048045 4701078943267446923 13453279080877040487; do
+  curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+    -d "{\"enabled\":$ENABLED}" \
+    "https://monitoring.googleapis.com/v3/projects/lumberjacks-exp-20260711-djc/alertPolicies/$id?updateMask=enabled" \
+    | grep -E '"displayName"|"enabled"'
+done
+```
+
+No `gcloud components install alpha` needed. **Re-arming is the half that matters** — these
+are the policies that tell you the server died, so a duty-cycle that only ever disables
+them leaves you blind on the next real outage. The other eight policies alarm on
+thresholds rather than absence and are harmless while the VM is off; leave them alone.

@@ -7,7 +7,16 @@ x-lumberjacks-telemetry: &lumberjacks-telemetry
   GOOGLE_CLOUD_PROJECT: "${GOOGLE_CLOUD_PROJECT:?GOOGLE_CLOUD_PROJECT must be set}"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://host.docker.internal:4317"
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
-  OTEL_METRIC_EXPORT_INTERVAL: "10000"
+  # 60s, not 10s. Cloud Monitoring bills chargeable metric volume as
+  # series x samples x bytes-per-sample, so the export interval is a direct linear
+  # multiplier on cost. At 10000 (10s, the fastest rate the API accepts — it rejects
+  # points less than 10s apart on a series) the four .NET services billed ~44 MiB/day
+  # of workload.googleapis.com metrics on an IDLE P7 with zero players connected.
+  # Most of these are CUMULATIVE histograms with 14 explicit bucket bounds, ~70 bytes
+  # per sample against ~8 for a gauge, and a cumulative histogram is re-sent in full
+  # every interval whether or not a request arrived. 60s cuts that ~6x and is still
+  # finer than the 60s alignment every policy in monitoring.tf actually aligns to.
+  OTEL_METRIC_EXPORT_INTERVAL: "60000"
   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=gcp-p7,service.namespace=lumberjacks"
   LUMBERJACKS_VERSION: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
   OTEL_SERVICE_VERSION: "${LUMBERJACKS_VERSION:?LUMBERJACKS_VERSION must be set}"
