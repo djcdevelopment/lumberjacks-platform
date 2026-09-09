@@ -79,6 +79,12 @@ param(
 
     [string] $EvidenceRoot = '',
 
+    # Capture whole journals instead of the bytes appended since the previous
+    # run. The append-only cutover journals are never truncated, so a full copy
+    # stores run N as runs 1..N; see JournalSlice.ps1. Forwarded to the client
+    # legs so a full-copy run is full-copy end to end.
+    [switch] $FullJournalCopy,
+
     [ValidateRange(60, 1800)]
     [int] $WaitSeconds = 900,
 
@@ -148,6 +154,7 @@ if ([string]::IsNullOrWhiteSpace($I5EnrollmentId) -ne
 }
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+. (Join-Path $PSScriptRoot 'JournalSlice.ps1')
 Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 $clientHarness = Join-Path $PSScriptRoot 'Invoke-NativeValheimClient.ps1'
 $i5Tools = $null
@@ -444,6 +451,70 @@ function Write-JsonAtomic([string] $Path, [object] $Value) {
     Move-Item -LiteralPath $temporary -Destination $Path -Force
 }
 
+function Copy-RemoteJournalSlice {
+    <#
+    .SYNOPSIS
+    Fetch only the bytes appended to a remote append-only journal since the
+    previous capture. Returns $true when the slice was written.
+    #>
+    param(
+        [Parameter(Mandatory)][string] $Name,
+        [Parameter(Mandatory)][string] $RemotePath,
+        [Parameter(Mandatory)][string] $Destination)
+
+    $sudo = if ($ServerDockerRequiresSudo) { 'sudo ' } else { '' }
+
+    # Size and head fingerprint in one round trip; the fingerprint is how a
+    # journal replaced in place (rather than appended to) gets noticed.
+    $probe = & ssh -o BatchMode=yes $ServerSshTarget `
+        "${sudo}stat -c %s -- '$RemotePath' && ${sudo}head -c 4096 -- '$RemotePath' | sha256sum | cut -d' ' -f1"
+    if ($LASTEXITCODE -ne 0 -or -not $probe) { return $false }
+
+    $lines = @($probe -split "`n" |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ })
+    if ($lines.Count -lt 1) { return $false }
+
+    $size = 0L
+    if (-not [long]::TryParse($lines[0], [ref]$size)) { return $false }
+    # Get-JournalHeadFingerprint emits uppercase hex; sha256sum emits lowercase.
+    $head = if ($lines.Count -ge 2) { $lines[1].ToUpperInvariant() } else { '' }
+
+    $ledgerPath = Get-JournalLedgerPath -EvidenceRoot $EvidenceRoot
+    $key = "server|$Name"
+    $plan = Get-JournalSlicePlan `
+        -LedgerPath $ledgerPath -Key $key -CurrentSize $size -HeadFingerprint $head
+    $start = [long]$plan.StartOffset
+
+    # tail -c +N is 1-based over bytes, so byte offset N starts at +(N+1).
+    $stagedSlice = "/tmp/baseline-slice-$RunId-$Name"
+    & ssh -o BatchMode=yes $ServerSshTarget `
+        "${sudo}tail -c +$($start + 1) -- '$RemotePath' > '$stagedSlice'"
+    if ($LASTEXITCODE -ne 0) { return $false }
+
+    $temporary = [System.IO.Path]::GetTempFileName()
+    try {
+        & scp -q -- "${ServerSshTarget}:$stagedSlice" $temporary
+        if ($LASTEXITCODE -ne 0) { return $false }
+        [void](Write-JournalSliceOutput `
+            -Payload ([System.IO.File]::ReadAllBytes($temporary)) `
+            -Destination $Destination `
+            -LedgerPath $ledgerPath `
+            -Key $key `
+            -RunId $RunId `
+            -StartOffset $start `
+            -SourceSize $size `
+            -SourceLabel "${ServerSshTarget}:$RemotePath" `
+            -HeadFingerprint $head `
+            -FullCopy ([bool]$plan.FullCopy) `
+            -Reason ([string]$plan.Reason))
+        return $true
+    } finally {
+        Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+        & ssh -o BatchMode=yes $ServerSshTarget "rm -f '$stagedSlice'" 2>$null | Out-Null
+    }
+}
+
 function Copy-ServerEvidenceFile(
     [string] $Name,
     [string] $Destination,
@@ -455,6 +526,14 @@ function Copy-ServerEvidenceFile(
     $copySource = "${ServerSshTarget}:$remotePath"
     $stagedPath = $null
     try {
+        if (-not $FullJournalCopy -and (Test-JournalSliceEligible -Name $Name)) {
+            $captured = Copy-RemoteJournalSlice `
+                -Name $Name -RemotePath $remotePath -Destination $Destination
+            if ($captured) { return $true }
+            if ($Optional) { return $false }
+            # Slice capture could not read the remote journal; fall through to
+            # the whole-file copy rather than losing the evidence.
+        }
         if ($ServerDockerRequiresSudo) {
             $stagedPath = "/tmp/baseline-$RunId-$Name"
             & ssh -o BatchMode=yes $ServerSshTarget `
@@ -1260,6 +1339,9 @@ try {
     if ($useRoutedRpc) {
         $i5Arguments += '-EnableRoutedRpcCutover'
     }
+    if ($FullJournalCopy) {
+        $i5Arguments += '-FullJournalCopy'
+    }
     if ($EnableZdoJournalCutover) {
         $i5Arguments += '-EnableZdoJournalCutover'
         if ($EnableZdoJournalCanonicalSession) {
@@ -1376,6 +1458,9 @@ try {
             '-EvidenceRoot', $EvidenceRoot,
             '-HoldSeconds', [string]$HoldSeconds,
             '-WaitSeconds', [string]$WaitSeconds)
+        if ($FullJournalCopy) {
+            $omenHarnessArguments += '-FullJournalCopy'
+        }
         if (-not [string]::IsNullOrWhiteSpace($OmenEnrollmentId)) {
             $omenHarnessArguments += @(
                 '-EnrollmentId', $OmenEnrollmentId,
@@ -1543,6 +1628,7 @@ try {
             -ScenarioPath $scenario `
             -EvidenceRoot $EvidenceRoot `
             -HoldSeconds $HoldSeconds `
+            -FullJournalCopy:$FullJournalCopy `
             -EnableRoutedRpcCutover:$useRoutedRpc `
             -EnableZdoJournalCutover:$EnableZdoJournalCutover `
             -EnableZdoJournalCanonicalSession:$EnableZdoJournalCanonicalSession `

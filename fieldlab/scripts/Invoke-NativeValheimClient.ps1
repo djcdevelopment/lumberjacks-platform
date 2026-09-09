@@ -63,6 +63,11 @@ param(
 
     [string] $EvidenceRoot = '',
 
+    # Capture whole journals instead of the bytes appended since the previous
+    # run. The append-only cutover journals are never truncated, so a full copy
+    # stores run N as runs 1..N; see JournalSlice.ps1.
+    [switch] $FullJournalCopy,
+
     # Invoke-NativeValheimCutoverScenario.ps1 forwards its own -WaitSeconds here on
     # both the local and i5 legs, so this ceiling must stay >= the orchestrator's.
     [ValidateRange(60, 1800)]
@@ -119,6 +124,7 @@ $script:LabConfigBackup = $null
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $repoRoot 'tools\Assert-RepoIdentity.ps1')
+. (Join-Path $PSScriptRoot 'JournalSlice.ps1')
 Assert-RepoIdentity -RepoRoot $repoRoot | Out-Null
 if ([string]::IsNullOrWhiteSpace($EvidenceRoot)) {
     $EvidenceRoot = Join-Path $repoRoot 'captures\native-valheim'
@@ -741,6 +747,19 @@ function Copy-EvidenceFile([string] $Source, [string] $DestinationName) {
         -not (Test-Path -LiteralPath $Source -PathType Leaf)) { return $null }
     $destination = Join-Path $script:ActiveRunDirectory $DestinationName
     try {
+        if (-not $FullJournalCopy -and (Test-JournalSliceEligible -Name $DestinationName)) {
+            # Append-only journal: take only the bytes added since the previous
+            # capture. Consumers filter rows to $RunId, so carried-over history
+            # is never read; the sidecar keeps the slice reconstructable.
+            $slice = Copy-JournalSlice `
+                -Source $Source `
+                -Destination $destination `
+                -LedgerPath (Get-JournalLedgerPath -EvidenceRoot $EvidenceRoot) `
+                -Key "$Client|$DestinationName" `
+                -RunId $RunId
+            if ($null -eq $slice) { return $null }
+            return $destination
+        }
         Copy-Item -LiteralPath $Source -Destination $destination -Force
         return $destination
     } catch {
